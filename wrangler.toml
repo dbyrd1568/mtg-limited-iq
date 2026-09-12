@@ -1,0 +1,6 @@
+name = "mtg-limited-iq"
+compatibility_date = "2026-09-12"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
