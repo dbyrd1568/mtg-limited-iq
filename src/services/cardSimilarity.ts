@@ -1179,7 +1179,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
  * and synthesizes an empirical consensus projection.
  */
 export async function findSimilarCards(targetCard: Card): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v21`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v22`;
   if (similarityCache.has(cacheKey)) {
     return similarityCache.get(cacheKey)!;
   }
@@ -1268,9 +1268,16 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
     const setCode = card.set.toUpperCase();
     const setData = setDatasets[setCode];
     const faceName = card.name.includes(' // ') ? card.name.split(' // ')[0].trim() : card.name;
+    const normalizeName = (s: string) => s.toLowerCase().replace(/['’".,\-]/g, '').trim();
+    const targetNorm = normalizeName(card.name);
+    const faceNorm = normalizeName(faceName);
+
     const card17L = setData?.cards?.[card.name] || 
       setData?.cards?.[faceName] ||
-      (setData?.cards ? Object.entries(setData.cards).find(([k]) => k.toLowerCase() === card.name.toLowerCase() || k.toLowerCase() === faceName.toLowerCase())?.[1] : undefined);
+      (setData?.cards ? Object.entries(setData.cards).find(([k]) => {
+        const kNorm = normalizeName(k);
+        return kNorm === targetNorm || kNorm === faceNorm;
+      })?.[1] : undefined);
 
     let winRate = card17L?.win_rate;
     let alsa = card17L?.avg_seen;

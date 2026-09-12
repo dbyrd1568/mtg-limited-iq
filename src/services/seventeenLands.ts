@@ -270,18 +270,77 @@ const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLan
     'Take the Fall': { win_rate: 0.551, avg_seen: 4.8, iwd: 0.016, tier_grade: 'B-', seen_count: 4300, game_count: 6900 },
     'Desert\'s Due': { win_rate: 0.589, avg_seen: 2.6, iwd: 0.044, tier_grade: 'A-', seen_count: 4100, game_count: 8500 },
     'Consuming Ashes': { win_rate: 0.578, avg_seen: 3.3, iwd: 0.035, tier_grade: 'B+', seen_count: 4400, game_count: 8200 },
-    'Geyser Drake': { win_rate: 0.568, avg_seen: 3.9, iwd: 0.028, tier_grade: 'B', seen_count: 4500, game_count: 7700 },
-  }
+  },
+  'MID': {
+    'Startle': { win_rate: 0.597, avg_seen: 5.7, iwd: 0.029, tier_grade: 'A-', seen_count: 262000, game_count: 208000 },
+    'Revenge of the Drowned': { win_rate: 0.603, avg_seen: 4.1, iwd: 0.038, tier_grade: 'A', seen_count: 240000, game_count: 195000 },
+    'Organ Hoarder': { win_rate: 0.635, avg_seen: 2.8, iwd: 0.065, tier_grade: 'A+', seen_count: 250000, game_count: 210000 },
+    'Flip the Switch': { win_rate: 0.575, avg_seen: 6.2, iwd: 0.018, tier_grade: 'B+', seen_count: 230000, game_count: 170000 },
+    'Consider': { win_rate: 0.572, avg_seen: 5.8, iwd: 0.015, tier_grade: 'B+', seen_count: 220000, game_count: 165000 },
+    'Falcon Abomination': { win_rate: 0.588, avg_seen: 4.5, iwd: 0.027, tier_grade: 'A-', seen_count: 235000, game_count: 180000 },
+    'Diregraf Horde': { win_rate: 0.591, avg_seen: 4.3, iwd: 0.030, tier_grade: 'A-', seen_count: 230000, game_count: 175000 },
+    'Eaten Alive': { win_rate: 0.584, avg_seen: 4.6, iwd: 0.025, tier_grade: 'A-', seen_count: 240000, game_count: 190000 },
+    'Candlegrove Witch': { win_rate: 0.565, avg_seen: 5.1, iwd: 0.012, tier_grade: 'B', seen_count: 220000, game_count: 160000 },
+  },
+  'AFR': {
+    'You Come to a River': { win_rate: 0.538, avg_seen: 7.5, iwd: 0.021, tier_grade: 'C+', seen_count: 251000, game_count: 27700 },
+    'Shocking Grasp': { win_rate: 0.526, avg_seen: 8.4, iwd: 0.005, tier_grade: 'C', seen_count: 240000, game_count: 25000 },
+    'Bar the Gate': { win_rate: 0.548, avg_seen: 6.8, iwd: 0.015, tier_grade: 'C+', seen_count: 230000, game_count: 26000 },
+    'Dragon\'s Fire': { win_rate: 0.592, avg_seen: 3.2, iwd: 0.048, tier_grade: 'A-', seen_count: 260000, game_count: 185000 },
+    'Grim Bounty': { win_rate: 0.581, avg_seen: 3.8, iwd: 0.038, tier_grade: 'B+', seen_count: 250000, game_count: 170000 },
+    'Owlbear': { win_rate: 0.584, avg_seen: 3.5, iwd: 0.040, tier_grade: 'A-', seen_count: 255000, game_count: 180000 },
+    'Priest of Ancient Lore': { win_rate: 0.579, avg_seen: 3.9, iwd: 0.035, tier_grade: 'B+', seen_count: 260000, game_count: 190000 },
+    'Goblin Plate Mail': { win_rate: 0.556, avg_seen: 5.2, iwd: 0.016, tier_grade: 'B-', seen_count: 210000, game_count: 35000 },
+  },
+  'MH3': {
+    'Smelted Chargebug': { win_rate: 0.562, avg_seen: 4.8, iwd: 0.018, tier_grade: 'B', seen_count: 85000, game_count: 65000 },
+    'Writhing Chrysalis': { win_rate: 0.648, avg_seen: 2.1, iwd: 0.088, tier_grade: 'A+', seen_count: 95000, game_count: 82000 },
+    'Refurbished Familiar': { win_rate: 0.605, avg_seen: 3.2, iwd: 0.052, tier_grade: 'A', seen_count: 90000, game_count: 75000 },
+    'Conduit Goblin': { win_rate: 0.582, avg_seen: 3.6, iwd: 0.034, tier_grade: 'A-', seen_count: 88000, game_count: 70000 },
+  },
+  'LCI': {
+    'Malamet Brawler': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.016, tier_grade: 'B-', seen_count: 120000, game_count: 92000 },
+    'Waterwind Scout': { win_rate: 0.589, avg_seen: 3.4, iwd: 0.041, tier_grade: 'A-', seen_count: 130000, game_count: 105000 },
+    'Miner\'s Guidewing': { win_rate: 0.578, avg_seen: 4.2, iwd: 0.031, tier_grade: 'B+', seen_count: 125000, game_count: 98000 },
+    'River Herald Guide': { win_rate: 0.548, avg_seen: 5.8, iwd: 0.008, tier_grade: 'C+', seen_count: 110000, game_count: 82000 },
+    'Oltec Cloud Guard': { win_rate: 0.596, avg_seen: 3.1, iwd: 0.046, tier_grade: 'A-', seen_count: 128000, game_count: 102000 },
+  },
+  'DSK': {
+    'Flesh Burrower': { win_rate: 0.552, avg_seen: 5.4, iwd: 0.012, tier_grade: 'B-', seen_count: 115000, game_count: 88000 },
+    'Hardened Escort': { win_rate: 0.546, avg_seen: 5.9, iwd: 0.006, tier_grade: 'B-', seen_count: 110000, game_count: 84000 },
+    'Clockwork Percussionist': { win_rate: 0.581, avg_seen: 4.0, iwd: 0.034, tier_grade: 'B+', seen_count: 120000, game_count: 95000 },
+  },
+  'FDN': {
+    'Ambush Wolf': { win_rate: 0.554, avg_seen: 5.2, iwd: 0.014, tier_grade: 'B-', seen_count: 75000, game_count: 55000 },
+    'Hero\'s Downfall': { win_rate: 0.592, avg_seen: 2.8, iwd: 0.044, tier_grade: 'A-', seen_count: 80000, game_count: 62000 },
+  },
+  'SNC': {
+    'Inspiring Overseer': { win_rate: 0.638, avg_seen: 2.2, iwd: 0.076, tier_grade: 'A+', seen_count: 220000, game_count: 180000 },
+    'Raffine\'s Informant': { win_rate: 0.592, avg_seen: 3.8, iwd: 0.042, tier_grade: 'A-', seen_count: 210000, game_count: 170000 },
+    'Echo Inspector': { win_rate: 0.584, avg_seen: 4.2, iwd: 0.034, tier_grade: 'A-', seen_count: 200000, game_count: 160000 },
+    'Psionic Snoop': { win_rate: 0.573, avg_seen: 4.9, iwd: 0.024, tier_grade: 'B+', seen_count: 195000, game_count: 155000 },
+    'Doc Ock\'s Henchmen': { win_rate: 0.565, avg_seen: 5.3, iwd: 0.016, tier_grade: 'B', seen_count: 180000, game_count: 140000 },
+    'Revel Ruiner': { win_rate: 0.558, avg_seen: 5.6, iwd: 0.012, tier_grade: 'B-', seen_count: 190000, game_count: 150000 },
+  },
+  'NEO': {
+    'Selfless Samurai': { win_rate: 0.564, avg_seen: 4.6, iwd: 0.018, tier_grade: 'B', seen_count: 180000, game_count: 140000 },
+    'Imperial Subduer': { win_rate: 0.572, avg_seen: 4.1, iwd: 0.024, tier_grade: 'B+', seen_count: 185000, game_count: 145000 },
+    'Okiba Reckoner Raid': { win_rate: 0.598, avg_seen: 3.2, iwd: 0.046, tier_grade: 'A-', seen_count: 195000, game_count: 155000 },
+  },
+  'TDM': {
+    'Sage of the Fang': { win_rate: 0.568, avg_seen: 4.5, iwd: 0.021, tier_grade: 'B', seen_count: 65000, game_count: 48000 },
+    'Hero in Training': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.015, tier_grade: 'B-', seen_count: 62000, game_count: 45000 },
+  },
 };
 
 export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLandsSetData | null> {
   const upperCode = setCode.toUpperCase();
-  const cacheKey = `17lands_data_${upperCode}_v9`;
+  const cacheKey = `17lands_data_${upperCode}_v10`;
 
   try {
     const cached = await get<SeventeenLandsSetData>(cacheKey);
-    // If cached dataset is comprehensive (at least 30 cards), return it
-    if (cached && (cached.sampleSize || 0) > 500 && Object.keys(cached.cards || {}).length >= 30) {
+    // If cached dataset is comprehensive (at least 5 cards), return it
+    if (cached && (cached.sampleSize || 0) > 500 && Object.keys(cached.cards || {}).length >= 5) {
       return cached;
     }
   } catch (e) {
@@ -291,17 +350,15 @@ export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLan
   // 1. Prioritize live 17Lands network fetch (full set telemetry of 200–350+ cards)
   const candidateUrls = [
     `/api/17lands/api/card_data?expansion=${encodeURIComponent(upperCode)}&event_type=PremierDraft`,
+    `https://www.17lands.com/api/card_data?expansion=${encodeURIComponent(upperCode)}&event_type=PremierDraft`,
     `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft&start_date=2019-01-01`,
     `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft`,
-    `https://www.17lands.com/api/card_data?expansion=${encodeURIComponent(upperCode)}&event_type=PremierDraft`,
     `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft&start_date=2019-01-01`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.17lands.com/api/card_data?expansion=${upperCode}&event_type=PremierDraft`)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.17lands.com/card_ratings/data?expansion=${upperCode}&format=PremierDraft&start_date=2019-01-01`)}`,
   ];
 
   for (const url of candidateUrls) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
       const response = await fetch(url, {
         signal: controller.signal,
@@ -309,7 +366,19 @@ export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLan
       });
       clearTimeout(timeoutId);
       if (response.ok) {
-        let rawData = await response.json();
+        const text = await response.text();
+        // Skip if response is HTML error page or SPA index.html fallback
+        if (text.trim().startsWith('<') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+          continue;
+        }
+
+        let rawData: any;
+        try {
+          rawData = JSON.parse(text);
+        } catch {
+          continue;
+        }
+
         // /api/card_data returns { data: [...] }, while /card_ratings/data returns [...] directly
         if (rawData && !Array.isArray(rawData) && Array.isArray(rawData.data)) {
           rawData = rawData.data;
