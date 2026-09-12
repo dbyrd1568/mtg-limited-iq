@@ -774,12 +774,16 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                       </div>
                     ) : effectiveIsBlind ? (
                       /* Graded in Grading Mode */
-                      <div className="mt-2 p-2 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-500/30 text-xs font-mono flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                      <div
+                        onClick={handleToggleBlindGrading}
+                        className="mt-2 px-3 py-2 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 border border-amber-200/60 dark:border-amber-500/30 text-xs font-mono flex items-center justify-between gap-4 cursor-pointer transition-colors"
+                        title="Click to switch to Compare Mode and reveal 17Lands benchmarks"
+                      >
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 shrink-0 whitespace-nowrap">
                           <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                           <span>Grading Mode</span>
                         </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 text-right leading-tight">
                           Compare Mode reveals 17Lands data
                         </span>
                       </div>

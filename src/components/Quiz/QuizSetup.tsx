@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { QuestionCategory, QuizMode, QuizSettings, SetInfo, MTGRarity, SeventeenLandsSetData } from '../../types/mtg';
+import { QuestionCategory, QuizMode, QuizSettings, SetInfo, MTGRarity, SeventeenLandsSetData, Card } from '../../types/mtg';
 import { Swords, Zap, Hash, Shield, BookOpen, Sparkles, Trophy, Clock, CheckSquare, Square, Layers, Flame, Wand2, ShieldCheck, Target, AlertTriangle, Scale, GitCompare, ArrowRight, Lock } from 'lucide-react';
 import { SetBadge, SetSymbol } from '../UI/SetSymbol';
 import { isSetUnderTwoWeeksOld, isAuthentic17LandsDataSet } from '../../services/seventeenLands';
@@ -11,7 +11,9 @@ interface QuizSetupProps {
   availableCardsCount: number;
   missedCardsCount: number;
   seventeenLandsData?: SeventeenLandsSetData | null;
+  cards?: Card[];
 }
+
 
 interface CategoryConfig {
   id: QuestionCategory;
@@ -84,12 +86,17 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({
   availableCardsCount,
   missedCardsCount,
   seventeenLandsData,
+  cards,
 }) => {
-  const isSetUnder2Weeks = useMemo(() => isSetUnderTwoWeeksOld(currentSet.released_at), [currentSet.released_at]);
   const is17LandsEligible = useMemo(() => {
-    if (isSetUnder2Weeks) return false;
-    return isAuthentic17LandsDataSet(seventeenLandsData, currentSet.code);
-  }, [isSetUnder2Weeks, seventeenLandsData, currentSet.code]);
+    return isAuthentic17LandsDataSet(seventeenLandsData, currentSet.code, cards);
+  }, [seventeenLandsData, currentSet.code, cards]);
+
+  const isSetUnder2Weeks = useMemo(() => {
+    if (is17LandsEligible) return false;
+    return isSetUnderTwoWeeksOld(currentSet.released_at);
+  }, [is17LandsEligible, currentSet.released_at]);
+
 
   const is17LandsCategory = (id: QuestionCategory) => id === 'trap_or_sleeper' || id === 'card_evaluation';
 

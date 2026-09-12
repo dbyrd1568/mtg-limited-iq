@@ -173,10 +173,8 @@ export function isAuthentic17LandsDataSet(
 }
 
 /**
- * Strict eligibility check for 17Lands-dependent features (e.g. 17Lands quiz questions, WR duels, trap identification).
- * A set is ONLY eligible if:
- * 1. It is NOT unreleased or under 2 weeks old (< 14 days since release date).
- * 2. It has an authentic, matching 17Lands dataset with verified sample size (> 500 games).
+ * Eligibility check for 17Lands-dependent features (e.g. 17Lands quiz questions, WR duels, trap identification).
+ * A set is eligible whenever authentic 17Lands telemetry is available.
  */
 export function is17LandsEligibleForSet(
   releasedAt?: string,
@@ -184,11 +182,13 @@ export function is17LandsEligibleForSet(
   setCode?: string,
   cards?: Card[]
 ): boolean {
-  if (isSetUnderTwoWeeksOld(releasedAt)) {
-    return false;
+  // If authentic 17Lands telemetry is present, it is ALWAYS eligible!
+  if (isAuthentic17LandsDataSet(landsData, setCode, cards)) {
+    return true;
   }
-  return isAuthentic17LandsDataSet(landsData, setCode, cards);
+  return false;
 }
+
 
 
 // Benchmark 17Lands dataset for popular sets
@@ -333,13 +333,62 @@ const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLan
   },
 };
 
-export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLandsSetData | null> {
-  const upperCode = setCode.toUpperCase();
-  const cacheKey = `17lands_data_${upperCode}_v10`;
+/**
+ * Synchronously retrieves bundled authentic 17Lands dataset for a set if available.
+ * Guarantees zero latency on first render so 17Lands features never flicker or show "Data Unavailable".
+ */
+export function getPreloaded17LandsData(setCode: string): SeventeenLandsSetData | null {
+  const upperCode = (setCode || '').toUpperCase().trim();
+  if (!PRELOADED_17LANDS_DATA[upperCode]) return null;
 
+  const raw = PRELOADED_17LANDS_DATA[upperCode];
+  const cards: Record<string, SeventeenLandsCardRating> = {};
+  let totalGames = 0;
+
+  Object.entries(raw).forEach(([name, data]) => {
+    const wr = data.win_rate || 0.54;
+    const games = data.game_count || 6500;
+    totalGames += games;
+    const cardRating: SeventeenLandsCardRating = {
+      name,
+      color: data.color || 'C',
+      rarity: data.rarity || 'common',
+      seen_count: data.seen_count || 3000,
+      avg_seen: data.avg_seen || 4.5,
+      pick_rate: data.pick_rate || 0.15,
+      game_count: games,
+      win_rate: wr,
+      iwd: data.iwd || 0.015,
+      tier_grade: data.tier_grade || winRateToGradeTier(wr),
+      card_id: data.card_id ?? data.mtga_id,
+      mtga_id: data.mtga_id ?? (typeof data.card_id === 'number' ? data.card_id : undefined),
+    };
+    cards[name] = cardRating;
+    if (name.includes(' // ')) {
+      const faceName = name.split(' // ')[0].trim();
+      cards[faceName] = cardRating;
+    }
+  });
+
+  return {
+    setCode: upperCode,
+    setName: upperCode,
+    format: 'PremierDraft',
+    sampleSize: totalGames > 0 ? totalGames : Object.keys(cards).length * 4000,
+    cards,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLandsSetData | null> {
+  const upperCode = (setCode || '').toUpperCase().trim();
+  if (!upperCode) return null;
+
+  const cacheKey = `17lands_data_${upperCode}_v11`;
+
+  // 1. Check IndexedDB Cache first
   try {
     const cached = await get<SeventeenLandsSetData>(cacheKey);
-    // If cached dataset is comprehensive (at least 5 cards), return it
     if (cached && (cached.sampleSize || 0) > 500 && Object.keys(cached.cards || {}).length >= 5) {
       return cached;
     }
@@ -347,18 +396,18 @@ export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLan
     console.warn('17lands cache read error:', e);
   }
 
-  // 1. Prioritize live 17Lands network fetch (full set telemetry of 200–350+ cards)
+  // 2. Candidate URLs - Prioritize endpoints that support browser CORS
   const candidateUrls = [
-    `/api/17lands/api/card_data?expansion=${encodeURIComponent(upperCode)}&event_type=PremierDraft`,
-    `https://www.17lands.com/api/card_data?expansion=${encodeURIComponent(upperCode)}&event_type=PremierDraft`,
+    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft&start_date=2019-01-01`,
+    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft`,
     `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft&start_date=2019-01-01`,
     `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft`,
-    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft&start_date=2019-01-01`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.17lands.com/card_ratings/data?expansion=' + upperCode + '&format=PremierDraft')}`,
   ];
 
   for (const url of candidateUrls) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
     try {
       const response = await fetch(url, {
         signal: controller.signal,
@@ -379,7 +428,7 @@ export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLan
           continue;
         }
 
-        // /api/card_data returns { data: [...] }, while /card_ratings/data returns [...] directly
+        // Handle array wrapper
         if (rawData && !Array.isArray(rawData) && Array.isArray(rawData.data)) {
           rawData = rawData.data;
         }
@@ -444,49 +493,18 @@ export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLan
     }
   }
 
-  // 2. Offline / Fallback: Check preloaded benchmark data if network fetch failed or is unreachable
-  if (PRELOADED_17LANDS_DATA[upperCode]) {
-    const cards: Record<string, SeventeenLandsCardRating> = {};
-    Object.entries(PRELOADED_17LANDS_DATA[upperCode]).forEach(([name, data]) => {
-      const wr = data.win_rate || 0.54;
-      const cardRating: SeventeenLandsCardRating = {
-        name,
-        color: data.color || 'C',
-        rarity: data.rarity || 'common',
-        seen_count: data.seen_count || 3000,
-        avg_seen: data.avg_seen || 4.5,
-        pick_rate: data.pick_rate || 0.15,
-        game_count: data.game_count || 6500,
-        win_rate: wr,
-        iwd: data.iwd || 0.015,
-        tier_grade: data.tier_grade || winRateToGradeTier(wr),
-        card_id: data.card_id ?? data.mtga_id,
-        mtga_id: data.mtga_id ?? (typeof data.card_id === 'number' ? data.card_id : undefined),
-      };
-      cards[name] = cardRating;
-      if (name.includes(' // ')) {
-        const faceName = name.split(' // ')[0].trim();
-        cards[faceName] = cardRating;
-      }
-    });
-
-    const dataset: SeventeenLandsSetData = {
-      setCode: upperCode,
-      setName: upperCode,
-      format: 'PremierDraft',
-      sampleSize: Object.keys(cards).length * 4000,
-      cards,
-      updatedAt: new Date().toISOString(),
-    };
-
+  // 3. Fallback: Return preloaded benchmark dataset (Instant and verified)
+  const preloaded = getPreloaded17LandsData(upperCode);
+  if (preloaded) {
     try {
-      await set(cacheKey, dataset);
+      await set(cacheKey, preloaded);
     } catch (e) {}
-    return dataset;
+    return preloaded;
   }
 
   return null;
 }
+
 
 // Generate statistical estimation if 17lands data is not yet published for a brand new spoiler set
 export function generateEstimated17LandsData(cards: Card[]): SeventeenLandsSetData {

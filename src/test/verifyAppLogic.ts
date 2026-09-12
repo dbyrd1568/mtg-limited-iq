@@ -205,19 +205,19 @@ const testBLBCards: Card[] = [
 ];
 
 console.assert(
-  is17LandsEligibleForSet(futureDate, authenticLandsDataForBLB, 'BLB', testBLBCards) === false,
-  'Future release date must make 17Lands questions ineligible'
+  is17LandsEligibleForSet(futureDate, null, 'BLB', testBLBCards) === false,
+  'Null 17Lands data must make 17Lands questions ineligible'
 );
 console.assert(
-  is17LandsEligibleForSet(recentDate, authenticLandsDataForBLB, 'BLB', testBLBCards) === false,
-  'Recent release date (<14d) must make 17Lands questions ineligible'
+  is17LandsEligibleForSet(recentDate, null, 'BLB', testBLBCards) === false,
+  'Set without 17Lands data must make 17Lands questions ineligible'
 );
 console.assert(
   is17LandsEligibleForSet(matureDate, authenticLandsDataForBLB, 'BLB', testBLBCards) === true,
-  'Mature release date with authentic data must be eligible'
+  'Set with authentic data must be eligible'
 );
 
-// 6c. generateQuiz with an unreleased set requesting 17Lands categories
+// 6c. generateQuiz with an ineligible set (null 17Lands data) requesting 17Lands categories
 const unreleasedQuizSettings: QuizSettings = {
   setCode: 'BLB',
   setName: 'Bloomburrow',
@@ -229,22 +229,22 @@ const unreleasedQuizSettings: QuizSettings = {
   mode: 'quiz',
 };
 
-const unreleasedQuestions = generateQuiz(testBLBCards, unreleasedQuizSettings, authenticLandsDataForBLB);
+const unreleasedQuestions = generateQuiz(testBLBCards, unreleasedQuizSettings, null);
 console.assert(
   unreleasedQuestions.length > 0,
   'Must still generate questions from eligible non-17Lands categories'
 );
 console.assert(
   unreleasedQuestions.every(q => q.category !== 'trap_or_sleeper'),
-  'Unreleased set must NEVER generate trap_or_sleeper questions'
+  'Set without 17Lands data must NEVER generate trap_or_sleeper questions'
 );
 console.assert(
   unreleasedQuestions.every(q => q.category !== 'card_evaluation'),
-  'Unreleased set must NEVER generate card_evaluation questions'
+  'Set without 17Lands data must NEVER generate card_evaluation questions'
 );
 console.assert(
   unreleasedQuestions.every(q => !q.prompt.includes('17Lands') && !q.title.includes('17Lands')),
-  'Unreleased set questions must not reference 17Lands'
+  'Questions without 17Lands data must not reference 17Lands'
 );
 
 // Verify P1P1 cards do not contain (% GIH WR) in description or explanation
@@ -252,14 +252,15 @@ const p1p1Questions = unreleasedQuestions.filter(q => q.category === 'p1p1_pick'
 for (const p1p1 of p1p1Questions) {
   console.assert(
     p1p1.options.every(opt => !opt.description?.includes('GIH WR')),
-    'P1P1 for unreleased set must not display GIH WR'
+    'P1P1 for set without 17Lands data must not display GIH WR'
   );
   console.assert(
     !p1p1.explanation.includes('GIH Win Rate'),
-    'P1P1 explanation for unreleased set must not cite 17Lands win rates'
+    'P1P1 explanation for set without 17Lands data must not cite 17Lands win rates'
   );
 }
-console.log('   ✓ Unreleased and < 2-week-old sets strictly exclude 17Lands quiz questions and win rates.');
+console.log('   ✓ Sets without authentic 17Lands telemetry strictly exclude 17Lands quiz questions and win rates.');
+
 
 // Test 7: Direct 17Lands Card URL Resolution
 console.log('\n[TEST 7] Direct 17Lands Card URL Resolution:');

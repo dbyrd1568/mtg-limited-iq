@@ -8,7 +8,7 @@ const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 export const POPULAR_LIMITED_SETS: SetInfo[] = [
   // 2026 Sets
   { code: 'TRK', name: 'Star Trek', card_count: 135, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
-  { code: 'MBC', name: 'Mystery Booster Commander Edition', card_count: 80, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: true },
+  { code: 'MBC', name: 'Mystery Booster Commander Edition', card_count: 80, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
   { code: 'FRA', name: 'Reality Fracture', card_count: 249, released_at: '2026-10-02', set_type: 'expansion', has_17lands_data: false },
   { code: 'HOB', name: 'The Hobbit', card_count: 321, released_at: '2026-08-14', set_type: 'expansion', has_17lands_data: true },
   { code: 'MSH', name: 'Marvel Super Heroes', card_count: 453, released_at: '2026-06-01', set_type: 'expansion', has_17lands_data: true },
@@ -17,7 +17,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   { code: 'ECL', name: 'Lorwyn Eclipsed', card_count: 408, released_at: '2026-01-01', set_type: 'expansion', has_17lands_data: true },
   // 2025 Sets
   { code: 'TLA', name: 'Avatar: The Last Airbender', card_count: 394, released_at: '2025-11-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'SPM', name: "Marvel's Spider-Man", card_count: 286, released_at: '2025-09-01', set_type: 'expansion', has_17lands_data: true },
+  { code: 'SPM', name: "Marvel's Spider-Man", card_count: 286, released_at: '2025-09-01', set_type: 'expansion', has_17lands_data: false },
   { code: 'EOE', name: 'Edge of Eternities', card_count: 400, released_at: '2025-08-01', set_type: 'expansion', has_17lands_data: true },
   { code: 'FIN', name: 'Final Fantasy', card_count: 599, released_at: '2025-06-01', set_type: 'expansion', has_17lands_data: true },
   { code: 'DFT', name: 'Aetherdrift', card_count: 276, released_at: '2025-02-14', set_type: 'expansion', has_17lands_data: true },

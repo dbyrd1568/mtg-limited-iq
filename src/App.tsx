@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS } from './services/scryfall';
-import { fetch17LandsSetData, is17LandsEligibleForSet } from './services/seventeenLands';
+import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData } from './services/seventeenLands';
 import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
+
 import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { supabaseUserToUserAccount } from './services/auth';
@@ -37,7 +38,11 @@ export const App: React.FC = () => {
     const params = parseAppUrlParams();
     return params.quiz_subtab || 'take';
   });
-  const [isSetSelectorOpen, setIsSetSelectorOpen] = useState<boolean>(false);
+  const [isSetSelectorOpen, setIsSetSelectorOpen] = useState<boolean>(() => {
+    const params = parseAppUrlParams();
+    const savedCode = getLastSelectedSetCode();
+    return !params.set && !savedCode && hasSeenWelcomeTour();
+  });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(() => !hasSeenWelcomeTour());
 
@@ -79,8 +84,13 @@ export const App: React.FC = () => {
   const [isLoadingCards, setIsLoadingCards] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<{ loaded: number; total: number } | null>(null);
 
-  // 17Lands Data State
-  const [seventeenLandsData, setSeventeenLandsData] = useState<SeventeenLandsSetData | null>(null);
+  // 17Lands Data State (Preloaded immediately on frame 0 to eliminate "Data Unavailable" delay)
+  const [seventeenLandsData, setSeventeenLandsData] = useState<SeventeenLandsSetData | null>(() => {
+    const params = parseAppUrlParams();
+    const targetCode = currentSet?.code || params.set || getLastSelectedSetCode() || 'HOB';
+    return getPreloaded17LandsData(targetCode);
+  });
+
 
   // User Stats & Evaluations State (Scoped to currentUser)
   const [userStats, setUserStats] = useState<UserProfileStats>(() => loadUserStats(currentUser?.id || 'user_default'));
@@ -256,42 +266,54 @@ export const App: React.FC = () => {
 
     setIsLoadingCards(true);
     setDownloadProgress(null);
-    setSeventeenLandsData(null); // Reset immediately so previous set's data never leaks
+
+    // Instantly populate preloaded 17Lands data so all 17Lands features are immediately active
+    const preloaded = getPreloaded17LandsData(set.code);
+    if (preloaded) {
+      setSeventeenLandsData(preloaded);
+    } else {
+      setSeventeenLandsData(null);
+    }
+
+    // Concurrently fetch cards and latest 17Lands telemetry
+    const cardsPromise = fetchCardsForSet(
+      set.code,
+      (loaded, total) => {
+        setDownloadProgress({ loaded, total });
+      },
+      (cachedCards) => {
+        // Immediately populate cached cards to eliminate blank screen while checking Scryfall
+        setCards(cachedCards);
+        setIsLoadingCards(false);
+      }
+    );
+
+    const landsPromise = fetch17LandsSetData(set.code);
 
     try {
-      // 1. Fetch Cards strictly for set (checks Scryfall on each load to reveal new cards)
-      const fetchedCards = await fetchCardsForSet(
-        set.code,
-        (loaded, total) => {
-          setDownloadProgress({ loaded, total });
-        },
-        (cachedCards) => {
-          // Immediately populate cached cards to eliminate blank screen while checking Scryfall
-          setCards(cachedCards);
-          setIsLoadingCards(false);
-        }
-      );
+      const [fetchedCards, landsData] = await Promise.all([cardsPromise, landsPromise]);
       setCards(fetchedCards);
 
-      // 2. Fetch 17Lands Data (Only use real empirical data; do not fabricate fake ratings)
-      const landsData = await fetch17LandsSetData(set.code);
       if (
         landsData &&
         landsData.setCode?.toUpperCase() === set.code.toUpperCase() &&
-        landsData.sampleSize > 500 &&
+        (landsData.sampleSize || 0) > 500 &&
         Object.keys(landsData.cards || {}).length >= 5
       ) {
         setSeventeenLandsData(landsData);
-      } else {
+      } else if (!preloaded) {
         setSeventeenLandsData(null);
       }
     } catch (err) {
       console.error(`Error loading data for set ${set.code}:`, err);
-      setSeventeenLandsData(null);
+      if (!preloaded) {
+        setSeventeenLandsData(null);
+      }
     } finally {
       setIsLoadingCards(false);
     }
   }, []);
+
 
   useEffect(() => {
     loadSetData(currentSet);
@@ -569,7 +591,9 @@ export const App: React.FC = () => {
                             availableCardsCount={cards.length}
                             missedCardsCount={missedCountForCurrentSet}
                             seventeenLandsData={seventeenLandsData}
+                            cards={cards}
                           />
+
                         )}
 
                         {quizState === 'summary' && lastResult && (
@@ -704,14 +728,22 @@ export const App: React.FC = () => {
       {/* Welcome Guide & Tour Modal */}
       <WelcomeTourModal
         isOpen={isWelcomeTourOpen}
-        onClose={() => setIsWelcomeTourOpen(false)}
+        onClose={() => {
+          setIsWelcomeTourOpen(false);
+          if (!currentSet) {
+            setIsSetSelectorOpen(true);
+          }
+        }}
         onNavigateTab={(tab) => {
           setActiveTab(tab);
           if (tab === 'quiz') {
             setQuizState('setup');
           }
         }}
-        onOpenSetSelector={() => setIsSetSelectorOpen(true)}
+        onOpenSetSelector={() => {
+          setIsWelcomeTourOpen(false);
+          setIsSetSelectorOpen(true);
+        }}
       />
     </div>
   );
