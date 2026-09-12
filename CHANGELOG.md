@@ -3,6 +3,12 @@
 All notable changes to this project will be documented here.
 
 
+## [1.2.2](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.2.1...v1.2.2) (2026-09-12)
+
+### 🐛 Bug Fixes
+
+* **scryfall:** check Scryfall on load to reveal new spoiler cards and update FRA count ([aa39604](https://github.com/dbyrd1568/mtg-limited-iq/commit/aa3960428b857054decf124979e69d660c1122b4))
+
 ## [1.2.1](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.2.0...v1.2.1) (2026-09-12)
 
 ### ✨ Features
