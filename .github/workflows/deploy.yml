@@ -27,6 +27,9 @@ jobs:
 
       - name: 🔨 Build
         run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://irxgoelllogcyoiumxup.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_QNDNrOPhb_X_29OfIg_-_Q_OB7QJuhI' }}
 
       - name: ☁️ Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3

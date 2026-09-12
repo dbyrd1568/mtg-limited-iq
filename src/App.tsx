@@ -2,16 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS } from './services/scryfall';
 import { fetch17LandsSetData, is17LandsEligibleForSet } from './services/seventeenLands';
-import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
+import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
 import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { supabaseUserToUserAccount } from './services/auth';
 import { pullRemoteUserData, migrateLocalDataToCloud } from './services/cloudSync';
+import { isProdEnvironment } from './services/environment';
 
 // Components
 import { Navbar, ActiveTab } from './components/Navbar';
 import { SetSelectorModal } from './components/SetSelectorModal';
 import { AuthModal } from './components/Auth/AuthModal';
+import { LoginGate } from './components/Auth/LoginGate';
 import { WelcomeTourModal } from './components/UI/WelcomeTourModal';
 import { EmptySetPlaceholder } from './components/UI/EmptySetPlaceholder';
 import { QuizSetup } from './components/Quiz/QuizSetup';
@@ -39,8 +41,11 @@ export const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(() => !hasSeenWelcomeTour());
 
-  // User Accounts State
-  const [currentUser, setCurrentUser] = useState<UserAccount>(() => getActiveUser());
+  const isProd = isProdEnvironment();
+
+  // User Accounts State (Nullable in Prod when unauthenticated)
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getActiveUser());
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isProdEnvironment());
 
   // Set & Cards State: Only set if specified in URL or previously saved by user (otherwise null)
   const [allSets, setAllSets] = useState<SetInfo[]>(POPULAR_LIMITED_SETS);
@@ -78,13 +83,13 @@ export const App: React.FC = () => {
   const [seventeenLandsData, setSeventeenLandsData] = useState<SeventeenLandsSetData | null>(null);
 
   // User Stats & Evaluations State (Scoped to currentUser)
-  const [userStats, setUserStats] = useState<UserProfileStats>(() => loadUserStats(currentUser.id));
-  const [userEvaluations, setUserEvaluations] = useState<Record<string, UserCardEvaluation>>(() => loadUserEvaluations(currentUser.id));
+  const [userStats, setUserStats] = useState<UserProfileStats>(() => loadUserStats(currentUser?.id || 'user_default'));
+  const [userEvaluations, setUserEvaluations] = useState<Record<string, UserCardEvaluation>>(() => loadUserEvaluations(currentUser?.id || 'user_default'));
 
   // Blind Grading Preference (Shared between Grading Hub and Cards Explorer)
   const [isBlindGrading, setIsBlindGrading] = useState<boolean>(() => {
     if (!currentSet) return true;
-    return getBlindGradingForSet(currentSet.code, currentUser.id, currentSet.card_count);
+    return getBlindGradingForSet(currentSet.code, currentUser?.id || 'user_default', currentSet.card_count);
   });
 
   // Shared Card Filter State (persists across Grading ↔ Cards tab switches)
@@ -95,18 +100,18 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (currentSet) {
-      setIsBlindGrading(getBlindGradingForSet(currentSet.code, currentUser.id, cards.length || currentSet.card_count));
+      setIsBlindGrading(getBlindGradingForSet(currentSet.code, currentUser?.id || 'user_default', cards.length || currentSet.card_count));
     }
-  }, [currentSet?.code, currentUser.id, cards.length, currentSet?.card_count]);
+  }, [currentSet?.code, currentUser?.id, cards.length, currentSet?.card_count]);
 
   const handleToggleBlindGrading = useCallback(() => {
     if (!currentSet) return;
     setIsBlindGrading((prev) => {
       const next = !prev;
-      setBlindGradingForSet(currentSet.code, next, currentUser.id);
+      setBlindGradingForSet(currentSet.code, next, currentUser?.id || 'user_default');
       return next;
     });
-  }, [currentSet, currentUser.id]);
+  }, [currentSet, currentUser?.id]);
 
   // Quiz Workflow State
   const [quizState, setQuizState] = useState<'setup' | 'active' | 'summary'>('setup');
@@ -116,7 +121,10 @@ export const App: React.FC = () => {
 
   // Supabase Auth Listener on Startup
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) {
+      setIsAuthInitializing(false);
+      return;
+    }
 
     let isProcessingSession = false;
     const handleUserSession = async (user: any) => {
@@ -153,31 +161,45 @@ export const App: React.FC = () => {
         console.warn('Error handling user session:', err);
       } finally {
         isProcessingSession = false;
+        setIsAuthInitializing(false);
       }
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         handleUserSession(session.user);
+      } else {
+        if (isProdEnvironment()) {
+          clearActiveUser();
+          setCurrentUser(null);
+        }
+        setIsAuthInitializing(false);
       }
+    }).catch(() => {
+      setIsAuthInitializing(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         await handleUserSession(session.user);
       } else if (event === 'SIGNED_OUT') {
-        const guestUser: UserAccount = {
-          id: 'user_default',
-          name: 'Guest Drafter',
-          avatarColor: '#8b5cf6',
-          provider: 'local',
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
-        };
-        setActiveUser(guestUser);
-        setCurrentUser(guestUser);
-        setUserStats(loadUserStats(guestUser.id));
-        setUserEvaluations(loadUserEvaluations(guestUser.id));
+        clearActiveUser();
+        if (isProdEnvironment()) {
+          setCurrentUser(null);
+        } else {
+          const guestUser: UserAccount = {
+            id: 'user_default',
+            name: 'Guest Drafter',
+            avatarColor: '#8b5cf6',
+            provider: 'local',
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString(),
+          };
+          setActiveUser(guestUser);
+          setCurrentUser(guestUser);
+          setUserStats(loadUserStats(guestUser.id));
+          setUserEvaluations(loadUserEvaluations(guestUser.id));
+        }
       }
     });
 
@@ -188,6 +210,7 @@ export const App: React.FC = () => {
 
   // Initial Data Load (Stats, Evaluations, Sets)
   useEffect(() => {
+    if (!currentUser) return;
     const loadedStats = loadUserStats(currentUser.id);
     setUserStats(loadedStats);
 
@@ -210,13 +233,15 @@ export const App: React.FC = () => {
         }
       })
       .catch((err) => console.warn('Could not load all sets list:', err));
-  }, [currentUser.id]);
+  }, [currentUser?.id]);
 
   // Handle User Switch
-  const handleUserChanged = (newUser: UserAccount) => {
+  const handleUserChanged = (newUser: UserAccount | null) => {
     setCurrentUser(newUser);
-    setUserStats(loadUserStats(newUser.id));
-    setUserEvaluations(loadUserEvaluations(newUser.id));
+    if (newUser) {
+      setUserStats(loadUserStats(newUser.id));
+      setUserEvaluations(loadUserEvaluations(newUser.id));
+    }
   };
 
   // Fetch cards and 17lands data whenever currentSet changes
@@ -299,7 +324,7 @@ export const App: React.FC = () => {
 
   // Handle Set Change
   const handleSelectSet = (set: SetInfo) => {
-    saveLastSelectedSetCode(set.code, currentUser.id);
+    saveLastSelectedSetCode(set.code, currentUser?.id || 'user_default');
     setCurrentSet(set);
     setIsSetSelectorOpen(false);
     setQuizState('setup');
@@ -323,7 +348,7 @@ export const App: React.FC = () => {
   };
 
   const handleFinishQuiz = (result: QuizResult) => {
-    const updatedStats = recordQuizCompletion(result, currentUser.id);
+    const updatedStats = recordQuizCompletion(result, currentUser?.id || 'user_default');
     setUserStats(updatedStats);
     setLastResult(result);
     setQuizState('summary');
@@ -369,7 +394,7 @@ export const App: React.FC = () => {
 
   // Evaluation Handlers
   const handleSaveEvaluation = (evaluation: UserCardEvaluation) => {
-    saveUserEvaluation(evaluation, currentUser.id);
+    saveUserEvaluation(evaluation, currentUser?.id || 'user_default');
     setUserEvaluations((prev) => ({
       ...prev,
       [`${evaluation.setCode.toLowerCase()}_${evaluation.cardName.toLowerCase()}`]: evaluation,
@@ -377,7 +402,7 @@ export const App: React.FC = () => {
   };
 
   const handleClearEvaluationsForSet = (setCode: string) => {
-    const updated = clearUserEvaluationsForSet(setCode, currentUser.id);
+    const updated = clearUserEvaluationsForSet(setCode, currentUser?.id || 'user_default');
     setUserEvaluations(updated);
   };
 
@@ -386,6 +411,35 @@ export const App: React.FC = () => {
         (m) => m.setCode.toUpperCase() === currentSet.code.toUpperCase()
       ).length
     : 0;
+
+  // In Production (Cloudflare): Show loading state while checking initial session
+  if (isProd && isAuthInitializing) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 dark:bg-[#030614] text-slate-900 dark:text-slate-100">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-amber-500 dark:from-violet-500 dark:via-indigo-500 dark:to-cyan-400 flex items-center justify-center text-white shadow-xl shadow-violet-500/20 p-2.5 animate-pulse">
+            <PlaneswalkerSymbol className="w-full h-full text-white drop-shadow-xs" />
+          </div>
+          <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-600 dark:text-slate-400 animate-pulse">
+            <span>Loading MTG Limited IQ...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // In Production: Require Authentication Gate
+  if (isProd && !currentUser) {
+    return (
+      <LoginGate
+        onAuthenticated={(user) => {
+          setCurrentUser(user);
+          setUserStats(loadUserStats(user.id));
+          setUserEvaluations(loadUserEvaluations(user.id));
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-[#030614] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
@@ -538,8 +592,9 @@ export const App: React.FC = () => {
                         userStats={userStats}
                         onDrillMissedCards={handlePracticeMissedCards}
                         onRefreshStats={() => {
-                          setUserStats(loadUserStats(currentUser.id));
-                          setUserEvaluations(loadUserEvaluations(currentUser.id));
+                          const activeId = currentUser?.id || 'user_default';
+                          setUserStats(loadUserStats(activeId));
+                          setUserEvaluations(loadUserEvaluations(activeId));
                         }}
                         onTakeQuiz={() => {
                           setQuizSubTab('take');
@@ -640,8 +695,9 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         onUserChange={handleUserChanged}
         onRefreshStats={() => {
-          setUserStats(loadUserStats(currentUser.id));
-          setUserEvaluations(loadUserEvaluations(currentUser.id));
+          const activeId = currentUser?.id || 'user_default';
+          setUserStats(loadUserStats(activeId));
+          setUserEvaluations(loadUserEvaluations(activeId));
         }}
       />
 

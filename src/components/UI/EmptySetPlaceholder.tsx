@@ -17,7 +17,25 @@ export const EmptySetPlaceholder: React.FC<EmptySetPlaceholderProps> = ({
   popularSets = POPULAR_LIMITED_SETS.slice(0, 6),
 }) => {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 sm:py-16 text-center animate-in fade-in zoom-in-95 duration-200">
+    <div className="relative max-w-4xl mx-auto px-4 py-8 sm:py-14 text-center animate-in fade-in zoom-in-95 duration-200">
+      {/* Directional Callout pointing to the Top Navbar Set Selector */}
+      <div className="flex justify-end mb-4 sm:mb-6 pr-2 sm:pr-8">
+        <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-700/50 text-violet-900 dark:text-cyan-300 shadow-sm animate-pulse">
+          <span className="text-xs font-bold font-mono">
+            Click "Choose Set" in top bar
+          </span>
+          <span className="text-sm font-black text-amber-500 dark:text-amber-400 animate-bounce">↗</span>
+        </div>
+      </div>
+
+      {/* Visual Arched Arrow for Medium/Large Screens */}
+      <div className="hidden lg:block absolute top-2 right-12 text-violet-400/80 dark:text-cyan-400/70 pointer-events-none select-none">
+        <svg className="w-24 h-16" viewBox="0 0 100 70" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M 10 60 Q 60 55 85 10" strokeDasharray="4 4" />
+          <polyline points="72 8, 85 10, 86 23" />
+        </svg>
+      </div>
+
       {/* Visual Glowing Spark Icon */}
       <div className="relative inline-block mb-6">
         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-amber-500 flex items-center justify-center text-white shadow-2xl shadow-violet-500/30 mx-auto p-4 border border-white/20">
@@ -31,10 +49,10 @@ export const EmptySetPlaceholder: React.FC<EmptySetPlaceholderProps> = ({
       {/* Main Headline & Prompt */}
       <div className="space-y-3 max-w-xl mx-auto">
         <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-heading tracking-tight">
-          Select a Set to Get Started
+          Select your Set
         </h2>
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-          Choose a Magic: The Gathering draft set to load card previews, ratings, and premier draft statistics.
+          Choose a Magic: The Gathering draft set to load card previews, personal ratings, 17Lands benchmarks, and tactical quiz drills.
         </p>
       </div>
 
@@ -46,7 +64,7 @@ export const EmptySetPlaceholder: React.FC<EmptySetPlaceholderProps> = ({
           className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all cursor-pointer flex items-center gap-2.5 border border-white/10"
         >
           <Layers className="w-5 h-5" />
-          <span>Open Set Selector</span>
+          <span>Select your Set</span>
           <ArrowUpRight className="w-4 h-4 opacity-70" />
         </button>
       </div>

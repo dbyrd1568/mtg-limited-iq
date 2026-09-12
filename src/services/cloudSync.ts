@@ -418,7 +418,7 @@ export async function migrateLocalDataToCloud(
 }
 
 export async function retrySync(userId?: string): Promise<boolean> {
-  const activeId = userId || getActiveUser().id;
+  const activeId = userId || getActiveUser()?.id || 'anonymous';
   if (!isCloudUUID(activeId)) {
     setSyncStatus('local_only');
     return false;
