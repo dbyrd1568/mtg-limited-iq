@@ -1,12 +1,16 @@
-name: 🚀 Deploy on Version Bump
+name: 🚀 Build & Deploy to Cloudflare Workers
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -18,13 +22,13 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: 📦 Install
+      - name: 📦 Install dependencies
         run: npm ci
 
       - name: 🔨 Build
         run: npm run build
 
-      - name: ☁️ Deploy
+      - name: ☁️ Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
