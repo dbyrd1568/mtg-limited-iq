@@ -161,14 +161,36 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Close (Esc)"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            {onAdoptGrade && (presentedGradeStats?.averageGrade || data?.consensus?.projectedTier) && (
+              <button
+                type="button"
+                onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data!.consensus.projectedTier, 'average')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer border shadow-2xs ${
+                  adoptedSourceId === 'average'
+                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                    : 'bg-violet-600 hover:bg-violet-700 text-white border-violet-500 shadow-xs hover:scale-[1.02]'
+                }`}
+                title={`Adopt Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier}) for target card`}
+              >
+                <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-80'}`} />
+                <span>
+                  {adoptedSourceId === 'average'
+                    ? `Used Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`
+                    : `Use Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}
+                </span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Close (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -288,6 +310,22 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         </span>
                       )}
                     </div>
+
+                    {/* Quick Adopt Grade Average Button for Target Card */}
+                    {onAdoptGrade && (presentedGradeStats?.averageGrade || data?.consensus?.projectedTier) && (
+                      <button
+                        type="button"
+                        onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data!.consensus.projectedTier, 'average')}
+                        className={`w-full py-1.5 px-2.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer border shadow-2xs ${
+                          adoptedSourceId === 'average'
+                            ? 'bg-emerald-600 text-white border-emerald-500'
+                            : 'bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/60 text-violet-700 dark:text-cyan-300 border-violet-200 dark:border-violet-800/60'
+                        }`}
+                      >
+                        <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-70'}`} />
+                        <span>{adoptedSourceId === 'average' ? `Used Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})` : `Use Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}</span>
+                      </button>
+                    )}
 
                     {/* Quick Grade Tier Buttons Grid */}
                     <div className="grid grid-cols-6 gap-1 pt-0.5">
