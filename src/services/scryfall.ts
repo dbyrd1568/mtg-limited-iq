@@ -9,7 +9,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   // 2026 Sets
   { code: 'TRK', name: 'Star Trek', card_count: 135, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
   { code: 'MBC', name: 'Mystery Booster Commander Edition', card_count: 80, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'FRA', name: 'Reality Fracture', card_count: 152, released_at: '2026-10-01', set_type: 'expansion', has_17lands_data: false },
+  { code: 'FRA', name: 'Reality Fracture', card_count: 249, released_at: '2026-10-02', set_type: 'expansion', has_17lands_data: false },
   { code: 'HOB', name: 'The Hobbit', card_count: 321, released_at: '2026-08-14', set_type: 'expansion', has_17lands_data: true },
   { code: 'MSH', name: 'Marvel Super Heroes', card_count: 453, released_at: '2026-06-01', set_type: 'expansion', has_17lands_data: true },
   { code: 'SOS', name: 'Secrets of Strixhaven', card_count: 368, released_at: '2026-04-24', set_type: 'expansion', has_17lands_data: true },
@@ -233,18 +233,23 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
 
 export async function fetchCardsForSet(
   setCode: string,
-  onProgress?: (loaded: number, total: number) => void
+  onProgress?: (loaded: number, total: number) => void,
+  onCachedCards?: (cards: Card[]) => void
 ): Promise<Card[]> {
   const upperCode = setCode.toUpperCase();
-  const cacheKey = `scryfall_cards_${upperCode}_v4`;
+  const cacheKey = `scryfall_cards_${upperCode}_v5`;
 
+  // 1. Read cached cards from IndexedDB if available and deliver immediately for instant UI
+  let cachedCards: Card[] | null = null;
   try {
-    const cached = await get<Card[]>(cacheKey);
-    if (cached && cached.length > 0) {
-      // Ensure all cached cards strictly belong to this set
-      const strictlyFiltered = cached.filter(c => c.set.toUpperCase() === upperCode);
+    const rawCached = await get<Card[]>(cacheKey);
+    if (rawCached && rawCached.length > 0) {
+      const strictlyFiltered = rawCached.filter(c => c.set.toUpperCase() === upperCode);
       if (strictlyFiltered.length > 0) {
-        return strictlyFiltered;
+        cachedCards = strictlyFiltered;
+        if (onCachedCards) {
+          onCachedCards(strictlyFiltered);
+        }
       }
     }
   } catch (e) {
@@ -257,6 +262,8 @@ export async function fetchCardsForSet(
   let nextUrl: string | null = `${SCRYFALL_API_BASE}/cards/search?q=${query}&order=set`;
 
   try {
+    let isFirstPage = true;
+
     while (nextUrl) {
       const response: Response = await fetch(nextUrl, {
         headers: {
@@ -280,6 +287,13 @@ export async function fetchCardsForSet(
         allCards.push(...normalized);
       }
 
+      // If cached cards already match Scryfall's total_cards count and set exceeds a single page,
+      // we already have the complete set and can skip downloading subsequent pages.
+      if (isFirstPage && cachedCards && cachedCards.length >= totalCount && totalCount > 175) {
+        return cachedCards;
+      }
+      isFirstPage = false;
+
       if (onProgress) {
         onProgress(allCards.length, totalCount);
       }
@@ -301,7 +315,10 @@ export async function fetchCardsForSet(
       return allCards;
     }
 
-    // If zero cards returned from API, check fallback
+    // If zero cards returned from API, check cached cards or fallback
+    if (cachedCards && cachedCards.length > 0) {
+      return cachedCards;
+    }
     const sample = getFallbackCards(upperCode);
     if (sample.length > 0) {
       return sample;
@@ -310,6 +327,10 @@ export async function fetchCardsForSet(
     return allCards;
   } catch (err) {
     console.error(`Failed to fetch cards for set ${upperCode}:`, err);
+    // Return cached cards if available when network fails
+    if (cachedCards && cachedCards.length > 0) {
+      return cachedCards;
+    }
     // Return sample offline cards if available strictly for this set
     const sample = getFallbackCards(upperCode);
     if (sample.length > 0) {

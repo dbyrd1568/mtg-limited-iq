@@ -234,10 +234,18 @@ export const App: React.FC = () => {
     setSeventeenLandsData(null); // Reset immediately so previous set's data never leaks
 
     try {
-      // 1. Fetch Cards strictly for set
-      const fetchedCards = await fetchCardsForSet(set.code, (loaded, total) => {
-        setDownloadProgress({ loaded, total });
-      });
+      // 1. Fetch Cards strictly for set (checks Scryfall on each load to reveal new cards)
+      const fetchedCards = await fetchCardsForSet(
+        set.code,
+        (loaded, total) => {
+          setDownloadProgress({ loaded, total });
+        },
+        (cachedCards) => {
+          // Immediately populate cached cards to eliminate blank screen while checking Scryfall
+          setCards(cachedCards);
+          setIsLoadingCards(false);
+        }
+      );
       setCards(fetchedCards);
 
       // 2. Fetch 17Lands Data (Only use real empirical data; do not fabricate fake ratings)
