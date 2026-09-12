@@ -117,6 +117,33 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
       avgWinRate = sumWr / matchesWithWr.length;
     }
 
+    // Compute Median Win Rate
+    let medianWinRate: number | undefined;
+    if (matchesWithWr.length > 0) {
+      const sortedWrs = matchesWithWr.map((m) => m.winRate!).sort((a, b) => a - b);
+      const midWr = Math.floor(sortedWrs.length / 2);
+      medianWinRate = sortedWrs.length % 2 !== 0
+        ? sortedWrs[midWr]
+        : (sortedWrs[midWr - 1] + sortedWrs[midWr]) / 2;
+    }
+
+    // Compute Median Grade Tier
+    let medianGrade: GradeTier;
+    if (matchesWithGrade.length > 0) {
+      const sortedScores = matchesWithGrade
+        .map((m) => GRADE_SCORES[m.tierGrade!] ?? 2.7)
+        .sort((a, b) => a - b);
+      const mid = Math.floor(sortedScores.length / 2);
+      const medianScore = sortedScores.length % 2 !== 0
+        ? sortedScores[mid]
+        : (sortedScores[mid - 1] + sortedScores[mid]) / 2;
+      medianGrade = scoreToGradeTier(medianScore);
+    } else if (medianWinRate !== undefined) {
+      medianGrade = winRateToGradeTier(medianWinRate);
+    } else {
+      medianGrade = averageGrade;
+    }
+
     const validTiers = matchesWithGrade.map((m) => m.tierGrade!);
     const minTier = validTiers.length
       ? validTiers.reduce((min, t) => gradeTierToIndex(t) > gradeTierToIndex(min) ? t : min)
@@ -128,11 +155,14 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     return {
       averageGrade,
       avgWinRate,
+      medianGrade,
+      medianWinRate,
       count: presentedMatches.length,
       minTier,
       maxTier,
     };
   }, [presentedMatches]);
+
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -141,60 +171,39 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         className="w-[96vw] max-w-[1600px] max-h-[94vh] flex flex-col bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
       >
         {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/80 dark:bg-[#050818]/90">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shrink-0">
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/80 dark:bg-[#050818]/90">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shrink-0">
               <PlayingCardsFan className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-heading tracking-tight">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading tracking-tight">
                   Historical Comps & Similar Cards
                 </h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
                   Precedent Engine
                 </span>
+                <span className="hidden md:inline text-xs text-slate-500 dark:text-slate-400">
+                  • 17Lands Premier Draft comps
+                </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Comparable cards across premier draft sets with 17Lands win rates.
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            {onAdoptGrade && (presentedGradeStats?.averageGrade || data?.consensus?.projectedTier) && (
-              <button
-                type="button"
-                onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data!.consensus.projectedTier, 'average')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer border shadow-2xs ${
-                  adoptedSourceId === 'average'
-                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
-                    : 'bg-violet-600 hover:bg-violet-700 text-white border-violet-500 shadow-xs hover:scale-[1.02]'
-                }`}
-                title={`Adopt Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier}) for target card`}
-              >
-                <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-80'}`} />
-                <span>
-                  {adoptedSourceId === 'average'
-                    ? `Used Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`
-                    : `Use Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}
-                </span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              title="Close (Esc)"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Close (Esc)"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 custom-scrollbar">
+
           {loading ? (
             <div className="py-24 flex flex-col items-center justify-center gap-3 text-center">
               <Loader2 className="w-9 h-9 text-violet-600 dark:text-cyan-400 animate-spin" />
@@ -221,58 +230,109 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
             </div>
           ) : (
             <>
-              {/* Compact Horizontal Consensus / Grade Average Bar */}
-              <div className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-violet-600/10 via-amber-500/5 to-emerald-500/10 border border-violet-400/30 dark:border-cyan-400/30 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="flex items-center gap-3 flex-wrap min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Scale className="w-4 h-4 text-violet-600 dark:text-cyan-400 shrink-0" />
-                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 shrink-0">
-                      Grade Average
+              {/* Compact Precedent Summary & Adoption Bar */}
+              <div className="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600/10 via-indigo-600/5 to-emerald-500/10 border border-violet-400/30 dark:border-cyan-400/30 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
+                {/* Metrics: Average, Median, Range */}
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+                  {/* Grade Average */}
+                  <div className="flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 shrink-0">
+                      Average:
                     </span>
-                    <span className="text-base sm:text-lg font-black font-mono px-2 py-0.5 rounded-lg bg-violet-600 text-white shadow-2xs shrink-0">
+                    <span className="text-xs sm:text-sm font-black font-mono px-2 py-0.5 rounded-lg bg-violet-600 text-white shadow-2xs shrink-0">
                       Tier {presentedGradeStats?.averageGrade || data.consensus.projectedTier}
                     </span>
+                    {presentedGradeStats?.avgWinRate !== undefined ? (
+                      <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
+                        {(presentedGradeStats.avgWinRate * 100).toFixed(1)}% WR
+                      </span>
+                    ) : data.consensus.averageWinRate !== undefined ? (
+                      <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
+                        {(data.consensus.averageWinRate * 100).toFixed(1)}% WR
+                      </span>
+                    ) : null}
                   </div>
 
-                  {presentedGradeStats?.avgWinRate !== undefined ? (
-                    <span className="text-xs sm:text-sm font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
-                      {(presentedGradeStats.avgWinRate * 100).toFixed(1)}% Avg GIH WR
+                  <span className="text-slate-300 dark:text-slate-700 font-light hidden sm:inline">|</span>
+
+                  {/* Grade Median */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 shrink-0">
+                      Median:
                     </span>
-                  ) : data.consensus.averageWinRate !== undefined ? (
-                    <span className="text-xs sm:text-sm font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
-                      {(data.consensus.averageWinRate * 100).toFixed(1)}% Avg GIH WR
+                    <span className="text-xs sm:text-sm font-black font-mono px-2 py-0.5 rounded-lg bg-indigo-600 text-white shadow-2xs shrink-0">
+                      Tier {presentedGradeStats?.medianGrade || data.consensus.projectedTier}
                     </span>
-                  ) : null}
+                    {presentedGradeStats?.medianWinRate !== undefined && (
+                      <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
+                        {(presentedGradeStats.medianWinRate * 100).toFixed(1)}% WR
+                      </span>
+                    )}
+                  </div>
 
                   {(presentedGradeStats?.minTier && presentedGradeStats?.maxTier) ? (
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
-                      Range: {presentedGradeStats.minTier === presentedGradeStats.maxTier ? presentedGradeStats.minTier : `${presentedGradeStats.minTier} to ${presentedGradeStats.maxTier}`}
-                    </span>
+                    <>
+                      <span className="text-slate-300 dark:text-slate-700 font-light hidden md:inline">|</span>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+                        Range: {presentedGradeStats.minTier === presentedGradeStats.maxTier ? presentedGradeStats.minTier : `${presentedGradeStats.minTier} to ${presentedGradeStats.maxTier}`}
+                      </span>
+                    </>
                   ) : (data.consensus.tierRangeMin && data.consensus.tierRangeMax) ? (
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
-                      Range: {data.consensus.tierRangeMin === data.consensus.tierRangeMax ? data.consensus.tierRangeMin : `${data.consensus.tierRangeMin} to ${data.consensus.tierRangeMax}`}
-                    </span>
+                    <>
+                      <span className="text-slate-300 dark:text-slate-700 font-light hidden md:inline">|</span>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+                        Range: {data.consensus.tierRangeMin === data.consensus.tierRangeMax ? data.consensus.tierRangeMin : `${data.consensus.tierRangeMin} to ${data.consensus.tierRangeMax}`}
+                      </span>
+                    </>
                   ) : null}
 
-                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate hidden xl:inline">
-                    • Based on {presentedMatches.length} comparable cards below
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono hidden xl:inline">
+                    • Based on {presentedMatches.length} comparable cards
                   </span>
                 </div>
 
-                {/* Quick Adopt Average Button */}
+                {/* Side-by-side Adopt Buttons */}
                 {onAdoptGrade && (
-                  <button
-                    type="button"
-                    onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data.consensus.projectedTier, 'average')}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 border ${
-                      adoptedSourceId === 'average'
-                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
-                        : 'bg-slate-900 dark:bg-slate-800 hover:bg-violet-700 dark:hover:bg-violet-600 text-white border-slate-700 dark:border-slate-600 shadow-2xs hover:border-violet-400'
-                    }`}
-                  >
-                    <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-60'}`} />
-                    <span>{adoptedSourceId === 'average' ? `Used Grade Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})` : `Use Grade Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})`}</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                    {/* Use Grade Average Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data.consensus.projectedTier, 'average')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 border ${
+                        adoptedSourceId === 'average'
+                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
+                          : 'bg-violet-600 hover:bg-violet-700 text-white border-violet-500 shadow-2xs hover:scale-[1.01]'
+                      }`}
+                      title={`Adopt Grade Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})`}
+                    >
+                      <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-80'}`} />
+                      <span>
+                        {adoptedSourceId === 'average'
+                          ? `Used Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})`
+                          : `Use Grade Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})`}
+                      </span>
+                    </button>
+
+                    {/* Use Median Grade Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleAdopt(presentedGradeStats?.medianGrade || data.consensus.projectedTier, 'median')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 border ${
+                        adoptedSourceId === 'median'
+                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
+                          : 'bg-slate-900 dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-white border-slate-700 dark:border-slate-600 shadow-2xs hover:border-indigo-400 hover:scale-[1.01]'
+                      }`}
+                      title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || data.consensus.projectedTier})`}
+                    >
+                      <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'median' ? 'text-emerald-200' : 'opacity-80'}`} />
+                      <span>
+                        {adoptedSourceId === 'median'
+                          ? `Used Median (${presentedGradeStats?.medianGrade || data.consensus.projectedTier})`
+                          : `Use Median Grade (${presentedGradeStats?.medianGrade || data.consensus.projectedTier})`}
+                      </span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -311,21 +371,39 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       )}
                     </div>
 
-                    {/* Quick Adopt Grade Average Button for Target Card */}
+                    {/* Quick Adopt Grade Average & Median Buttons for Target Card */}
                     {onAdoptGrade && (presentedGradeStats?.averageGrade || data?.consensus?.projectedTier) && (
-                      <button
-                        type="button"
-                        onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data!.consensus.projectedTier, 'average')}
-                        className={`w-full py-1.5 px-2.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer border shadow-2xs ${
-                          adoptedSourceId === 'average'
-                            ? 'bg-emerald-600 text-white border-emerald-500'
-                            : 'bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/60 text-violet-700 dark:text-cyan-300 border-violet-200 dark:border-violet-800/60'
-                        }`}
-                      >
-                        <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-70'}`} />
-                        <span>{adoptedSourceId === 'average' ? `Used Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})` : `Use Grade Average (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}</span>
-                      </button>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data!.consensus.projectedTier, 'average')}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1 cursor-pointer border shadow-2xs ${
+                            adoptedSourceId === 'average'
+                              ? 'bg-emerald-600 text-white border-emerald-500'
+                              : 'bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/60 text-violet-700 dark:text-cyan-300 border-violet-200 dark:border-violet-800/60'
+                          }`}
+                          title={`Adopt Average Grade (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}
+                        >
+                          <Check className={`w-3 h-3 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-70'}`} />
+                          <span className="truncate">{adoptedSourceId === 'average' ? `Avg (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})` : `Use Avg (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAdopt(presentedGradeStats?.medianGrade || data!.consensus.projectedTier, 'median')}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1 cursor-pointer border shadow-2xs ${
+                            adoptedSourceId === 'median'
+                              ? 'bg-emerald-600 text-white border-emerald-500'
+                              : 'bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                          }`}
+                          title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || data?.consensus?.projectedTier})`}
+                        >
+                          <Check className={`w-3 h-3 ${adoptedSourceId === 'median' ? 'text-emerald-200' : 'opacity-70'}`} />
+                          <span className="truncate">{adoptedSourceId === 'median' ? `Med (${presentedGradeStats?.medianGrade || data?.consensus?.projectedTier})` : `Use Med (${presentedGradeStats?.medianGrade || data?.consensus?.projectedTier})`}</span>
+                        </button>
+                      </div>
                     )}
+
 
                     {/* Quick Grade Tier Buttons Grid */}
                     <div className="grid grid-cols-6 gap-1 pt-0.5">
