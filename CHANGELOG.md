@@ -3,6 +3,12 @@
 All notable changes to this project will be documented here.
 
 
+## [1.2.1](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.2.0...v1.2.1) (2026-09-12)
+
+### ✨ Features
+
+* add Use Grade Average button at top of similar cards modal ([0a0bb0b](https://github.com/dbyrd1568/mtg-limited-iq/commit/0a0bb0b27abe71a8a41aa7b4ca8b16e2a8baa93e))
+
 ## [1.2.0](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.1.0...v1.2.0) (2026-09-12)
 
 ### ✨ Features
