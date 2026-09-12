@@ -761,9 +761,14 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
         baselineReasons.push('Adjacent curve slot (±1 mana)');
       }
     }
-  } else if (effectiveDiff <= 1.65) {
-    cmcScore = 8;
-    baselineReasons.push('Acceptable curve slot (±1-2 mana)');
+  } else if (effectiveDiff <= 1.85) {
+    if (targetIsInstant !== candIsInstant) {
+      cmcScore = 12;
+      baselineReasons.push(`Speed-adjusted tempo parity (${target.cmc}M ${targetIsInstant ? 'instant' : 'sorcery'} vs ${candidate.cmc}M ${candIsInstant ? 'instant' : 'sorcery'})`);
+    } else {
+      cmcScore = 8;
+      baselineReasons.push('Acceptable curve slot (±1-2 mana)');
+    }
   } else if (effectiveDiff <= 2.2) {
     cmcScore = 3;
   } else {
@@ -1166,7 +1171,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const totalScore = Math.min(100, Math.max(0, rawScore));
 
   // Deduplicate and prioritize most insightful structural, speed/tempo, and lexical reasons
-  const uniqueReasons = Array.from(new Set([...structuralReasons, ...lexicalReasons, ...baselineReasons]));
+  const speedOrTempoReasons = baselineReasons.filter(r => r.includes('Speed') || r.includes('speed') || r.includes('tempo'));
+  const otherBaselineReasons = baselineReasons.filter(r => !speedOrTempoReasons.includes(r));
+  const uniqueReasons = Array.from(new Set([...structuralReasons, ...speedOrTempoReasons, ...lexicalReasons, ...otherBaselineReasons]));
 
   return {
     score: totalScore,

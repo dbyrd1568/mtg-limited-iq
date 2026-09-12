@@ -166,7 +166,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-4 px-4 sm:px-6 space-y-4 animate-in fade-in duration-200">
+    <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* Compact Set Header */}
       <div className="rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 p-3 sm:p-4 shadow-xs flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">

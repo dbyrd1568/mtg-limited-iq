@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Check, Link2, Sun, Moon, RefreshCw, HelpCircle } from 'lucide-react';
+import { ChevronDown, Check, Link2, Sun, Moon, RefreshCw, HelpCircle, Shield } from 'lucide-react';
 import { SetInfo, UserProfileStats, UserAccount } from '../types/mtg';
 import { getSyncStatus, subscribeSyncStatus, SyncStatus } from '../services/cloudSync';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../services/theme';
@@ -7,7 +7,7 @@ import { isProdEnvironment } from '../services/environment';
 import { PlaneswalkerSymbol } from './UI/PlaneswalkerSymbol';
 import { SetSymbol } from './UI/SetSymbol';
 
-export type ActiveTab = 'quiz' | 'evaluation' | 'stats' | 'explorer';
+export type ActiveTab = 'quiz' | 'evaluation' | 'stats' | 'explorer' | 'admin';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -16,6 +16,7 @@ interface NavbarProps {
   onOpenSetSelector: () => void;
   userStats: UserProfileStats;
   currentUser: UserAccount | null;
+  isAdmin?: boolean;
   onOpenAuthModal: () => void;
   onOpenWelcomeTour?: () => void;
 }
@@ -27,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSetSelector,
   userStats,
   currentUser,
+  isAdmin,
   onOpenAuthModal,
   onOpenWelcomeTour,
 }) => {
@@ -68,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#060919]/95 backdrop-blur-md shadow-xs transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
           {/* Brand Logo & Name: Official WOTC MTG Planeswalker Spark + MTG Limited IQ */}
           <div className="flex items-center gap-2.5 shrink-0">
@@ -119,6 +121,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Cards
             </button>
+
+            {isAdmin && (
+              <button
+                onClick={() => onTabChange('admin')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                  activeTab === 'admin'
+                    ? 'bg-violet-600 text-white shadow-xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Admin</span>
+              </button>
+            )}
           </nav>
 
           {/* Right Side: Theme Toggle, Set Switcher, Share Link & User Profile */}
@@ -233,6 +249,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white max-w-[70px] sm:max-w-[95px] truncate">
                   {currentUser.name}
                 </span>
+
+                {isAdmin && (
+                  <span className="hidden sm:inline-flex items-center text-[9px] font-mono font-bold px-1 rounded bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                    ADMIN
+                  </span>
+                )}
 
                 {/* Visual Sync Badge Pill */}
                 <span

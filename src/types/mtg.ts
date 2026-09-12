@@ -274,7 +274,7 @@ export interface UserAccount {
   email?: string;
   avatarUrl?: string;
   avatarColor: string;
-  provider: 'local' | 'google' | 'discord' | 'apple' | 'github' | 'email';
+  provider: 'local' | 'google' | 'discord' | 'apple' | 'email';
   createdAt: string;
   lastLoginAt: string;
 }

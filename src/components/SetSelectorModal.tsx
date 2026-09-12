@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SetInfo } from '../types/mtg';
-import { POPULAR_LIMITED_SETS } from '../services/scryfall';
+import { POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS } from '../services/scryfall';
 import { Search, X, Calendar, Check, Wand2, ShieldCheck, BarChart2 } from 'lucide-react';
 import { get17LandsSetUrl } from '../services/seventeenLands';
 import { SetSymbol, SetBadge } from './UI/SetSymbol';
@@ -45,14 +45,17 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
 
     const existing = setsList.find((s) => s.code.toUpperCase() === code);
     if (existing) {
-      onSelectSet(existing);
+      onSelectSet({
+        ...existing,
+        has_17lands_data: Boolean(existing.has_17lands_data) || KNOWN_17LANDS_EXPANSIONS.has(code),
+      });
     } else {
       onSelectSet({
         code,
         name: `Set (${code})`,
         card_count: 270,
         set_type: 'expansion',
-        has_17lands_data: false,
+        has_17lands_data: KNOWN_17LANDS_EXPANSIONS.has(code),
       });
     }
   };

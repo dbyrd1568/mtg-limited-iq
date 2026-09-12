@@ -57,11 +57,24 @@ export function scoreToGradeTier(score: number): GradeTier {
 }
 
 /**
+ * Resolves Scryfall set codes to 17Lands expansion identifiers.
+ * Handles alias discrepancies (e.g. RVR on Scryfall -> RAVM on 17Lands).
+ */
+export function get17LandsExpansionCode(setCode: string): string {
+  const upper = (setCode || '').toUpperCase().trim();
+  const aliasMap: Record<string, string> = {
+    'RVR': 'RAVM',
+    'RAV': 'Ravnica',
+  };
+  return aliasMap[upper] || upper;
+}
+
+/**
  * Returns the direct 17Lands.com Premier Draft Card Data / Ratings URL for a set
  */
 export function get17LandsSetUrl(setCode: string): string {
-  const upper = (setCode || '').toUpperCase().trim();
-  return `https://www.17lands.com/card_data?expansion=${encodeURIComponent(upper)}&format=PremierDraft&time_period=ALL_TIME`;
+  const expansion = get17LandsExpansionCode(setCode);
+  return `https://www.17lands.com/card_data?expansion=${encodeURIComponent(expansion)}&format=PremierDraft&time_period=ALL_TIME`;
 }
 
 /**
@@ -75,7 +88,7 @@ export function get17LandsCardUrl(
   cardOrName?: Card | { name?: string; arena_id?: number; card_id?: number | string; mtga_id?: number } | string | null,
   card17L?: SeventeenLandsCardRating | null
 ): string {
-  const upper = (setCode || '').toUpperCase().trim();
+  const expansion = get17LandsExpansionCode(setCode);
   let cardId: number | string | undefined;
 
   if (cardOrName && typeof cardOrName === 'object') {
@@ -86,18 +99,18 @@ export function get17LandsCardUrl(
   }
 
   if (cardId) {
-    return `https://www.17lands.com/card_data/details?card_id=${encodeURIComponent(String(cardId))}&expansion=${encodeURIComponent(upper)}&format=PremierDraft&time_period=ALL_TIME`;
+    return `https://www.17lands.com/card_data/details?card_id=${encodeURIComponent(String(cardId))}&expansion=${encodeURIComponent(expansion)}&format=PremierDraft&time_period=ALL_TIME`;
   }
 
-  return `https://www.17lands.com/card_data?expansion=${encodeURIComponent(upper)}&format=PremierDraft&time_period=ALL_TIME`;
+  return `https://www.17lands.com/card_data?expansion=${encodeURIComponent(expansion)}&format=PremierDraft&time_period=ALL_TIME`;
 }
 
 /**
  * Returns the direct 17Lands.com Deck Color Data / Archetype metagame URL
  */
 export function get17LandsArchetypeUrl(setCode: string): string {
-  const upper = (setCode || '').toUpperCase().trim();
-  return `https://www.17lands.com/deck_color_data?expansion=${encodeURIComponent(upper)}&format=PremierDraft`;
+  const expansion = get17LandsExpansionCode(setCode);
+  return `https://www.17lands.com/deck_color_data?expansion=${encodeURIComponent(expansion)}&format=PremierDraft`;
 }
 
 /**
@@ -157,8 +170,12 @@ export function isAuthentic17LandsDataSet(
   cards?: Card[]
 ): boolean {
   if (!seventeenLandsData || (seventeenLandsData.sampleSize || 0) <= 500) return false;
-  if (setCode && seventeenLandsData.setCode && seventeenLandsData.setCode.toUpperCase() !== setCode.toUpperCase()) {
-    return false;
+  if (setCode && seventeenLandsData.setCode) {
+    const target = get17LandsExpansionCode(setCode).toUpperCase();
+    const dataExp = get17LandsExpansionCode(seventeenLandsData.setCode).toUpperCase();
+    if (target !== dataExp && seventeenLandsData.setCode.toUpperCase() !== setCode.toUpperCase()) {
+      return false;
+    }
   }
   if (cards && cards.length > 0) {
     const matchingCount = cards.filter((c) => {
@@ -384,7 +401,8 @@ export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLan
   const upperCode = (setCode || '').toUpperCase().trim();
   if (!upperCode) return null;
 
-  const cacheKey = `17lands_data_${upperCode}_v11`;
+  const expansion = get17LandsExpansionCode(upperCode);
+  const cacheKey = `17lands_data_${upperCode}_v12`;
 
   // 1. Check IndexedDB Cache first
   try {
@@ -396,13 +414,15 @@ export async function fetch17LandsSetData(setCode: string): Promise<SeventeenLan
     console.warn('17lands cache read error:', e);
   }
 
-  // 2. Candidate URLs - Prioritize endpoints that support browser CORS
+  // 2. Candidate URLs - Prioritize local proxy (/api/17lands) for instant CORS-free fetch in dev, then direct, then allorigins, then TradDraft
   const candidateUrls = [
-    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft&start_date=2019-01-01`,
-    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft`,
-    `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft&start_date=2019-01-01`,
-    `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(upperCode)}&format=PremierDraft`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.17lands.com/card_ratings/data?expansion=' + upperCode + '&format=PremierDraft')}`,
+    `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(expansion)}&format=PremierDraft`,
+    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(expansion)}&format=PremierDraft`,
+    `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(expansion)}&format=PremierDraft&start_date=2019-01-01`,
+    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(expansion)}&format=PremierDraft&start_date=2019-01-01`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.17lands.com/card_ratings/data?expansion=' + expansion + '&format=PremierDraft')}`,
+    `/api/17lands/card_ratings/data?expansion=${encodeURIComponent(expansion)}&format=TradDraft`,
+    `https://www.17lands.com/card_ratings/data?expansion=${encodeURIComponent(expansion)}&format=TradDraft`,
   ];
 
   for (const url of candidateUrls) {

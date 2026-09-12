@@ -523,6 +523,33 @@ export function setHasSeenWelcomeTour(hasSeen: boolean): void {
   }
 }
 
+// ==================== 17LANDS TIER LIST SHARING ====================
+
+export function get17LandsTierListUrl(setCode: string, userId?: string): string | null {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const key = `mtg_17lands_tier_url_${activeId}_${setCode.toUpperCase()}`;
+    return localStorage.getItem(key) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function save17LandsTierListUrl(setCode: string, url: string, userId?: string): void {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const key = `mtg_17lands_tier_url_${activeId}_${setCode.toUpperCase()}`;
+    const trimmed = url.trim();
+    if (trimmed) {
+      localStorage.setItem(key, trimmed);
+    } else {
+      localStorage.removeItem(key);
+    }
+  } catch (e) {
+    console.error('Failed to save 17Lands tier list URL:', e);
+  }
+}
+
 // ==================== EXPORT & IMPORT ====================
 
 export function exportUserDataAsJSON(userId?: string): string {

@@ -9,12 +9,16 @@ import { supabase, isSupabaseConfigured } from './services/supabase';
 import { supabaseUserToUserAccount } from './services/auth';
 import { pullRemoteUserData, migrateLocalDataToCloud } from './services/cloudSync';
 import { isProdEnvironment } from './services/environment';
+import { checkIsAdmin } from './services/admin';
+import { trackFeature, trackLogin } from './services/telemetry';
 
 // Components
 import { Navbar, ActiveTab } from './components/Navbar';
 import { SetSelectorModal } from './components/SetSelectorModal';
 import { AuthModal } from './components/Auth/AuthModal';
 import { LoginGate } from './components/Auth/LoginGate';
+import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { AdminAccessDenied } from './components/Admin/AdminAccessDenied';
 import { WelcomeTourModal } from './components/UI/WelcomeTourModal';
 import { EmptySetPlaceholder } from './components/UI/EmptySetPlaceholder';
 import { QuizSetup } from './components/Quiz/QuizSetup';
@@ -50,7 +54,13 @@ export const App: React.FC = () => {
 
   // User Accounts State (Nullable in Prod when unauthenticated)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getActiveUser());
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isProdEnvironment());
+
+  // Check administrator permissions whenever currentUser changes
+  useEffect(() => {
+    checkIsAdmin(currentUser).then((res) => setIsAdmin(res));
+  }, [currentUser]);
 
   // Set & Cards State: Only set if specified in URL or previously saved by user (otherwise null)
   const [allSets, setAllSets] = useState<SetInfo[]>(POPULAR_LIMITED_SETS);
@@ -119,9 +129,10 @@ export const App: React.FC = () => {
     setIsBlindGrading((prev) => {
       const next = !prev;
       setBlindGradingForSet(currentSet.code, next, currentUser?.id || 'user_default');
+      trackFeature('blind_grading', { set: currentSet.code, enabled: next }, currentUser);
       return next;
     });
-  }, [currentSet, currentUser?.id]);
+  }, [currentSet, currentUser]);
 
   // Quiz Workflow State
   const [quizState, setQuizState] = useState<'setup' | 'active' | 'summary'>('setup');
@@ -374,6 +385,12 @@ export const App: React.FC = () => {
     setUserStats(updatedStats);
     setLastResult(result);
     setQuizState('summary');
+    trackFeature('card_quiz', {
+      set: result.setCode,
+      score: result.score,
+      total: result.totalQuestions,
+      pct: result.percentage,
+    }, currentUser);
   };
 
   const handleRetakeQuiz = () => {
@@ -421,6 +438,12 @@ export const App: React.FC = () => {
       ...prev,
       [`${evaluation.setCode.toLowerCase()}_${evaluation.cardName.toLowerCase()}`]: evaluation,
     }));
+    trackFeature('card_grading', {
+      set: evaluation.setCode,
+      card: evaluation.cardName,
+      grade: evaluation.userGrade,
+      score: evaluation.userScore,
+    }, currentUser);
   };
 
   const handleClearEvaluationsForSet = (setCode: string) => {
@@ -470,6 +493,7 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         onTabChange={(tab) => {
           setActiveTab(tab);
+          trackFeature('tab_navigation', { tab }, currentUser);
           if (tab === 'quiz') {
             setQuizState('setup');
           }
@@ -478,13 +502,29 @@ export const App: React.FC = () => {
         onOpenSetSelector={() => setIsSetSelectorOpen(true)}
         userStats={userStats}
         currentUser={currentUser}
+        isAdmin={isAdmin}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenWelcomeTour={() => setIsWelcomeTourOpen(true)}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 pb-16">
-        {!currentSet ? (
+        {activeTab === 'admin' ? (
+          isAdmin ? (
+            <AdminDashboard
+              currentUser={currentUser}
+              onOpenAuthModal={() => setIsAuthModalOpen(true)}
+              onReturnHome={() => setActiveTab('evaluation')}
+              initialSubTab={parseAppUrlParams().subtab as any}
+            />
+          ) : (
+            <AdminAccessDenied
+              currentUser={currentUser}
+              onOpenAuthModal={() => setIsAuthModalOpen(true)}
+              onReturnHome={() => setActiveTab('evaluation')}
+            />
+          )
+        ) : !currentSet ? (
           <EmptySetPlaceholder
             onOpenSetSelector={() => setIsSetSelectorOpen(true)}
             onSelectSet={handleSelectSet}
@@ -507,7 +547,7 @@ export const App: React.FC = () => {
                 ) : (
                   <div className="space-y-4">
                     {/* Quiz Subtab Navigation Header */}
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                    <div className="max-w-[1440px] mx-auto px-3 sm:px-6 pt-4">
                       <div className="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-slate-200 dark:border-slate-800/80">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 via-indigo-600 to-amber-500 dark:from-violet-500 dark:via-indigo-500 dark:to-cyan-400 flex items-center justify-center text-white shadow-md shadow-violet-500/20 shrink-0 p-1.5 border border-white/20">
@@ -649,6 +689,8 @@ export const App: React.FC = () => {
                 cards={cards}
                 currentSetCode={currentSet.code}
                 currentSetName={currentSet.name}
+                currentSet={currentSet}
+                currentUser={currentUser}
                 userEvaluations={userEvaluations}
                 seventeenLandsData={seventeenLandsData}
                 isBlindGrading={isBlindGrading}
@@ -672,6 +714,8 @@ export const App: React.FC = () => {
                 cards={cards}
                 currentSetCode={currentSet.code}
                 currentSetName={currentSet.name}
+                currentSet={currentSet}
+                currentUser={currentUser}
                 userEvaluations={userEvaluations}
                 seventeenLandsData={seventeenLandsData}
                 isBlindGrading={isBlindGrading}

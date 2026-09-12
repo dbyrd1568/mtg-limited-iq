@@ -1,6 +1,6 @@
-import { getFallbackCards, POPULAR_LIMITED_SETS } from '../services/scryfall';
+import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS } from '../services/scryfall';
 import { generateQuiz } from '../services/quizGenerator';
-import { calculateSetCalibration, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl } from '../services/seventeenLands';
+import { calculateSetCalibration, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl } from '../services/seventeenLands';
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
 import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
@@ -414,5 +414,26 @@ console.assert(incompatibleResult.score === 0, 'Incompatible card types must rec
 console.log('   ✓ Incompatible types successfully receive 0% score and disqualification.');
 
 console.log('   ✓ Speed-adjusted similarity & type compatibility gatekeeper verified.');
+
+// =========================================================================
+// TEST 10: Expanded 17Lands Set Catalog & Expansion Alias Verification
+// =========================================================================
+console.log('\n[TEST 10] Expanded 17Lands Set Catalog & Expansion Aliases:');
+const checkCodes = ['ELD', 'WAR', 'KTK', 'DOM', 'NEO', 'SNC', 'ONE', 'BRO', 'MOM', 'LTR', 'RVR', 'HOB'];
+for (const code of checkCodes) {
+  const pop = POPULAR_LIMITED_SETS.find(s => s.code === code);
+  console.assert(pop !== undefined, `Set ${code} must exist in POPULAR_LIMITED_SETS`);
+  console.assert(pop?.has_17lands_data === true, `Set ${code} must have has_17lands_data: true`);
+  console.assert(KNOWN_17LANDS_EXPANSIONS.has(code), `Set ${code} must be in KNOWN_17LANDS_EXPANSIONS`);
+}
+
+// Check alias mapping
+const rvrAlias = get17LandsExpansionCode('RVR');
+console.assert(rvrAlias === 'RAVM', `RVR must map to RAVM for 17Lands (got ${rvrAlias})`);
+const rvrUrl = get17LandsSetUrl('RVR');
+console.assert(rvrUrl.includes('expansion=RAVM'), `RVR 17Lands URL must target expansion=RAVM (got ${rvrUrl})`);
+
+console.log('   ✓ Expanded 17Lands sets verified in catalog with accurate telemetry flags.');
+console.log('   ✓ 17Lands expansion code alias resolution verified.');
 
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');

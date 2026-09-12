@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Card, MTGColor, MTGRarity, SeventeenLandsSetData, UserCardEvaluation, GradeTier, SetCalibrationSummary } from '../../types/mtg';
+import { Card, MTGColor, MTGRarity, SeventeenLandsSetData, UserCardEvaluation, GradeTier, SetCalibrationSummary, SetInfo, UserAccount } from '../../types/mtg';
 import {
   GRADE_TIERS,
   GRADE_SCORES,
@@ -21,7 +21,8 @@ import { SimilarCardsModal } from './SimilarCardsModal';
 import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
-import { Trophy, Award, Filter, Search, Zap, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan } from 'lucide-react';
+import { Trophy, Award, Filter, Search, Zap, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2 } from 'lucide-react';
+import { ExportGradesModal } from './ExportGradesModal';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
 import { SetBadge, SetSymbol } from '../UI/SetSymbol';
@@ -33,6 +34,8 @@ interface EvaluationHubProps {
   cards: Card[];
   currentSetCode: string;
   currentSetName: string;
+  currentSet?: SetInfo | null;
+  currentUser?: UserAccount | null;
   userEvaluations: Record<string, UserCardEvaluation>;
   seventeenLandsData: SeventeenLandsSetData | null;
   isBlindGrading?: boolean;
@@ -55,6 +58,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   cards,
   currentSetCode,
   currentSetName,
+  currentSet,
+  currentUser,
   userEvaluations,
   seventeenLandsData,
   isBlindGrading: propIsBlindGrading,
@@ -71,6 +76,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   onSelectedRaritiesChange,
   onSelectedRolesChange,
 }) => {
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   // Only use authentic 17Lands data with sufficient sample size and matching setCode
   const effective17LandsData = useMemo(() => {
     if (
@@ -501,8 +507,18 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           </div>
         </div>
 
-        {/* Right: Clear Grades, Blind Mode Toggle & Rapid Grader Action */}
+        {/* Right: Export & Share, Clear Grades, Blind Mode Toggle & Rapid Grader Action */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-violet-700 dark:text-cyan-300 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+            title="Export comparison spreadsheet or send grades to 17Lands"
+          >
+            <Share2 className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
+            <span>Export & Share</span>
+          </button>
+
           {onClearEvaluationsForSet && ratedCountInSet > 0 && (
             <button
               type="button"
@@ -1102,6 +1118,15 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => setIsExportModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/50 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-violet-800/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                      title="Export full comparison spreadsheet or send grades to 17Lands"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Export Spreadsheet ↗</span>
+                    </button>
+
                     <button
                       onClick={() => setShowMathExplainer(!showMathExplainer)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/20 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-cyan-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs"
@@ -1824,6 +1849,19 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           onAdoptGrade={(targetCard, grade) => {
             handleQuickGrade(targetCard, grade);
           }}
+        />
+      )}
+
+      {/* Export & Send to 17Lands Modal */}
+      {isExportModalOpen && (
+        <ExportGradesModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          cards={cards}
+          evaluations={userEvaluations}
+          seventeenLandsData={seventeenLandsData}
+          currentSet={currentSet || { code: currentSetCode, name: currentSetName, card_count: cards.length }}
+          userId={currentUser?.id}
         />
       )}
 

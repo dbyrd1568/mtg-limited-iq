@@ -197,7 +197,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
   const isCorrect = currentAnswer?.isCorrect;
 
   return (
-    <div className="max-w-5xl mx-auto py-4 px-4 sm:px-6 space-y-4 animate-in fade-in duration-200">
+    <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* Top Header Bar: Progress, Timer, Audio & Exit */}
       <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         <div className="flex items-center gap-3">

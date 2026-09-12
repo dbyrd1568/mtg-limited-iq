@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, GradeTier, MTGColor, MTGRarity, SeventeenLandsSetData, UserCardEvaluation } from '../../types/mtg';
 import { CardObfuscator } from '../CardObfuscator';
-import { Search, Filter, Sparkles, ExternalLink, Zap, Swords, Shield, X, ShieldCheck, ChevronLeft, ChevronRight, CheckCircle2, FileText, Star, BarChart2, Trash2, Eye, EyeOff, BookOpen, Layers, Check, PlayingCardsFan } from 'lucide-react';
+import { Search, Filter, Sparkles, ExternalLink, Zap, Swords, Shield, X, ShieldCheck, ChevronLeft, ChevronRight, CheckCircle2, FileText, Star, BarChart2, Trash2, Eye, EyeOff, BookOpen, Layers, Check, PlayingCardsFan, Share2 } from 'lucide-react';
 import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { SimilarCardsModal } from '../Evaluation/SimilarCardsModal';
+import { ExportGradesModal } from '../Evaluation/ExportGradesModal';
 import { ManaCostRenderer, ManaSymbol } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
 import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating } from '../../services/seventeenLands';
@@ -16,11 +17,14 @@ import { CardSearchBar } from '../Search/CardSearchBar';
 import { cardMatchesQuery } from '../../services/cardSearchParser';
 import { getWOTCArchetypesForSet, getSignpostsForArchetype, WOTCArchetype } from '../../services/wotcArchetypes';
 import { getBlindGradingForSet, setBlindGradingForSet } from '../../services/storage';
+import { SetInfo, UserAccount } from '../../types/mtg';
 
 interface SetExplorerProps {
   cards: Card[];
   currentSetCode: string;
   currentSetName: string;
+  currentSet?: SetInfo | null;
+  currentUser?: UserAccount | null;
   userEvaluations?: Record<string, UserCardEvaluation>;
   seventeenLandsData: SeventeenLandsSetData | null;
   isBlindGrading?: boolean;
@@ -44,6 +48,8 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   cards,
   currentSetCode,
   currentSetName,
+  currentSet,
+  currentUser,
   userEvaluations = {},
   seventeenLandsData,
   isBlindGrading: propIsBlindGrading,
@@ -61,6 +67,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   onSelectedRaritiesChange,
   onSelectedRolesChange,
 }) => {
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [activeExplorerTab, setActiveExplorerTab] = useState<'cards' | 'archetypes'>('cards');
   const [searchQuery, setSearchQuery] = useState<string>(propSearchQuery ?? '');
   const [selectedColors, setSelectedColors] = useState<string[]>(propSelectedColors ?? ['ALL']);
@@ -574,6 +581,17 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
               <span>Grading Mode</span>
             </div>
           )}
+
+          {/* Export & Share Grades Button */}
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-violet-700 dark:text-cyan-300 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+            title="Export full comparison spreadsheet or send grades to 17Lands"
+          >
+            <Share2 className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
+            <span>Export & Share</span>
+          </button>
 
           {/* Clear Grades Button (if rated cards exist in this set) */}
           {onClearEvaluationsForSet && ratedCountInSet > 0 && (
@@ -1455,6 +1473,19 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           onConfirmClear={(code) => {
             onClearEvaluationsForSet(code);
           }}
+        />
+      )}
+
+      {/* Export & Send to 17Lands Modal */}
+      {isExportModalOpen && (
+        <ExportGradesModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          cards={cards}
+          evaluations={userEvaluations}
+          seventeenLandsData={seventeenLandsData}
+          currentSet={currentSet || { code: currentSetCode, name: currentSetName, card_count: cards.length }}
+          userId={currentUser?.id}
         />
       )}
     </div>

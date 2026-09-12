@@ -163,7 +163,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 space-y-4 animate-in fade-in duration-200">
+    <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* Header & KPI Summary */}
       <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

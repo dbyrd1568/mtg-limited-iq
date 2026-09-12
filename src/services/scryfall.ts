@@ -3,8 +3,18 @@ import { Card, CardFace, MTGColor, MTGRarity, SetInfo } from '../types/mtg';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
-// Pre-curated list of top Limited sets with metadata
-// has_17lands_data: false only for sets with no 17Lands tracking (TRK, FRA)
+// Pre-curated list of 17Lands known expansion identifiers from https://www.17lands.com/data/filters
+export const KNOWN_17LANDS_EXPANSIONS = new Set([
+  'HOB', 'MSH', 'SOS', 'Y26SOS', 'TMT', 'ECL', 'Y26ECL', 'TLA', 'OM1', 'EOE', 'FIN', 'Y25EOE',
+  'TDM', 'Y25TDM', 'DFT', 'Y25DFT', 'PIO', 'FDN', 'DSK', 'Y25DSK', 'BLB', 'Y25BLB', 'MH3', 'OTJ',
+  'Y24OTJ', 'MKM', 'Y24MKM', 'LCI', 'Y24LCI', 'WOE', 'Y24WOE', 'LTR', 'MOM', 'MAT', 'SIR', 'ONE',
+  'Y23ONE', 'BRO', 'Y23BRO', 'DMU', 'Y23DMU', 'HBG', 'SNC', 'Y22SNC', 'NEO', 'DBL', 'VOW', 'RAVM',
+  'MID', 'AFR', 'STX', 'CORE', 'KHM', 'KLR', 'ZNR', 'AKR', 'M21', 'IKO', 'THB', 'ELD', 'RAVNICA',
+  'M20', 'WAR', 'M19', 'DOM', 'RIX', 'GRN', 'RNA', 'KTK', 'XLN', 'RVR'
+]);
+
+// Pre-curated list of top Limited sets with comprehensive metadata
+// Correctly tracks all sets with active 17Lands Premier Draft telemetry
 export const POPULAR_LIMITED_SETS: SetInfo[] = [
   // 2026 Sets
   { code: 'TRK', name: 'Star Trek', card_count: 135, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
@@ -17,29 +27,60 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   { code: 'ECL', name: 'Lorwyn Eclipsed', card_count: 408, released_at: '2026-01-01', set_type: 'expansion', has_17lands_data: true },
   // 2025 Sets
   { code: 'TLA', name: 'Avatar: The Last Airbender', card_count: 394, released_at: '2025-11-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'SPM', name: "Marvel's Spider-Man", card_count: 286, released_at: '2025-09-01', set_type: 'expansion', has_17lands_data: false },
+  { code: 'SPM', name: "Marvel's Spider-Man", card_count: 286, released_at: '2025-09-26', set_type: 'expansion', has_17lands_data: false },
   { code: 'EOE', name: 'Edge of Eternities', card_count: 400, released_at: '2025-08-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'FIN', name: 'Final Fantasy', card_count: 599, released_at: '2025-06-01', set_type: 'expansion', has_17lands_data: true },
+  { code: 'FIN', name: 'Final Fantasy', card_count: 599, released_at: '2025-06-13', set_type: 'expansion', has_17lands_data: true },
+  { code: 'TDM', name: 'Tarkir: Dragonstorm', card_count: 427, released_at: '2025-04-11', set_type: 'expansion', has_17lands_data: true },
   { code: 'DFT', name: 'Aetherdrift', card_count: 276, released_at: '2025-02-14', set_type: 'expansion', has_17lands_data: true },
   // 2024 Sets
+  { code: 'PIO', name: 'Pioneer Masters', card_count: 398, released_at: '2024-12-10', set_type: 'masters', has_17lands_data: true },
   { code: 'FDN', name: 'Foundations', card_count: 271, released_at: '2024-11-15', set_type: 'core', has_17lands_data: true },
   { code: 'DSK', name: 'Duskmourn: House of Horror', card_count: 276, released_at: '2024-09-27', set_type: 'expansion', has_17lands_data: true },
   { code: 'BLB', name: 'Bloomburrow', card_count: 261, released_at: '2024-08-02', set_type: 'expansion', has_17lands_data: true },
   { code: 'MH3', name: 'Modern Horizons 3', card_count: 303, released_at: '2024-06-14', set_type: 'draft_innovation', has_17lands_data: true },
   { code: 'OTJ', name: 'Outlaws of Thunder Junction', card_count: 276, released_at: '2024-04-19', set_type: 'expansion', has_17lands_data: true },
   { code: 'MKM', name: 'Murders at Karlov Manor', card_count: 276, released_at: '2024-02-09', set_type: 'expansion', has_17lands_data: true },
+  { code: 'RVR', name: 'Ravnica Remastered', card_count: 292, released_at: '2024-01-12', set_type: 'masters', has_17lands_data: true },
   // 2023 Sets
   { code: 'LCI', name: 'The Lost Caverns of Ixalan', card_count: 271, released_at: '2023-11-17', set_type: 'expansion', has_17lands_data: true },
   { code: 'WOE', name: 'Wilds of Eldraine', card_count: 266, released_at: '2023-09-08', set_type: 'expansion', has_17lands_data: true },
+  { code: 'LTR', name: 'The Lord of the Rings: Tales of Middle-earth', card_count: 261, released_at: '2023-06-23', set_type: 'draft_innovation', has_17lands_data: true },
   { code: 'MOM', name: 'March of the Machine', card_count: 281, released_at: '2023-04-21', set_type: 'expansion', has_17lands_data: true },
+  { code: 'SIR', name: 'Shadows over Innistrad Remastered', card_count: 294, released_at: '2023-03-21', set_type: 'masters', has_17lands_data: true },
   { code: 'ONE', name: 'Phyrexia: All Will Be One', card_count: 271, released_at: '2023-02-10', set_type: 'expansion', has_17lands_data: true },
   // 2022 Sets
   { code: 'BRO', name: "The Brothers' War", card_count: 287, released_at: '2022-11-18', set_type: 'expansion', has_17lands_data: true },
   { code: 'DMU', name: 'Dominaria United', card_count: 281, released_at: '2022-09-09', set_type: 'expansion', has_17lands_data: true },
+  { code: 'HBG', name: 'Alchemy Horizons: Baldur\'s Gate', card_count: 267, released_at: '2022-07-07', set_type: 'alchemy', has_17lands_data: true },
+  { code: 'SNC', name: 'Streets of New Capenna', card_count: 281, released_at: '2022-04-29', set_type: 'expansion', has_17lands_data: true },
   { code: 'NEO', name: 'Kamigawa: Neon Dynasty', card_count: 302, released_at: '2022-02-18', set_type: 'expansion', has_17lands_data: true },
+  { code: 'DBL', name: 'Innistrad: Double Feature', card_count: 534, released_at: '2022-01-28', set_type: 'draft_innovation', has_17lands_data: true },
   // 2021 Sets
+  { code: 'VOW', name: 'Innistrad: Crimson Vow', card_count: 267, released_at: '2021-11-19', set_type: 'expansion', has_17lands_data: true },
+  { code: 'MID', name: 'Innistrad: Midnight Hunt', card_count: 267, released_at: '2021-09-24', set_type: 'expansion', has_17lands_data: true },
+  { code: 'AFR', name: 'Adventures in the Forgotten Realms', card_count: 261, released_at: '2021-07-23', set_type: 'expansion', has_17lands_data: true },
   { code: 'STX', name: 'Strixhaven: School of Mages', card_count: 275, released_at: '2021-04-23', set_type: 'expansion', has_17lands_data: true },
   { code: 'KHM', name: 'Kaldheim', card_count: 285, released_at: '2021-02-05', set_type: 'expansion', has_17lands_data: true },
+  // 2020 Sets
+  { code: 'KLR', name: 'Kaladesh Remastered', card_count: 286, released_at: '2020-11-12', set_type: 'masters', has_17lands_data: true },
+  { code: 'ZNR', name: 'Zendikar Rising', card_count: 265, released_at: '2020-09-25', set_type: 'expansion', has_17lands_data: true },
+  { code: 'AKR', name: 'Amonkhet Remastered', card_count: 303, released_at: '2020-08-13', set_type: 'masters', has_17lands_data: true },
+  { code: 'M21', name: 'Core Set 2021', card_count: 259, released_at: '2020-07-03', set_type: 'core', has_17lands_data: true },
+  { code: 'IKO', name: 'Ikoria: Lair of Behemoths', card_count: 259, released_at: '2020-04-24', set_type: 'expansion', has_17lands_data: true },
+  { code: 'THB', name: 'Theros Beyond Death', card_count: 249, released_at: '2020-01-24', set_type: 'expansion', has_17lands_data: true },
+  // 2019 Sets
+  { code: 'ELD', name: 'Throne of Eldraine', card_count: 249, released_at: '2019-10-04', set_type: 'expansion', has_17lands_data: true },
+  { code: 'M20', name: 'Core Set 2020', card_count: 260, released_at: '2019-07-12', set_type: 'core', has_17lands_data: true },
+  { code: 'WAR', name: 'War of the Spark', card_count: 249, released_at: '2019-05-03', set_type: 'expansion', has_17lands_data: true },
+  { code: 'RNA', name: 'Ravnica Allegiance', card_count: 259, released_at: '2019-01-25', set_type: 'expansion', has_17lands_data: true },
+  // 2018 Sets
+  { code: 'GRN', name: 'Guilds of Ravnica', card_count: 259, released_at: '2018-10-05', set_type: 'expansion', has_17lands_data: true },
+  { code: 'M19', name: 'Core Set 2019', card_count: 260, released_at: '2018-07-13', set_type: 'core', has_17lands_data: true },
+  { code: 'DOM', name: 'Dominaria', card_count: 249, released_at: '2018-04-27', set_type: 'expansion', has_17lands_data: true },
+  { code: 'RIX', name: 'Rivals of Ixalan', card_count: 191, released_at: '2018-01-19', set_type: 'expansion', has_17lands_data: true },
+  // 2017 & Earlier / Remastered
+  { code: 'XLN', name: 'Ixalan', card_count: 289, released_at: '2017-09-29', set_type: 'expansion', has_17lands_data: true },
+  { code: 'KTK', name: 'Khans of Tarkir', card_count: 249, released_at: '2014-09-26', set_type: 'expansion', has_17lands_data: true },
 ];
 
 export function isCombatTrick(card: Card): boolean {
@@ -178,7 +219,7 @@ export function normalizeScryfallCard(rawCard: any): Card {
 
 export async function fetchAllSets(): Promise<SetInfo[]> {
   try {
-    const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v5');
+    const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v6');
     if (cachedSets && cachedSets.length > 0) {
       return cachedSets;
     }
@@ -195,12 +236,13 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
     }
 
     const data = await response.json();
-    const draftableSetTypes = new Set(['core', 'expansion', 'masters', 'draft_innovation', 'starter']);
+    const draftableSetTypes = new Set(['core', 'expansion', 'masters', 'draft_innovation', 'starter', 'alchemy']);
 
     const validSets: SetInfo[] = data.data
-      .filter((s: any) => draftableSetTypes.has(s.set_type) && s.card_count > 30 && !s.digital)
+      .filter((s: any) => draftableSetTypes.has(s.set_type) && s.card_count > 30 && (!s.digital || KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase())))
       .map((s: any) => {
         const popMatch = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === s.code.toUpperCase());
+        const has17L = popMatch ? Boolean(popMatch.has_17lands_data) : KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase());
         return {
           code: s.code.toUpperCase(),
           name: s.name,
@@ -208,7 +250,7 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
           released_at: s.released_at,
           icon_svg_uri: s.icon_svg_uri,
           set_type: s.set_type,
-          has_17lands_data: popMatch ? Boolean(popMatch.has_17lands_data) : false,
+          has_17lands_data: has17L,
         };
       });
 
@@ -223,7 +265,7 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
       }
     });
 
-    await set('scryfall_all_sets_v5', merged);
+    await set('scryfall_all_sets_v6', merged);
     return merged;
   } catch (err) {
     console.warn('Using popular limited sets fallback due to fetch error:', err);

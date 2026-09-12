@@ -9,7 +9,7 @@ import {
   loginWithOAuthProvider,
 } from './storage';
 
-export type OAuthProvider = 'google' | 'discord' | 'apple' | 'github';
+export type OAuthProvider = 'google' | 'discord' | 'apple';
 
 import { isCloudUUID, isProdEnvironment } from './environment';
 export { isCloudUUID };
@@ -37,15 +37,14 @@ export function supabaseUserToUserAccount(user: User): UserAccount {
   if (provider === 'google') mappedProvider = 'google';
   else if (provider === 'discord') mappedProvider = 'discord';
   else if (provider === 'apple') mappedProvider = 'apple';
-  else if (provider === 'github') mappedProvider = 'github';
 
   const avatarColor =
     provider === 'discord'
       ? '#5865F2'
       : provider === 'google'
       ? '#3b82f6'
-      : provider === 'github'
-      ? '#24292e'
+      : provider === 'apple'
+      ? '#1c1c1e'
       : '#8b5cf6';
 
   return {

@@ -4,7 +4,7 @@ import { ActiveTab } from '../components/Navbar';
 export interface AppUrlParams {
   set?: string;
   tab?: ActiveTab;
-  subtab?: 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'take' | 'stats';
+  subtab?: 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'take' | 'stats' | 'overview' | 'users' | 'features' | 'grading' | 'access';
   quiz_subtab?: 'take' | 'stats';
   card?: string; // Collector number (e.g. '12' or '#012'), card name, or ID
   blind?: boolean;
@@ -20,6 +20,7 @@ export interface AppUrlParams {
 export function normalizeTab(tabParam?: string | null): ActiveTab | undefined {
   if (!tabParam) return undefined;
   const t = tabParam.toLowerCase().trim();
+  if (t === 'admin' || t === 'a' || t === 'dashboard') return 'admin';
   if (t === 'quiz' || t === 'q') return 'quiz';
   if (t === 'evaluation' || t === 'eval' || t === 'grading' || t === 'grade' || t === 'hub') return 'evaluation';
   if (t === 'explorer' || t === 'list' || t === 'cards' || t === 'visualizer') return 'explorer';
@@ -28,11 +29,16 @@ export function normalizeTab(tabParam?: string | null): ActiveTab | undefined {
 }
 
 /**
- * Normalizes subtab query inside Card Grading Hub
+ * Normalizes subtab query inside Card Grading Hub or Admin
  */
-export function normalizeSubtab(subParam?: string | null): 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | undefined {
+export function normalizeSubtab(subParam?: string | null): 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'overview' | 'users' | 'features' | 'grading' | 'access' | undefined {
   if (!subParam) return undefined;
   const s = subParam.toLowerCase().trim();
+  if (s === 'overview' || s === 'home') return 'overview';
+  if (s === 'users' || s === 'drafters') return 'users';
+  if (s === 'features' || s === 'telemetry') return 'features';
+  if (s === 'grading' || s === 'sets') return 'grading';
+  if (s === 'access' || s === 'whitelist' || s === 'security') return 'access';
   if (s === 'grade' || s === 'cards') return 'grade';
   if (s === 'forecast' || s === 'archetype' || s === 'tierlist' || s === 'meta') return 'forecast';
   if (s === 'calibration' || s === 'analytics' || s === 'curve') return 'calibration';
