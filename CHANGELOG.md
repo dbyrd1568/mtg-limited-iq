@@ -3,6 +3,25 @@
 All notable changes to this project will be documented here.
 
 
+## [1.3.0](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.2.2...v1.3.0) (2026-09-13)
+
+### ✨ Features
+
+* **auth:** enforce Supabase login and suppress local drafters in prod ([6d163dd](https://github.com/dbyrd1568/mtg-limited-iq/commit/6d163dd37fe114cfd62abd939b45998885ca70f5))
+* expand 17Lands set catalog and unify page layout width to max-w-[1440px] ([01af127](https://github.com/dbyrd1568/mtg-limited-iq/commit/01af1274055b28ff6ab6152ce7a09f46092b96ed))
+* streamline similar cards modal, remove duplicate adopt button, add use median grade button ([9876519](https://github.com/dbyrd1568/mtg-limited-iq/commit/98765191b1eda39f62b754d6cd20eb9350346841))
+
+### 🐛 Bug Fixes
+
+* **admin:** designate dbyrd1568@gmail.com as permanent super-admin ([0de7543](https://github.com/dbyrd1568/mtg-limited-iq/commit/0de75436dc5079558919bc683e17304ee48467ab))
+* guarantee 17Lands telemetry loads instantly on site load and for HOB ([9380c6b](https://github.com/dbyrd1568/mtg-limited-iq/commit/9380c6b9d450e84e393f95076525cfe4032e293f))
+* **notes:** resolve space suppression bug in strategic thoughts notes textarea ([b6aeeee](https://github.com/dbyrd1568/mtg-limited-iq/commit/b6aeeee187217cb7adedd9668507f9e90dbc038c))
+
+### 🔧 Chores
+
+* auto-reload dev server on package.json version changes ([5cf0bf0](https://github.com/dbyrd1568/mtg-limited-iq/commit/5cf0bf0ef063502836978dc5de1f8a59586265b0))
+* **ui:** polish EvaluationHub control bar layout ([1b05cc8](https://github.com/dbyrd1568/mtg-limited-iq/commit/1b05cc8399f5eaf343f0267e9a52a26fbf1a4137))
+
 ## [1.2.2](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.2.1...v1.2.2) (2026-09-12)
 
 ### 🐛 Bug Fixes
