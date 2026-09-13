@@ -46,6 +46,68 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
   // Top 4 features
   const topFeatures = features.slice(0, 4);
 
+  // Real 7-day interaction metrics derived from authentic activity logs
+  const dailyCounts = React.useMemo(() => {
+    const days: { label: string; dateStr: string; count: number }[] = [];
+    const now = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const label =
+        i === 0
+          ? 'Today'
+          : i === 1
+          ? 'Yesterday'
+          : `${i}d ago`;
+      days.push({ label, dateStr, count: 0 });
+    }
+
+    recentLogs.forEach((log) => {
+      if (!log.createdAt) return;
+      const logDate = new Date(log.createdAt).toISOString().split('T')[0];
+      const match = days.find((d) => d.dateStr === logDate);
+      if (match) {
+        match.count += 1;
+      }
+    });
+
+    return days;
+  }, [recentLogs]);
+
+  const totalWeekEvents = dailyCounts.reduce((acc, d) => acc + d.count, 0);
+  const maxDailyCount = Math.max(...dailyCounts.map((d) => d.count), 4);
+
+  // Dynamic SVG Points (width 600, height 150, baseline y=120, peak y=30)
+  const chartPoints = React.useMemo(() => {
+    return dailyCounts.map((d, idx) => {
+      const x = Math.round(25 + idx * (550 / (dailyCounts.length - 1)));
+      const y = totalWeekEvents === 0 ? 120 : Math.round(120 - (d.count / maxDailyCount) * 85);
+      return { x, y, count: d.count, label: d.label, dateStr: d.dateStr };
+    });
+  }, [dailyCounts, maxDailyCount, totalWeekEvents]);
+
+  // Smooth cubic bezier path generator
+  const trendLinePath = React.useMemo(() => {
+    if (chartPoints.length === 0) return '';
+    let path = `M ${chartPoints[0].x} ${chartPoints[0].y}`;
+    for (let i = 0; i < chartPoints.length - 1; i++) {
+      const p0 = chartPoints[i];
+      const p1 = chartPoints[i + 1];
+      const cpX = Math.round((p0.x + p1.x) / 2);
+      path += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
+    }
+    return path;
+  }, [chartPoints]);
+
+  const shadedAreaPath = React.useMemo(() => {
+    if (chartPoints.length === 0) return '';
+    const lastX = chartPoints[chartPoints.length - 1].x;
+    const firstX = chartPoints[0].x;
+    return `${trendLinePath} L ${lastX} 140 L ${firstX} 140 Z`;
+  }, [trendLinePath, chartPoints]);
+
   return (
     <div className="space-y-6">
       {/* 4 Master KPI Metric Cards */}
@@ -165,8 +227,9 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-xs font-mono font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/60 px-2.5 py-1 rounded-xl border border-violet-200 dark:border-violet-800/50">
-              Live Stream
+            <span className="text-xs font-mono font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/60 px-2.5 py-1 rounded-xl border border-violet-200 dark:border-violet-800/50 flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${totalWeekEvents > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+              {totalWeekEvents} Events (7D)
             </span>
           </div>
 
@@ -186,35 +249,74 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
               <line x1="0" y1="120" x2="600" y2="120" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeDasharray="3 3" />
 
               {/* Shaded Area */}
-              <path
-                d="M 0 110 Q 75 40 150 70 T 300 45 T 450 85 T 600 35 L 600 140 L 0 140 Z"
-                fill="url(#chartGradient)"
-              />
+              {shadedAreaPath && (
+                <path
+                  d={shadedAreaPath}
+                  fill="url(#chartGradient)"
+                />
+              )}
 
               {/* Trend Line */}
-              <path
-                d="M 0 110 Q 75 40 150 70 T 300 45 T 450 85 T 600 35"
-                fill="none"
-                stroke="#8b5cf6"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-              />
+              {trendLinePath && (
+                <path
+                  d={trendLinePath}
+                  fill="none"
+                  stroke="#8b5cf6"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                />
+              )}
 
-              {/* Data Points */}
-              <circle cx="0" cy="110" r="4" className="fill-violet-600 dark:fill-violet-400 stroke-2 stroke-white dark:stroke-slate-900" />
-              <circle cx="150" cy="70" r="4" className="fill-violet-600 dark:fill-violet-400 stroke-2 stroke-white dark:stroke-slate-900" />
-              <circle cx="300" cy="45" r="5" className="fill-indigo-600 dark:fill-cyan-400 stroke-2 stroke-white dark:stroke-slate-900" />
-              <circle cx="450" cy="85" r="4" className="fill-violet-600 dark:fill-violet-400 stroke-2 stroke-white dark:stroke-slate-900" />
-              <circle cx="600" cy="35" r="5" className="fill-emerald-500 stroke-2 stroke-white dark:stroke-slate-900 animate-pulse" />
+              {/* Data Points & Count Badges */}
+              {chartPoints.map((p, idx) => (
+                <g key={p.dateStr || idx}>
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={p.count > 0 ? (idx === chartPoints.length - 1 ? 5.5 : 4.5) : 3.5}
+                    className={`${
+                      p.count > 0
+                        ? idx === chartPoints.length - 1
+                          ? 'fill-emerald-500 stroke-emerald-600 dark:stroke-emerald-400 animate-pulse'
+                          : 'fill-violet-600 dark:fill-violet-400 stroke-violet-700 dark:stroke-violet-300'
+                        : 'fill-slate-300 dark:fill-slate-700 stroke-slate-400 dark:stroke-slate-600'
+                    } stroke-2`}
+                  />
+                  {p.count > 0 && (
+                    <text
+                      x={p.x}
+                      y={p.y - 9}
+                      textAnchor="middle"
+                      className="text-[10px] font-mono font-bold fill-violet-600 dark:fill-cyan-300 select-none"
+                    >
+                      {p.count}
+                    </text>
+                  )}
+                </g>
+              ))}
+
+              {totalWeekEvents === 0 && (
+                <text
+                  x="300"
+                  y="75"
+                  textAnchor="middle"
+                  className="text-xs font-mono fill-slate-400 dark:fill-slate-500 select-none"
+                >
+                  0 interactions recorded this week
+                </text>
+              )}
             </svg>
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>6 Days Ago</span>
-            <span>4 Days Ago</span>
-            <span>2 Days Ago</span>
-            <span>Yesterday</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Today</span>
+            {chartPoints.map((p, idx) => (
+              <span
+                key={p.dateStr || idx}
+                className={idx === chartPoints.length - 1 ? 'font-semibold text-slate-700 dark:text-slate-300' : ''}
+              >
+                {p.label}
+              </span>
+            ))}
           </div>
         </div>
 
