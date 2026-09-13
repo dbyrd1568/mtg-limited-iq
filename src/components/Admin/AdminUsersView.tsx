@@ -213,12 +213,19 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-              {filteredUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  onClick={() => onSelectUser(user)}
-                  className="hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors cursor-pointer group"
-                >
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 dark:text-slate-500">
+                    No registered drafters found matching the criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr
+                    key={user.id}
+                    onClick={() => onSelectUser(user)}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors cursor-pointer group"
+                  >
                   {/* User Profile */}
                   <td className="py-3 px-4 sm:px-6">
                     <div className="flex items-center gap-3">
@@ -312,7 +319,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

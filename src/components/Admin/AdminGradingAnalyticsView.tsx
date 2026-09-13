@@ -340,34 +340,40 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
           </div>
 
           <div className="space-y-3">
-            {accuracy.biggestSleepers.map((c) => (
-              <div
-                key={c.cardName}
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 text-xs"
-              >
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white">{c.cardName}</div>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    [{c.setCode}] • {c.totalEvaluations} evaluations
-                  </div>
-                </div>
-
-                <div className="text-right space-y-0.5">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <span className="font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                      User: {c.communityGrade}
-                    </span>
-                    <span className="text-slate-400">→</span>
-                    <span className="font-mono px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 font-bold">
-                      17L: {c.seventeenLandsGrade}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 font-semibold">
-                    {Math.round((c.winRate || 0.5) * 1000) / 10}% GIH WR
-                  </div>
-                </div>
+            {accuracy.biggestSleepers.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                No consensus sleepers identified yet. Sleepers appear as cards are evaluated.
               </div>
-            ))}
+            ) : (
+              accuracy.biggestSleepers.map((c) => (
+                <div
+                  key={c.cardName}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 text-xs"
+                >
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-white">{c.cardName}</div>
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      [{c.setCode}] • {c.totalEvaluations} evaluations
+                    </div>
+                  </div>
+
+                  <div className="text-right space-y-0.5">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <span className="font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        User: {c.communityGrade}
+                      </span>
+                      <span className="text-slate-400">→</span>
+                      <span className="font-mono px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 font-bold">
+                        17L: {c.seventeenLandsGrade}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 font-semibold">
+                      {Math.round((c.winRate || 0.5) * 1000) / 10}% GIH WR
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -386,34 +392,40 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
           </div>
 
           <div className="space-y-3">
-            {accuracy.biggestTraps.map((c) => (
-              <div
-                key={c.cardName}
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 text-xs"
-              >
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white">{c.cardName}</div>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    [{c.setCode}] • {c.totalEvaluations} evaluations
-                  </div>
-                </div>
-
-                <div className="text-right space-y-0.5">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <span className="font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                      User: {c.communityGrade}
-                    </span>
-                    <span className="text-slate-400">→</span>
-                    <span className="font-mono px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold">
-                      17L: {c.seventeenLandsGrade}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-rose-600 dark:text-rose-400 font-semibold">
-                    {Math.round((c.winRate || 0.5) * 1000) / 10}% GIH WR
-                  </div>
-                </div>
+            {accuracy.biggestTraps.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                No consensus traps identified yet. Traps appear as cards are evaluated.
               </div>
-            ))}
+            ) : (
+              accuracy.biggestTraps.map((c) => (
+                <div
+                  key={c.cardName}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 text-xs"
+                >
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-white">{c.cardName}</div>
+                    <div className="text-[11px] text-slate-400 font-mono">
+                      [{c.setCode}] • {c.totalEvaluations} evaluations
+                    </div>
+                  </div>
+
+                  <div className="text-right space-y-0.5">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <span className="font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        User: {c.communityGrade}
+                      </span>
+                      <span className="text-slate-400">→</span>
+                      <span className="font-mono px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold">
+                        17L: {c.seventeenLandsGrade}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-rose-600 dark:text-rose-400 font-semibold">
+                      {Math.round((c.winRate || 0.5) * 1000) / 10}% GIH WR
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { supabaseUserToUserAccount } from './services/auth';
 import { pullRemoteUserData, migrateLocalDataToCloud } from './services/cloudSync';
-import { isProdEnvironment } from './services/environment';
+import { isProdEnvironment, isCloudUUID } from './services/environment';
 import { checkIsAdmin } from './services/admin';
 import { trackFeature, trackLogin } from './services/telemetry';
 
@@ -158,6 +158,26 @@ export const App: React.FC = () => {
         const cloudUser = supabaseUserToUserAccount(user);
         setActiveUser(cloudUser);
         setCurrentUser(cloudUser);
+
+        // Track real user login in telemetry
+        trackLogin(cloudUser);
+
+        // Ensure user profile in Supabase includes verified email and name
+        if (isCloudUUID(cloudUser.id)) {
+          supabase
+            .from('profiles')
+            .upsert({
+              id: cloudUser.id,
+              display_name: cloudUser.name,
+              email: cloudUser.email || user.email,
+              avatar_url: cloudUser.avatarUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .then(
+              () => {},
+              () => {}
+            );
+        }
 
         // 1. Pull existing remote cloud data
         const { stats, evaluations } = await pullRemoteUserData(cloudUser.id);
@@ -371,6 +391,7 @@ export const App: React.FC = () => {
     setCurrentSet(set);
     setIsSetSelectorOpen(false);
     setQuizState('setup');
+    trackFeature('set_switcher', { set: set.code }, currentUser);
   };
 
   // Quiz Handlers

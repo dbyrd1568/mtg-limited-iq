@@ -293,46 +293,52 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           </div>
 
           <div className="space-y-2.5">
-            {topUsers.map((user) => (
-              <div
-                key={user.id}
-                onClick={() => onSelectUser(user)}
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/50 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 border border-slate-100 dark:border-slate-800/60 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-xs"
-                    style={{ backgroundColor: user.avatarColor }}
-                  >
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-300">
-                        {user.name}
-                      </span>
-                      {user.isAdmin && (
-                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300">
-                          ADMIN
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {user.email || 'Local User'} • Lv.{user.level}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-200">
-                    {user.cardsGradedTotal} cards graded
-                  </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    {user.gradingAccuracyScore}% grade accuracy
-                  </div>
-                </div>
+            {topUsers.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                No active drafters registered yet.
               </div>
-            ))}
+            ) : (
+              topUsers.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => onSelectUser(user)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/50 hover:bg-violet-50/50 dark:hover:bg-violet-950/20 border border-slate-100 dark:border-slate-800/60 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-xs"
+                      style={{ backgroundColor: user.avatarColor }}
+                    >
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-300">
+                          {user.name}
+                        </span>
+                        {user.isAdmin && (
+                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300">
+                            ADMIN
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        {user.email || 'Local User'} • Lv.{user.level}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-200">
+                      {user.cardsGradedTotal} cards graded
+                    </div>
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      {user.gradingAccuracyScore}% grade accuracy
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -349,27 +355,33 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           </div>
 
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1 no-scrollbar">
-            {recentLogs.slice(0, 8).map((log) => (
-              <div
-                key={log.id}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/50 text-xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-violet-500 shrink-0" />
-                  <div>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {log.userName}
-                    </span>{' '}
-                    <span className="text-slate-500 dark:text-slate-400">
-                      {formatLogAction(log)}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono text-slate-400 shrink-0">
-                  {formatRelativeTime(log.createdAt)}
-                </span>
+            {recentLogs.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                No user telemetry activity recorded yet.
               </div>
-            ))}
+            ) : (
+              recentLogs.slice(0, 8).map((log) => (
+                <div
+                  key={log.id}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/50 text-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2 h-2 rounded-full bg-violet-500 shrink-0" />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {log.userName}
+                      </span>{' '}
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {formatLogAction(log)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                    {formatRelativeTime(log.createdAt)}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -107,15 +107,19 @@ function debounceFlushLogs(): void {
         created_at: l.createdAt,
       }));
 
-      await supabase.from('user_activity_logs').insert(rows);
+      const { error } = await supabase.from('user_activity_logs').insert(rows);
+      if (error && error.code !== 'PGRST205') {
+        console.warn('Telemetry sync note:', error.message);
+      }
     } catch (err) {
-      console.warn('Failed to push activity logs to Supabase:', err);
+      // Gracefully handle offline or unprovisioned schema cache
     }
   }, 2000);
 }
 
 /**
- * Retrieves activity logs from Supabase (if admin) or local fallback
+ * Retrieves authentic activity logs from Supabase (if configured) or local activity logs.
+ * Strictly avoids injecting any fake mock logs.
  */
 export async function fetchActivityLogs(timeRange: AdminTimeRange = 'all'): Promise<UserActivityLog[]> {
   const localLogs = getStoredLocalLogs();
@@ -135,24 +139,31 @@ export async function fetchActivityLogs(timeRange: AdminTimeRange = 'all'): Prom
 
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
-        return data.map((row: any) => ({
+        const remoteLogs: UserActivityLog[] = data.map((row: any) => ({
           id: row.id,
           userId: row.user_id,
-          userName: row.user_name || 'Mage',
+          userName: row.user_name || 'Drafter',
           eventType: row.event_type,
           featureName: row.feature_name,
           metadata: row.metadata || {},
           createdAt: row.created_at,
         }));
+
+        // Merge with local logs not present in remote
+        const remoteIds = new Set(remoteLogs.map((r) => r.id));
+        const missingLocal = localLogs.filter((l) => !remoteIds.has(l.id));
+        const merged = [...remoteLogs, ...missingLocal].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        return filterLogsByTime(merged, timeRange);
       }
     } catch (e) {
-      console.warn('Could not query Supabase activity logs:', e);
+      // Silently proceed with local real logs
     }
   }
 
-  // Fallback to local logs + sample logs if empty
-  const logsToFilter = localLogs.length > 0 ? localLogs : generateSampleTelemetryLogs();
-  return filterLogsByTime(logsToFilter, timeRange);
+  // Authentic local real logs
+  return filterLogsByTime(localLogs, timeRange);
 }
 
 function getSinceTimestamp(timeRange: AdminTimeRange): string | null {
@@ -177,54 +188,4 @@ function filterLogsByTime(logs: UserActivityLog[], timeRange: AdminTimeRange): U
   if (!since) return logs;
   const sinceDate = new Date(since).getTime();
   return logs.filter((l) => new Date(l.createdAt).getTime() >= sinceDate);
-}
-
-/**
- * Generates realistic seed telemetry for initial demonstration and local offline development
- */
-export function generateSampleTelemetryLogs(): UserActivityLog[] {
-  const sampleUsers = [
-    { name: 'Devon Byrd', id: 'usr_devon_01' },
-    { name: 'Nicol Bolas', id: 'usr_bolas_02' },
-    { name: 'Chandra Nalaar', id: 'usr_chandra_03' },
-    { name: 'Jace Beleren', id: 'usr_jace_04' },
-    { name: 'Teferi Akosa', id: 'usr_teferi_05' },
-    { name: 'Liliana Vess', id: 'usr_liliana_06' },
-    { name: 'Kaito Shizuki', id: 'usr_kaito_07' },
-  ];
-
-  const features = [
-    { name: KNOWN_FEATURES.CARD_GRADING, event: 'grade_card', meta: { set: 'DFT', grade: 'A-' } },
-    { name: KNOWN_FEATURES.BLIND_GRADING, event: 'toggle_blind', meta: { enabled: true } },
-    { name: KNOWN_FEATURES.CARD_QUIZ, event: 'quiz_complete', meta: { set: 'DFT', score: 9, total: 10, pct: 90 } },
-    { name: KNOWN_FEATURES.ARCHETYPE_FORECAST, event: 'forecast_view', meta: { set: 'DFT', archetype: 'WU Aerocraft' } },
-    { name: KNOWN_FEATURES.SIMILAR_CARDS, event: 'similar_view', meta: { card: 'Enduring Innocence' } },
-    { name: KNOWN_FEATURES.SET_EXPLORER, event: 'browse_set', meta: { set: 'FDN', filter: 'U' } },
-    { name: KNOWN_FEATURES.MASTERY_STATS, event: 'view_stats', meta: { set: 'DFT' } },
-    { name: KNOWN_FEATURES.SEARCH_FILTERS, event: 'syntax_search', meta: { query: 't:creature c:r o:haste' } },
-  ];
-
-  const logs: UserActivityLog[] = [];
-  const now = Date.now();
-
-  for (let i = 0; i < 45; i++) {
-    const user = sampleUsers[Math.floor(Math.random() * sampleUsers.length)];
-    const feat = features[Math.floor(Math.random() * features.length)];
-    const minutesAgo = Math.floor(Math.random() * 4320); // within last 3 days
-    const timestamp = new Date(now - minutesAgo * 60 * 1000).toISOString();
-
-    logs.push({
-      id: `sample_log_${i}`,
-      userId: user.id,
-      userName: user.name,
-      eventType: feat.event,
-      featureName: feat.name,
-      metadata: feat.meta,
-      createdAt: timestamp,
-    });
-  }
-
-  // Sort latest first
-  logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  return logs;
 }
