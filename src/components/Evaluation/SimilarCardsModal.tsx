@@ -437,18 +437,22 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
               {/* Target Card vs Similar Comps Flex Container */}
               <div className="flex flex-col lg:flex-row gap-5 items-start">
                 {/* Target Card Column (Desktop left side, 340px width) */}
-                <div className="w-full lg:w-[340px] shrink-0 p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3 lg:sticky lg:top-0">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] uppercase font-mono font-bold text-violet-700 dark:text-cyan-400 tracking-wider">
+                <div className="w-full lg:w-[340px] shrink-0 space-y-4 lg:sticky lg:top-0">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
+                    <span className="px-2.5 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-violet-200 dark:border-violet-800/60">
                       Target Card
                     </span>
-                    <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
-                      #{targetCard.collector_number}
-                    </span>
+                    <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+                      <SetSymbol setCode={targetCard.set} size="xs" />
+                      <span className="font-bold uppercase text-violet-700 dark:text-cyan-300">{targetCard.set}</span>
+                      <span>•</span>
+                      <span>#{targetCard.collector_number}</span>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col items-center">
-                    <CardObfuscator
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="flex flex-col items-center">
+                      <CardObfuscator
                       card={targetCard}
                       obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
                       size="lg"
@@ -578,15 +582,16 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     )}
                   </div>
                 </div>
+              </div>
 
-                {/* Similar Cards Matches List (Desktop right side) - 2 Columns of spacious cards */}
-                <div className="flex-1 min-w-0 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs uppercase font-mono font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+              {/* Similar Cards Matches List (Desktop right side) - 2 Columns of spacious cards */}
+                <div className="flex-1 min-w-0 space-y-4">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-emerald-200 dark:border-emerald-800/60">
                       Comparable Historical Cards ({presentedMatches.length})
-                    </h4>
+                    </span>
                     <span className="text-[11px] font-mono text-slate-400">
-                      Click any card to view details
+                      Click any card to inspect
                     </span>
                   </div>
 
