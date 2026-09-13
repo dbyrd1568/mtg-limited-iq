@@ -19,7 +19,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   // 2026 Sets
   { code: 'TRK', name: 'Star Trek', card_count: 135, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
   { code: 'MBC', name: 'Mystery Booster Commander Edition', card_count: 80, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
-  { code: 'FRA', name: 'Reality Fracture', card_count: 249, released_at: '2026-10-02', set_type: 'expansion', has_17lands_data: false },
+  { code: 'FRA', name: 'Reality Fracture', card_count: 290, released_at: '2026-10-02', set_type: 'expansion', has_17lands_data: false },
   { code: 'HOB', name: 'The Hobbit', card_count: 321, released_at: '2026-08-14', set_type: 'expansion', has_17lands_data: true },
   { code: 'MSH', name: 'Marvel Super Heroes', card_count: 453, released_at: '2026-06-01', set_type: 'expansion', has_17lands_data: true },
   { code: 'SOS', name: 'Secrets of Strixhaven', card_count: 368, released_at: '2026-04-24', set_type: 'expansion', has_17lands_data: true },
@@ -219,14 +219,14 @@ export function normalizeScryfallCard(rawCard: any): Card {
 
 export async function fetchAllSets(): Promise<SetInfo[]> {
   try {
-    const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v6');
+    const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v7');
     if (cachedSets && cachedSets.length > 0) {
       return cachedSets;
     }
 
     const response = await fetch(`${SCRYFALL_API_BASE}/sets`, {
       headers: {
-        'User-Agent': 'SpellslingerArcana/1.0',
+        'User-Agent': 'MTGLimitedIQ/2.0 (https://mtg-limited-iq.com)',
         Accept: 'application/json',
       },
     });
@@ -243,10 +243,11 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
       .map((s: any) => {
         const popMatch = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === s.code.toUpperCase());
         const has17L = popMatch ? Boolean(popMatch.has_17lands_data) : KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase());
+        const effectiveCardCount = popMatch ? Math.max(s.card_count, popMatch.card_count) : s.card_count;
         return {
           code: s.code.toUpperCase(),
           name: s.name,
-          card_count: s.card_count,
+          card_count: effectiveCardCount,
           released_at: s.released_at,
           icon_svg_uri: s.icon_svg_uri,
           set_type: s.set_type,
@@ -260,12 +261,13 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
       const idx = merged.findIndex((m) => m.code.toUpperCase() === pop.code.toUpperCase());
       if (idx >= 0) {
         merged[idx].has_17lands_data = Boolean(pop.has_17lands_data);
+        merged[idx].card_count = Math.max(merged[idx].card_count, pop.card_count);
       } else {
         merged.unshift(pop);
       }
     });
 
-    await set('scryfall_all_sets_v6', merged);
+    await set('scryfall_all_sets_v7', merged);
     return merged;
   } catch (err) {
     console.warn('Using popular limited sets fallback due to fetch error:', err);
@@ -279,12 +281,16 @@ export async function fetchCardsForSet(
   onCachedCards?: (cards: Card[]) => void
 ): Promise<Card[]> {
   const upperCode = setCode.toUpperCase();
-  const cacheKey = `scryfall_cards_${upperCode}_v5`;
+  const cacheKey = `scryfall_cards_${upperCode}_v6`;
+  const legacyCacheKey = `scryfall_cards_${upperCode}_v5`;
 
   // 1. Read cached cards from IndexedDB if available and deliver immediately for instant UI
   let cachedCards: Card[] | null = null;
   try {
-    const rawCached = await get<Card[]>(cacheKey);
+    let rawCached = await get<Card[]>(cacheKey);
+    if (!rawCached || rawCached.length === 0) {
+      rawCached = await get<Card[]>(legacyCacheKey);
+    }
     if (rawCached && rawCached.length > 0) {
       const strictlyFiltered = rawCached.filter(c => c.set.toUpperCase() === upperCode);
       if (strictlyFiltered.length > 0) {
@@ -299,27 +305,45 @@ export async function fetchCardsForSet(
   }
 
   const allCards: Card[] = [];
-  // Strict query: set:${code} -t:basic -layout:art_series -t:token
-  const query = encodeURIComponent(`set:${upperCode.toLowerCase()} -t:basic -layout:art_series -t:token`);
-  let nextUrl: string | null = `${SCRYFALL_API_BASE}/cards/search?q=${query}&order=set`;
+  // Use unique=prints to include all card variants, showcase, and newly spoiled cards
+  const query = encodeURIComponent(`set:${upperCode.toLowerCase()} -layout:art_series -t:token`);
+  let nextUrl: string | null = `${SCRYFALL_API_BASE}/cards/search?q=${query}&unique=prints&order=set`;
 
   try {
     let isFirstPage = true;
 
     while (nextUrl) {
-      const response: Response = await fetch(nextUrl, {
-        headers: {
-          'User-Agent': 'SpellslingerArcana/1.0',
-          Accept: 'application/json',
-        },
-      });
+      let response: Response | null = null;
+      let retries = 0;
 
-      if (!response.ok) {
-        throw new Error(`Scryfall card search failed: ${response.status} ${response.statusText}`);
+      while (retries < 3) {
+        try {
+          response = await fetch(nextUrl, {
+            headers: {
+              'User-Agent': 'MTGLimitedIQ/2.0 (https://mtg-limited-iq.com)',
+              Accept: 'application/json',
+            },
+          });
+          if (response.status === 429) {
+            // Rate limit encountered, wait with backoff
+            await new Promise((res) => setTimeout(res, 600 * (retries + 1)));
+            retries++;
+            continue;
+          }
+          break;
+        } catch (fetchErr) {
+          retries++;
+          if (retries >= 3) throw fetchErr;
+          await new Promise((res) => setTimeout(res, 500 * retries));
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error(`Scryfall card search failed: ${response?.status} ${response?.statusText}`);
       }
 
       const data: any = await response.json();
-      const totalCount = data.total_cards || 250;
+      const totalCount = typeof data.total_cards === 'number' ? data.total_cards : 0;
 
       if (Array.isArray(data.data)) {
         const normalized = data.data
@@ -329,21 +353,24 @@ export async function fetchCardsForSet(
         allCards.push(...normalized);
       }
 
-      // If cached cards already match Scryfall's total_cards count and set exceeds a single page,
-      // we already have the complete set and can skip downloading subsequent pages.
-      if (isFirstPage && cachedCards && cachedCards.length >= totalCount && totalCount > 175) {
+      // Check on EVERY load: Does cached cards count match or exceed the authoritative live Scryfall total?
+      // If cachedCards already matches Scryfall's live total_cards count and set exceeds 1 page,
+      // the cache is confirmed complete and we can return cachedCards without fetching subsequent pages.
+      // BUT if cachedCards has fewer cards than Scryfall reports (e.g. 141 < 265), the cache is STALE and we MUST download all remaining pages!
+      if (isFirstPage && cachedCards && totalCount > 0 && cachedCards.length >= totalCount && totalCount > 175) {
+        set(cacheKey, cachedCards).catch(() => {});
         return cachedCards;
       }
       isFirstPage = false;
 
       if (onProgress) {
-        onProgress(allCards.length, totalCount);
+        onProgress(allCards.length, Math.max(totalCount, allCards.length));
       }
 
       nextUrl = data.has_more ? data.next_page : null;
 
       if (nextUrl) {
-        // Respect Scryfall 50-100ms polite rate limit
+        // Respect Scryfall polite rate limit (50-100ms)
         await new Promise((res) => setTimeout(res, 80));
       }
     }

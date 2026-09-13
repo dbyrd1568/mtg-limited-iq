@@ -322,7 +322,10 @@ export const App: React.FC = () => {
       (cachedCards) => {
         // Immediately populate cached cards to eliminate blank screen while checking Scryfall
         setCards(cachedCards);
-        setIsLoadingCards(false);
+        // Only dismiss loading state early if the cached cards count already matches or exceeds expected set count
+        if (cachedCards.length >= (set.card_count || 200)) {
+          setIsLoadingCards(false);
+        }
       }
     );
 
@@ -333,6 +336,12 @@ export const App: React.FC = () => {
     try {
       const [fetchedCards, landsData] = await Promise.all([cardsPromise, landsPromise]);
       setCards(fetchedCards);
+
+      // Keep currentSet and allSets card_count updated if fresh card catalog count is higher
+      if (fetchedCards && fetchedCards.length > 0 && (set.card_count || 0) < fetchedCards.length) {
+        setCurrentSet((prev) => (prev && prev.code.toUpperCase() === set.code.toUpperCase() ? { ...prev, card_count: fetchedCards.length } : prev));
+        setAllSets((prev) => prev.map((s) => s.code.toUpperCase() === set.code.toUpperCase() ? { ...s, card_count: fetchedCards.length } : s));
+      }
 
       if (
         landsData &&
@@ -357,6 +366,7 @@ export const App: React.FC = () => {
       }
     } finally {
       setIsLoadingCards(false);
+      setDownloadProgress(null);
     }
   }, []);
 

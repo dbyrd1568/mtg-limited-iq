@@ -248,7 +248,12 @@ export function extractCardFeatures(card: Card) {
         actionSubtypes.add('power_toughness_removal');
       }
 
-      if (hasPowerToughnessCondition || (hasCombatCondition && !hasOpponentCompensation)) {
+      const isRestrictedTargetCreature = (
+        /(destroy|exile) (up to one )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack )creature/i.test(oracle) ||
+        /destroy target \[(attacking|blocking|tapped)\] creature/i.test(rawOracle)
+      );
+
+      if (hasPowerToughnessCondition || isRestrictedTargetCreature) {
         actionSubtypes.add('conditional_removal');
       } else {
         actionSubtypes.add('unconditional_removal');
@@ -434,13 +439,13 @@ export function extractCardFeatures(card: Card) {
   }
 
   // Incidental Value Riders
-  if (/proliferate/i.test(rawOracle)) valueRiders.add('proliferate');
-  if (/surveil|scry/i.test(rawOracle)) valueRiders.add('surveil_scry');
-  if (isConnive || /\+1\/\+1 counter/i.test(rawOracle)) valueRiders.add('counters');
-  if (isRecruit || /create .* token|empower|amass/i.test(rawOracle)) valueRiders.add('token');
-  if (/gain \d+ life|lifelink/i.test(rawOracle)) valueRiders.add('life_gain');
-  if (/draw a card/i.test(rawOracle)) valueRiders.add('cantrip');
-  if (isConnive || isRecruit || /if you discarded/i.test(rawOracle)) valueRiders.add('discard_payoff');
+  if (/proliferate/i.test(oracle)) valueRiders.add('proliferate');
+  if (/surveil|scry/i.test(oracle)) valueRiders.add('surveil_scry');
+  if (isConnive || /\+1\/\+1 counter/i.test(oracle)) valueRiders.add('counters');
+  if ((isRecruit || /create .* token|empower|amass/i.test(oracle)) && !/its controller (creates|draws)/i.test(oracle)) valueRiders.add('token');
+  if (/gain \d+ life|lifelink/i.test(oracle)) valueRiders.add('life_gain');
+  if (/draw a card/i.test(oracle) && !/its controller draws a card/i.test(oracle)) valueRiders.add('cantrip');
+  if (isConnive || isRecruit || /if you discarded/i.test(oracle)) valueRiders.add('discard_payoff');
 
   // Effective CMC accounting for the Instant Speed Tax (-0.75 for noncreature instant/flash)
   const effectiveCmc = ((isInstant || hasFlash) && !isCreature) ? Math.max(0.5, (card.cmc || 0) - 0.75) : (card.cmc || 0);
@@ -1326,6 +1331,18 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     structuralReasons.push('Both ETB creature with +1/+1 counter value');
   }
 
+  // Cross-removal matching: Both are targeted creature removal spells
+  const bothTargetedCreatureRemoval = (
+    (tFeatures.isInstant || tFeatures.isSorcery) &&
+    (cFeatures.isInstant || cFeatures.isSorcery) &&
+    tFeatures.detectedCategories.has('removal') &&
+    cFeatures.detectedCategories.has('removal')
+  );
+  if (bothTargetedCreatureRemoval && structuralActionPoints < 14) {
+    structuralActionPoints = 14;
+    structuralReasons.push('Both targeted creature removal spells');
+  }
+
   // Multi-Action Subtype Bonus (e.g. both ETB and Cantrip)
   if (sharedSubtypesCount > 1) {
     structuralActionPoints = Math.min(20, structuralActionPoints + (sharedSubtypesCount - 1) * 3);
@@ -1715,7 +1732,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
  * and synthesizes an empirical consensus projection.
  */
 export async function findSimilarCards(targetCard: Card): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v38`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v43`;
   if (similarityCache.has(cacheKey)) {
     return similarityCache.get(cacheKey)!;
   }
@@ -1834,12 +1851,21 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
 
   // Diversity filter for the 4 presented matches:
   // When target has multiple signature action subtypes (e.g. flash_reach_ambush + etb_treasure or land_tutor_top + flying_lifegain_evasion),
-  // limit duplicate comps from the exact same curve slot and action subtype (at most 1 for specialized combat tricks like Flash+Reach,
-  // and at most 2 for broad ramp/engine archetypes like ETB Treasure or Land Tutor / Lifegain Evasion) so that complementary roles are shown.
+  // limit duplicate comps from the exact same action subtype (at most 1 for specialized combat tricks like Flash+Reach,
+  // at most 1 for combat-conditioned removal, and at most 2 for broad ramp/engine archetypes like ETB Treasure or Land Tutor / Lifegain Evasion,
+  // or 3 for removal with compensation) so that complementary roles are shown.
+  // Prefer on-curve matches (exact CMC) before off-curve matches.
   const presentedMatches: SimilarCardMatch[] = [];
   const roleCmcCounts: Record<string, number> = {};
 
-  for (const match of enrichedMatches) {
+  const sortedForPresentation = [...enrichedMatches].sort((a, b) => {
+    const aOnCurve = a.card.cmc === targetCard.cmc ? 1 : 0;
+    const bOnCurve = b.card.cmc === targetCard.cmc ? 1 : 0;
+    if (aOnCurve !== bOnCurve) return bOnCurve - aOnCurve;
+    return b.similarityScore - a.similarityScore;
+  });
+
+  for (const match of sortedForPresentation) {
     const cardFeatures = extractCardFeatures(match.card);
     const primarySubtype = cardFeatures.actionSubtypes.has('flash_reach_ambush')
       ? 'flash_reach_ambush'
@@ -1849,10 +1875,18 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
           ? 'land_tutor_top'
           : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
             ? 'flying_lifegain_evasion'
-            : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+'))));
-    const roleKey = `${primarySubtype}_${match.card.cmc}`;
+            : (cardFeatures.actionSubtypes.has('combat_removal')
+              ? 'combat_removal'
+              : (cardFeatures.actionSubtypes.has('removal_with_compensation')
+                ? 'removal_with_compensation'
+                : (cardFeatures.actionSubtypes.has('power_toughness_removal')
+                  ? 'power_toughness_removal'
+                  : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+')))))));
+    const roleKey = primarySubtype;
 
-    const maxAllowed = primarySubtype === 'flash_reach_ambush' ? 1 : 2;
+    const maxAllowed = (primarySubtype === 'flash_reach_ambush' || primarySubtype === 'combat_removal')
+      ? 1
+      : (primarySubtype === 'removal_with_compensation' ? 3 : 2);
     const currentCount = roleCmcCounts[roleKey] || 0;
 
     if (currentCount < maxAllowed) {
