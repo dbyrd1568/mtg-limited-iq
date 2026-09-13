@@ -30,6 +30,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://irxgoelllogcyoiumxup.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_QNDNrOPhb_X_29OfIg_-_Q_OB7QJuhI' }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || '887571958598-8apf1m4sv9mdva72ii8oqmh2vunt8e93.apps.googleusercontent.com' }}
 
       - name: ☁️ Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
