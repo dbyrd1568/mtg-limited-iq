@@ -13,7 +13,11 @@ export function isLocalhost(): boolean {
     hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
     hostname === '[::1]' ||
-    hostname.endsWith('.local')
+    hostname === '0.0.0.0' ||
+    hostname.endsWith('.local') ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('172.')
   );
 }
 
@@ -37,7 +41,10 @@ export function isDevEnvironment(): boolean {
     }
   }
 
-  // 4. Vite build mode check
+  // 4. Vite build mode check or Node test runner check
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+    return true;
+  }
   return Boolean(import.meta.env?.DEV);
 }
 

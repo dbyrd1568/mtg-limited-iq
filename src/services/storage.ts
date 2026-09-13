@@ -46,8 +46,11 @@ export function getAllUsers(): UserAccount[] {
     const raw = localStorage.getItem(USERS_LIST_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as UserAccount[];
-    // Strictly filter out any unauthenticated local mock accounts
-    return parsed.filter((u) => u.provider !== 'local' || isCloudUUID(u.id));
+    // Strictly filter out any unauthenticated local mock accounts ONLY in production
+    if (isProdEnvironment()) {
+      return parsed.filter((u) => u.provider !== 'local' || isCloudUUID(u.id));
+    }
+    return parsed;
   } catch (e) {
     console.error('Failed to load users list:', e);
     return [];
@@ -60,10 +63,23 @@ export function getActiveUser(): UserAccount | null {
     const activeId = localStorage.getItem(ACTIVE_USER_ID_KEY);
     const found = users.find((u) => u.id === activeId);
     if (found) {
-      if (found.provider === 'local' && !isCloudUUID(found.id)) {
+      if (isProdEnvironment() && found.provider === 'local' && !isCloudUUID(found.id)) {
         return null;
       }
       return found;
+    }
+    // On localhost / dev: provide default Devon Byrd admin account if no active user exists
+    if (!isProdEnvironment()) {
+      const devUser: UserAccount = {
+        id: 'admin_owner_01',
+        name: 'Devon Byrd (Local Admin)',
+        email: 'dbyrd1568@gmail.com',
+        avatarColor: '#8b5cf6',
+        provider: 'local',
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+      };
+      return devUser;
     }
     return null;
   } catch (e) {
@@ -82,9 +98,12 @@ export function clearActiveUser(): void {
 export function setActiveUser(user: UserAccount): void {
   try {
     localStorage.setItem(ACTIVE_USER_ID_KEY, user.id);
-    // Update lastLoginAt
-    const users = getAllUsers().map((u) => (u.id === user.id ? { ...u, lastLoginAt: new Date().toISOString() } : u));
-    localStorage.setItem(USERS_LIST_KEY, JSON.stringify(users));
+    const users = getAllUsers();
+    const exists = users.some((u) => u.id === user.id);
+    const updated = exists
+      ? users.map((u) => (u.id === user.id ? { ...u, lastLoginAt: new Date().toISOString() } : u))
+      : [...users, { ...user, lastLoginAt: new Date().toISOString() }];
+    localStorage.setItem(USERS_LIST_KEY, JSON.stringify(updated));
   } catch (e) {
     console.error('Failed to set active user:', e);
   }

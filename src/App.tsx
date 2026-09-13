@@ -8,7 +8,7 @@ import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { supabaseUserToUserAccount } from './services/auth';
 import { pullRemoteUserData, migrateLocalDataToCloud } from './services/cloudSync';
-import { isCloudUUID } from './services/environment';
+import { isCloudUUID, isProdEnvironment } from './services/environment';
 import { checkIsAdmin } from './services/admin';
 import { trackFeature, trackLogin, KNOWN_FEATURES } from './services/telemetry';
 
@@ -52,10 +52,12 @@ export const App: React.FC = () => {
   const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(() => !hasSeenWelcomeTour());
   const [isGlobalExportModalOpen, setIsGlobalExportModalOpen] = useState<boolean>(false);
 
+  const isProd = isProdEnvironment();
+
   // User Accounts State (Nullable when unauthenticated)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getActiveUser());
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(true);
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isProdEnvironment());
 
   // Check administrator permissions whenever currentUser changes
   useEffect(() => {
@@ -210,13 +212,23 @@ export const App: React.FC = () => {
       if (session?.user) {
         handleUserSession(session.user);
       } else {
+        if (!isProd) {
+          const devUser = getActiveUser();
+          if (devUser) {
+            setCurrentUser(devUser);
+            setIsAuthInitializing(false);
+            return;
+          }
+        }
         clearActiveUser();
         setCurrentUser(null);
         setIsAuthInitializing(false);
       }
     }).catch(() => {
-      clearActiveUser();
-      setCurrentUser(null);
+      if (!isProd) {
+        const devUser = getActiveUser();
+        if (devUser) setCurrentUser(devUser);
+      }
       setIsAuthInitializing(false);
     });
 

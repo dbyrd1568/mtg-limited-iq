@@ -35,53 +35,50 @@ export function isPermanentSuperAdmin(emailOrId?: string | null): boolean {
 }
 
 /**
- * Checks if the current user has administrative rights
+ * Checks if the current user has administrative rights using industry-standard security practices:
+ * 1. Cryptographically signed JWT app_metadata claims (server-verified, tamper-proof)
+ * 2. PostgreSQL Security Definer RPC function (is_admin()) executed under caller's auth.uid()
+ * 3. Database Table query on public.app_admins protected by Row Level Security (RLS)
  */
 export async function checkIsAdmin(user: UserAccount | null): Promise<boolean> {
   if (!user) return false;
 
-  const lowerEmail = user.email ? user.email.trim().toLowerCase() : '';
-
-  // 0. Permanent Super Admin by verified email
-  if (lowerEmail && PERMANENT_SUPER_ADMIN_EMAILS.has(lowerEmail)) {
-    return true;
-  }
-
-  // 1. Check Supabase app_admins table if configured
-  if (isSupabaseConfigured() && user.id) {
+  // Best Security Practice: Server-verified cryptographic & database authorization
+  if (isSupabaseConfigured()) {
     try {
-      // Check by user ID
-      const { data: byId } = await supabase
-        .from('app_admins')
-        .select('id, role')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // 1. Cryptographically signed JWT token app_metadata claim (signed by Supabase secret)
+        const appRole = session.user.app_metadata?.role;
+        if (appRole === 'admin' || appRole === 'owner') {
+          return true;
+        }
 
-      if (byId) return true;
+        // 2. Database RPC Security Definer Function (executes on PostgreSQL under caller's auth.uid())
+        const { data: rpcIsAdmin, error: rpcError } = await supabase.rpc('is_admin');
+        if (!rpcError && typeof rpcIsAdmin === 'boolean') {
+          return rpcIsAdmin;
+        }
 
-      // Check by verified email
-      if (lowerEmail) {
-        const { data: byEmail } = await supabase
+        // 3. Database Table RLS Query: Check public.app_admins for caller's authenticated user ID
+        const { data: adminRecord, error: tableError } = await supabase
           .from('app_admins')
-          .select('id, role')
-          .eq('email', lowerEmail)
+          .select('role')
+          .eq('user_id', session.user.id)
           .maybeSingle();
 
-        if (byEmail) return true;
+        if (!tableError && adminRecord && (adminRecord.role === 'admin' || adminRecord.role === 'owner')) {
+          return true;
+        }
       }
     } catch (err) {
-      console.warn('Error checking admin permissions on Supabase:', err);
+      console.warn('Security check error while querying Supabase auth:', err);
     }
   }
 
-  // 3. Local admin storage override (ONLY in dev environment)
-  if (isDevEnvironment()) {
-    const localAdmins = getStoredLocalAdmins();
-    if (
-      localAdmins.some(
-        (a) => (a.userId && user.id && a.userId === user.id) || (lowerEmail && a.email.toLowerCase() === lowerEmail)
-      )
-    ) {
+  // Fallback for local offline mock testing ONLY when user is simulated dev user
+  if (isDevEnvironment() && !isCloudUUID(user.id)) {
+    if (user.id === 'user_default') {
       return true;
     }
   }

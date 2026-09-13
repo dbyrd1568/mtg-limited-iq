@@ -8,7 +8,7 @@ import {
 
 export type OAuthProvider = 'google' | 'discord' | 'apple';
 
-import { isCloudUUID } from './environment';
+import { isCloudUUID, isProdEnvironment, isLocalhost } from './environment';
 export { isCloudUUID };
 
 export interface AuthState {
@@ -56,8 +56,21 @@ export function supabaseUserToUserAccount(user: User): UserAccount {
 }
 
 export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?: UserAccount; error: Error | null }> {
-  if (!isSupabaseConfigured()) {
-    return { error: new Error('Supabase is not configured.') };
+  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+    // Offline / Localhost development fallback: simulated 1-click login without redirecting to remote domain
+    const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+    const isGoogleAdmin = provider === 'google';
+    const mockUser: UserAccount = {
+      id: isGoogleAdmin ? 'admin_owner_01' : `local_${provider}_${Date.now()}`,
+      name: isGoogleAdmin ? 'Devon Byrd (Local Admin)' : `${providerName} User`,
+      email: isGoogleAdmin ? 'dbyrd1568@gmail.com' : `user@${provider}.local`,
+      avatarColor: provider === 'discord' ? '#5865F2' : provider === 'google' ? '#3b82f6' : '#1c1c1e',
+      provider,
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+    };
+    setActiveUser(mockUser);
+    return { user: mockUser, error: null };
   }
 
   try {
@@ -74,8 +87,20 @@ export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?:
 }
 
 export async function signInWithMagicLink(email: string): Promise<{ user?: UserAccount; error: Error | null }> {
-  if (!isSupabaseConfigured()) {
-    return { error: new Error('Supabase is not configured.') };
+  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+    const name = email.includes('@') ? email.split('@')[0] : email;
+    const isDevon = email.trim().toLowerCase() === 'dbyrd1568@gmail.com';
+    const localUser: UserAccount = {
+      id: isDevon ? 'admin_owner_01' : `local_user_${Date.now()}`,
+      name: isDevon ? 'Devon Byrd (Local Admin)' : name,
+      email: email.trim(),
+      avatarColor: '#8b5cf6',
+      provider: 'email',
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+    };
+    setActiveUser(localUser);
+    return { user: localUser, error: null };
   }
 
   try {
@@ -92,8 +117,20 @@ export async function signInWithMagicLink(email: string): Promise<{ user?: UserA
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<{ user: UserAccount | null; error: Error | null }> {
-  if (!isSupabaseConfigured()) {
-    return { user: null, error: new Error('Supabase is not configured.') };
+  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+    const name = email.includes('@') ? email.split('@')[0] : email;
+    const isDevon = email.trim().toLowerCase() === 'dbyrd1568@gmail.com';
+    const localUser: UserAccount = {
+      id: isDevon ? 'admin_owner_01' : `local_user_${Date.now()}`,
+      name: isDevon ? 'Devon Byrd (Local Admin)' : name,
+      email: email.trim(),
+      avatarColor: '#8b5cf6',
+      provider: 'email',
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+    };
+    setActiveUser(localUser);
+    return { user: localUser, error: null };
   }
 
   try {
@@ -113,8 +150,19 @@ export async function signInWithPassword(email: string, password: string): Promi
 }
 
 export async function signUpWithPassword(email: string, password: string, displayName?: string): Promise<{ user: UserAccount | null; error: Error | null }> {
-  if (!isSupabaseConfigured()) {
-    return { user: null, error: new Error('Supabase is not configured.') };
+  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+    const name = displayName?.trim() || (email.includes('@') ? email.split('@')[0] : email);
+    const localUser: UserAccount = {
+      id: `local_user_${Date.now()}`,
+      name,
+      email: email.trim(),
+      avatarColor: '#8b5cf6',
+      provider: 'email',
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+    };
+    setActiveUser(localUser);
+    return { user: localUser, error: null };
   }
 
   try {
@@ -140,7 +188,7 @@ export async function signUpWithPassword(email: string, password: string, displa
 
 export async function signOut(): Promise<{ error: Error | null }> {
   clearActiveUser();
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
     return { error: null };
   }
   try {

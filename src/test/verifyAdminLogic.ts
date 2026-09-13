@@ -13,6 +13,7 @@ import {
 } from '../services/admin';
 import { trackFeature, trackEvent, fetchActivityLogs, KNOWN_FEATURES } from '../services/telemetry';
 import { UserAccount } from '../types/mtg';
+import { supabase } from '../services/supabase';
 
 // Mock localStorage if running in node/tsx
 if (typeof localStorage === 'undefined') {
@@ -50,32 +51,81 @@ async function runAdminVerification() {
     lastLoginAt: new Date().toISOString(),
   };
 
-  const dbyrdGoogleUser: UserAccount = {
-    id: 'usr_google_dbyrd1568',
+  const defaultDevUser: UserAccount = {
+    id: 'user_default',
+    name: 'Default Drafter',
+    email: 'drafter@local',
+    avatarColor: '#8b5cf6',
+    provider: 'local',
+    createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(),
+  };
+
+  const isDefaultDevAdmin = await checkIsAdmin(defaultDevUser);
+  console.assert(isDefaultDevAdmin === true, 'user_default in dev mode should be granted admin');
+
+  const isGuestAdmin = await checkIsAdmin(guestUser);
+  console.assert(isGuestAdmin === false, 'Guest user without admin role must NOT be admin');
+
+  const isNullAdmin = await checkIsAdmin(null);
+  console.assert(isNullAdmin === false, 'Null user must NOT be admin');
+
+  // Test Cryptographically Signed JWT app_metadata claim validation
+  const originalGetSession = supabase.auth.getSession;
+  (supabase.auth as any).getSession = async () => ({
+    data: {
+      session: {
+        user: {
+          id: 'usr_verified_admin_001',
+          email: 'dbyrd1568@gmail.com',
+          app_metadata: { role: 'admin' },
+        },
+      },
+    },
+  });
+
+  const isJwtAdmin = await checkIsAdmin({
+    id: 'usr_verified_admin_001',
     name: 'Devon Byrd',
     email: 'dbyrd1568@gmail.com',
     avatarColor: '#10b981',
     provider: 'google',
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
-  };
+  });
+  console.assert(isJwtAdmin === true, 'User with cryptographically signed JWT app_metadata.role=admin must be admin');
 
-  const isDbyrdAdmin = await checkIsAdmin(dbyrdGoogleUser);
-  console.assert(isDbyrdAdmin === true, 'dbyrd1568@gmail.com must have permanent super admin permissions');
+  // Test Cryptographic rejection when JWT has no admin role
+  (supabase.auth as any).getSession = async () => ({
+    data: {
+      session: {
+        user: {
+          id: 'usr_normal_user_002',
+          email: 'normal@gmail.com',
+          app_metadata: { role: 'authenticated' },
+        },
+      },
+    },
+  });
 
-  const isDevonAdmin = await checkIsAdmin(devonUser);
-  console.assert(isDevonAdmin === false, 'devonbyrd@gmail.com without grant must NOT be admin');
+  const isNonAdminJwt = await checkIsAdmin({
+    id: 'usr_normal_user_002',
+    name: 'Normal User',
+    email: 'normal@gmail.com',
+    avatarColor: '#3b82f6',
+    provider: 'google',
+    createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(),
+  });
+  console.assert(isNonAdminJwt === false, 'User without admin JWT claim must be rejected');
 
-  const isGuestAdmin = await checkIsAdmin(guestUser);
-  console.assert(isGuestAdmin === false, 'Guest user without whitelist must NOT be admin');
-
-  const isNullAdmin = await checkIsAdmin(null);
-  console.assert(isNullAdmin === false, 'Null user must NOT be admin');
-  console.log('✓ Admin authorization check correctly protects restricted areas and recognizes dbyrd1568@gmail.com.\n');
+  // Restore original getSession
+  (supabase.auth as any).getSession = originalGetSession;
+  console.log('✓ Cryptographic JWT claim and database verification correctly protects admin routes.\n');
 
   // Test 2: Admin Whitelist Grant & Revoke
   console.log('2. Testing Admin Whitelist Grant & Revoke...');
-  const grantRes = await grantAdminAccess('trusted_coadmin@mtg.com', dbyrdGoogleUser.id);
+  const grantRes = await grantAdminAccess('trusted_coadmin@mtg.com', defaultDevUser.id);
   console.assert(grantRes.success === true, 'Granting admin to new email must succeed');
 
   const adminListAfterGrant = await fetchAdminList();
@@ -113,9 +163,9 @@ async function runAdminVerification() {
 
   // Test 3: Telemetry & Event Tracking
   console.log('3. Testing Telemetry & Feature Tracking...');
-  trackFeature(KNOWN_FEATURES.CARD_GRADING, { set: 'DFT', card: 'Kaito', grade: 'A' }, dbyrdGoogleUser);
-  trackFeature(KNOWN_FEATURES.CARD_QUIZ, { set: 'DFT', score: 10, total: 10 }, dbyrdGoogleUser);
-  trackFeature(KNOWN_FEATURES.BLIND_GRADING, { set: 'DFT', enabled: true }, dbyrdGoogleUser);
+  trackFeature(KNOWN_FEATURES.CARD_GRADING, { set: 'DFT', card: 'Kaito', grade: 'A' }, defaultDevUser);
+  trackFeature(KNOWN_FEATURES.CARD_QUIZ, { set: 'DFT', score: 10, total: 10 }, defaultDevUser);
+  trackFeature(KNOWN_FEATURES.BLIND_GRADING, { set: 'DFT', enabled: true }, defaultDevUser);
 
   const logs = await fetchActivityLogs('all');
   console.assert(logs.length > 0, 'Activity logs should contain tracked events');
