@@ -1461,6 +1461,8 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           isOpen={Boolean(similarCardsModalCard)}
           onClose={() => setSimilarCardsModalCard(null)}
           targetCard={similarCardsModalCard}
+          allCards={filteredAndSortedCards}
+          onSelectTargetCard={(card) => setSimilarCardsModalCard(card)}
           currentGrade={userEvaluations[`${similarCardsModalCard.set.toLowerCase()}_${similarCardsModalCard.name.toLowerCase()}`]?.userGrade}
           target17LandsData={
             (() => {

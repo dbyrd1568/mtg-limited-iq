@@ -1996,6 +1996,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           isOpen={Boolean(similarCardsModalCard)}
           onClose={() => setSimilarCardsModalCard(null)}
           targetCard={similarCardsModalCard}
+          allCards={filteredCards}
+          onSelectTargetCard={(card) => setSimilarCardsModalCard(card)}
           currentGrade={userEvaluations[`${similarCardsModalCard.set.toLowerCase()}_${similarCardsModalCard.name.toLowerCase()}`]?.userGrade}
           target17LandsData={
             (() => {

@@ -577,6 +577,12 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
           isOpen={isSimilarModalOpen}
           onClose={() => setIsSimilarModalOpen(false)}
           targetCard={currentCard}
+          allCards={orderedCards}
+          onSelectTargetCard={onSelectCard}
+          onNavigatePrev={handlePrev}
+          onNavigateNext={handleNext}
+          hasPrev={currentIndex > 0}
+          hasNext={currentIndex < orderedCards.length - 1}
           currentGrade={currentEval?.userGrade}
           target17LandsData={
             landData

@@ -1,25 +1,32 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, GradeTier } from '../../types/mtg';
 import { findSimilarCards, CardSimilarityResult, SimilarCardMatch } from '../../services/cardSimilarity';
 import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
-import { X, Scale, Check, PlayingCardsFan, HelpCircle, Loader2, ExternalLink, GitCompare } from 'lucide-react';
+import { X, Scale, Check, PlayingCardsFan, HelpCircle, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface CardPerformanceMetrics {
   winRate?: number;
   alsa?: number;
   tierGrade?: GradeTier;
+  iwd?: number;
 }
 
-interface SimilarCardsModalProps {
+export interface SimilarCardsModalProps {
   isOpen: boolean;
   onClose: () => void;
   targetCard: Card | null;
   currentGrade?: GradeTier;
   target17LandsData?: CardPerformanceMetrics;
   onAdoptGrade?: (card: Card, grade: GradeTier) => void;
+  allCards?: Card[];
+  onSelectTargetCard?: (card: Card) => void;
+  onNavigatePrev?: () => void;
+  onNavigateNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
 export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
@@ -29,6 +36,12 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   currentGrade,
   target17LandsData,
   onAdoptGrade,
+  allCards,
+  onSelectTargetCard,
+  onNavigatePrev,
+  onNavigateNext,
+  hasPrev,
+  hasNext,
 }) => {
   const [data, setData] = useState<CardSimilarityResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -47,16 +60,69 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
           winRate: r.win_rate,
           alsa: r.avg_seen,
           tierGrade: (r.tier_grade as GradeTier) || winRateToGradeTier(r.win_rate),
+          iwd: r.iwd,
         };
       }
     }
     return undefined;
   }, [targetCard, target17LandsData]);
 
+  // Compute rich 17lands telemetry for the inspected comparable card
+  const precedent17L = useMemo(() => {
+    if (!inspectCardMatch) return null;
+    const r = getOrEstimate17LandsCardRating(inspectCardMatch.card);
+    const winRate = inspectCardMatch.winRate ?? r?.win_rate;
+    const alsa = inspectCardMatch.alsa ?? r?.avg_seen;
+    const tierGrade = (inspectCardMatch.tierGrade || (r?.tier_grade as GradeTier) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : 'C')) as GradeTier;
+    const iwd = r?.iwd;
+    return { winRate, alsa, tierGrade, iwd };
+  }, [inspectCardMatch]);
+
+  const precedentTier: GradeTier = precedent17L?.tierGrade || 'C';
+
+  // Card sequence navigation calculation
+  const currentCardIndex = useMemo(() => {
+    if (!targetCard || !allCards || allCards.length === 0) return -1;
+    return allCards.findIndex((c) => c.id === targetCard.id || (c.name === targetCard.name && c.set === targetCard.set));
+  }, [targetCard, allCards]);
+
+  const canNavigatePrev = typeof hasPrev === 'boolean'
+    ? hasPrev
+    : Boolean(onNavigatePrev || (onSelectTargetCard && currentCardIndex > 0));
+
+  const canNavigateNext = typeof hasNext === 'boolean'
+    ? hasNext
+    : Boolean(onNavigateNext || (onSelectTargetCard && currentCardIndex >= 0 && currentCardIndex < allCards!.length - 1));
+
+  const handlePrevCard = useCallback(() => {
+    if (onNavigatePrev) {
+      onNavigatePrev();
+    } else if (onSelectTargetCard && allCards && currentCardIndex > 0) {
+      onSelectTargetCard(allCards[currentCardIndex - 1]);
+    }
+  }, [onNavigatePrev, onSelectTargetCard, allCards, currentCardIndex]);
+
+  const handleNextCard = useCallback(() => {
+    if (onNavigateNext) {
+      onNavigateNext();
+    } else if (onSelectTargetCard && allCards && currentCardIndex >= 0 && currentCardIndex < allCards.length - 1) {
+      onSelectTargetCard(allCards[currentCardIndex + 1]);
+    }
+  }, [onNavigateNext, onSelectTargetCard, allCards, currentCardIndex]);
+
+  const cardCounterLabel = useMemo(() => {
+    if (currentCardIndex >= 0 && allCards && allCards.length > 0) {
+      return `${currentCardIndex + 1} / ${allCards.length}`;
+    }
+    return null;
+  }, [currentCardIndex, allCards]);
+
   // Fetch comps on open or target change
   useEffect(() => {
     if (isOpen && targetCard) {
       setLoading(true);
+      setInspectCardMatch(null);
+      setAdoptedSourceId(null);
       findSimilarCards(targetCard)
         .then((result) => {
           setData(result);
@@ -75,8 +141,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     }
   }, [isOpen, targetCard]);
 
-  // Keyboard close on Esc
+  // Keyboard navigation (Esc to close, ArrowLeft / ArrowRight to step through cards)
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (inspectCardMatch) {
@@ -84,13 +152,25 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         } else {
           onClose();
         }
+        return;
+      }
+
+      // Do not navigate cards if typing in an input/textarea or currently inspecting a comp detail submodal
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || inspectCardMatch) return;
+
+      if ((e.key === 'ArrowLeft' || e.key === '[') && canNavigatePrev) {
+        e.preventDefault();
+        handlePrevCard();
+      } else if ((e.key === 'ArrowRight' || e.key === ']') && canNavigateNext) {
+        e.preventDefault();
+        handleNextCard();
       }
     };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isOpen, inspectCardMatch, onClose]);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, inspectCardMatch, onClose, canNavigatePrev, canNavigateNext, handlePrevCard, handleNextCard]);
 
   if (!isOpen || !targetCard) return null;
 
@@ -453,6 +533,49 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         );
                       })}
                     </div>
+
+                    {/* Next / Prev Card Navigation Controls */}
+                    {(canNavigatePrev || canNavigateNext) && (
+                      <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={handlePrevCard}
+                            disabled={!canNavigatePrev}
+                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                              canNavigatePrev
+                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 active:scale-[0.98]'
+                                : 'opacity-30 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
+                            }`}
+                            title="Previous Card (← Arrow key or [)"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
+                            <span>Prev</span>
+                          </button>
+
+                          {cardCounterLabel && (
+                            <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 px-1 whitespace-nowrap" title="Card position in set">
+                              {cardCounterLabel}
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={handleNextCard}
+                            disabled={!canNavigateNext}
+                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                              canNavigateNext
+                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 active:scale-[0.98]'
+                                : 'opacity-30 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
+                            }`}
+                            title="Next Card (→ Arrow key or ])"
+                          >
+                            <span>Next</span>
+                            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -817,10 +940,23 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
                     {/* 17Lands Record Box */}
                     <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2 font-mono">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-                          17Lands Record
-                        </span>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        {effectiveTarget17L?.winRate !== undefined ? (
+                          <a
+                            href={get17LandsCardUrl(targetCard.set, targetCard)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 hover:underline flex items-center gap-1 group/l17"
+                            title={`Open ${targetCard.name} (${targetCard.set.toUpperCase()}) on 17lands.com`}
+                          >
+                            <span>17Lands Record</span>
+                            <ExternalLink className="w-3 h-3 text-emerald-600 dark:text-emerald-400 group-hover/l17:translate-x-0.5 transition-transform" />
+                          </a>
+                        ) : (
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                            17Lands Record
+                          </span>
+                        )}
                         {effectiveTarget17L?.tierGrade ? (
                           <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-emerald-600 text-white shadow-2xs">
                             Tier {effectiveTarget17L.tierGrade}
@@ -836,7 +972,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1">
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 block text-[10px]">GIH WR</span>
                           <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
@@ -853,6 +989,14 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                               : 'Pending'}
                           </span>
                         </div>
+                        {effectiveTarget17L?.iwd !== undefined && (
+                          <div>
+                            <span className="text-slate-500 dark:text-slate-400 block text-[10px]">IWD</span>
+                            <span className={`font-bold text-sm ${effectiveTarget17L.iwd >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-400'}`}>
+                              {effectiveTarget17L.iwd >= 0 ? '+' : ''}{(effectiveTarget17L.iwd * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -863,6 +1007,26 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       </span>
                       <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line text-sm shadow-2xs">
                         {targetCard.oracle_text || 'No oracle rules text.'}
+                      </div>
+                    </div>
+
+                    {/* Card Keywords & Mechanics (mirrors Similarity Rationale on the right) */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+                        Card Mechanics & Keywords
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {targetCard.keywords && targetCard.keywords.length > 0 ? (
+                          targetCard.keywords.map((kw, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-cyan-300 font-mono text-[10px] border border-violet-200 dark:border-violet-800/60 font-semibold">
+                              {kw}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 text-[11px] font-mono italic">
+                            Core Limited spell / creature without evergreen keyword mechanics
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -883,7 +1047,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
                         {/* Links */}
                         <div className="flex items-center gap-3">
-                          {target17LandsData?.winRate !== undefined && (
+                          {effectiveTarget17L?.winRate !== undefined && (
                             <a
                               href={get17LandsCardUrl(targetCard.set, targetCard)}
                               target="_blank"
@@ -910,7 +1074,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                 </div>
               </div>
 
-              {/* Right Column: Similar Precedent Card */}
+              {/* Right Column: Similar Precedent Card (Symmetric to Left Column) */}
               <div className="space-y-4 pt-6 lg:pt-0 lg:pl-6">
                 <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
                   <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-emerald-200 dark:border-emerald-800/60">
@@ -935,58 +1099,39 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       showSublabel={false}
                     />
 
-                    {/* 17Lands Metrics Card under card */}
-                    <div className="w-full p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2 font-mono">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <a
-                          href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 hover:underline flex items-center gap-1 group/l17"
-                          title={`Open ${inspectCardMatch.card.name} (${inspectCardMatch.card.set.toUpperCase()}) on 17lands.com`}
-                        >
-                          <span>17Lands Record</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 dark:text-emerald-400 group-hover/l17:translate-x-0.5 transition-transform" />
-                        </a>
-                        <a
-                          href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-emerald-600 text-white shadow-2xs hover:bg-emerald-500 transition-colors"
-                          title={`Open ${inspectCardMatch.card.name} on 17lands.com`}
-                        >
-                          Tier {inspectCardMatch.tierGrade || (typeof inspectCardMatch.winRate === 'number' ? winRateToGradeTier(inspectCardMatch.winRate) : 'C')}
-                        </a>
+                    {/* Precedent Benchmark Panel: Perfectly balancing "Your Rating" on the left */}
+                    <div className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 space-y-2 shadow-2xs font-mono">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Precedent Benchmark
+                        </span>
+                        <span className="text-[11px] font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                          Tier {precedentTier}
+                        </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                        <div>
-                          <span className="text-slate-500 dark:text-slate-400 block text-[10px]">GIH WR</span>
-                          <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
-                            {inspectCardMatch.winRate !== undefined ? `${(inspectCardMatch.winRate * 100).toFixed(1)}%` : '-'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 dark:text-slate-400 block text-[10px]">ALSA</span>
-                          <span className="text-slate-700 dark:text-slate-200 font-bold text-sm">
-                            {inspectCardMatch.alsa !== undefined ? inspectCardMatch.alsa.toFixed(2) : '-'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {inspectCardMatch.tierGrade && onAdoptGrade && (
+                      {/* Prominent Action Button to Adopt Precedent Grade */}
+                      {onAdoptGrade ? (
                         <button
                           type="button"
-                          onClick={() => handleAdopt(inspectCardMatch.tierGrade!, inspectCardMatch.card.id)}
-                          className={`w-full py-1.5 px-2.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer border shadow-2xs ${
+                          onClick={() => handleAdopt(precedentTier, inspectCardMatch.card.id)}
+                          className={`w-full py-1.5 px-3 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 cursor-pointer border shadow-2xs ${
                             adoptedSourceId === inspectCardMatch.card.id
-                              ? 'bg-emerald-600 text-white border-emerald-500'
-                              : 'bg-slate-900 dark:bg-slate-800 hover:bg-violet-700 dark:hover:bg-violet-600 text-white border-slate-700 hover:border-violet-400'
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-md'
+                              : 'bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white border-emerald-500 shadow-xs'
                           }`}
                         >
                           <Check className="w-3.5 h-3.5" />
-                          <span>{adoptedSourceId === inspectCardMatch.card.id ? `Used Grade (${inspectCardMatch.tierGrade})` : `Use Grade (${inspectCardMatch.tierGrade})`}</span>
+                          <span>
+                            {adoptedSourceId === inspectCardMatch.card.id
+                              ? `Used Grade (${precedentTier})`
+                              : `Use Precedent Grade (${precedentTier})`}
+                          </span>
                         </button>
+                      ) : (
+                        <div className="text-[11px] text-slate-400 text-center py-1">
+                          Historical reference baseline
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1002,7 +1147,53 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       </p>
                     </div>
 
-                    {/* Rules Text */}
+                    {/* 17Lands Record Box - Symmetrically placed matching left side */}
+                    <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2 font-mono">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <a
+                          href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 hover:underline flex items-center gap-1 group/l17"
+                          title={`Open ${inspectCardMatch.card.name} (${inspectCardMatch.card.set.toUpperCase()}) on 17lands.com`}
+                        >
+                          <span>17Lands Record</span>
+                          <ExternalLink className="w-3 h-3 text-emerald-600 dark:text-emerald-400 group-hover/l17:translate-x-0.5 transition-transform" />
+                        </a>
+                        <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-emerald-600 text-white shadow-2xs">
+                          Tier {precedentTier}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1">
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400 block text-[10px]">GIH WR</span>
+                          <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+                            {precedent17L?.winRate !== undefined
+                              ? `${(precedent17L.winRate * 100).toFixed(1)}%`
+                              : '-'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400 block text-[10px]">ALSA</span>
+                          <span className="text-slate-700 dark:text-slate-200 font-bold text-sm">
+                            {precedent17L?.alsa !== undefined
+                              ? precedent17L.alsa.toFixed(2)
+                              : '-'}
+                          </span>
+                        </div>
+                        {precedent17L?.iwd !== undefined && (
+                          <div>
+                            <span className="text-slate-500 dark:text-slate-400 block text-[10px]">IWD</span>
+                            <span className={`font-bold text-sm ${precedent17L.iwd >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-400'}`}>
+                              {precedent17L.iwd >= 0 ? '+' : ''}{(precedent17L.iwd * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Oracle Rules Text */}
                     <div className="space-y-1">
                       <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
                         Oracle Rules Text
@@ -1015,28 +1206,54 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     {/* Match rationale */}
                     <div className="space-y-1">
                       <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                        Similarity Rationale ({inspectCardMatch.similarityScore === 100 ? '100% reprint' : `${inspectCardMatch.similarityScore}% match`} to {targetCard.name})
+                        Similarity Rationale ({inspectCardMatch.similarityScore === 100 ? '100% Reprint' : `${inspectCardMatch.similarityScore}% Match`} to {targetCard.name})
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {inspectCardMatch.matchReasons.map((r, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[10px] border border-slate-200 dark:border-slate-700">
+                          <span key={i} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[10px] border border-slate-200 dark:border-slate-700 font-semibold">
                             {r}
                           </span>
                         ))}
                       </div>
                     </div>
 
-                    {/* Links */}
-                    <div className="flex items-center gap-3 pt-2 flex-wrap">
-                      <a
-                        href={inspectCardMatch.card.scryfall_uri || `https://scryfall.com/search?q=%21%22${encodeURIComponent(inspectCardMatch.card.name)}%22`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-violet-600 dark:text-cyan-400 hover:underline font-mono text-xs font-semibold"
-                      >
-                        <span>View on Scryfall</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                    {/* Precedent Specs & Links - Symmetrically matching left side */}
+                    <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[10px] border border-slate-200 dark:border-slate-700">
+                            Set: {inspectCardMatch.card.set.toUpperCase()}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[10px] border border-slate-200 dark:border-slate-700">
+                            CMC: {inspectCardMatch.card.cmc ?? 0}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono text-[10px] border border-slate-200 dark:border-slate-700 capitalize">
+                            {inspectCardMatch.card.rarity}
+                          </span>
+                        </div>
+
+                        {/* Links */}
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 hover:underline font-mono text-xs font-semibold"
+                          >
+                            <span>View on 17Lands</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <a
+                            href={inspectCardMatch.card.scryfall_uri || `https://scryfall.com/search?q=%21%22${encodeURIComponent(inspectCardMatch.card.name)}%22`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-violet-600 dark:text-cyan-400 hover:underline font-mono text-xs font-semibold"
+                          >
+                            <span>View on Scryfall</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

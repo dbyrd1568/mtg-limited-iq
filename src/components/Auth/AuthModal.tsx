@@ -97,6 +97,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setIsEditingProfile(false);
       if (isCloudUser) {
         setActiveTab('profile');
+        if (currentUser?.id && isCloudUUID(currentUser.id)) {
+          retrySync(currentUser.id).catch(() => {});
+        }
       } else {
         setActiveTab('oauth');
       }
@@ -252,7 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </h2>
               <p className="text-xs text-slate-600 dark:text-slate-400">
                 {isCloudUser
-                  ? 'Manage user profile and sync settings'
+                  ? 'Manage user profile and account settings'
                   : 'Sign in with your account to sync progress'}
               </p>
             </div>
@@ -435,18 +438,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             ) : null}
 
-            <div className="space-y-2">
-              {isCloudUser && (
-                <button
-                  onClick={handleSyncLocalData}
-                  disabled={isLoading}
-                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-[#050818] hover:bg-slate-200 dark:hover:bg-[#0c1236] border border-slate-300 dark:border-slate-800 hover:border-violet-500 dark:hover:border-cyan-500/40 text-xs font-semibold text-violet-700 dark:text-cyan-300 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span>Upload & Sync All Local History to Cloud</span>
-                </button>
-              )}
-
+            <div className="pt-1">
               <button
                 onClick={handleSignOut}
                 disabled={isLoading}
