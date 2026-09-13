@@ -817,10 +817,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] w-[96vw] bg-white dark:bg-[#0b1029] border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+            className="w-[96vw] max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
           >
             {/* Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#070b1e]">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#060a1d]">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800/60 flex items-center justify-center text-violet-600 dark:text-cyan-400 shrink-0">
                   <GitCompare className="w-5 h-5" />
@@ -854,10 +854,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
             </div>
 
             {/* Body: 2-Column Side-by-Side Comparison */}
-            <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-start divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-slate-800">
+            <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 items-start">
               
               {/* Left Column: Reference Target Card */}
-              <div className="space-y-4">
+              <div className="space-y-4 pb-6 lg:pb-0 lg:pr-6 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
                   <span className="px-2.5 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-violet-200 dark:border-violet-800/60">
                     Reference Card (Target)
@@ -1047,17 +1047,15 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
                         {/* Links */}
                         <div className="flex items-center gap-3">
-                          {effectiveTarget17L?.winRate !== undefined && (
-                            <a
-                              href={get17LandsCardUrl(targetCard.set, targetCard)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 hover:underline font-mono text-xs font-semibold"
-                            >
-                              <span>View on 17Lands</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
+                          <a
+                            href={get17LandsCardUrl(targetCard.set, targetCard)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 hover:underline font-mono text-xs font-semibold"
+                          >
+                            <span>View on 17Lands</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
                           <a
                             href={targetCard.scryfall_uri || `https://scryfall.com/search?q=%21%22${encodeURIComponent(targetCard.name)}%22`}
                             target="_blank"
