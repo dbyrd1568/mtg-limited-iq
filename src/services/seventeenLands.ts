@@ -374,6 +374,7 @@ const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLan
     'Dina, Soul Steeper': { win_rate: 0.591, avg_seen: 2.5, iwd: 0.045, tier_grade: 'A-', seen_count: 2700, game_count: 7600 },
     'Quandrix Apprentice': { win_rate: 0.588, avg_seen: 2.8, iwd: 0.042, tier_grade: 'A-', seen_count: 3300, game_count: 8100 },
     'Professor Onyx': { win_rate: 0.648, avg_seen: 1.1, iwd: 0.082, tier_grade: 'A+', seen_count: 1100, game_count: 4500 },
+    'Campus Guide': { win_rate: 0.536, avg_seen: 6.9, iwd: 0.001, tier_grade: 'C+', seen_count: 155000, game_count: 46000, card_id: 76540 },
   },
   'BLB': {
     'Heartfire Hero': { win_rate: 0.589, avg_seen: 3.1, iwd: 0.042, tier_grade: 'A-', seen_count: 3200, game_count: 8500 },
@@ -383,6 +384,7 @@ const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLan
     'Seedgale Foster': { win_rate: 0.518, avg_seen: 7.2, iwd: -0.012, tier_grade: 'C', seen_count: 5400, game_count: 6100 },
     'Shore Up': { win_rate: 0.548, avg_seen: 5.6, iwd: 0.015, tier_grade: 'C+', seen_count: 4800, game_count: 6700 },
     'Gev, Scaled Scorch': { win_rate: 0.598, avg_seen: 2.1, iwd: 0.048, tier_grade: 'A-', seen_count: 1900, game_count: 5400 },
+    'Lifecreed Duo': { win_rate: 0.578, avg_seen: 4.1, iwd: 0.034, tier_grade: 'B+', seen_count: 120000, game_count: 85000, card_id: 91612 },
     'Agate Blade Assassin': { win_rate: 0.552, avg_seen: 4.5, iwd: 0.018, tier_grade: 'B-', seen_count: 4200, game_count: 7000 },
     'Baker\'s Bane Beastie': { win_rate: 0.534, avg_seen: 6.2, iwd: 0.005, tier_grade: 'C+', seen_count: 4900, game_count: 6400 },
     'Bonebind Orator': { win_rate: 0.562, avg_seen: 4.1, iwd: 0.024, tier_grade: 'B', seen_count: 4500, game_count: 7200 },
@@ -472,6 +474,7 @@ const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLan
   'FDN': {
     'Ambush Wolf': { win_rate: 0.554, avg_seen: 5.2, iwd: 0.014, tier_grade: 'B-', seen_count: 75000, game_count: 55000 },
     'Hero\'s Downfall': { win_rate: 0.592, avg_seen: 2.8, iwd: 0.044, tier_grade: 'A-', seen_count: 80000, game_count: 62000 },
+    'Campus Guide': { win_rate: 0.538, avg_seen: 6.8, iwd: 0.002, tier_grade: 'C+', seen_count: 160000, game_count: 48000, card_id: 93820 },
   },
   'SNC': {
     'Inspiring Overseer': { win_rate: 0.638, avg_seen: 2.2, iwd: 0.076, tier_grade: 'A+', seen_count: 220000, game_count: 180000 },
@@ -489,6 +492,7 @@ const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLan
   'TDM': {
     'Sage of the Fang': { win_rate: 0.568, avg_seen: 4.5, iwd: 0.021, tier_grade: 'B', seen_count: 65000, game_count: 48000 },
     'Hero in Training': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.015, tier_grade: 'B-', seen_count: 62000, game_count: 45000 },
+    'Embermouth Sentinel': { win_rate: 0.541, avg_seen: 6.4, iwd: 0.005, tier_grade: 'C+', seen_count: 175000, game_count: 51000, card_id: 98150 },
   },
   'WOE': {
     'Candy Trail': { win_rate: 0.5518, avg_seen: 6.48, iwd: 0.0137, tier_grade: 'B-', seen_count: 412563, game_count: 123535, card_id: 86975 },
@@ -503,6 +507,9 @@ const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLan
   'ECL': {
     'Flamekin Gildweaver': { win_rate: 0.542, avg_seen: 6.2, iwd: 0.004, tier_grade: 'C+', seen_count: 165000, game_count: 42000, card_id: 101420 },
     'Dawn\'s Light Archer': { win_rate: 0.545, avg_seen: 5.9, iwd: 0.008, tier_grade: 'B-', seen_count: 172000, game_count: 46000, card_id: 101512 },
+  },
+  'MSH': {
+    'Yellowjacket, Heartless Marauder': { win_rate: 0.564, avg_seen: 4.8, iwd: 0.021, tier_grade: 'B', seen_count: 110000, game_count: 42000, card_id: 102140 },
   },
 };
 

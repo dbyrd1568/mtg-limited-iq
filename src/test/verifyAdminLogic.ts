@@ -50,15 +50,28 @@ async function runAdminVerification() {
     lastLoginAt: new Date().toISOString(),
   };
 
+  const dbyrdGoogleUser: UserAccount = {
+    id: 'usr_google_dbyrd1568',
+    name: 'Devon Byrd',
+    email: 'dbyrd1568@gmail.com',
+    avatarColor: '#10b981',
+    provider: 'google',
+    createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(),
+  };
+
   const isDevAdmin = await checkIsAdmin(devUser);
   console.assert(isDevAdmin === true, 'Devon/user_default must have admin permissions');
+
+  const isDbyrdAdmin = await checkIsAdmin(dbyrdGoogleUser);
+  console.assert(isDbyrdAdmin === true, 'dbyrd1568@gmail.com must have permanent super admin permissions');
 
   const isGuestAdmin = await checkIsAdmin(guestUser);
   console.assert(isGuestAdmin === false, 'Guest user without whitelist must NOT be admin');
 
   const isNullAdmin = await checkIsAdmin(null);
   console.assert(isNullAdmin === false, 'Null user must NOT be admin');
-  console.log('✓ Admin authorization check correctly protects restricted areas.\n');
+  console.log('✓ Admin authorization check correctly protects restricted areas and recognizes dbyrd1568@gmail.com.\n');
 
   // Test 2: Admin Whitelist Grant & Revoke
   console.log('2. Testing Admin Whitelist Grant & Revoke...');

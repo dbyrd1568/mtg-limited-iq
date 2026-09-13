@@ -530,17 +530,9 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                     {match.winRate !== undefined && (
                                       <div>
                                         <span className="text-slate-500 dark:text-slate-400 block text-[9px] uppercase">GIH WR</span>
-                                        <a
-                                          href={get17LandsCardUrl(comp.set, comp)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:underline inline-flex items-center gap-0.5"
-                                          title={`View GIH win rate for ${comp.name} on 17lands.com`}
-                                        >
-                                          <span>{(match.winRate * 100).toFixed(1)}%</span>
-                                          <ExternalLink className="w-2 h-2" />
-                                        </a>
+                                        <span className="text-emerald-700 dark:text-emerald-300 font-bold text-xs">
+                                          {(match.winRate * 100).toFixed(1)}%
+                                        </span>
                                       </div>
                                     )}
                                     {match.alsa !== undefined && (
@@ -553,18 +545,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                     )}
                                   </div>
                                 )}
-
-                                <a
-                                  href={get17LandsCardUrl(comp.set, comp)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-full py-1 px-2 rounded-lg text-[10px] font-bold font-mono text-center flex items-center justify-center gap-1 text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 border border-emerald-300 dark:border-emerald-700/80 transition-colors shadow-2xs"
-                                  title={`Open ${comp.name} (${comp.set.toUpperCase()}) on 17lands.com`}
-                                >
-                                  <span>View on 17Lands</span>
-                                  <ExternalLink className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                                </a>
                               </div>
 
                               {/* Use Grade button directly below card */}
@@ -614,7 +594,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                               {/* Match percentage & reasons */}
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-500/20 dark:text-cyan-300 font-mono text-xs font-bold border border-cyan-200 dark:border-cyan-500/40">
-                                  {match.similarityScore}% Match
+                                  {match.similarityScore === 100 ? '100% (Reprint)' : `${match.similarityScore}% Match`}
                                 </span>
                                 {match.matchReasons.map((r, i) => (
                                   <span key={i} className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-mono text-xs border border-slate-200/60 dark:border-slate-700/60">
@@ -674,16 +654,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
                                   <div className="flex items-center gap-3 font-mono text-xs ml-auto">
                                     <a
-                                      href={get17LandsCardUrl(comp.set, comp)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
-                                    >
-                                      <span>17Lands</span>
-                                      <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                    <a
                                       href={comp.scryfall_uri || `https://scryfall.com/search?q=%21%22${encodeURIComponent(comp.name)}%22`}
                                       target="_blank"
                                       rel="noopener noreferrer"
@@ -736,7 +706,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       {targetCard.name} vs. {inspectCardMatch.card.name}
                     </h3>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 shrink-0">
-                      {inspectCardMatch.similarityScore}% Match
+                      {inspectCardMatch.similarityScore === 100 ? '100% (Reprint)' : `${inspectCardMatch.similarityScore}% Match`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
@@ -942,7 +912,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
               <div className="space-y-4 pt-6 lg:pt-0 lg:pl-6">
                 <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
                   <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-emerald-200 dark:border-emerald-800/60">
-                    Similar Precedent ({inspectCardMatch.similarityScore}% Match)
+                    Similar Precedent ({inspectCardMatch.similarityScore === 100 ? '100% Reprint' : `${inspectCardMatch.similarityScore}% Match`})
                   </span>
                   <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
                     <SetSymbol setCode={inspectCardMatch.card.set} size="xs" />
@@ -990,16 +960,9 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 block text-[10px]">GIH WR</span>
-                          <a
-                            href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-emerald-700 dark:text-emerald-300 font-bold text-sm hover:underline inline-flex items-center gap-1"
-                            title={`Open ${inspectCardMatch.card.name} on 17lands.com`}
-                          >
-                            <span>{inspectCardMatch.winRate !== undefined ? `${(inspectCardMatch.winRate * 100).toFixed(1)}%` : '-'}</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
+                          <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+                            {inspectCardMatch.winRate !== undefined ? `${(inspectCardMatch.winRate * 100).toFixed(1)}%` : '-'}
+                          </span>
                         </div>
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 block text-[10px]">ALSA</span>
@@ -1008,17 +971,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           </span>
                         </div>
                       </div>
-
-                      <a
-                        href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-1.5 px-2.5 rounded-xl text-xs font-bold font-mono text-center flex items-center justify-center gap-1.5 text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:hover:bg-emerald-800/80 border border-emerald-300 dark:border-emerald-700/80 transition-colors shadow-2xs"
-                        title={`Open ${inspectCardMatch.card.name} (${inspectCardMatch.card.set.toUpperCase()}) on 17lands.com`}
-                      >
-                        <span>View on 17Lands</span>
-                        <ExternalLink className="w-3 h-3 text-emerald-600 dark:text-emerald-300" />
-                      </a>
 
                       {inspectCardMatch.tierGrade && onAdoptGrade && (
                         <button
@@ -1061,7 +1013,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     {/* Match rationale */}
                     <div className="space-y-1">
                       <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                        Similarity Rationale ({inspectCardMatch.similarityScore}% match to {targetCard.name})
+                        Similarity Rationale ({inspectCardMatch.similarityScore === 100 ? '100% reprint' : `${inspectCardMatch.similarityScore}% match`} to {targetCard.name})
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {inspectCardMatch.matchReasons.map((r, i) => (
@@ -1074,16 +1026,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
                     {/* Links */}
                     <div className="flex items-center gap-3 pt-2 flex-wrap">
-                      <a
-                        href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/80 font-mono text-xs font-bold transition-all shadow-2xs"
-                        title={`Open ${inspectCardMatch.card.name} on 17lands.com`}
-                      >
-                        <span>View on 17Lands.com</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
                       <a
                         href={inspectCardMatch.card.scryfall_uri || `https://scryfall.com/search?q=%21%22${encodeURIComponent(inspectCardMatch.card.name)}%22`}
                         target="_blank"

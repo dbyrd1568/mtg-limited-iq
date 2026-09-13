@@ -307,6 +307,26 @@ export function extractCardFeatures(card: Card) {
       actionSubtypes.add('flash_reach_ambush');
     }
 
+    // Land tutor to top of library (e.g., Old Thrush, Campus Guide, Embermouth Sentinel)
+    const isLandTutorTop = /search your library for a (basic )?land.*put that card on top/i.test(oracle);
+    if (isLandTutorTop) {
+      actionSubtypes.add('land_tutor_top');
+      valueRiders.add('ramp');
+      detectedCategories.add('ramp');
+    }
+
+    // Low-CMC evasive lifegain synergy (e.g., Old Thrush, Lifecreed Duo, Yellowjacket, Heartless Marauder)
+    const hasFlying = (card.keywords || []).some(k => /flying/i.test(k)) || oracle.includes('flying');
+    const hasEtbLifeTrigger = (
+      (/when .* enters/i.test(oracle) && /gain \d+ life|lifelink/i.test(oracle)) ||
+      (/whenever another .* enters/i.test(oracle) && (/gain \d+ life|lifelink/i.test(oracle)))
+    );
+    if (hasFlying && hasEtbLifeTrigger && (card.cmc || 0) <= 2) {
+      actionSubtypes.add('flying_lifegain_evasion');
+      detectedCategories.add('evasion');
+      detectedCategories.add('synergy');
+    }
+
     if (/deals combat damage to a player/i.test(oracle)) actionSubtypes.add('saboteur');
     if (/when .* dies/i.test(oracle)) actionSubtypes.add('death_trigger');
 
@@ -581,6 +601,14 @@ function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCar
     queries.push(`${baseFilter} ${excludeSelf} t:creature cmc>=${minCmc} cmc<=${maxCmc} (o:flash o:reach)`);
     queries.push(`${baseFilter} ${excludeSelf} t:creature (o:flash o:reach)`);
   }
+  if (features.actionSubtypes.has('land_tutor_top')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature cmc>=${minCmc} cmc<=${maxCmc} (o:"search your library" o:"land" o:"on top")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"search your library" o:"land" o:"on top")`);
+  }
+  if (features.actionSubtypes.has('flying_lifegain_evasion')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature cmc=${features.cmc} pow=${features.power} tou=${features.toughness} o:flying (o:"gain" or o:lifelink)`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature cmc>=${minCmc} cmc<=${maxCmc} o:flying (o:"gain" or o:lifelink)`);
+  }
   if (features.valueRiders.has('proliferate')) {
     queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} o:proliferate`);
   }
@@ -716,22 +744,136 @@ function tokenizeOracleText(text: string, cardName: string): Set<string> {
 }
 
 /**
+ * Normalizes oracle text for checking exact functional reprints.
+ * Removes reminder text (in parentheses), replaces card's own name with '~',
+ * normalizes whitespace, and lowercases.
+ */
+export function normalizeOracleForReprintCheck(text: string, cardName: string): string {
+  if (!text) return '';
+  // Remove reminder text
+  let cleaned = text.replace(/\([^)]*\)/g, '');
+  // Normalize self-referential card name
+  if (cardName) {
+    const escaped = cardName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '~');
+  }
+  // Normalize whitespace and punctuation
+  return cleaned
+    .toLowerCase()
+    .replace(/[.,:;!'"\u2019\u2018]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Checks if candidate is an actual direct reprint of target (same card name across sets).
+ */
+export function isActualReprint(target: Card, candidate: Card): boolean {
+  const targetName = (target.name || '').trim().toLowerCase();
+  const candName = (candidate.name || '').trim().toLowerCase();
+  return Boolean(targetName && candName && targetName === candName);
+}
+
+/**
+ * Checks if candidate is an exact functional reprint of target (different name,
+ * but identical cost, stats, types, keywords, and oracle text).
+ */
+export function isExactFunctionalReprint(target: Card, candidate: Card): boolean {
+  if (isActualReprint(target, candidate)) return false;
+
+  // Must match CMC, mana cost, and color identity
+  if (target.cmc !== candidate.cmc) return false;
+  if ((target.mana_cost || '') !== (candidate.mana_cost || '')) return false;
+
+  const tColorId = [...(target.color_identity || [])].sort().join('');
+  const cColorId = [...(candidate.color_identity || [])].sort().join('');
+  if (tColorId !== cColorId) return false;
+
+  // Core type matching: creature, instant, sorcery, artifact, enchantment, planeswalker, battle, land
+  const coreTypes = ['creature', 'instant', 'sorcery', 'artifact', 'enchantment', 'planeswalker', 'battle', 'land'];
+  const tTypeLine = (target.type_line || '').toLowerCase();
+  const cTypeLine = (candidate.type_line || '').toLowerCase();
+  for (const t of coreTypes) {
+    if (tTypeLine.includes(t) !== cTypeLine.includes(t)) {
+      return false;
+    }
+  }
+
+  // Legendary status must match
+  if (tTypeLine.includes('legendary') !== cTypeLine.includes('legendary')) {
+    return false;
+  }
+
+  // Creature stats matching
+  if (tTypeLine.includes('creature')) {
+    if (target.power !== candidate.power || target.toughness !== candidate.toughness) {
+      return false;
+    }
+  }
+
+  // Keyword matching
+  const tKeywords = [...(target.keywords || [])].map(k => k.toLowerCase().trim()).sort();
+  const cKeywords = [...(candidate.keywords || [])].map(k => k.toLowerCase().trim()).sort();
+  if (tKeywords.length !== cKeywords.length) return false;
+  for (let i = 0; i < tKeywords.length; i++) {
+    if (tKeywords[i] !== cKeywords[i]) return false;
+  }
+
+  // Normalized oracle text matching
+  const tNorm = normalizeOracleForReprintCheck(target.oracle_text || '', target.name);
+  const cNorm = normalizeOracleForReprintCheck(candidate.oracle_text || '', candidate.name);
+  return tNorm === cNorm;
+}
+
+/**
+ * Determines if two cards are an exact reprint (same name across expansions)
+ * or an exact functional reprint (identical cost, stats, types, keywords, and oracle text).
+ */
+export function isFunctionalOrExactReprint(target: Card, candidate: Card): { isReprint: boolean; isActual: boolean; reason?: string } {
+  if (isActualReprint(target, candidate)) {
+    return { isReprint: true, isActual: true, reason: 'Exact reprint from another expansion' };
+  }
+  if (isExactFunctionalReprint(target, candidate)) {
+    return { isReprint: true, isActual: false, reason: 'Exact functional equivalent (identical stats & text)' };
+  }
+  return { isReprint: false, isActual: false };
+}
+
+/**
  * Compute functional similarity score between 0 and 100%
  *
  * Hybrid MTG Limited Architecture (Method 1 Lexical + Method 2 Structural):
  * - Compatibility Gatekeeper: Strict prerequisite. Incompatible types receive 0 score.
+ * - Actual Reprint Gatekeeper: 100% is strictly and exclusively reserved for actual reprints.
+ * - Functional Reprint: Identical stats/text with distinct card names receive 95% ceiling.
  * - Pillar 1: Color Alignment (20 pts)
  * - Pillar 2: Speed-Adjusted Effective Mana Cost (20 pts)
  * - Pillar 3 (Method 1): Lexical, Regex Pattern & Word Token Overlap (25 pts)
  * - Pillar 4 (Method 2): Structural Mechanics, Action Subtypes & Cost Hoops (25 pts)
  * - Pillar 5: Statline & Output Scale (10 pts)
+ * - Functional Discrepancy Deductions: Combat keywords (flying), value riders, card types
+ * - Non-reprint ceiling: <= 95% (100% impossible unless actual reprint)
  */
 export function calculateCardSimilarity(target: Card, candidate: Card): { score: number; reasons: string[] } {
-  const reasons: string[] = [];
-
   // 0. Compatibility Gatekeeper (Prerequisite — 0 points)
   if (!areCardTypesCompatible(target, candidate)) {
     return { score: 0, reasons: [] };
+  }
+
+  // 0.1 Actual Reprint Gatekeeper: 100% is strictly and exclusively reserved for actual direct reprints
+  if (isActualReprint(target, candidate)) {
+    return {
+      score: 100,
+      reasons: ['Exact reprint from another expansion'],
+    };
+  }
+
+  // 0.2 Functional Reprint: Distinct names with identical stats & text receive the 95% non-reprint ceiling
+  if (isExactFunctionalReprint(target, candidate)) {
+    return {
+      score: 95,
+      reasons: ['Exact functional equivalent (identical stats & text)'],
+    };
   }
 
   const tFeatures = extractCardFeatures(target);
@@ -781,6 +923,17 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const bothShareFlashReach = (
     tFeatures.actionSubtypes.has('flash_reach_ambush') && cFeatures.actionSubtypes.has('flash_reach_ambush')
   );
+  const bothShareLandTutorTop = (
+    tFeatures.actionSubtypes.has('land_tutor_top') && cFeatures.actionSubtypes.has('land_tutor_top')
+  );
+  const bothSharePureBasicLandTutorTop = (
+    bothShareLandTutorTop &&
+    /search your library for a basic land card, reveal it, then shuffle and put that card on top/i.test(target.oracle_text || '') &&
+    /search your library for a basic land card, reveal it, then shuffle and put that card on top/i.test(candidate.oracle_text || '')
+  );
+  const bothShareFlyingLifegain = (
+    tFeatures.actionSubtypes.has('flying_lifegain_evasion') && cFeatures.actionSubtypes.has('flying_lifegain_evasion')
+  );
 
   if (isExactColorMatch) {
     colorScore = 20;
@@ -795,16 +948,20 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     colorScore = (tFeatures.isEquipment || cFeatures.isEquipment) ? 16 : ((tColors.size > 0) ? 10 : 14);
     baselineReasons.push((tFeatures.isEquipment || cFeatures.isEquipment) ? 'Colorless equipment (playable in any deck)' : 'Colorless baseline comparison');
   } else if (tColors.size === 0 && cColors.size === 1) {
-    colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach)
+    colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach || bothShareLandTutorTop || bothShareFlyingLifegain)
       ? 16
       : ((tFeatures.isEquipment || cFeatures.isEquipment) ? 14 : 10);
-    baselineReasons.push(bothShareEtbTreasure
-      ? 'Colorless parallel to colored Treasure producer'
-      : (bothShareFlashReach
-        ? 'Colorless parallel to colored Flash & Reach blocker'
-        : (bothShareEtbScry2
-          ? `Cross-color artifact cycle peer (${[...cColors][0]})`
-          : (bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : `Mono-color archetype comp (${[...cColors][0]})`))));
+    baselineReasons.push(bothShareFlyingLifegain
+      ? 'Colorless parallel to colored evasive lifegain synergy'
+      : (bothShareLandTutorTop
+        ? 'Colorless parallel to colored land tutor'
+        : (bothShareEtbTreasure
+          ? 'Colorless parallel to colored Treasure producer'
+          : (bothShareFlashReach
+            ? 'Colorless parallel to colored Flash & Reach blocker'
+            : (bothShareEtbScry2
+              ? `Cross-color artifact cycle peer (${[...cColors][0]})`
+              : (bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : `Mono-color archetype comp (${[...cColors][0]})`))))));
   } else if (tFeatures.isHybrid && cColors.size === 1 && tColors.has([...cColors][0])) {
     colorScore = 18;
     baselineReasons.push(`Component hybrid color (${[...cColors][0]})`);
@@ -1003,6 +1160,21 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     lexicalReasons.push('Shared signature Flash & Reach ambush role');
   }
 
+  if (bothShareLandTutorTop) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared basic land search to top of library');
+  }
+
+  if (bothSharePureBasicLandTutorTop) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 3);
+    lexicalReasons.push('Pure basic land tutor to top of library');
+  }
+
+  if (bothShareFlyingLifegain) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 15);
+    lexicalReasons.push('Shared flying evasion with creature lifegain trigger');
+  }
+
   method1LexicalScore = Math.min(25, method1LexicalScore);
 
   // =========================================================================
@@ -1042,6 +1214,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     attack_keyword_granter: { pts: 17, label: 'Both attack-triggered keyword mentors' },
     etb_treasure: { pts: 20, label: 'Both ETB Treasure ramp / fixing creatures' },
     flash_reach_ambush: { pts: 20, label: 'Both Flash & Reach ambush creatures' },
+    land_tutor_top: { pts: 20, label: 'Both creature ETB land search to top of library' },
+    flying_lifegain_evasion: { pts: 20, label: 'Both 2-drop evasive flying lifegain creatures' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
 
@@ -1148,6 +1322,20 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     }
   }
 
+  if (bothShareLandTutorTop) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both creature ETB land search to top of library')) {
+      structuralReasons.unshift('Both creature ETB land search to top of library');
+    }
+  }
+
+  if (bothShareFlyingLifegain) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both 2-drop evasive flying lifegain creatures')) {
+      structuralReasons.unshift('Both 2-drop evasive flying lifegain creatures');
+    }
+  }
+
   // Action Subtype Mismatch Penalties
   let actionMismatchPenalty = 0;
   if (tFeatures.actionSubtypes.has('hard_counter') && cFeatures.actionSubtypes.has('soft_tax_counter')) {
@@ -1170,6 +1358,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const targetIsUnconditionalTreasure = tFeatures.actionSubtypes.has('etb_treasure') && !/choose one|if /i.test(target.oracle_text || '');
   const candIsModalOrConditionalTreasure = cFeatures.actionSubtypes.has('etb_treasure') && (/choose one/i.test(candidate.oracle_text || '') || /if [\s\S]*create [\s\S]*treasure/i.test(candidate.oracle_text || ''));
   if (targetIsUnconditionalTreasure && candIsModalOrConditionalTreasure) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 6);
+  }
+
+  // Parasitic poison / toxic mechanic mismatch penalty
+  const targetHasToxic = /toxic|infect|poison counter/i.test(target.oracle_text || '') || (target.keywords || []).some(k => /toxic|infect/i.test(k));
+  const candHasToxic = /toxic|infect|poison counter/i.test(candidate.oracle_text || '') || (candidate.keywords || []).some(k => /toxic|infect/i.test(k));
+  if (targetHasToxic !== candHasToxic) {
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 6);
   }
 
@@ -1204,6 +1399,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     discard_payoff: { pts: 4, label: 'Shared rider: Discard payoff' },
     life_gain: { pts: 3, label: 'Shared rider: Life gain' },
     cantrip: { pts: 3, label: 'Shared rider: Cantrip replacement' },
+    ramp: { pts: 3, label: 'Shared rider: Mana ramp / land fetch' },
   };
 
   tFeatures.valueRiders.forEach((vr) => {
@@ -1244,8 +1440,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
       statlineScore = 8;
       baselineReasons.push(`Matching toughness (${target.toughness} toughness)`);
     } else if (totalStatDiff === 0) {
-      statlineScore = 8;
-      baselineReasons.push(`Equivalent stats (${tFeatures.power + tFeatures.toughness} total)`);
+      if (pDiff > 0 && tDiff > 0) {
+        statlineScore = 4;
+        baselineReasons.push(`Swapped stat distribution (${tFeatures.power}/${tFeatures.toughness} vs ${cFeatures.power}/${cFeatures.toughness})`);
+      } else {
+        statlineScore = 8;
+        baselineReasons.push(`Equivalent stats (${tFeatures.power + tFeatures.toughness} total)`);
+      }
     } else if (totalStatDiff <= 1) {
       statlineScore = 6;
     } else if (totalStatDiff <= 3) {
@@ -1334,7 +1535,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
       rarityAdjustment = 3; // Both are common draft staples
       baselineReasons.push('Common draft staple comp');
     } else if (cFeatures.rarity === 'uncommon') {
-      rarityAdjustment = (bothShareLivingWeapon || sharesCounterDistributor || bothShareLateGameSacDestruction) ? -1 : -3;
+      rarityAdjustment = (bothShareLivingWeapon || sharesCounterDistributor || bothShareLateGameSacDestruction || bothShareFlyingLifegain) ? -1 : -3;
     } else {
       rarityAdjustment = -8; // Rare/Mythic power-level penalty vs Common draft baseline
     }
@@ -1354,13 +1555,64 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
 
   let legendaryPenalty = 0;
   if (!target.type_line?.includes('Legendary') && candidate.type_line?.includes('Legendary')) {
-    legendaryPenalty = -3;
+    legendaryPenalty = bothShareFlyingLifegain ? 0 : -3;
   }
 
   statlineScore = Math.max(0, Math.min(10, statlineScore + rarityAdjustment + legendaryPenalty));
 
-  const rawScore = colorScore + cmcScore + method1LexicalScore + method2StructuralScore + statlineScore;
-  const totalScore = Math.min(100, Math.max(0, rawScore));
+  // =========================================================================
+  // FUNCTIONAL DISCREPANCY PENALTIES (Evasion/combat keywords, asymmetric riders, creature types)
+  // =========================================================================
+  const KEY_COMBAT_KEYWORDS = [
+    'flying', 'reach', 'menace', 'deathtouch', 'lifelink', 'haste',
+    'first strike', 'double strike', 'vigilance', 'trample', 'ward',
+    'flash', 'hexproof', 'indestructible', 'defender'
+  ];
+
+  let keywordMismatchPenalty = 0;
+  for (const kw of KEY_COMBAT_KEYWORDS) {
+    const tHasKw = (target.keywords || []).some(k => k.toLowerCase() === kw) || new RegExp(`\\b${kw}\\b`, 'i').test(target.oracle_text || '');
+    const cHasKw = (candidate.keywords || []).some(k => k.toLowerCase() === kw) || new RegExp(`\\b${kw}\\b`, 'i').test(candidate.oracle_text || '');
+
+    if (tHasKw !== cHasKw) {
+      if (kw === 'flying') {
+        keywordMismatchPenalty += 12;
+      } else if (kw === 'reach' || kw === 'defender') {
+        keywordMismatchPenalty += 8;
+      } else {
+        keywordMismatchPenalty += 5;
+      }
+    }
+  }
+
+  const ALL_VALUE_RIDERS = [
+    'proliferate', 'token', 'surveil_scry', 'counters',
+    'discard_payoff', 'life_gain', 'cantrip', 'ramp'
+  ] as const;
+
+  let riderMismatchPenalty = 0;
+  for (const vr of ALL_VALUE_RIDERS) {
+    if (tFeatures.valueRiders.has(vr) !== cFeatures.valueRiders.has(vr)) {
+      riderMismatchPenalty += 4;
+    }
+  }
+
+  let cardTypeMismatchPenalty = 0;
+  if (tFeatures.isCreature && cFeatures.isCreature) {
+    if (tFeatures.isArtifact !== cFeatures.isArtifact) {
+      cardTypeMismatchPenalty += 4;
+    }
+    if (tFeatures.isEnchantment !== cFeatures.isEnchantment) {
+      cardTypeMismatchPenalty += 4;
+    }
+  }
+
+  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty;
+  const rawScore = colorScore + cmcScore + method1LexicalScore + method2StructuralScore + statlineScore - discrepancyPenalty;
+
+  // Non-reprint ceiling: 100% is strictly reserved for true reprints / functional reprints
+  const MAX_NON_REPRINT_SCORE = 95;
+  const totalScore = Math.min(MAX_NON_REPRINT_SCORE, Math.max(0, rawScore));
 
   // Deduplicate and prioritize most insightful structural, speed/tempo, and lexical reasons
   const speedOrTempoReasons = baselineReasons.filter(r => r.includes('Speed') || r.includes('speed') || r.includes('tempo'));
@@ -1378,7 +1630,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
  * and synthesizes an empirical consensus projection.
  */
 export async function findSimilarCards(targetCard: Card): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v30`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v38`;
   if (similarityCache.has(cacheKey)) {
     return similarityCache.get(cacheKey)!;
   }
@@ -1443,7 +1695,8 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
     if (aIsColorless !== bIsColorless) return aIsColorless - bIsColorless;
     const aCmcDiff = Math.abs(a.card.cmc - targetCard.cmc);
     const bCmcDiff = Math.abs(b.card.cmc - targetCard.cmc);
-    return aCmcDiff - bCmcDiff;
+    if (aCmcDiff !== bCmcDiff) return aCmcDiff - bCmcDiff;
+    return (a.card.oracle_text || '').length - (b.card.oracle_text || '').length;
   });
   // Take top high-conviction candidates (up to 16) to ensure at least 4 with verified 17Lands data
   const topCandidates = scoredCandidates.slice(0, 16);
@@ -1495,25 +1748,33 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
   }
 
   // Diversity filter for the 4 presented matches:
-  // When target has multiple signature action subtypes (e.g. flash_reach_ambush + etb_treasure),
-  // avoid presenting duplicate twins of the specialized combat ambush role (e.g. both Dawn's Light Archer and Bounding Wolf)
-  // so that both the combat ambush role and the ETB Treasure ramp role across curve slots are properly represented.
+  // When target has multiple signature action subtypes (e.g. flash_reach_ambush + etb_treasure or land_tutor_top + flying_lifegain_evasion),
+  // limit duplicate comps from the exact same curve slot and action subtype (at most 1 for specialized combat tricks like Flash+Reach,
+  // and at most 2 for broad ramp/engine archetypes like ETB Treasure or Land Tutor / Lifegain Evasion) so that complementary roles are shown.
   const presentedMatches: SimilarCardMatch[] = [];
-  let flashReachCount = 0;
+  const roleCmcCounts: Record<string, number> = {};
 
   for (const match of enrichedMatches) {
     const cardFeatures = extractCardFeatures(match.card);
-    const isFlashReach = cardFeatures.actionSubtypes.has('flash_reach_ambush');
+    const primarySubtype = cardFeatures.actionSubtypes.has('flash_reach_ambush')
+      ? 'flash_reach_ambush'
+      : (cardFeatures.actionSubtypes.has('etb_treasure')
+        ? 'etb_treasure'
+        : (cardFeatures.actionSubtypes.has('land_tutor_top')
+          ? 'land_tutor_top'
+          : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
+            ? 'flying_lifegain_evasion'
+            : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+'))));
+    const roleKey = `${primarySubtype}_${match.card.cmc}`;
 
-    if (isFlashReach) {
-      if (flashReachCount >= 1) continue; // Keep only the top-scoring / newest Flash+Reach representative
-      flashReachCount++;
+    const maxAllowed = primarySubtype === 'flash_reach_ambush' ? 1 : 2;
+    const currentCount = roleCmcCounts[roleKey] || 0;
+
+    if (currentCount < maxAllowed) {
+      roleCmcCounts[roleKey] = currentCount + 1;
       presentedMatches.push(match);
-    } else {
-      presentedMatches.push(match);
+      if (presentedMatches.length >= 4) break;
     }
-
-    if (presentedMatches.length >= 4) break;
   }
 
   // Fill any remaining slots up to 4 from remaining enrichedMatches
@@ -1527,7 +1788,10 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
   }
 
   // Sort presented matches by similarity score
-  presentedMatches.sort((a, b) => b.similarityScore - a.similarityScore);
+  presentedMatches.sort((a, b) => {
+    if (b.similarityScore !== a.similarityScore) return b.similarityScore - a.similarityScore;
+    return (a.card.oracle_text || '').length - (b.card.oracle_text || '').length;
+  });
 
   // Maintain presented matches at the front of matches list
   const reorderedMatches = [

@@ -37,6 +37,9 @@ export interface ArchetypeStrength {
   code: string;
   name: string;
   theme: string;
+  headline?: string;
+  description?: string;
+  mechanics?: string[];
   powerScore: number;
   letterGrade: GradeTier;
   tier: 'S' | 'A' | 'B' | 'C' | 'D';
@@ -83,87 +86,14 @@ export interface SetSynthesisReport {
   metaCalibrationTier?: string; // 'Spot-on Meta Oracle 🎯', 'Strong Consensus Read 💎', 'Contrarian Theorycrafter 🔮'
 }
 
-export const GUILD_ARCHETYPES: {
-  colors: [MTGColor, MTGColor];
-  code: string;
-  name: string;
-  defaultTheme: string;
-}[] = [
-  { colors: ['W', 'U'], code: 'WU', name: 'Azorius', defaultTheme: 'Flyers / Spells & Tempo' },
-  { colors: ['U', 'B'], code: 'UB', name: 'Dimir', defaultTheme: 'Control / Card Advantage & Reanimation' },
-  { colors: ['B', 'R'], code: 'BR', name: 'Rakdos', defaultTheme: 'Aggro / Sacrifice & Removal' },
-  { colors: ['R', 'G'], code: 'RG', name: 'Gruul', defaultTheme: 'Midrange / Stompy & Power Threshold' },
-  { colors: ['G', 'W'], code: 'GW', name: 'Selesnya', defaultTheme: 'Go-Wide / +1/+1 Counters & Tokens' },
-  { colors: ['W', 'B'], code: 'WB', name: 'Orzhov', defaultTheme: 'Aristocrats / Lifegain & Bleed' },
-  { colors: ['U', 'R'], code: 'UR', name: 'Izzet', defaultTheme: 'Spellslinger / Prowess & Tempo' },
-  { colors: ['B', 'G'], code: 'BG', name: 'Golgari', defaultTheme: 'Graveyard / Morbid & Attrition' },
-  { colors: ['R', 'W'], code: 'RW', name: 'Boros', defaultTheme: 'Go-Wide Aggro / Equipment & Combat Tricks' },
-  { colors: ['G', 'U'], code: 'GU', name: 'Simic', defaultTheme: 'Ramp / Big Mana & Card Draw' },
-];
+import {
+  GUILD_ARCHETYPES,
+  SET_DEVELOPED_ARCHETYPES,
+  getDevelopedArchetypeCodes,
+  getWOTCArchetypeInfo,
+} from './wotcArchetypes';
 
-/**
- * Curated registry for sets with designated/asymmetrical draft archetypes.
- * Sets with 10 archetypes developed are standard (or explicitly listed like SOS).
- * Sets with 5 archetypes developed (like STX enemy colleges, GRN/RNA guilds, or HOB) are mapped here.
- */
-export const SET_DEVELOPED_ARCHETYPES: Record<string, string[]> = {
-  // Strixhaven: School of Mages (5 enemy colleges: Silverquill, Prismari, Witherbloom, Lorehold, Quandrix)
-  STX: ['WB', 'UR', 'BG', 'RW', 'GU'],
-  // Guilds of Ravnica (5 guilds: Dimir, Golgari, Izzet, Boros, Selesnya)
-  GRN: ['UB', 'BG', 'UR', 'RW', 'GW'],
-  // Ravnica Allegiance (5 guilds: Azorius, Rakdos, Gruul, Simic, Orzhov)
-  RNA: ['WU', 'BR', 'RG', 'GU', 'WB'],
-  // Dragons of Tarkir (5 allied pairs)
-  DTK: ['WU', 'UB', 'BR', 'RG', 'GW'],
-  // The Hobbit (5 developed archetypes)
-  HOB: ['WU', 'UB', 'BR', 'RG', 'GW'],
-  // Secrets of Strixhaven (develops all 10 guilds/archetypes)
-  SOS: ['WU', 'UB', 'BR', 'RG', 'GW', 'WB', 'UR', 'BG', 'RW', 'GU'],
-};
-
-/**
- * Resolves which 2-color archetypes were intentionally designed/developed for a set.
- * Uses a hybrid approach:
- * 1. Checks set card pool for gold signpost presence (if exactly a subset of pairs have gold cards)
- * 2. Checks curated SET_DEVELOPED_ARCHETYPES registry (e.g. STX, HOB, SOS)
- * 3. Defaults to all 10 archetypes if all have support or no gold cards are found.
- */
-export function getDevelopedArchetypeCodes(setCode: string, cards: Card[]): Set<string> {
-  const upperCode = (setCode || '').toUpperCase().trim();
-
-  // 1. Dynamic card pool check if cards are present
-  if (cards && cards.length > 0) {
-    const pairGoldCount: Record<string, number> = {};
-    GUILD_ARCHETYPES.forEach((guild) => {
-      const [c1, c2] = guild.colors;
-      const gold = cards.filter((c) => {
-        const colors = c.colors || [];
-        return colors.length === 2 && colors.includes(c1) && colors.includes(c2);
-      });
-      pairGoldCount[guild.code] = gold.length;
-    });
-
-    const activePairs = Object.entries(pairGoldCount).filter(([_, count]) => count > 0);
-
-    // If only a subset (e.g. 5 pairs) have gold cards, those are the developed archetypes
-    if (activePairs.length > 0 && activePairs.length < 10) {
-      return new Set(activePairs.map(([code]) => code));
-    }
-
-    // If all 10 pairs have gold cards (like SOS, BLB, DSK, etc.)
-    if (activePairs.length === 10) {
-      return new Set(GUILD_ARCHETYPES.map((g) => g.code));
-    }
-  }
-
-  // 2. Curated sets map
-  if (SET_DEVELOPED_ARCHETYPES[upperCode]) {
-    return new Set(SET_DEVELOPED_ARCHETYPES[upperCode]);
-  }
-
-  // 3. Default fallback: all 10 are considered developed
-  return new Set(GUILD_ARCHETYPES.map((g) => g.code));
-}
+export { GUILD_ARCHETYPES, SET_DEVELOPED_ARCHETYPES, getDevelopedArchetypeCodes };
 
 const COLOR_METADATA: Record<MTGColor | 'C', { name: string; symbol: string; badgeClass: string }> = {
   W: { name: 'White', symbol: 'W', badgeClass: 'bg-amber-100/15 text-amber-200 border-amber-300/40' },
@@ -410,11 +340,16 @@ export function calculateArchetypeRankings(
       seventeenLandsTier = winRateToArchetypeTier(seventeenLandsWinRate);
     }
 
+    const wotcInfo = getWOTCArchetypeInfo(setCode || '', guild.code, cards);
+
     return {
       colors: guild.colors,
       code: guild.code,
-      name: guild.name,
-      theme: guild.defaultTheme,
+      name: wotcInfo.name || guild.name,
+      theme: wotcInfo.headline || guild.defaultTheme,
+      headline: wotcInfo.headline,
+      description: wotcInfo.description,
+      mechanics: wotcInfo.mechanics,
       powerScore,
       letterGrade,
       tier,

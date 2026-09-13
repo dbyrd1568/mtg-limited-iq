@@ -17,13 +17,24 @@ import { getAllUsers, loadUserStats, loadUserEvaluations } from './storage';
 import { isDevEnvironment } from './environment';
 
 const ADMIN_STORAGE_KEY = 'mtg_admin_access_list_v1';
-const DEFAULT_OWNER_EMAIL = 'devonbyrd@gmail.com';
+export const PERMANENT_SUPER_ADMIN_EMAILS = new Set([
+  'dbyrd1568@gmail.com',
+  'devonbyrd@gmail.com',
+]);
+export const DEFAULT_OWNER_EMAIL = 'dbyrd1568@gmail.com';
 
 /**
  * Checks if the current user has administrative rights
  */
 export async function checkIsAdmin(user: UserAccount | null): Promise<boolean> {
   if (!user) return false;
+
+  const lowerEmail = user.email ? user.email.trim().toLowerCase() : '';
+
+  // 0. Permanent Super Admin by verified email
+  if (lowerEmail && PERMANENT_SUPER_ADMIN_EMAILS.has(lowerEmail)) {
+    return true;
+  }
 
   // 1. Dev environment super-admin access for primary local profile
   if (isDevEnvironment()) {
@@ -34,7 +45,6 @@ export async function checkIsAdmin(user: UserAccount | null): Promise<boolean> {
 
   // 2. Check local admin storage override
   const localAdmins = getStoredLocalAdmins();
-  const lowerEmail = user.email ? user.email.toLowerCase() : '';
   if (
     localAdmins.some(
       (a) => a.userId === user.id || (lowerEmail && a.email.toLowerCase() === lowerEmail)
@@ -76,19 +86,47 @@ export async function checkIsAdmin(user: UserAccount | null): Promise<boolean> {
 export function getStoredLocalAdmins(): AdminAccessRecord[] {
   try {
     const raw = localStorage.getItem(ADMIN_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-    const initial: AdminAccessRecord[] = [
+    const list: AdminAccessRecord[] = raw ? JSON.parse(raw) : [];
+
+    // Ensure permanent super admins are always present with owner role
+    const initialOwners: AdminAccessRecord[] = [
       {
         id: 'admin_owner_01',
-        email: DEFAULT_OWNER_EMAIL,
+        email: 'dbyrd1568@gmail.com',
+        role: 'owner',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'admin_owner_02',
+        email: 'devonbyrd@gmail.com',
         role: 'owner',
         createdAt: new Date().toISOString(),
       },
     ];
-    localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(initial));
-    return initial;
+
+    for (const owner of initialOwners) {
+      if (!list.some((a) => a.email.toLowerCase() === owner.email.toLowerCase())) {
+        list.unshift(owner);
+      }
+    }
+
+    localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(list));
+    return list;
   } catch (e) {
-    return [];
+    return [
+      {
+        id: 'admin_owner_01',
+        email: 'dbyrd1568@gmail.com',
+        role: 'owner',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'admin_owner_02',
+        email: 'devonbyrd@gmail.com',
+        role: 'owner',
+        createdAt: new Date().toISOString(),
+      },
+    ];
   }
 }
 
@@ -102,7 +140,7 @@ export async function fetchAdminList(): Promise<AdminAccessRecord[]> {
         .order('created_at', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
+        const remote: AdminAccessRecord[] = data.map((d: any) => ({
           id: d.id,
           userId: d.user_id,
           email: d.email || 'Admin',
@@ -110,6 +148,15 @@ export async function fetchAdminList(): Promise<AdminAccessRecord[]> {
           grantedBy: d.granted_by,
           createdAt: d.created_at,
         }));
+
+        // Merge, ensuring permanent super admins are always included as owner
+        const merged: AdminAccessRecord[] = [...remote];
+        for (const localAdmin of local) {
+          if (!merged.some((m) => m.email.toLowerCase() === localAdmin.email.toLowerCase())) {
+            merged.unshift(localAdmin);
+          }
+        }
+        return merged;
       }
     } catch (e) {
       console.warn('Could not load remote admin list:', e);
@@ -169,8 +216,13 @@ export async function revokeAdminAccess(
   adminId: string
 ): Promise<{ success: boolean; error?: string }> {
   const current = getStoredLocalAdmins();
-  const target = current.find((a) => a.id === adminId || a.email === adminId);
-  if (target?.role === 'owner') {
+  const target = current.find((a) => a.id === adminId || a.email.toLowerCase() === adminId.toLowerCase());
+  if (
+    target?.role === 'owner' ||
+    (target?.email && PERMANENT_SUPER_ADMIN_EMAILS.has(target.email.toLowerCase())) ||
+    PERMANENT_SUPER_ADMIN_EMAILS.has(adminId.toLowerCase()) ||
+    adminId.startsWith('admin_owner_')
+  ) {
     return { success: false, error: 'Cannot revoke the primary owner account.' };
   }
 

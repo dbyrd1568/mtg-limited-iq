@@ -4,7 +4,8 @@ import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, 
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
 import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
-import { calculateCardSimilarity, areCardTypesCompatible } from '../services/cardSimilarity';
+import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint } from '../services/cardSimilarity';
+import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes } from '../services/wotcArchetypes';
 
 console.log('=== MTG Limited IQ Verification Tests ===\n');
 
@@ -413,7 +414,107 @@ const incompatibleResult = calculateCardSimilarity(murderInstant, vanillaCreatur
 console.assert(incompatibleResult.score === 0, 'Incompatible card types must receive 0% similarity score');
 console.log('   ✓ Incompatible types successfully receive 0% score and disqualification.');
 
-console.log('   ✓ Speed-adjusted similarity & type compatibility gatekeeper verified.');
+// 4. Exact Reprint & Functional Reprint 100% Match Gatekeeper
+const murderM20: Card = {
+  ...murderInstant,
+  id: 'mrd-m20',
+  set: 'M20',
+  set_name: 'Core Set 2020',
+};
+
+const murderReprintSim = calculateCardSimilarity(murderInstant, murderM20);
+console.log(`   Direct Reprint Murder (DMU vs M20) -> Score: ${murderReprintSim.score}%, Reasons:`, murderReprintSim.reasons);
+console.assert(murderReprintSim.score === 100, 'Direct reprint must receive 100% similarity score');
+console.assert(murderReprintSim.reasons[0].includes('Exact reprint'), 'Must cite direct reprint reason');
+
+const elvishMystic: Card = {
+  id: 'em-1',
+  name: 'Elvish Mystic',
+  set: 'M14',
+  set_name: 'Magic 2014',
+  collector_number: '169',
+  mana_cost: '{G}',
+  cmc: 1,
+  type_line: 'Creature — Elf Druid',
+  oracle_text: '{T}: Add {G}.',
+  power: '1',
+  toughness: '1',
+  colors: ['G'],
+  color_identity: ['G'],
+  rarity: 'common',
+  keywords: [],
+  is_creature: true,
+};
+
+const llanowarElves: Card = {
+  id: 'le-1',
+  name: 'Llanowar Elves',
+  set: 'DOM',
+  set_name: 'Dominaria',
+  collector_number: '168',
+  mana_cost: '{G}',
+  cmc: 1,
+  type_line: 'Creature — Elf Druid',
+  oracle_text: '{T}: Add {G}.',
+  power: '1',
+  toughness: '1',
+  colors: ['G'],
+  color_identity: ['G'],
+  rarity: 'common',
+  keywords: [],
+  is_creature: true,
+};
+
+const functionalReprintSim = calculateCardSimilarity(elvishMystic, llanowarElves);
+console.log(`   Functional Equivalent (Elvish Mystic vs Llanowar Elves) -> Score: ${functionalReprintSim.score}%, Reasons:`, functionalReprintSim.reasons);
+console.assert(functionalReprintSim.score === 95, 'Exact functional equivalent must receive 95% similarity score (ceiling besides actual reprints)');
+console.assert(functionalReprintSim.reasons[0].includes('functional equivalent'), 'Must cite functional equivalent reason');
+
+// 5. Non-Reprint Gatekeeper: Old Thrush vs Campus Guide MUST NOT be 100%
+const oldThrush: Card = {
+  id: 'ot-1',
+  name: 'Old Thrush',
+  set: 'LTR',
+  set_name: 'The Lord of the Rings: Tales of Middle-earth',
+  collector_number: '242',
+  mana_cost: '{2}',
+  cmc: 2,
+  type_line: 'Creature — Bird',
+  oracle_text: 'Flying\nWhen Old Thrush enters the battlefield, you gain 2 life, then search your library for a basic land card, reveal it, then shuffle and put that card on top of your library.',
+  power: '1',
+  toughness: '2',
+  colors: [],
+  color_identity: [],
+  rarity: 'common',
+  keywords: ['Flying'],
+  is_creature: true,
+};
+
+const campusGuide: Card = {
+  id: 'cg-1',
+  name: 'Campus Guide',
+  set: 'STX',
+  set_name: 'Strixhaven: School of Mages',
+  collector_number: '252',
+  mana_cost: '{2}',
+  cmc: 2,
+  type_line: 'Artifact Creature — Golem',
+  oracle_text: 'When Campus Guide enters the battlefield, you may search your library for a basic land card, reveal it, then shuffle and put that card on top of your library.',
+  power: '2',
+  toughness: '1',
+  colors: [],
+  color_identity: [],
+  rarity: 'common',
+  keywords: [],
+  is_creature: true,
+};
+
+const oldThrushSim = calculateCardSimilarity(oldThrush, campusGuide);
+console.log(`   Old Thrush vs Campus Guide -> Score: ${oldThrushSim.score}%, Reasons:`, oldThrushSim.reasons);
+console.assert(oldThrushSim.score < 95, `Old Thrush vs Campus Guide must NOT reach 100% or exceed non-reprint ceiling (got ${oldThrushSim.score}%)`);
+console.assert(isFunctionalOrExactReprint(oldThrush, campusGuide).isReprint === false, 'Old Thrush and Campus Guide must not be flagged as reprints');
+
+console.log('   ✓ Speed-adjusted similarity, reprint gatekeeper & non-reprint ceiling verified.');
 
 // =========================================================================
 // TEST 10: Expanded 17Lands Set Catalog & Expansion Alias Verification
@@ -471,5 +572,59 @@ console.log(`   10% Accuracy (Inverted Read) -> Grade: ${invertedEval.grade}, GP
 console.assert(invertedEval.grade === 'F', `10% must be F (got ${invertedEval.grade})`);
 
 console.log('   ✓ MTG Limited empirical evaluator grade curve & smooth GPA verified.');
+
+// =========================================================================
+// TEST 12: WOTC Designed Archetypes & On-the-Fly Dynamic Synthesis
+// =========================================================================
+console.log('\n[TEST 12] WOTC Designed Archetypes & On-the-Fly Dynamic Synthesis:');
+
+// 12a. Curated Set Verification (BLB, STX, HOB, MKM, LCI)
+const blbBirds = getWOTCArchetypeInfo('BLB', 'WU');
+console.log(`   BLB WU Curated: "${blbBirds.name}" -> ${blbBirds.headline}`);
+console.assert(blbBirds.name.includes('Birds'), 'BLB WU should be Birds');
+console.assert(blbBirds.mechanics.includes('Flying'), 'BLB WU should have Flying mechanic');
+
+const stxSilverquill = getWOTCArchetypeInfo('STX', 'WB');
+console.log(`   STX WB Curated: "${stxSilverquill.name}" -> ${stxSilverquill.headline}`);
+console.assert(stxSilverquill.name.includes('Silverquill'), 'STX WB should be Silverquill');
+console.assert(stxSilverquill.mechanics.length > 0, 'STX WB should have mechanics');
+
+// 12b. 5-Pair Asymmetric Set Filtering (STX, HOB)
+const stxDeveloped = getDevelopedArchetypeCodes('STX', []);
+console.assert(stxDeveloped.size === 5, 'STX should have exactly 5 developed colleges');
+console.assert(stxDeveloped.has('WB') && !stxDeveloped.has('WU'), 'STX should develop enemy colleges, not allied');
+
+const hobDeveloped = getDevelopedArchetypeCodes('HOB', []);
+console.assert(hobDeveloped.size === 5, 'HOB should have exactly 5 developed archetypes');
+
+// 12c. On-the-Fly Dynamic Archetype Synthesis for Uncurated Sets
+const mockPool: Card[] = [
+  {
+    id: 'mock-1',
+    name: 'Storm-Forged Drake',
+    colors: ['U', 'R'],
+    rarity: 'uncommon',
+    set: 'NEW',
+    type_line: 'Creature — Drake',
+    oracle_text: 'Flying. Whenever you cast a noncreature spell, Storm-Forged Drake gets +2/+0 until end of turn.',
+  } as Card,
+  {
+    id: 'mock-2',
+    name: 'Lightning Bolt',
+    colors: ['R'],
+    rarity: 'common',
+    set: 'NEW',
+    type_line: 'Instant',
+    oracle_text: 'Lightning Bolt deals 3 damage to any target.',
+  } as Card,
+];
+
+const dynamicArchetype = getWOTCArchetypeInfo('NEW', 'UR', mockPool);
+console.log(`   On-The-Fly Synthesized NEW UR: "${dynamicArchetype.name}" -> ${dynamicArchetype.headline}`);
+console.assert(dynamicArchetype.headline.includes('Spells') || dynamicArchetype.headline.includes('Prowess') || dynamicArchetype.headline.includes('Tempo'), 'Dynamic archetype should synthesize spell tempo');
+console.assert(dynamicArchetype.description.includes('Storm-Forged Drake'), 'Dynamic archetype description should cite signpost card');
+console.assert(dynamicArchetype.description.startsWith('Wizards designed'), 'Dynamic archetype description should be formatted WOTC-style');
+
+console.log('   ✓ Curated WOTC archetypes, 5-pair asymmetric sets, and on-the-fly synthesis verified.');
 
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
