@@ -108,7 +108,11 @@ CREATE POLICY "Admins can add new admins"
 
 CREATE POLICY "Admins can delete admins"
   ON public.app_admins FOR DELETE
-  USING (public.is_admin());
+  USING (
+    public.is_admin()
+    AND role != 'owner'
+    AND lower(email) NOT IN ('dbyrd1568@gmail.com', 'devonbyrd@gmail.com')
+  );
 
 -- 7. USER ACTIVITY LOGS POLICIES
 DO $$ BEGIN

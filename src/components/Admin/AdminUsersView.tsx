@@ -13,13 +13,22 @@ import {
   Flame,
   CheckCircle2,
   Clock,
+  Key,
+  ShieldCheck,
+  ShieldOff,
+  UserPlus,
+  Trash2,
 } from 'lucide-react';
 import { AdminUserSummary } from '../../types/admin';
+import { UserAccount } from '../../types/mtg';
+import { grantAdminAccess, revokeAdminAccess, isPermanentSuperAdmin } from '../../services/admin';
 
 interface AdminUsersViewProps {
   users: AdminUserSummary[];
   selectedUser: AdminUserSummary | null;
   onSelectUser: (user: AdminUserSummary | null) => void;
+  currentUser?: UserAccount | null;
+  onRefreshData?: () => void;
 }
 
 type SortField = 'lastLogin' | 'cardsGraded' | 'quizzes' | 'accuracy' | 'name';
@@ -28,12 +37,65 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
   users,
   selectedUser,
   onSelectUser,
+  currentUser,
+  onRefreshData,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [providerFilter, setProviderFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [sortField, setSortField] = useState<SortField>('lastLogin');
   const [sortAsc, setSortAsc] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const handleRevokeAdmin = async (user: AdminUserSummary) => {
+    if (isPermanentSuperAdmin(user.email)) {
+      alert('The primary owner account cannot be revoked.');
+      return;
+    }
+
+    if (typeof window !== 'undefined' && window.confirm) {
+      if (!window.confirm(`Are you sure you want to revoke admin privileges from ${user.name} (${user.email || user.id})?`)) {
+        return;
+      }
+    }
+
+    setActionLoadingId(user.id);
+    const res = await revokeAdminAccess(user.email || user.id);
+    setActionLoadingId(null);
+
+    if (res.success) {
+      if (selectedUser?.id === user.id) {
+        onSelectUser({ ...selectedUser, isAdmin: false });
+      }
+      onRefreshData?.();
+    } else {
+      alert(res.error || 'Failed to revoke admin privileges.');
+    }
+  };
+
+  const handleGrantAdmin = async (user: AdminUserSummary) => {
+    const identifier = user.email || user.id;
+    if (!identifier) return;
+
+    if (typeof window !== 'undefined' && window.confirm) {
+      if (!window.confirm(`Grant administrator privileges to ${user.name} (${identifier})?`)) {
+        return;
+      }
+    }
+
+    setActionLoadingId(user.id);
+    const res = await grantAdminAccess(identifier, currentUser?.id);
+    setActionLoadingId(null);
+
+    if (res.success) {
+      if (selectedUser?.id === user.id) {
+        onSelectUser({ ...selectedUser, isAdmin: true });
+      }
+      onRefreshData?.();
+    } else {
+      alert(res.error || 'Failed to grant admin privileges.');
+    }
+  };
 
   // Filter & Sort Logic
   const filteredUsers = useMemo(() => {
@@ -306,17 +368,47 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                     {formatDate(user.lastLoginAt)}
                   </td>
 
-                  {/* Inspect Button */}
+                  {/* Actions */}
                   <td className="py-3 px-4 sm:px-6 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectUser(user);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-violet-600 hover:text-white text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all cursor-pointer"
-                    >
-                      Dossier
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {user.isAdmin && !isPermanentSuperAdmin(user.email) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRevokeAdmin(user);
+                          }}
+                          disabled={actionLoadingId === user.id}
+                          className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-800 border border-rose-200 dark:border-rose-800/60 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                          title="Revoke Admin Access"
+                        >
+                          <ShieldOff className="w-3 h-3" />
+                          <span className="hidden xl:inline">Revoke</span>
+                        </button>
+                      )}
+                      {!user.isAdmin && (user.email || user.id) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGrantAdmin(user);
+                          }}
+                          disabled={actionLoadingId === user.id}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-violet-600 text-slate-600 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-violet-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                          title="Grant Admin Access"
+                        >
+                          <UserPlus className="w-3 h-3" />
+                          <span className="hidden xl:inline">Make Admin</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectUser(user);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-violet-600 hover:text-white text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        Dossier
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )))}
@@ -474,6 +566,80 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                   {selectedUser.gradingBias} Grader
                 </span>
               </div>
+            </div>
+
+            {/* Administrative Access Card */}
+            <div className="p-4 rounded-2xl border text-xs space-y-3 bg-slate-50/70 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                  <Key className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                  <span>Administrative Access</span>
+                </div>
+                {selectedUser.isAdmin && (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300 border border-violet-200 dark:border-violet-800/50">
+                    ADMIN
+                  </span>
+                )}
+              </div>
+
+              {isPermanentSuperAdmin(selectedUser.email) ? (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="font-bold">Permanent Super Admin (Owner)</div>
+                      <div className="text-[11px] text-amber-700 dark:text-amber-400">
+                        Root platform owner account. Privileges cannot be revoked.
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                    Protected
+                  </span>
+                </div>
+              ) : selectedUser.isAdmin ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-violet-50/70 dark:bg-violet-950/30 border border-violet-200/80 dark:border-violet-800/50">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-violet-950 dark:text-violet-200 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                      <span>Authorized Administrator</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Has full access to admin analytics, telemetry logs, and access control.
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleRevokeAdmin(selectedUser)}
+                    disabled={actionLoadingId === selectedUser.id}
+                    className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{actionLoadingId === selectedUser.id ? 'Revoking...' : 'Revoke Admin Access'}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Shield className="w-4 h-4 text-slate-400" />
+                      <span>Standard Drafter Account</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Restricted to player grading, quiz tools, and personal evaluation history.
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleGrantAdmin(selectedUser)}
+                    disabled={actionLoadingId === selectedUser.id || (!selectedUser.email && !selectedUser.id)}
+                    className="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>{actionLoadingId === selectedUser.id ? 'Granting...' : 'Grant Admin Privileges'}</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -385,6 +385,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             users={users}
             selectedUser={selectedUserForDossier}
             onSelectUser={setSelectedUserForDossier}
+            currentUser={currentUser}
+            onRefreshData={loadAllData}
           />
         )}
 

@@ -85,14 +85,31 @@ async function runAdminVerification() {
   const duplicateGrant = await grantAdminAccess('trusted_coadmin@mtg.com');
   console.assert(duplicateGrant.success === false, 'Duplicate admin grant must be rejected');
 
-  const revokeOwner = await revokeAdminAccess('admin_owner_01');
-  console.assert(revokeOwner.success === false, 'Primary owner revocation must be rejected');
+  // Test owner revocation rejection (by ID and by email)
+  const revokeOwnerById = await revokeAdminAccess('admin_owner_01');
+  console.assert(revokeOwnerById.success === false, 'Primary owner revocation by ID must be rejected');
 
-  if (added) {
-    const revokeRes = await revokeAdminAccess(added.id);
-    console.assert(revokeRes.success === true, 'Revoking co-admin must succeed');
+  const revokeOwnerByEmail = await revokeAdminAccess('dbyrd1568@gmail.com');
+  console.assert(revokeOwnerByEmail.success === false, 'Permanent super-admin email revocation must be rejected');
+
+  // Test revoking by email directly
+  const revokeByEmailRes = await revokeAdminAccess('trusted_coadmin@mtg.com');
+  console.assert(revokeByEmailRes.success === true, 'Revoking co-admin directly by email must succeed');
+
+  const adminListAfterRevoke = await fetchAdminList();
+  const revokedStillPresent = adminListAfterRevoke.some((a) => a.email === 'trusted_coadmin@mtg.com');
+  console.assert(!revokedStillPresent, 'Revoked admin must no longer be present in admin list');
+
+  // Test granting and then revoking by object ID
+  const grantSecond = await grantAdminAccess('second_coadmin@mtg.com');
+  console.assert(grantSecond.success === true, 'Granting second coadmin must succeed');
+  const secondAdded = (await fetchAdminList()).find((a) => a.email === 'second_coadmin@mtg.com');
+  console.assert(Boolean(secondAdded), 'Second coadmin must exist');
+  if (secondAdded) {
+    const revokeSecond = await revokeAdminAccess(secondAdded.id);
+    console.assert(revokeSecond.success === true, 'Revoking co-admin by ID must succeed');
   }
-  console.log('✓ Admin whitelist grant & revocation workflow functions with owner protection.\n');
+  console.log('✓ Admin whitelist grant & revocation (by email and ID) functions with owner protection.\n');
 
   // Test 3: Telemetry & Event Tracking
   console.log('3. Testing Telemetry & Feature Tracking...');

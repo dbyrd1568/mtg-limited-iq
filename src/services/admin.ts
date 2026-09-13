@@ -14,7 +14,7 @@ import {
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { fetchActivityLogs, KNOWN_FEATURES } from './telemetry';
 import { getAllUsers, loadUserStats, loadUserEvaluations, getActiveUser } from './storage';
-import { isDevEnvironment } from './environment';
+import { isDevEnvironment, isCloudUUID } from './environment';
 
 const ADMIN_STORAGE_KEY = 'mtg_admin_access_list_v1';
 export const PERMANENT_SUPER_ADMIN_EMAILS = new Set([
@@ -22,6 +22,19 @@ export const PERMANENT_SUPER_ADMIN_EMAILS = new Set([
   'devonbyrd@gmail.com',
 ]);
 export const DEFAULT_OWNER_EMAIL = 'dbyrd1568@gmail.com';
+
+/**
+ * Helper to identify whether an email or ID belongs to a permanent super-admin owner
+ */
+export function isPermanentSuperAdmin(emailOrId?: string | null): boolean {
+  if (!emailOrId) return false;
+  const clean = emailOrId.trim().toLowerCase();
+  return (
+    PERMANENT_SUPER_ADMIN_EMAILS.has(clean) ||
+    clean === 'admin_owner_01' ||
+    clean === 'admin_owner_02'
+  );
+}
 
 /**
  * Checks if the current user has administrative rights
@@ -215,29 +228,68 @@ export async function grantAdminAccess(
 }
 
 export async function revokeAdminAccess(
-  adminId: string
+  emailOrAdminId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const current = getStoredLocalAdmins();
-  const target = current.find((a) => a.id === adminId || a.email.toLowerCase() === adminId.toLowerCase());
-  if (
-    target?.role === 'owner' ||
-    (target?.email && PERMANENT_SUPER_ADMIN_EMAILS.has(target.email.toLowerCase())) ||
-    PERMANENT_SUPER_ADMIN_EMAILS.has(adminId.toLowerCase()) ||
-    adminId.startsWith('admin_owner_')
-  ) {
+  const clean = emailOrAdminId.trim().toLowerCase();
+  if (!clean) return { success: false, error: 'Email or User ID cannot be empty.' };
+
+  // Permanent super admins cannot be revoked
+  if (isPermanentSuperAdmin(clean)) {
     return { success: false, error: 'Cannot revoke the primary owner account.' };
   }
 
-  const updated = current.filter((a) => a.id !== adminId && a.email !== adminId);
+  const current = getStoredLocalAdmins();
+  const target = current.find(
+    (a) =>
+      a.id.toLowerCase() === clean ||
+      a.email.toLowerCase() === clean ||
+      (a.userId && a.userId.toLowerCase() === clean)
+  );
+
+  if (target && (target.role === 'owner' || isPermanentSuperAdmin(target.email))) {
+    return { success: false, error: 'Cannot revoke the primary owner account.' };
+  }
+
+  // 1. Update local storage
+  const updated = current.filter(
+    (a) =>
+      a.id.toLowerCase() !== clean &&
+      a.email.toLowerCase() !== clean &&
+      (!a.userId || a.userId.toLowerCase() !== clean) &&
+      (!target || (a.id !== target.id && a.email.toLowerCase() !== target.email.toLowerCase()))
+  );
   localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(updated));
 
+  // 2. Delete from Supabase app_admins table
   if (isSupabaseConfigured()) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { error } = await supabase.from('app_admins').delete().eq('id', adminId);
-        if (error) {
-          console.warn('Could not sync admin revocation to Supabase:', error.message);
+        // Target by email (case-insensitive)
+        if (clean.includes('@')) {
+          const { error } = await supabase.from('app_admins').delete().ilike('email', clean);
+          if (error) console.warn('Could not delete admin by email from Supabase:', error.message);
+        }
+
+        if (target?.email && target.email.toLowerCase() !== clean) {
+          const { error } = await supabase.from('app_admins').delete().ilike('email', target.email.toLowerCase());
+          if (error) console.warn('Could not delete admin by target email from Supabase:', error.message);
+        }
+
+        // Target by UUID
+        if (isCloudUUID(clean)) {
+          const { error } = await supabase.from('app_admins').delete().or(`id.eq.${clean},user_id.eq.${clean}`);
+          if (error) console.warn('Could not delete admin by UUID from Supabase:', error.message);
+        }
+
+        if (target?.id && isCloudUUID(target.id)) {
+          const { error } = await supabase.from('app_admins').delete().eq('id', target.id);
+          if (error) console.warn('Could not delete admin by target id from Supabase:', error.message);
+        }
+
+        if (target?.userId && isCloudUUID(target.userId)) {
+          const { error } = await supabase.from('app_admins').delete().eq('user_id', target.userId);
+          if (error) console.warn('Could not delete admin by target user_id from Supabase:', error.message);
         }
       }
     } catch (err: any) {
