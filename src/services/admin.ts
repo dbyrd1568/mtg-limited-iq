@@ -91,6 +91,11 @@ export function getStoredLocalAdmins(): AdminAccessRecord[] {
     const raw = localStorage.getItem(ADMIN_STORAGE_KEY);
     const list: AdminAccessRecord[] = raw ? JSON.parse(raw) : [];
 
+    // Purge any erroneously cached or legacy entries
+    const cleaned = list.filter(
+      (a) => a.email?.toLowerCase() !== 'devonbyrd@gmail.com' && a.id !== 'admin_owner_02'
+    );
+
     // Ensure permanent super admin owner is always present with owner role
     const initialOwners: AdminAccessRecord[] = [
       {
@@ -102,24 +107,18 @@ export function getStoredLocalAdmins(): AdminAccessRecord[] {
     ];
 
     for (const owner of initialOwners) {
-      if (!list.some((a) => a.email.toLowerCase() === owner.email.toLowerCase())) {
-        list.unshift(owner);
+      if (!cleaned.some((a) => a.email.toLowerCase() === owner.email.toLowerCase())) {
+        cleaned.unshift(owner);
       }
     }
 
-    localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(list));
-    return list;
+    localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(cleaned));
+    return cleaned;
   } catch (e) {
     return [
       {
         id: 'admin_owner_01',
         email: 'dbyrd1568@gmail.com',
-        role: 'owner',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'admin_owner_02',
-        email: 'devonbyrd@gmail.com',
         role: 'owner',
         createdAt: new Date().toISOString(),
       },
@@ -137,14 +136,28 @@ export async function fetchAdminList(): Promise<AdminAccessRecord[]> {
         .order('created_at', { ascending: true });
 
       if (!error && data && data.length > 0) {
-        const remote: AdminAccessRecord[] = data.map((d: any) => ({
-          id: d.id,
-          userId: d.user_id,
-          email: d.email || 'Admin',
-          role: d.role as 'owner' | 'admin',
-          grantedBy: d.granted_by,
-          createdAt: d.created_at,
-        }));
+        // Purge devonbyrd@gmail.com from Supabase if it was erroneously inserted
+        const erroneousRemote = data.find(
+          (d: any) => (d.email || '').toLowerCase() === 'devonbyrd@gmail.com'
+        );
+        if (erroneousRemote) {
+          try {
+            await supabase.from('app_admins').delete().ilike('email', 'devonbyrd@gmail.com');
+          } catch {
+            // Ignore permission or connection errors
+          }
+        }
+
+        const remote: AdminAccessRecord[] = data
+          .filter((d: any) => (d.email || '').toLowerCase() !== 'devonbyrd@gmail.com' && d.id !== 'admin_owner_02')
+          .map((d: any) => ({
+            id: d.id,
+            userId: d.user_id,
+            email: d.email || 'Admin',
+            role: d.role as 'owner' | 'admin',
+            grantedBy: d.granted_by,
+            createdAt: d.created_at,
+          }));
 
         // Merge, ensuring permanent super admins are always included as owner
         const merged: AdminAccessRecord[] = [...remote];

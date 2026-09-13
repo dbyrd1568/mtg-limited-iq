@@ -31,15 +31,6 @@ async function runAdminVerification() {
 
   // Test 1: Admin Permission Verification
   console.log('1. Testing Admin Authorization Checks...');
-  const devonUser: UserAccount = {
-    id: 'usr_devonbyrd',
-    name: 'Devon Byrd',
-    email: 'devonbyrd@gmail.com',
-    avatarColor: '#8b5cf6',
-    provider: 'google',
-    createdAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
-  };
 
   const guestUser: UserAccount = {
     id: 'usr_random_guest_99',

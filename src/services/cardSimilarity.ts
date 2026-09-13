@@ -161,12 +161,20 @@ export function extractCardFeatures(card: Card) {
     }
   });
 
+  // Flicker / Self-Blink Check
+  const isFlicker = (
+    /exile target .* (you control|you own).*return (it|that card)/i.test(oracle) ||
+    /exile target creature you control/i.test(oracle) ||
+    /exile target nonland permanent you control/i.test(oracle)
+  );
+
   // METHOD 1: Lexical Effect Patterns
   const detectedClauses: { label: string; raw: string; category: string }[] = [];
   const detectedCategories = new Set<string>();
 
   EFFECT_PATTERNS.forEach((ep) => {
     if (ep.pattern.test(oracle)) {
+      if (isFlicker && ep.category === 'removal') return;
       const match = oracle.match(ep.pattern);
       detectedClauses.push({ label: ep.label, raw: match ? match[0] : ep.label, category: ep.category });
       detectedCategories.add(ep.category);
@@ -194,7 +202,9 @@ export function extractCardFeatures(card: Card) {
   }
 
   // 2. Removal Subtypes
-  if (isAuraRemoval) {
+  if (isFlicker) {
+    actionSubtypes.add('flicker_protection');
+  } else if (isAuraRemoval) {
     actionSubtypes.add('pacifism_aura');
   } else if (/destroy all creatures|deals \d+ damage to each creature|exile all creatures/i.test(oracle)) {
     actionSubtypes.add('sweeper');
@@ -205,11 +215,44 @@ export function extractCardFeatures(card: Card) {
   } else if (/(destroy|exile) target (permanent|nonland permanent)/i.test(oracle)) {
     actionSubtypes.add('permanent_removal');
     actionSubtypes.add('unconditional_removal');
-  } else if (/(destroy|exile) target creature/i.test(oracle)) {
-    if (/with power|with mana value|tapped|that attacked|unless/i.test(oracle)) {
-      actionSubtypes.add('conditional_removal');
-    } else {
-      actionSubtypes.add('unconditional_removal');
+  } else {
+    const isCreatureDestructionOrExile = (
+      /(destroy|exile) (up to one )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or )?creature/i.test(oracle) ||
+      /(destroy|exile) (up to one )?target creature/i.test(oracle) ||
+      /destroy target \[(attacking|blocking|tapped)\] creature/i.test(rawOracle)
+    );
+    if (isCreatureDestructionOrExile) {
+      detectedCategories.add('removal');
+
+      const hasOpponentCompensation = (
+        /its controller (draws a card|investigates|creates|manifests)/i.test(oracle) ||
+        /controller gains life equal to/i.test(oracle) ||
+        /gift a/i.test(oracle)
+      );
+      if (hasOpponentCompensation) {
+        actionSubtypes.add('removal_with_compensation');
+      }
+
+      const hasCombatCondition = (
+        /wasn't attacking|attacking creature|tapped creature|blocked/i.test(oracle) ||
+        /\[attacking\]/i.test(rawOracle)
+      );
+      if (hasCombatCondition) {
+        actionSubtypes.add('combat_removal');
+      }
+
+      const hasPowerToughnessCondition = (
+        /with power|with toughness|power or toughness|with mana value/i.test(oracle)
+      );
+      if (hasPowerToughnessCondition) {
+        actionSubtypes.add('power_toughness_removal');
+      }
+
+      if (hasPowerToughnessCondition || (hasCombatCondition && !hasOpponentCompensation)) {
+        actionSubtypes.add('conditional_removal');
+      } else {
+        actionSubtypes.add('unconditional_removal');
+      }
     }
   }
 
@@ -652,8 +695,17 @@ function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCar
     if (features.actionSubtypes.has('artifact_sac_sink')) {
       queries.push(`${baseFilter} ${excludeSelf} t:artifact ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"sacrifice"`);
     }
-  } else if (features.actionSubtypes.has('unconditional_removal')) {
-    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"destroy target creature" or o:"exile target creature") -o:"with"`);
+  } else if (
+    features.actionSubtypes.has('unconditional_removal') ||
+    features.actionSubtypes.has('removal_with_compensation') ||
+    features.actionSubtypes.has('combat_removal') ||
+    features.actionSubtypes.has('conditional_removal')
+  ) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc=${features.cmc} (o:"destroy target" or o:"exile target")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"destroy target" or o:"exile target")`);
+    if (features.actionSubtypes.has('removal_with_compensation')) {
+      queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} (o:"draws a card" or o:"investigates" or o:"creates" or o:"gift")`);
+    }
   }
 
   if (features.actionSubtypes.has('burn_damage')) {
@@ -879,6 +931,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const tFeatures = extractCardFeatures(target);
   const cFeatures = extractCardFeatures(candidate);
 
+  // 0.3 Flicker / Self-Protection Gatekeeper:
+  // Non-flicker cards must never be paired with flicker/protection spells, and vice versa.
+  if (tFeatures.actionSubtypes.has('flicker_protection') !== cFeatures.actionSubtypes.has('flicker_protection')) {
+    return { score: 0, reasons: [] };
+  }
+
   let colorScore = 0;
   let cmcScore = 0;
   let method1LexicalScore = 0;
@@ -933,6 +991,15 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   );
   const bothShareFlyingLifegain = (
     tFeatures.actionSubtypes.has('flying_lifegain_evasion') && cFeatures.actionSubtypes.has('flying_lifegain_evasion')
+  );
+  const bothShareRemovalWithCompensation = (
+    tFeatures.actionSubtypes.has('removal_with_compensation') && cFeatures.actionSubtypes.has('removal_with_compensation')
+  );
+  const bothShareCombatRemoval = (
+    tFeatures.actionSubtypes.has('combat_removal') && cFeatures.actionSubtypes.has('combat_removal')
+  );
+  const bothSharePowerToughnessRemoval = (
+    tFeatures.actionSubtypes.has('power_toughness_removal') && cFeatures.actionSubtypes.has('power_toughness_removal')
   );
 
   if (isExactColorMatch) {
@@ -1175,6 +1242,21 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     lexicalReasons.push('Shared flying evasion with creature lifegain trigger');
   }
 
+  if (bothShareRemovalWithCompensation) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 10);
+    lexicalReasons.push('Shared signature compensation downside removal');
+  }
+
+  if (bothShareCombatRemoval) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 8);
+    lexicalReasons.push('Shared combat-conditioned creature removal');
+  }
+
+  if (bothSharePowerToughnessRemoval) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 8);
+    lexicalReasons.push('Shared power/toughness-restricted removal');
+  }
+
   method1LexicalScore = Math.min(25, method1LexicalScore);
 
   // =========================================================================
@@ -1194,6 +1276,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     soft_tax_counter: { pts: 14, label: 'Both mana-tax soft counters' },
     restricted_counter: { pts: 13, label: 'Both targeted/restricted counters' },
     permanent_removal: { pts: 17, label: 'Both flexible permanent removal' },
+    removal_with_compensation: { pts: 20, label: 'Both unconditional removal with opponent compensation' },
+    combat_removal: { pts: 18, label: 'Both combat-conditioned creature removal' },
+    power_toughness_removal: { pts: 17, label: 'Both power/toughness-restricted creature removal' },
     unconditional_removal: { pts: 15, label: 'Both unconditional creature removal' },
     conditional_removal: { pts: 12, label: 'Both conditional creature removal' },
     burn_damage: { pts: 14, label: 'Both direct damage / burn spells' },

@@ -80,42 +80,102 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
   const precedentTier: GradeTier = precedent17L?.tierGrade || 'C';
 
-  // Card sequence navigation calculation
+  // Card sequence navigation calculation with robust fallback
   const currentCardIndex = useMemo(() => {
     if (!targetCard || !allCards || allCards.length === 0) return -1;
-    return allCards.findIndex((c) => c.id === targetCard.id || (c.name === targetCard.name && c.set === targetCard.set));
+    
+    // 1. Direct ID match
+    let idx = allCards.findIndex((c) => c.id && targetCard.id && c.id === targetCard.id);
+    if (idx !== -1) return idx;
+
+    // 2. Normalized name and normalized set match (case-insensitive)
+    const targetNormName = (targetCard.name || '').trim().toLowerCase();
+    const targetNormSet = (targetCard.set || '').trim().toLowerCase();
+    idx = allCards.findIndex((c) => {
+      const cNormName = (c.name || '').trim().toLowerCase();
+      const cNormSet = (c.set || '').trim().toLowerCase();
+      const nameMatch = cNormName === targetNormName;
+      const setMatch = !targetNormSet || !cNormSet || cNormSet === targetNormSet;
+      return nameMatch && setMatch;
+    });
+    if (idx !== -1) return idx;
+
+    // 3. Collector number match within set
+    const targetNum = targetCard.collector_number?.replace(/^0+/, '') || targetCard.collector_number;
+    if (targetNum) {
+      idx = allCards.findIndex((c) => {
+        const cNum = c.collector_number?.replace(/^0+/, '') || c.collector_number;
+        const cNormSet = (c.set || '').trim().toLowerCase();
+        const setMatch = !targetNormSet || !cNormSet || cNormSet === targetNormSet;
+        return cNum === targetNum && setMatch;
+      });
+      if (idx !== -1) return idx;
+    }
+
+    // 4. Fallback: match by name only
+    idx = allCards.findIndex((c) => (c.name || '').trim().toLowerCase() === targetNormName);
+    if (idx !== -1) return idx;
+
+    return -1;
   }, [targetCard, allCards]);
+
+  // If card wasn't found at an exact index, resolve closest by collector number or start at 0
+  const resolvedCardIndex = useMemo(() => {
+    if (currentCardIndex >= 0) return currentCardIndex;
+    if (!allCards || allCards.length === 0) return -1;
+    if (targetCard?.collector_number) {
+      const targetNum = parseInt(targetCard.collector_number, 10);
+      if (!isNaN(targetNum)) {
+        const sortedWithDiff = allCards.map((c, i) => {
+          const cNum = parseInt(c.collector_number || '0', 10);
+          return { index: i, diff: Math.abs(cNum - targetNum) };
+        }).sort((a, b) => a.diff - b.diff);
+        if (sortedWithDiff.length > 0) return sortedWithDiff[0].index;
+      }
+    }
+    return 0;
+  }, [currentCardIndex, allCards, targetCard]);
 
   const canNavigatePrev = typeof hasPrev === 'boolean'
     ? hasPrev
-    : Boolean(onNavigatePrev || (onSelectTargetCard && currentCardIndex > 0));
+    : Boolean(onNavigatePrev || (onSelectTargetCard && allCards && allCards.length > 1 && resolvedCardIndex > 0));
 
   const canNavigateNext = typeof hasNext === 'boolean'
     ? hasNext
-    : Boolean(onNavigateNext || (onSelectTargetCard && currentCardIndex >= 0 && currentCardIndex < allCards!.length - 1));
+    : Boolean(onNavigateNext || (onSelectTargetCard && allCards && allCards.length > 1 && resolvedCardIndex >= 0 && resolvedCardIndex < allCards.length - 1));
+
+  const showNavigationControls = Boolean(
+    onSelectTargetCard || onNavigateNext || onNavigatePrev || (allCards && allCards.length > 0)
+  );
 
   const handlePrevCard = useCallback(() => {
     if (onNavigatePrev) {
       onNavigatePrev();
-    } else if (onSelectTargetCard && allCards && currentCardIndex > 0) {
-      onSelectTargetCard(allCards[currentCardIndex - 1]);
+    } else if (onSelectTargetCard && allCards && allCards.length > 0) {
+      const targetIdx = resolvedCardIndex > 0 ? resolvedCardIndex - 1 : 0;
+      if (allCards[targetIdx]) {
+        onSelectTargetCard(allCards[targetIdx]);
+      }
     }
-  }, [onNavigatePrev, onSelectTargetCard, allCards, currentCardIndex]);
+  }, [onNavigatePrev, onSelectTargetCard, allCards, resolvedCardIndex]);
 
   const handleNextCard = useCallback(() => {
     if (onNavigateNext) {
       onNavigateNext();
-    } else if (onSelectTargetCard && allCards && currentCardIndex >= 0 && currentCardIndex < allCards.length - 1) {
-      onSelectTargetCard(allCards[currentCardIndex + 1]);
+    } else if (onSelectTargetCard && allCards && allCards.length > 0) {
+      const targetIdx = resolvedCardIndex >= 0 && resolvedCardIndex < allCards.length - 1 ? resolvedCardIndex + 1 : resolvedCardIndex;
+      if (allCards[targetIdx]) {
+        onSelectTargetCard(allCards[targetIdx]);
+      }
     }
-  }, [onNavigateNext, onSelectTargetCard, allCards, currentCardIndex]);
+  }, [onNavigateNext, onSelectTargetCard, allCards, resolvedCardIndex]);
 
   const cardCounterLabel = useMemo(() => {
-    if (currentCardIndex >= 0 && allCards && allCards.length > 0) {
-      return `${currentCardIndex + 1} / ${allCards.length}`;
+    if (allCards && allCards.length > 0 && resolvedCardIndex >= 0) {
+      return `${resolvedCardIndex + 1} / ${allCards.length}`;
     }
     return null;
-  }, [currentCardIndex, allCards]);
+  }, [resolvedCardIndex, allCards]);
 
   // Fetch comps on open or target change
   useEffect(() => {
@@ -539,26 +599,26 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     </div>
 
                     {/* Next / Prev Card Navigation Controls */}
-                    {(canNavigatePrev || canNavigateNext) && (
+                    {showNavigationControls && (
                       <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800">
                         <div className="flex items-center justify-between gap-2">
                           <button
                             type="button"
                             onClick={handlePrevCard}
                             disabled={!canNavigatePrev}
-                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all border shadow-2xs ${
                               canNavigatePrev
-                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 active:scale-[0.98]'
+                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 cursor-pointer active:scale-[0.98]'
                                 : 'opacity-30 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
                             }`}
-                            title="Previous Card (← Arrow key or [)"
+                            title={canNavigatePrev ? "Previous Card (← Arrow key or [)" : "No previous card"}
                           >
                             <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
                             <span>Prev</span>
                           </button>
 
                           {cardCounterLabel && (
-                            <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 px-1 whitespace-nowrap" title="Card position in set">
+                            <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 px-1 whitespace-nowrap" title="Card position in sequence">
                               {cardCounterLabel}
                             </span>
                           )}
@@ -567,12 +627,12 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             type="button"
                             onClick={handleNextCard}
                             disabled={!canNavigateNext}
-                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all border shadow-2xs ${
                               canNavigateNext
-                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 active:scale-[0.98]'
+                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 cursor-pointer active:scale-[0.98]'
                                 : 'opacity-30 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
                             }`}
-                            title="Next Card (→ Arrow key or ])"
+                            title={canNavigateNext ? "Next Card (→ Arrow key or ])" : "No next card"}
                           >
                             <span>Next</span>
                             <ChevronRight className="w-3.5 h-3.5 shrink-0" />
