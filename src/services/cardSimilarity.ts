@@ -46,10 +46,10 @@ export interface EffectPattern {
 }
 
 const EFFECT_PATTERNS: EffectPattern[] = [
-  { pattern: /destroy target creature/i, label: 'Creature Removal', category: 'removal' },
-  { pattern: /exile target creature/i, label: 'Exile Removal', category: 'removal' },
-  { pattern: /destroy target (permanent|nonland permanent)/i, label: 'Permanent Removal', category: 'removal' },
-  { pattern: /exile target (permanent|nonland permanent)/i, label: 'Exile Permanent', category: 'removal' },
+  { pattern: /(destroy|exile) (up to one )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or )?creature/i, label: 'Creature Removal', category: 'removal' },
+  { pattern: /(destroy|exile) (up to one )?target creature/i, label: 'Creature Removal', category: 'removal' },
+  { pattern: /destroy target \[(attacking|blocking|tapped)\] creature/i, label: 'Creature Removal', category: 'removal' },
+  { pattern: /(destroy|exile) target (permanent|nonland permanent)/i, label: 'Permanent Removal', category: 'removal' },
   { pattern: /deals \d+ damage to (any target|target creature)/i, label: 'Burn / Direct Damage', category: 'damage' },
   { pattern: /deals \d+ damage to each creature/i, label: 'Board Wipe / Sweeper', category: 'sweeper' },
   { pattern: /destroy all creatures/i, label: 'Board Wipe / Wrath', category: 'sweeper' },
