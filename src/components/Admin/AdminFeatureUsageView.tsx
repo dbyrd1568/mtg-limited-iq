@@ -137,7 +137,7 @@ export const AdminFeatureUsageView: React.FC<AdminFeatureUsageViewProps> = ({ fe
         </div>
 
         <span className="text-xs text-slate-400 font-mono">
-          Sorted by total telemetry volume
+          Sorted by total activity volume
         </span>
       </div>
 

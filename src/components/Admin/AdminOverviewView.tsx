@@ -161,7 +161,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
                   System Interaction Volume
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Telemetry interactions across card evaluations, quizzes, and archetype forecasts
+                  System interactions across card evaluations, quizzes, and archetype forecasts
                 </p>
               </div>
             </div>
@@ -348,7 +348,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-500" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
-                Recent Telemetry Activity
+                Recent Activity
               </h3>
             </div>
             <span className="text-[11px] font-mono text-slate-400">Real-time Stream</span>
@@ -357,7 +357,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1 no-scrollbar">
             {recentLogs.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
-                No user telemetry activity recorded yet.
+                No user activity recorded yet.
               </div>
             ) : (
               recentLogs.slice(0, 8).map((log) => (

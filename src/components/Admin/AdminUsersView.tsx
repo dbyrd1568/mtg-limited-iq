@@ -636,7 +636,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                       <span>Authorized Administrator</span>
                     </div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Has full access to admin analytics, telemetry logs, and access control.
+                      Has full access to admin analytics, activity logs, and access control.
                     </div>
                   </div>
 

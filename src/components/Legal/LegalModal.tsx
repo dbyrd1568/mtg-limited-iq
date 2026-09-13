@@ -119,7 +119,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                     <strong>Study & Evaluation Data:</strong> Your custom card ratings (grades, tier picks, strategic notes), quiz responses, and set exploration progress are stored to sync across your devices.
                   </li>
                   <li>
-                    <strong>Anonymous Telemetry:</strong> Anonymized grading accuracy metrics and feature usage counters are tracked to identify community sleeper and trap cards across MTG Limited formats.
+                    <strong>Anonymous Usage Analytics:</strong> Anonymized grading accuracy metrics and feature usage counters are tracked to identify community sleeper and trap cards across MTG Limited formats.
                   </li>
                 </ul>
               </section>

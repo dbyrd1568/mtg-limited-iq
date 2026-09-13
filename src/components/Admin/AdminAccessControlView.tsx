@@ -135,7 +135,7 @@ export const AdminAccessControlView: React.FC<AdminAccessControlViewProps> = ({
           </h2>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-          Manage authorized administrator accounts. Only verified administrators can view telemetry,
+          Manage authorized administrator accounts. Only verified administrators can view system analytics,
           cross-user evaluations, and manage access permissions. All requests are verified against PostgreSQL Row-Level Security.
         </p>
       </div>

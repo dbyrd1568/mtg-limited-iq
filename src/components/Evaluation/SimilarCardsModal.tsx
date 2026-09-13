@@ -761,7 +761,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200/60 dark:border-slate-800/60 col-span-2 sm:col-span-1">
                                     <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">Draft Velocity</span>
                                     <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                      {match.alsa !== undefined ? `Pick ~${match.alsa.toFixed(1)} ALSA` : 'Data Pending'}
+                                      {match.alsa !== undefined ? `Pick ~${match.alsa.toFixed(1)} ALSA` : 'Pending'}
                                     </span>
                                   </div>
                                 </div>
@@ -805,7 +805,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
         {/* Modal Footer */}
         <div className="px-5 py-2.5 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 bg-slate-50/80 dark:bg-[#050818]/90 font-mono text-[11px] text-center sm:text-left">
-          Searches Premier Draft Precedents across modern standard & booster sets
+          Searches Premier Draft Precedents across modern sets
         </div>
       </div>
 
@@ -967,7 +967,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           </span>
                         ) : (
                           <span className="text-[10px] font-semibold font-mono px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
-                            Unreleased Set
+                            Pending
                           </span>
                         )}
                       </div>
@@ -978,7 +978,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
                             {effectiveTarget17L?.winRate !== undefined
                               ? `${(effectiveTarget17L.winRate * 100).toFixed(1)}%`
-                              : 'Telemetry Pending'}
+                              : 'Pending'}
                           </span>
                         </div>
                         <div>
@@ -1171,7 +1171,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
                             {precedent17L?.winRate !== undefined
                               ? `${(precedent17L.winRate * 100).toFixed(1)}%`
-                              : '-'}
+                              : 'Pending'}
                           </span>
                         </div>
                         <div>
@@ -1179,7 +1179,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           <span className="text-slate-700 dark:text-slate-200 font-bold text-sm">
                             {precedent17L?.alsa !== undefined
                               ? precedent17L.alsa.toFixed(2)
-                              : '-'}
+                              : 'Pending'}
                           </span>
                         </div>
                         {precedent17L?.iwd !== undefined && (
