@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlaneswalkerSymbol } from '../UI/PlaneswalkerSymbol';
 import {
   signInWithOAuth,
@@ -9,6 +9,7 @@ import {
 } from '../../services/auth';
 import { UserAccount } from '../../types/mtg';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../../services/theme';
+import { LegalModal, LegalDocType } from '../Legal/LegalModal';
 import {
   Mail,
   Lock,
@@ -38,6 +39,30 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [currentTheme, setCurrentTheme] = useState<ThemeMode>(getStoredTheme());
+  const [legalDoc, setLegalDoc] = useState<LegalDocType | null>(null);
+
+  useEffect(() => {
+    const path = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
+    if (path === '/privacy' || path.startsWith('/privacy')) {
+      setLegalDoc('privacy');
+    } else if (path === '/terms' || path.startsWith('/terms')) {
+      setLegalDoc('terms');
+    }
+  }, []);
+
+  const handleOpenLegal = (doc: LegalDocType) => {
+    setLegalDoc(doc);
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', `/${doc}`);
+    }
+  };
+
+  const handleCloseLegal = () => {
+    setLegalDoc(null);
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', '/');
+    }
+  };
 
   const handleToggleTheme = () => {
     const next = toggleTheme();
@@ -447,10 +472,36 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                   </button>
                 </form>
               )}
+
+              {/* Legal Links Footer */}
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
+                <button
+                  type="button"
+                  onClick={() => handleOpenLegal('privacy')}
+                  className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer"
+                >
+                  Privacy Policy
+                </button>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={() => handleOpenLegal('terms')}
+                  className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer"
+                >
+                  Terms of Service
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Legal Document Modal */}
+      <LegalModal
+        isOpen={Boolean(legalDoc)}
+        initialDoc={legalDoc || 'privacy'}
+        onClose={handleCloseLegal}
+      />
     </div>
   );
 };

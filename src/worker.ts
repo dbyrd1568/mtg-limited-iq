@@ -58,7 +58,12 @@ export default {
       }
     }
 
-    // Pass all other requests to static assets
-    return env.ASSETS.fetch(request);
+    // Pass all other requests to static assets with SPA routing fallback
+    let response = await env.ASSETS.fetch(request);
+    if (response.status === 404 && !url.pathname.includes('.')) {
+      const indexReq = new Request(new URL('/index.html', request.url), request);
+      response = await env.ASSETS.fetch(indexReq);
+    }
+    return response;
   },
 };

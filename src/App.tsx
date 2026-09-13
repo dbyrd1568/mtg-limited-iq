@@ -32,6 +32,7 @@ import { parseAppUrlParams, updateAppUrlParams } from './services/urlParams';
 import { Brain, Flame } from 'lucide-react';
 import { PlaneswalkerSymbol } from './components/UI/PlaneswalkerSymbol';
 import { SetBadge, SetSymbol } from './components/UI/SetSymbol';
+import { LegalModal, LegalDocType } from './components/Legal/LegalModal';
 
 export const App: React.FC = () => {
   // Navigation & Modal State (Parsed from URL query parameters)
@@ -51,6 +52,13 @@ export const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(() => !hasSeenWelcomeTour());
   const [isGlobalExportModalOpen, setIsGlobalExportModalOpen] = useState<boolean>(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocType | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/privacy' || path.startsWith('/privacy')) return 'privacy';
+    if (path === '/terms' || path.startsWith('/terms')) return 'terms';
+    return null;
+  });
 
   const isProd = isProdEnvironment();
 
@@ -832,6 +840,19 @@ export const App: React.FC = () => {
         seventeenLandsData={seventeenLandsData}
         currentSet={currentSet || allSets[0]}
         userId={currentUser?.id}
+      />
+
+      {/* Legal Documents Modal */}
+      <LegalModal
+        isOpen={Boolean(legalDoc)}
+        initialDoc={legalDoc || 'privacy'}
+        isStandalonePage={true}
+        onClose={() => {
+          setLegalDoc(null);
+          if (typeof window !== 'undefined') {
+            window.history.pushState(null, '', '/');
+          }
+        }}
       />
     </div>
   );
