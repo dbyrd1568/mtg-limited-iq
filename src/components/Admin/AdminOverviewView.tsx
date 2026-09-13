@@ -173,14 +173,16 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-black text-slate-900 dark:text-white font-heading">
-                {kpis.avgGradingAccuracy}%
+                {kpis.avgGradingAccuracy > 0 ? `${kpis.avgGradingAccuracy}%` : '—'}
               </span>
-              <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                {accuracy.systemGpa} GPA
-              </span>
+              {accuracy.systemGpa > 0 && (
+                <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  {accuracy.systemGpa} GPA
+                </span>
+              )}
             </div>
             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              vs 17Lands empirical tier benchmarks (±1 step)
+              {kpis.totalCardsGraded > 0 ? 'vs 17Lands empirical tier benchmarks (±1 step)' : 'Awaiting card evaluations'}
             </div>
           </div>
         </div>
@@ -201,7 +203,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500 dark:text-slate-400">
               <span className="font-semibold text-amber-600 dark:text-amber-400">
-                {kpis.avgQuizAccuracy}%
+                {kpis.avgQuizAccuracy > 0 ? `${kpis.avgQuizAccuracy}%` : '—'}
               </span>
               <span>avg tactical quiz accuracy</span>
             </div>
@@ -368,7 +370,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
             <span className="text-slate-600 dark:text-slate-400">Highest Engagement:</span>
             <span className="font-bold text-violet-700 dark:text-violet-300">
-              {kpis.topActiveFeature}
+              {kpis.topActiveFeature !== 'None' ? kpis.topActiveFeature : '—'}
             </span>
           </div>
         </div>
@@ -435,7 +437,9 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
                       {user.cardsGradedTotal} cards graded
                     </div>
                     <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {user.gradingAccuracyScore}% grade accuracy
+                      {user.cardsGradedTotal > 0
+                        ? `${user.gradingAccuracyScore}% grade accuracy`
+                        : 'No cards graded yet'}
                     </div>
                   </div>
                 </div>

@@ -60,7 +60,10 @@ const EFFECT_PATTERNS: EffectPattern[] = [
   { pattern: /put (a|\d+) \+1\/\+1 counter/i, label: '+1/+1 Counter', category: 'counters' },
   { pattern: /return target .* to its owner's hand/i, label: 'Bounce Effect', category: 'bounce' },
   { pattern: /target creature can't (block|attack)/i, label: 'Pacifism / Lock', category: 'pacifism' },
-  { pattern: /enchanted creature (can't attack|can't block|doesn't untap)/i, label: 'Pacifism Aura', category: 'pacifism' },
+  { pattern: /enchanted (creature|permanent) (can't attack|can't block|doesn't untap)/i, label: 'Pacifism Aura', category: 'pacifism' },
+  { pattern: /enchanted (creature|permanent) loses all abilities|lose all abilities|has no abilities/i, label: 'Ability Loss Aura', category: 'pacifism' },
+  { pattern: /base power and toughness/i, label: 'Stat Reduction / Transformation', category: 'pacifism' },
+  { pattern: /doesn't untap during (its|their) controller's untap step|doesn't untap/i, label: 'Freeze Lockdown', category: 'pacifism' },
   { pattern: /connive|recruit|draw a card, then discard/i, label: 'Looting / Card Selection', category: 'selection' },
   { pattern: /look at the top \d+ cards/i, label: 'Card Selection / Impulse', category: 'selection' },
   { pattern: /when .* enters the battlefield|when .* enters/i, label: 'ETB Ability', category: 'synergy' },
@@ -124,12 +127,31 @@ export function extractCardFeatures(card: Card) {
     /untap target creature/i.test(oracle)
   );
 
-  const isAuraRemoval = isEnchantment && (
-    oracle.includes('enchant creature') || oracle.includes('enchant permanent')
-  ) && (
-    oracle.includes("can't attack") || oracle.includes("can't block") || 
-    oracle.includes("doesn't untap") || oracle.includes("exile")
+  const isAura = isEnchantment && (
+    oracle.includes('enchant creature') ||
+    oracle.includes('enchant permanent') ||
+    oracle.includes('enchant nonland permanent') ||
+    frontTypeLine.includes('aura')
   );
+
+  const isAbilityLossAura = isAura && (
+    /loses all abilities|lose all abilities|has no abilities/i.test(oracle) ||
+    (/base power and toughness/i.test(oracle) && /enchanted (creature|permanent)/i.test(oracle))
+  );
+
+  const isFreezeAura = isAura && (
+    /doesn't untap during (its|their) controller's untap step|doesn't untap/i.test(oracle) ||
+    (/tap enchanted/i.test(oracle) && !/gets [+-]\d/i.test(oracle)) ||
+    /becomes unprepared/i.test(oracle)
+  );
+
+  const isLockdownAura = isAura && (
+    /can't attack|can't block|activated abilities.*can't be activated/i.test(oracle)
+  );
+
+  const isExileAura = isAura && /exile/i.test(oracle);
+
+  const isAuraRemoval = isAbilityLossAura || isFreezeAura || isLockdownAura || isExileAura;
 
   const createsTokens = (oracle.includes('create') && oracle.includes('token')) || /amass/i.test(oracle);
 
@@ -205,7 +227,10 @@ export function extractCardFeatures(card: Card) {
   if (isFlicker) {
     actionSubtypes.add('flicker_protection');
   } else if (isAuraRemoval) {
-    actionSubtypes.add('pacifism_aura');
+    actionSubtypes.add('aura_removal');
+    if (isAbilityLossAura) actionSubtypes.add('ability_loss_aura');
+    if (isFreezeAura) actionSubtypes.add('freeze_aura');
+    if (isLockdownAura) actionSubtypes.add('pacifism_aura');
   } else if (/destroy all creatures|deals \d+ damage to each creature|exile all creatures/i.test(oracle)) {
     actionSubtypes.add('sweeper');
   } else if (/deals \d+ damage to (any target|target creature)/i.test(oracle)) {
@@ -583,12 +608,14 @@ function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCar
     typeFilter = 't:battle';
   } else if (features.isLand) {
     typeFilter = 't:land';
-  } else if (features.isInstant || features.isSorcery || features.isAuraRemoval) {
+  } else if (features.isInstant || features.isSorcery) {
     if (features.isCombatTrick) {
       typeFilter = '(t:instant or o:flash)';
     } else {
       typeFilter = '(t:instant or t:sorcery)';
     }
+  } else if (features.isAuraRemoval) {
+    typeFilter = 't:enchantment';
   } else if (features.isEquipment) {
     typeFilter = 't:equipment';
   } else if (features.isCreature) {
@@ -711,6 +738,27 @@ function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCar
     if (features.actionSubtypes.has('removal_with_compensation')) {
       queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} (o:"draws a card" or o:"investigates" or o:"creates" or o:"gift")`);
     }
+  }
+
+  if (features.isAuraRemoval) {
+    if (features.actionSubtypes.has('ability_loss_aura')) {
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} cmc=${features.cmc} (o:"loses all abilities" or o:"lose all abilities" or o:"has no abilities" or o:"base power and toughness")`);
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} (o:"loses all abilities" or o:"lose all abilities" or o:"has no abilities" or o:"base power and toughness")`);
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment (o:"loses all abilities" or o:"lose all abilities" or o:"has no abilities" or o:"base power and toughness")`);
+    }
+    if (features.actionSubtypes.has('freeze_aura')) {
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} cmc=${features.cmc} (o:"doesn't untap" or o:"tap enchanted" or o:"stun counter")`);
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"doesn't untap" or o:"tap enchanted" or o:"stun counter")`);
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} (o:"doesn't untap" or o:"tap enchanted" or o:"stun counter")`);
+    }
+    if (features.actionSubtypes.has('pacifism_aura')) {
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"can't attack" or o:"can't block" or o:"doesn't untap")`);
+      queries.push(`${baseFilter} ${excludeSelf} t:enchantment (o:"can't attack" or o:"can't block" or o:"doesn't untap")`);
+    }
+    queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} cmc=${features.cmc} (o:"enchant creature" or o:"enchanted creature")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"enchant creature" or o:"enchanted creature")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:enchantment ${exactColorQuery} (o:"enchant creature" or o:"enchanted creature")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"destroy target" or o:"exile target" or o:"tap target")`);
   }
 
   if (features.actionSubtypes.has('burn_damage')) {
@@ -1006,6 +1054,18 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const bothSharePowerToughnessRemoval = (
     tFeatures.actionSubtypes.has('power_toughness_removal') && cFeatures.actionSubtypes.has('power_toughness_removal')
   );
+  const bothShareAbilityLossAura = (
+    tFeatures.actionSubtypes.has('ability_loss_aura') && cFeatures.actionSubtypes.has('ability_loss_aura')
+  );
+  const bothShareFreezeAura = (
+    tFeatures.actionSubtypes.has('freeze_aura') && cFeatures.actionSubtypes.has('freeze_aura')
+  );
+  const bothSharePacifismAura = (
+    tFeatures.actionSubtypes.has('pacifism_aura') && cFeatures.actionSubtypes.has('pacifism_aura')
+  );
+  const bothShareAuraRemoval = (
+    tFeatures.isAuraRemoval && cFeatures.isAuraRemoval
+  );
 
   if (isExactColorMatch) {
     colorScore = 20;
@@ -1260,6 +1320,21 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   if (bothSharePowerToughnessRemoval) {
     method1LexicalScore = Math.min(25, method1LexicalScore + 8);
     lexicalReasons.push('Shared power/toughness-restricted removal');
+  }
+
+  if (bothShareAbilityLossAura) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared signature ability-stripping Aura ("loses all abilities")');
+  }
+
+  if (bothShareFreezeAura) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 10);
+    lexicalReasons.push('Shared freeze / tap-lockdown Aura ("doesn\'t untap")');
+  }
+
+  if (bothSharePacifismAura) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 8);
+    lexicalReasons.push('Shared pacifism lockdown Aura');
   }
 
   method1LexicalScore = Math.min(25, method1LexicalScore);

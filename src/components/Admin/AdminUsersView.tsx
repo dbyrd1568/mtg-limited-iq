@@ -368,14 +368,18 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
 
                   {/* Grading Calibration Accuracy */}
                   <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                        {user.gradingAccuracyScore}%
-                      </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                        {user.gradingGpa} GPA
-                      </span>
-                    </div>
+                    {user.cardsGradedTotal > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          {user.gradingAccuracyScore}%
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                          {user.gradingGpa} GPA
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-mono">—</span>
+                    )}
                   </td>
 
                   {/* Last Login */}
@@ -499,14 +503,14 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
                 <div className="text-[10px] uppercase font-bold text-slate-400">Grade Accuracy</div>
                 <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-heading mt-0.5">
-                  {selectedUser.gradingAccuracyScore}%
+                  {selectedUser.cardsGradedTotal > 0 ? `${selectedUser.gradingAccuracyScore}%` : '—'}
                 </div>
               </div>
 
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
                 <div className="text-[10px] uppercase font-bold text-slate-400">Evaluator GPA</div>
                 <div className="text-lg font-black text-indigo-600 dark:text-cyan-400 font-heading mt-0.5">
-                  {selectedUser.gradingGpa}
+                  {selectedUser.cardsGradedTotal > 0 ? selectedUser.gradingGpa : '—'}
                 </div>
               </div>
 

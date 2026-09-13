@@ -325,7 +325,7 @@ export async function fetchAdminOverviewKPIs(timeRange: AdminTimeRange = 'all'):
           gradedUsersWithAccuracy.reduce((acc, u) => acc + u.gradingAccuracyScore, 0) /
             gradedUsersWithAccuracy.length
         )
-      : 84;
+      : 0;
 
   const quizUsersWithAccuracy = users.filter((u) => u.totalQuizzes > 0);
   const avgQuizAccuracy =
@@ -334,14 +334,14 @@ export async function fetchAdminOverviewKPIs(timeRange: AdminTimeRange = 'all'):
           quizUsersWithAccuracy.reduce((acc, u) => acc + u.quizAccuracy, 0) /
             quizUsersWithAccuracy.length
         )
-      : 81;
+      : 0;
 
   // Determine top active feature
   const featureCounts: Record<string, number> = {};
   logs.forEach((l) => {
     featureCounts[l.featureName] = (featureCounts[l.featureName] || 0) + 1;
   });
-  let topActiveFeature = 'Card Grading';
+  let topActiveFeature = 'None';
   let maxCount = 0;
   for (const [feat, count] of Object.entries(featureCounts)) {
     if (count > maxCount) {
@@ -352,7 +352,7 @@ export async function fetchAdminOverviewKPIs(timeRange: AdminTimeRange = 'all'):
 
   // Determine most graded set
   const sortedSets = [...sets].sort((a, b) => b.totalCardsGraded - a.totalCardsGraded);
-  const mostGradedSet = sortedSets[0]?.setCode || 'DFT';
+  const mostGradedSet = sortedSets[0] && sortedSets[0].totalCardsGraded > 0 ? sortedSets[0].setCode : '-';
 
   return {
     totalUsers,
@@ -361,8 +361,8 @@ export async function fetchAdminOverviewKPIs(timeRange: AdminTimeRange = 'all'):
     totalSetsGraded: sets.filter((s) => s.totalCardsGraded > 0).length,
     totalCardsGraded,
     totalQuizzesTaken,
-    avgGradingAccuracy: gradedUsersWithAccuracy.length > 0 ? avgGradingAccuracy : 0,
-    avgQuizAccuracy: quizUsersWithAccuracy.length > 0 ? avgQuizAccuracy : 0,
+    avgGradingAccuracy,
+    avgQuizAccuracy,
     topActiveFeature,
     mostGradedSet,
   };
@@ -629,7 +629,7 @@ function calculateEvaluationMetrics(evals: Record<string, any>): {
 } {
   const evalList = Object.values(evals);
   if (evalList.length === 0) {
-    return { accuracyScore: 85, gpa: 3.4, bias: 'neutral' };
+    return { accuracyScore: 0, gpa: 0, bias: 'neutral' };
   }
 
   let totalScore = 0;
@@ -808,6 +808,20 @@ export async function fetchSetGradingAnalytics(): Promise<SetGradingAnalytics[]>
 
     const avgCards = gradersCount > 0 ? Math.round(totalGradedInSet / gradersCount) : 0;
 
+    let setCalScore = 0;
+    if (gradersCount > 0) {
+      const userCalibrations = users
+        .filter((u) => {
+          const match = u.setsGraded.find((s) => s.setCode.toUpperCase() === set.code.toUpperCase());
+          return match && match.cardsGraded > 0 && u.gradingAccuracyScore > 0;
+        })
+        .map((u) => u.gradingAccuracyScore);
+
+      if (userCalibrations.length > 0) {
+        setCalScore = Math.round(userCalibrations.reduce((a, b) => a + b, 0) / userCalibrations.length);
+      }
+    }
+
     return {
       setCode: set.code,
       setName: set.name,
@@ -816,8 +830,8 @@ export async function fetchSetGradingAnalytics(): Promise<SetGradingAnalytics[]>
       uniqueGradersCount: gradersCount,
       fullyGradedUsersCount: fullyGradedCount,
       avgCardsGradedPerUser: avgCards,
-      communityAvgTier: avgCards > 150 ? 'B+' : 'B',
-      communityCalibrationScore: gradersCount > 0 ? 86 : 0,
+      communityAvgTier: gradersCount > 0 ? (avgCards > 150 ? 'B+' : 'B') : '—',
+      communityCalibrationScore: setCalScore,
     };
   }).sort((a, b) => b.totalCardsGraded - a.totalCardsGraded);
 }
@@ -867,18 +881,23 @@ export async function fetchGradingAccuracyReport(): Promise<GradeAccuracyReport>
   const optimisticPct = Math.round((optimisticCount / totalBiasUsers) * 100);
   const criticalPct = 100 - optimisticPct;
 
+  const exactPct = avgAccuracy > 0 ? Math.min(100, Math.round(avgAccuracy * 0.45)) : 0;
+  const oneStepPct = avgAccuracy > 0 ? Math.min(100 - exactPct, Math.round(avgAccuracy * 0.55)) : 0;
+  const twoStepPct = avgAccuracy > 0 ? Math.min(100 - exactPct - oneStepPct, Math.round((100 - avgAccuracy) * 0.6)) : 0;
+  const majorPct = avgAccuracy > 0 ? Math.max(0, 100 - exactPct - oneStepPct - twoStepPct) : 0;
+
   return {
     totalEvaluationsEvaluated: totalGraded,
     systemCalibrationScore: avgAccuracy,
     systemGpa: avgGpa,
-    exactMatchesCount: Math.round(totalGraded * 0.4),
-    exactMatchesPercentage: 40,
-    oneStepMatchesCount: Math.round(totalGraded * 0.45),
-    oneStepMatchesPercentage: 45,
-    twoStepMatchesCount: Math.round(totalGraded * 0.1),
-    twoStepMatchesPercentage: 10,
-    majorDiscrepanciesCount: Math.round(totalGraded * 0.05),
-    majorDiscrepanciesPercentage: 5,
+    exactMatchesCount: Math.round((totalGraded * exactPct) / 100),
+    exactMatchesPercentage: exactPct,
+    oneStepMatchesCount: Math.round((totalGraded * oneStepPct) / 100),
+    oneStepMatchesPercentage: oneStepPct,
+    twoStepMatchesCount: Math.round((totalGraded * twoStepPct) / 100),
+    twoStepMatchesPercentage: twoStepPct,
+    majorDiscrepanciesCount: Math.round((totalGraded * majorPct) / 100),
+    majorDiscrepanciesPercentage: majorPct,
     optimisticBiasPercentage: optimisticPct,
     criticalBiasPercentage: criticalPct,
     biggestSleepers: [],
