@@ -465,91 +465,89 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
   return (
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
-      {/* UNIFIED TOP-DOCKED CONTROL BAR (Single row, no-wrap, responsive) */}
-      <div className="flex flex-row items-center justify-between gap-2.5 p-2.5 sm:p-3.5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar">
-        {/* Left: Sub-tabs (No icons, text-only pills) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-2xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
+      {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, zero scrollbar) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs no-scrollbar">
+        {/* Left: Sub-tabs (Text-only compact pills) */}
+        <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
+          <button
+            onClick={() => setActiveSubTab('grade')}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'grade'
+                ? 'bg-violet-600 text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            Grade
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('forecast')}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'forecast'
+                ? 'bg-violet-600 text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            Archetypes
+          </button>
+
+          {effective17LandsData && (
             <button
-              onClick={() => setActiveSubTab('grade')}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                activeSubTab === 'grade'
+              onClick={() => setActiveSubTab('calibration')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeSubTab === 'calibration'
                   ? 'bg-violet-600 text-white shadow-xs font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
               }`}
             >
-              Grade Cards
+              17Lands {calibrationSummary.totalRated > 0 ? `(${calibrationSummary.calibrationScore}%)` : ''}
             </button>
+          )}
 
-            <button
-              onClick={() => setActiveSubTab('forecast')}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                activeSubTab === 'forecast'
-                  ? 'bg-violet-600 text-white shadow-xs font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              Archetype Forecast
-            </button>
+          <button
+            onClick={() => setActiveSubTab('notes')}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'notes'
+                ? 'bg-violet-600 text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            Notes
+          </button>
 
-            {effective17LandsData && (
-              <button
-                onClick={() => setActiveSubTab('calibration')}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeSubTab === 'calibration'
-                    ? 'bg-violet-600 text-white shadow-xs font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                Grade vs 17Lands {calibrationSummary.totalRated > 0 ? `(${calibrationSummary.calibrationScore}%)` : ''}
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveSubTab('notes')}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                activeSubTab === 'notes'
-                  ? 'bg-violet-600 text-white shadow-xs font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              Draft Notes
-            </button>
-
-            <button
-              onClick={() => setActiveSubTab('methodology')}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                activeSubTab === 'methodology'
-                  ? 'bg-violet-600 text-white shadow-xs font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              Analytics & Math Guide
-            </button>
-          </div>
+          <button
+            onClick={() => setActiveSubTab('methodology')}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'methodology'
+                ? 'bg-violet-600 text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            Guide
+          </button>
         </div>
 
-        {/* Right: Export & Share, Clear Grades, Blind Mode Toggle & Rapid Grader Action */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: Export, Clear, Blind Mode Toggle & Rapid Grader Action */}
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-violet-700 dark:text-cyan-300 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-violet-700 dark:text-cyan-300 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
             title="Export comparison spreadsheet or send grades to 17Lands"
           >
             <Share2 className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
-            <span>Export & Share</span>
+            <span>Export</span>
           </button>
 
           {onClearEvaluationsForSet && ratedCountInSet > 0 && (
             <button
               type="button"
               onClick={() => setIsClearModalOpen(true)}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
               title={`Clear all your grades for ${currentSetCode.toUpperCase()}`}
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-              <span>Clear Grades ({ratedCountInSet})</span>
+              <span>Clear ({ratedCountInSet})</span>
             </button>
           )}
 
@@ -557,7 +555,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             <button
               type="button"
               onClick={handleToggleBlindGrading}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center justify-center gap-1.5 cursor-pointer min-w-[112px] shrink-0 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
                 isBlindGrading
                   ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40'
                   : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60'
@@ -565,15 +563,15 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               title={isBlindGrading ? 'Grading Mode: Benchmarks hidden. Click to switch to Compare Mode' : 'Compare Mode: 17Lands data visible. Click to switch to Grading Mode'}
             >
               {isBlindGrading ? <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-              <span>{isBlindGrading ? 'Grading Mode' : 'Compare Mode'}</span>
+              <span>{isBlindGrading ? 'Blind' : 'Compare'}</span>
             </button>
           ) : (
             <div
-              className="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-100 dark:bg-[#050818] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800 shrink-0 whitespace-nowrap flex items-center gap-1.5"
+              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#050818] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800 shrink-0 whitespace-nowrap flex items-center gap-1"
               title="17Lands data is available approximately 2 weeks after release"
             >
               <EyeOff className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />
-              <span>17L Data: TBD</span>
+              <span>17L: TBD</span>
             </div>
           )}
 
@@ -584,10 +582,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               );
               handleSelectCardForModal(firstUngraded || cards[0] || null);
             }}
-            className="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider font-heading transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border border-violet-400/40 shrink-0 whitespace-nowrap"
+            className="px-3 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider font-heading transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border border-violet-400/40 shrink-0 whitespace-nowrap"
           >
             <Zap className="w-3.5 h-3.5 fill-white shrink-0" />
-            <span>Rapid Grader</span>
+            <span>Rapid Grade</span>
           </button>
         </div>
       </div>
