@@ -1428,7 +1428,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   } else if (tFeatures.actionSubtypes.has('soft_tax_counter') && cFeatures.actionSubtypes.has('hard_counter')) {
     actionMismatchPenalty = 10;
   } else if (tFeatures.actionSubtypes.has('unconditional_removal') && cFeatures.actionSubtypes.has('conditional_removal')) {
-    actionMismatchPenalty = 8;
+    actionMismatchPenalty = (tFeatures.actionSubtypes.has('removal_with_compensation') || tFeatures.actionSubtypes.has('combat_removal')) ? 2 : 8;
   } else if (tFeatures.actionSubtypes.has('etb_looter') && cFeatures.actionSubtypes.has('tap_looter')) {
     actionMismatchPenalty = 10;
   } else if (tFeatures.actionSubtypes.has('tap_looter') && cFeatures.actionSubtypes.has('etb_looter')) {
@@ -1628,7 +1628,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     if (cFeatures.rarity === 'uncommon' || cFeatures.rarity === 'common') {
       rarityAdjustment = 2;
     } else {
-      rarityAdjustment = -4;
+      rarityAdjustment = bothShareRemovalWithCompensation ? 0 : -4;
     }
   } else if (tFeatures.rarity === 'rare' || tFeatures.rarity === 'mythic') {
     if (cFeatures.rarity === 'rare' || cFeatures.rarity === 'mythic') {
