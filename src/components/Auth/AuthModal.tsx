@@ -76,6 +76,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [currentUser?.avatarUrl]);
 
   useEffect(() => {
     const unsubscribe = subscribeSyncStatus((s) => setSyncStatus(s));
@@ -284,10 +289,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  {currentUser?.avatarUrl ? (
+                  {currentUser?.avatarUrl && !avatarError ? (
                     <img
                       src={currentUser.avatarUrl}
                       alt={currentUser?.name || 'User'}
+                      referrerPolicy="no-referrer"
+                      onError={() => setAvatarError(true)}
                       className="w-12 h-12 rounded-xl object-cover border border-violet-500/50 shadow-sm shrink-0"
                     />
                   ) : (

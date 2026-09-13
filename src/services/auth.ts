@@ -56,8 +56,8 @@ export function supabaseUserToUserAccount(user: User): UserAccount {
 }
 
 export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?: UserAccount; error: Error | null }> {
-  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
-    // Offline / Localhost development fallback: simulated 1-click login without redirecting to remote domain
+  if (!isSupabaseConfigured()) {
+    // Offline development fallback: simulated 1-click login without Supabase credentials
     const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
     const isGoogleAdmin = provider === 'google';
     const mockUser: UserAccount = {
@@ -87,7 +87,7 @@ export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?:
 }
 
 export async function signInWithMagicLink(email: string): Promise<{ user?: UserAccount; error: Error | null }> {
-  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+  if (!isSupabaseConfigured()) {
     const name = email.includes('@') ? email.split('@')[0] : email;
     const isDevon = email.trim().toLowerCase() === 'dbyrd1568@gmail.com';
     const localUser: UserAccount = {
@@ -117,7 +117,7 @@ export async function signInWithMagicLink(email: string): Promise<{ user?: UserA
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<{ user: UserAccount | null; error: Error | null }> {
-  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+  if (!isSupabaseConfigured()) {
     const name = email.includes('@') ? email.split('@')[0] : email;
     const isDevon = email.trim().toLowerCase() === 'dbyrd1568@gmail.com';
     const localUser: UserAccount = {
@@ -150,7 +150,7 @@ export async function signInWithPassword(email: string, password: string): Promi
 }
 
 export async function signUpWithPassword(email: string, password: string, displayName?: string): Promise<{ user: UserAccount | null; error: Error | null }> {
-  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+  if (!isSupabaseConfigured()) {
     const name = displayName?.trim() || (email.includes('@') ? email.split('@')[0] : email);
     const localUser: UserAccount = {
       id: `local_user_${Date.now()}`,
@@ -188,7 +188,7 @@ export async function signUpWithPassword(email: string, password: string, displa
 
 export async function signOut(): Promise<{ error: Error | null }> {
   clearActiveUser();
-  if (!isSupabaseConfigured() || !isProdEnvironment() || isLocalhost()) {
+  if (!isSupabaseConfigured()) {
     return { error: null };
   }
   try {

@@ -2,6 +2,7 @@ import { UserProfileStats, QuizResult, UserCardEvaluation, QuestionCategory, Set
 import { queueStatsSync, queueEvaluationSync, queueEvaluationClearForSet } from './cloudSync';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { isProdEnvironment, isCloudUUID } from './environment';
+import { isSupabaseConfigured } from './supabase';
 
 const USERS_LIST_KEY = 'mtg_users_list_v2';
 const ACTIVE_USER_ID_KEY = 'mtg_active_user_id_v2';
@@ -68,8 +69,8 @@ export function getActiveUser(): UserAccount | null {
       }
       return found;
     }
-    // On localhost / dev: provide default Devon Byrd admin account if no active user exists
-    if (!isProdEnvironment()) {
+    // Offline development fallback: provide default admin account ONLY if Supabase is not configured
+    if (!isProdEnvironment() && !isSupabaseConfigured()) {
       const devUser: UserAccount = {
         id: 'admin_owner_01',
         name: 'Devon Byrd (Local Admin)',

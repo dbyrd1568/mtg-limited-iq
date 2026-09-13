@@ -57,7 +57,7 @@ export const App: React.FC = () => {
   // User Accounts State (Nullable when unauthenticated)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getActiveUser());
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isProdEnvironment());
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isSupabaseConfigured());
 
   // Check administrator permissions whenever currentUser changes
   useEffect(() => {
@@ -212,7 +212,7 @@ export const App: React.FC = () => {
       if (session?.user) {
         handleUserSession(session.user);
       } else {
-        if (!isProd) {
+        if (!isSupabaseConfigured()) {
           const devUser = getActiveUser();
           if (devUser) {
             setCurrentUser(devUser);
@@ -225,7 +225,7 @@ export const App: React.FC = () => {
         setIsAuthInitializing(false);
       }
     }).catch(() => {
-      if (!isProd) {
+      if (!isSupabaseConfigured()) {
         const devUser = getActiveUser();
         if (devUser) setCurrentUser(devUser);
       }

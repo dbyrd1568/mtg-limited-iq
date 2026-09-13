@@ -37,6 +37,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeMode>(getStoredTheme());
+  const [avatarError, setAvatarError] = useState<boolean>(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [currentUser?.avatarUrl]);
 
   useEffect(() => {
     const unsubscribe = subscribeSyncStatus((s) => setSyncStatus(s));
@@ -231,10 +236,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title={`Active Profile: ${currentUser.name} • Sync: ${syncStatus}`}
               >
                 <div className="relative shrink-0">
-                  {currentUser.avatarUrl ? (
+                  {currentUser.avatarUrl && !avatarError ? (
                     <img
                       src={currentUser.avatarUrl}
                       alt={currentUser.name}
+                      referrerPolicy="no-referrer"
+                      onError={() => setAvatarError(true)}
                       className="w-6 h-6 rounded-lg object-cover border border-slate-300 dark:border-slate-700 shrink-0"
                     />
                   ) : (

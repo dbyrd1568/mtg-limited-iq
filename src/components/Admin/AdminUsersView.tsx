@@ -290,9 +290,25 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                   {/* User Profile */}
                   <td className="py-3 px-4 sm:px-6">
                     <div className="flex items-center gap-3">
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.name}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                            const next = e.currentTarget.nextElementSibling as HTMLElement;
+                            if (next) next.style.display = 'flex';
+                          }}
+                          className="w-8 h-8 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shrink-0"
+                        />
+                      ) : null}
                       <div
                         className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-xs shrink-0"
-                        style={{ backgroundColor: user.avatarColor }}
+                        style={{
+                          backgroundColor: user.avatarColor,
+                          display: user.avatarUrl ? 'none' : 'flex',
+                        }}
                       >
                         {user.name.charAt(0).toUpperCase()}
                       </div>
@@ -423,9 +439,25 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
             {/* Drawer Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-3">
+                {selectedUser.avatarUrl ? (
+                  <img
+                    src={selectedUser.avatarUrl}
+                    alt={selectedUser.name}
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                      const next = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (next) next.style.display = 'flex';
+                    }}
+                    className="w-12 h-12 rounded-2xl object-cover border border-violet-500/40 shadow-md shrink-0"
+                  />
+                ) : null}
                 <div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-base text-white shadow-md"
-                  style={{ backgroundColor: selectedUser.avatarColor }}
+                  style={{
+                    backgroundColor: selectedUser.avatarColor,
+                    display: selectedUser.avatarUrl ? 'none' : 'flex',
+                  }}
                 >
                   {selectedUser.name.charAt(0).toUpperCase()}
                 </div>
