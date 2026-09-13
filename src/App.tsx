@@ -8,9 +8,9 @@ import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { supabaseUserToUserAccount } from './services/auth';
 import { pullRemoteUserData, migrateLocalDataToCloud } from './services/cloudSync';
-import { isProdEnvironment, isCloudUUID } from './services/environment';
+import { isCloudUUID } from './services/environment';
 import { checkIsAdmin } from './services/admin';
-import { trackFeature, trackLogin } from './services/telemetry';
+import { trackFeature, trackLogin, KNOWN_FEATURES } from './services/telemetry';
 
 // Components
 import { Navbar, ActiveTab } from './components/Navbar';
@@ -52,12 +52,10 @@ export const App: React.FC = () => {
   const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(() => !hasSeenWelcomeTour());
   const [isGlobalExportModalOpen, setIsGlobalExportModalOpen] = useState<boolean>(false);
 
-  const isProd = isProdEnvironment();
-
-  // User Accounts State (Nullable in Prod when unauthenticated)
+  // User Accounts State (Nullable when unauthenticated)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getActiveUser());
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isProdEnvironment());
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(true);
 
   // Check administrator permissions whenever currentUser changes
   useEffect(() => {
@@ -105,13 +103,13 @@ export const App: React.FC = () => {
 
 
   // User Stats & Evaluations State (Scoped to currentUser)
-  const [userStats, setUserStats] = useState<UserProfileStats>(() => loadUserStats(currentUser?.id || 'user_default'));
-  const [userEvaluations, setUserEvaluations] = useState<Record<string, UserCardEvaluation>>(() => loadUserEvaluations(currentUser?.id || 'user_default'));
+  const [userStats, setUserStats] = useState<UserProfileStats>(() => loadUserStats(currentUser?.id || 'guest'));
+  const [userEvaluations, setUserEvaluations] = useState<Record<string, UserCardEvaluation>>(() => loadUserEvaluations(currentUser?.id || 'guest'));
 
   // Blind Grading Preference (Shared between Grading Hub and Cards Explorer)
   const [isBlindGrading, setIsBlindGrading] = useState<boolean>(() => {
     if (!currentSet) return true;
-    return getBlindGradingForSet(currentSet.code, currentUser?.id || 'user_default', currentSet.card_count);
+    return getBlindGradingForSet(currentSet.code, currentUser?.id || 'guest', currentSet.card_count);
   });
 
   // Shared Card Filter State (persists across Grading ↔ Cards tab switches)
@@ -122,7 +120,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (currentSet) {
-      setIsBlindGrading(getBlindGradingForSet(currentSet.code, currentUser?.id || 'user_default', cards.length || currentSet.card_count));
+      setIsBlindGrading(getBlindGradingForSet(currentSet.code, currentUser?.id || 'guest', cards.length || currentSet.card_count));
     }
   }, [currentSet?.code, currentUser?.id, cards.length, currentSet?.card_count]);
 
@@ -130,7 +128,7 @@ export const App: React.FC = () => {
     if (!currentSet) return;
     setIsBlindGrading((prev) => {
       const next = !prev;
-      setBlindGradingForSet(currentSet.code, next, currentUser?.id || 'user_default');
+      setBlindGradingForSet(currentSet.code, next, currentUser?.id || 'guest');
       trackFeature('blind_grading', { set: currentSet.code, enabled: next }, currentUser);
       return next;
     });
@@ -183,12 +181,12 @@ export const App: React.FC = () => {
         const { stats, evaluations } = await pullRemoteUserData(cloudUser.id);
 
         // 2. Check if local guest has progress and cloud is fresh
-        const localStats = loadUserStats('user_default');
-        const localEvals = loadUserEvaluations('user_default');
+        const localStats = loadUserStats('guest');
+        const localEvals = loadUserEvaluations('guest');
         const hasLocalProgress = localStats.totalQuizzes > 0 || Object.keys(localEvals).length > 0;
 
         if ((!stats || stats.totalQuizzes === 0) && hasLocalProgress) {
-          await migrateLocalDataToCloud(cloudUser.id, 'user_default');
+          await migrateLocalDataToCloud(cloudUser.id, 'guest');
           const refreshed = await pullRemoteUserData(cloudUser.id);
           if (refreshed.stats) setUserStats(refreshed.stats);
           if (refreshed.evaluations && Object.keys(refreshed.evaluations).length > 0) {
@@ -212,13 +210,13 @@ export const App: React.FC = () => {
       if (session?.user) {
         handleUserSession(session.user);
       } else {
-        if (isProdEnvironment()) {
-          clearActiveUser();
-          setCurrentUser(null);
-        }
+        clearActiveUser();
+        setCurrentUser(null);
         setIsAuthInitializing(false);
       }
     }).catch(() => {
+      clearActiveUser();
+      setCurrentUser(null);
       setIsAuthInitializing(false);
     });
 
@@ -227,22 +225,9 @@ export const App: React.FC = () => {
         await handleUserSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         clearActiveUser();
-        if (isProdEnvironment()) {
-          setCurrentUser(null);
-        } else {
-          const guestUser: UserAccount = {
-            id: 'user_default',
-            name: 'Guest Drafter',
-            avatarColor: '#8b5cf6',
-            provider: 'local',
-            createdAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString(),
-          };
-          setActiveUser(guestUser);
-          setCurrentUser(guestUser);
-          setUserStats(loadUserStats(guestUser.id));
-          setUserEvaluations(loadUserEvaluations(guestUser.id));
-        }
+        setCurrentUser(null);
+        setUserStats(defaultStats);
+        setUserEvaluations({});
       }
     });
 
@@ -387,7 +372,7 @@ export const App: React.FC = () => {
 
   // Handle Set Change
   const handleSelectSet = (set: SetInfo) => {
-    saveLastSelectedSetCode(set.code, currentUser?.id || 'user_default');
+    saveLastSelectedSetCode(set.code, currentUser?.id || 'guest');
     setCurrentSet(set);
     setIsSetSelectorOpen(false);
     setQuizState('setup');
@@ -412,7 +397,7 @@ export const App: React.FC = () => {
   };
 
   const handleFinishQuiz = (result: QuizResult) => {
-    const updatedStats = recordQuizCompletion(result, currentUser?.id || 'user_default');
+    const updatedStats = recordQuizCompletion(result, currentUser?.id || 'guest');
     setUserStats(updatedStats);
     setLastResult(result);
     setQuizState('summary');
@@ -464,7 +449,7 @@ export const App: React.FC = () => {
 
   // Evaluation Handlers
   const handleSaveEvaluation = (evaluation: UserCardEvaluation) => {
-    saveUserEvaluation(evaluation, currentUser?.id || 'user_default');
+    saveUserEvaluation(evaluation, currentUser?.id || 'guest');
     setUserEvaluations((prev) => ({
       ...prev,
       [`${evaluation.setCode.toLowerCase()}_${evaluation.cardName.toLowerCase()}`]: evaluation,
@@ -478,7 +463,7 @@ export const App: React.FC = () => {
   };
 
   const handleClearEvaluationsForSet = (setCode: string) => {
-    const updated = clearUserEvaluationsForSet(setCode, currentUser?.id || 'user_default');
+    const updated = clearUserEvaluationsForSet(setCode, currentUser?.id || 'guest');
     setUserEvaluations(updated);
   };
 
@@ -488,8 +473,8 @@ export const App: React.FC = () => {
       ).length
     : 0;
 
-  // In Production (Cloudflare): Show loading state while checking initial session
-  if (isProd && isAuthInitializing) {
+  // Show loading state while checking initial session
+  if (isAuthInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 dark:bg-[#030614] text-slate-900 dark:text-slate-100">
         <div className="flex flex-col items-center gap-4">
@@ -504,8 +489,8 @@ export const App: React.FC = () => {
     );
   }
 
-  // In Production: Require Authentication Gate
-  if (isProd && !currentUser) {
+  // Require Authentication Gate (Enforced on all environments, including localhost)
+  if (!currentUser) {
     return (
       <LoginGate
         onAuthenticated={(user) => {
@@ -525,6 +510,9 @@ export const App: React.FC = () => {
         onTabChange={(tab) => {
           setActiveTab(tab);
           trackFeature('tab_navigation', { tab }, currentUser);
+          if (tab === 'explorer' && currentSet) {
+            trackFeature(KNOWN_FEATURES.SET_EXPLORER, { setCode: currentSet.code, setName: currentSet.name }, currentUser);
+          }
           if (tab === 'quiz') {
             setQuizState('setup');
           }
@@ -688,7 +676,7 @@ export const App: React.FC = () => {
                         userStats={userStats}
                         onDrillMissedCards={handlePracticeMissedCards}
                         onRefreshStats={() => {
-                          const activeId = currentUser?.id || 'user_default';
+                          const activeId = currentUser?.id || 'guest';
                           setUserStats(loadUserStats(activeId));
                           setUserEvaluations(loadUserEvaluations(activeId));
                         }}
@@ -796,7 +784,7 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         onUserChange={handleUserChanged}
         onRefreshStats={() => {
-          const activeId = currentUser?.id || 'user_default';
+          const activeId = currentUser?.id || 'guest';
           setUserStats(loadUserStats(activeId));
           setUserEvaluations(loadUserEvaluations(activeId));
         }}

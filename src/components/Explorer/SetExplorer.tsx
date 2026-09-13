@@ -18,6 +18,7 @@ import { cardMatchesQuery } from '../../services/cardSearchParser';
 import { getWOTCArchetypesForSet, getSignpostsForArchetype, WOTCArchetype } from '../../services/wotcArchetypes';
 import { getBlindGradingForSet, setBlindGradingForSet } from '../../services/storage';
 import { SetInfo, UserAccount } from '../../types/mtg';
+import { trackFeature, KNOWN_FEATURES } from '../../services/telemetry';
 
 interface SetExplorerProps {
   cards: Card[];
@@ -78,6 +79,16 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   useEffect(() => { if (propSelectedColors !== undefined) setSelectedColors(propSelectedColors); }, [propSelectedColors]);
   useEffect(() => { if (propSelectedRarities !== undefined) setSelectedRarities(propSelectedRarities); }, [propSelectedRarities]);
   useEffect(() => { if (propSelectedRoles !== undefined) setSelectedRoles(propSelectedRoles); }, [propSelectedRoles]);
+
+  useEffect(() => {
+    if (currentSetCode) {
+      trackFeature(KNOWN_FEATURES.SET_EXPLORER, {
+        setCode: currentSetCode,
+        setName: currentSetName,
+        cardCount: cards.length,
+      }, currentUser);
+    }
+  }, [currentSetCode, currentUser, currentSetName, cards.length]);
 
   const handleSearchQuery = (q: string) => { setSearchQuery(q); onSearchQueryChange?.(q); };
   const handleSelectedColors = (c: string[]) => { setSelectedColors(c); onSelectedColorsChange?.(c); };

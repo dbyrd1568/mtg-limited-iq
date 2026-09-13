@@ -68,7 +68,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
   const [isUrlSavedNotification, setIsUrlSavedNotification] = useState<boolean>(false);
 
   // User & Cross-Set Backup Data
-  const activeUserId = userId || getActiveUser()?.id || 'user_default';
+  const activeUserId = userId || getActiveUser()?.id || 'guest';
   const userProfileStats = useMemo(() => loadUserStats(activeUserId), [activeUserId, isOpen]);
   const allUserEvaluations = useMemo(() => loadUserEvaluations(activeUserId), [activeUserId, isOpen]);
 

@@ -54,7 +54,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-violet-500/50 transition-all group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Total Drafters
+              Total Users
             </span>
             <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800/60 flex items-center justify-center group-hover:scale-105 transition-transform">
               <Users className="w-4.5 h-4.5" />
@@ -272,15 +272,15 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
         </div>
       </div>
 
-      {/* Two Columns: Active Drafters Directory Snapshot & Live Telemetry Feed */}
+      {/* Two Columns: Active Users Directory Snapshot & Live Telemetry Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Most Active Drafters Snapshot */}
+        {/* Most Active Users Snapshot */}
         <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
-                Top Active Drafters
+                Top Active Users
               </h3>
             </div>
             <button
@@ -295,7 +295,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           <div className="space-y-2.5">
             {topUsers.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
-                No active drafters registered yet.
+                No active users registered yet.
               </div>
             ) : (
               topUsers.map((user) => (

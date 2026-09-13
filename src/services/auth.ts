@@ -2,16 +2,13 @@ import { supabase, isSupabaseConfigured } from './supabase';
 import { UserAccount } from '../types/mtg';
 import { User, Session } from '@supabase/supabase-js';
 import {
-  getAllUsers,
-  createLocalUser,
   setActiveUser,
-  updateUserAccount,
-  loginWithOAuthProvider,
+  clearActiveUser,
 } from './storage';
 
 export type OAuthProvider = 'google' | 'discord' | 'apple';
 
-import { isCloudUUID, isProdEnvironment } from './environment';
+import { isCloudUUID } from './environment';
 export { isCloudUUID };
 
 export interface AuthState {
@@ -28,24 +25,23 @@ export function supabaseUserToUserAccount(user: User): UserAccount {
   const name =
     meta.full_name ||
     meta.name ||
-    meta.user_name ||
     user.email?.split('@')[0] ||
     'Drafter';
+
   const avatarUrl = meta.avatar_url || meta.picture || undefined;
 
-  let mappedProvider: UserAccount['provider'] = 'email';
-  if (provider === 'google') mappedProvider = 'google';
-  else if (provider === 'discord') mappedProvider = 'discord';
-  else if (provider === 'apple') mappedProvider = 'apple';
+  // Generate a consistent vibrant color from user ID
+  const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
+  let hash = 0;
+  for (let i = 0; i < user.id.length; i++) {
+    hash = (hash << 5) - hash + user.id.charCodeAt(i);
+  }
+  const avatarColor = colors[Math.abs(hash) % colors.length];
 
-  const avatarColor =
-    provider === 'discord'
-      ? '#5865F2'
-      : provider === 'google'
-      ? '#3b82f6'
-      : provider === 'apple'
-      ? '#1c1c1e'
-      : '#8b5cf6';
+  const mappedProvider: 'google' | 'discord' | 'apple' | 'email' =
+    provider === 'google' || provider === 'discord' || provider === 'apple'
+      ? provider
+      : 'email';
 
   return {
     id: user.id,
@@ -61,15 +57,7 @@ export function supabaseUserToUserAccount(user: User): UserAccount {
 
 export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?: UserAccount; error: Error | null }> {
   if (!isSupabaseConfigured()) {
-    // Offline / Local development fallback: simulated 1-click login
-    const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-    const mockUser = loginWithOAuthProvider(provider as any, {
-      id: `local_${provider}_${Date.now()}`,
-      name: `${providerName} Drafter`,
-      email: `drafter@${provider}.local`,
-    });
-    setActiveUser(mockUser);
-    return { user: mockUser, error: null };
+    return { error: new Error('Supabase is not configured.') };
   }
 
   try {
@@ -87,19 +75,7 @@ export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?:
 
 export async function signInWithMagicLink(email: string): Promise<{ user?: UserAccount; error: Error | null }> {
   if (!isSupabaseConfigured()) {
-    // Local fallback: log in immediately with local user
-    const name = email.includes('@') ? email.split('@')[0] : email;
-    const users = getAllUsers();
-    const existing = users.find(
-      (u) => (u.email && u.email.toLowerCase() === email.toLowerCase()) || u.name.toLowerCase() === email.toLowerCase()
-    );
-    const targetUser = existing || createLocalUser(name);
-    if (!targetUser.email && email.includes('@')) {
-      targetUser.email = email;
-      updateUserAccount(targetUser);
-    }
-    setActiveUser(targetUser);
-    return { user: targetUser, error: null };
+    return { error: new Error('Supabase is not configured.') };
   }
 
   try {
@@ -117,24 +93,7 @@ export async function signInWithMagicLink(email: string): Promise<{ user?: UserA
 
 export async function signInWithPassword(email: string, password: string): Promise<{ user: UserAccount | null; error: Error | null }> {
   if (!isSupabaseConfigured()) {
-    // Local fallback: authenticate or switch to local profile
-    const users = getAllUsers();
-    const clean = email.trim().toLowerCase();
-    const existing = users.find(
-      (u) => (u.email && u.email.toLowerCase() === clean) || u.name.toLowerCase() === clean
-    );
-    if (existing) {
-      setActiveUser(existing);
-      return { user: existing, error: null };
-    }
-    const name = email.includes('@') ? email.split('@')[0] : email;
-    const newUser = createLocalUser(name);
-    if (email.includes('@')) {
-      newUser.email = email;
-      updateUserAccount(newUser);
-    }
-    setActiveUser(newUser);
-    return { user: newUser, error: null };
+    return { user: null, error: new Error('Supabase is not configured.') };
   }
 
   try {
@@ -145,7 +104,9 @@ export async function signInWithPassword(email: string, password: string): Promi
     if (error) return { user: null, error: new Error(error.message) };
     if (!data.user) return { user: null, error: new Error('No user returned.') };
 
-    return { user: supabaseUserToUserAccount(data.user), error: null };
+    const account = supabaseUserToUserAccount(data.user);
+    setActiveUser(account);
+    return { user: account, error: null };
   } catch (err: any) {
     return { user: null, error: err };
   }
@@ -153,14 +114,7 @@ export async function signInWithPassword(email: string, password: string): Promi
 
 export async function signUpWithPassword(email: string, password: string, displayName?: string): Promise<{ user: UserAccount | null; error: Error | null }> {
   if (!isSupabaseConfigured()) {
-    const name = displayName?.trim() || (email.includes('@') ? email.split('@')[0] : email);
-    const newUser = createLocalUser(name);
-    if (email.includes('@')) {
-      newUser.email = email;
-      updateUserAccount(newUser);
-    }
-    setActiveUser(newUser);
-    return { user: newUser, error: null };
+    return { user: null, error: new Error('Supabase is not configured.') };
   }
 
   try {
@@ -176,13 +130,16 @@ export async function signUpWithPassword(email: string, password: string, displa
     if (error) return { user: null, error: new Error(error.message) };
     if (!data.user) return { user: null, error: new Error('No user returned.') };
 
-    return { user: supabaseUserToUserAccount(data.user), error: null };
+    const account = supabaseUserToUserAccount(data.user);
+    setActiveUser(account);
+    return { user: account, error: null };
   } catch (err: any) {
     return { user: null, error: err };
   }
 }
 
 export async function signOut(): Promise<{ error: Error | null }> {
+  clearActiveUser();
   if (!isSupabaseConfigured()) {
     return { error: null };
   }
@@ -223,6 +180,7 @@ export async function updateUserProfile(displayName?: string, avatarUrl?: string
         .upsert({
           id: user.id,
           display_name: displayName,
+          email: user.email,
           avatar_url: avatarUrl,
           updated_at: new Date().toISOString(),
         });

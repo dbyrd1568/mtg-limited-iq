@@ -30,12 +30,12 @@ async function runAdminVerification() {
 
   // Test 1: Admin Permission Verification
   console.log('1. Testing Admin Authorization Checks...');
-  const devUser: UserAccount = {
-    id: 'user_default',
+  const devonUser: UserAccount = {
+    id: 'usr_devonbyrd',
     name: 'Devon Byrd',
     email: 'devonbyrd@gmail.com',
     avatarColor: '#8b5cf6',
-    provider: 'local',
+    provider: 'google',
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
   };
@@ -45,7 +45,7 @@ async function runAdminVerification() {
     name: 'Guest Player',
     email: 'guest@random.com',
     avatarColor: '#3b82f6',
-    provider: 'local',
+    provider: 'email',
     createdAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
   };
@@ -60,11 +60,11 @@ async function runAdminVerification() {
     lastLoginAt: new Date().toISOString(),
   };
 
-  const isDevAdmin = await checkIsAdmin(devUser);
-  console.assert(isDevAdmin === true, 'Devon/user_default must have admin permissions');
-
   const isDbyrdAdmin = await checkIsAdmin(dbyrdGoogleUser);
   console.assert(isDbyrdAdmin === true, 'dbyrd1568@gmail.com must have permanent super admin permissions');
+
+  const isDevonAdmin = await checkIsAdmin(devonUser);
+  console.assert(isDevonAdmin === false, 'devonbyrd@gmail.com without grant must NOT be admin');
 
   const isGuestAdmin = await checkIsAdmin(guestUser);
   console.assert(isGuestAdmin === false, 'Guest user without whitelist must NOT be admin');
@@ -75,7 +75,7 @@ async function runAdminVerification() {
 
   // Test 2: Admin Whitelist Grant & Revoke
   console.log('2. Testing Admin Whitelist Grant & Revoke...');
-  const grantRes = await grantAdminAccess('trusted_coadmin@mtg.com', devUser.id);
+  const grantRes = await grantAdminAccess('trusted_coadmin@mtg.com', dbyrdGoogleUser.id);
   console.assert(grantRes.success === true, 'Granting admin to new email must succeed');
 
   const adminListAfterGrant = await fetchAdminList();
@@ -113,9 +113,9 @@ async function runAdminVerification() {
 
   // Test 3: Telemetry & Event Tracking
   console.log('3. Testing Telemetry & Feature Tracking...');
-  trackFeature(KNOWN_FEATURES.CARD_GRADING, { set: 'DFT', card: 'Kaito', grade: 'A' }, devUser);
-  trackFeature(KNOWN_FEATURES.CARD_QUIZ, { set: 'DFT', score: 10, total: 10 }, devUser);
-  trackFeature(KNOWN_FEATURES.BLIND_GRADING, { set: 'DFT', enabled: true }, devUser);
+  trackFeature(KNOWN_FEATURES.CARD_GRADING, { set: 'DFT', card: 'Kaito', grade: 'A' }, dbyrdGoogleUser);
+  trackFeature(KNOWN_FEATURES.CARD_QUIZ, { set: 'DFT', score: 10, total: 10 }, dbyrdGoogleUser);
+  trackFeature(KNOWN_FEATURES.BLIND_GRADING, { set: 'DFT', enabled: true }, dbyrdGoogleUser);
 
   const logs = await fetchActivityLogs('all');
   console.assert(logs.length > 0, 'Activity logs should contain tracked events');
@@ -130,7 +130,7 @@ async function runAdminVerification() {
   console.assert(typeof firstUser.cardsGradedTotal === 'number', 'User must have cardsGradedTotal');
   console.assert(Array.isArray(firstUser.setsGraded), 'User must have setsGraded breakdown array');
   console.assert(typeof firstUser.gradingAccuracyScore === 'number', 'User must have grading accuracy');
-  console.log(`✓ Directory verified (${directory.length} drafters tracked with cards-per-set metrics).\n`);
+  console.log(`✓ Directory verified (${directory.length} users tracked with cards-per-set metrics).\n`);
 
   // Test 5: Feature Adoption Metrics
   console.log('5. Testing Feature Usage & Adoption Analytics...');

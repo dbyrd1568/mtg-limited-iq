@@ -5,7 +5,7 @@ import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeT
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
-import { X, Scale, Check, PlayingCardsFan, HelpCircle, Loader2, ExternalLink, Info, GitCompare } from 'lucide-react';
+import { X, Scale, Check, PlayingCardsFan, HelpCircle, Loader2, ExternalLink, GitCompare } from 'lucide-react';
 
 export interface CardPerformanceMetrics {
   winRate?: number;
@@ -463,7 +463,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       Comparable Historical Cards ({presentedMatches.length})
                     </h4>
                     <span className="text-[11px] font-mono text-slate-400">
-                      Click any card to inspect details
+                      Click any card to view details
                     </span>
                   </div>
 
@@ -484,20 +484,22 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
                             {/* Left Column: Full Card Visual + 17Lands & Use Grade directly in the space below card */}
                             <div className="w-full sm:w-[210px] md:w-[230px] shrink-0 flex flex-col gap-3">
-                              <div className="relative w-full h-[293px] sm:h-[321px] rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-[#050818] shadow-md group-hover:ring-2 group-hover:ring-violet-400 dark:group-hover:ring-cyan-400 transition-all">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectCardMatch(match);
+                                }}
+                                className="relative w-full h-[293px] sm:h-[321px] rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-[#050818] shadow-md hover:ring-2 hover:ring-violet-400 dark:hover:ring-cyan-400 group-hover:ring-2 group-hover:ring-violet-400 dark:group-hover:ring-cyan-400 transition-all cursor-pointer block text-left"
+                                title={`Click to view full card details for ${comp.name}`}
+                              >
                                 <img
                                   src={imageUri}
                                   alt={comp.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none"
                                   loading="lazy"
                                 />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                  <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
-                                    <Info className="w-3.5 h-3.5 text-cyan-400" />
-                                    Inspect Details
-                                  </span>
-                                </div>
-                              </div>
+                              </button>
 
                               {/* 17Lands Draft Performance Record under card */}
                               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 font-mono space-y-1.5">

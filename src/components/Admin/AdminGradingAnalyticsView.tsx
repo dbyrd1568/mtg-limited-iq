@@ -33,7 +33,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
     users[0]?.id || ''
   );
 
-  const activeDrafter = users.find((u) => u.id === selectedUserForBreakdown) || users[0];
+  const activeUser = users.find((u) => u.id === selectedUserForBreakdown) || users[0];
 
   return (
     <div className="space-y-8">
@@ -56,7 +56,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Measures how accurately drafters predict card power compared to empirical 17Lands win rates (±1 step tolerance).
+            Measures how accurately users predict card power compared to empirical 17Lands win rates (±1 step tolerance).
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                 MTG Sets Graded Across Community
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Number of cards graded, total set cards, unique drafters, and completion rates
+                Number of cards graded, total set cards, unique users, and completion rates
               </p>
             </div>
           </div>
@@ -162,7 +162,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                   <th className="py-3.5 px-4">Cards Graded (Community)</th>
                   <th className="py-3.5 px-4">Unique Graders</th>
                   <th className="py-3.5 px-4">100% Set Graded</th>
-                  <th className="py-3.5 px-4">Avg Cards / Drafter</th>
+                  <th className="py-3.5 px-4">Avg Cards / User</th>
                   <th className="py-3.5 px-4 sm:px-6">Calibration Score</th>
                 </tr>
               </thead>
@@ -195,13 +195,13 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                     </td>
 
                     <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">
-                      {set.uniqueGradersCount} drafters
+                      {set.uniqueGradersCount} users
                     </td>
 
                     <td className="py-3.5 px-4">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
                         <Check className="w-3 h-3" />
-                        {set.fullyGradedUsersCount} drafters
+                        {set.fullyGradedUsersCount} users
                       </span>
                     </td>
 
@@ -228,17 +228,17 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
               Per-User Set Grading Breakdown
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Inspect how many sets and cards each individual drafter has completed
+              Inspect how many sets and cards each individual user has completed
             </p>
           </div>
 
           {/* User Selector Dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Select Drafter:</span>
+            <span className="text-xs text-slate-400">Select User:</span>
             <select
               value={selectedUserForBreakdown}
               onChange={(e) => setSelectedUserForBreakdown(e.target.value)}
-              aria-label="Select drafter to view set grading breakdown"
+              aria-label="Select user to view set grading breakdown"
               className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden cursor-pointer"
             >
               {users.map((u) => (
@@ -250,27 +250,27 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
           </div>
         </div>
 
-        {activeDrafter && (
+        {activeUser && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-xs"
-                style={{ backgroundColor: activeDrafter.avatarColor }}
+                style={{ backgroundColor: activeUser.avatarColor }}
               >
-                {activeDrafter.name.charAt(0).toUpperCase()}
+                {activeUser.name.charAt(0).toUpperCase()}
               </div>
               <div>
                 <div className="text-sm font-bold text-slate-900 dark:text-white">
-                  {activeDrafter.name}'s Evaluated Sets
+                  {activeUser.name}'s Evaluated Sets
                 </div>
                 <div className="text-xs text-slate-400">
-                  {activeDrafter.cardsGradedTotal} total cards evaluated across {activeDrafter.setsGradedCount} sets • Calibration GPA: {activeDrafter.gradingGpa}
+                  {activeUser.cardsGradedTotal} total cards evaluated across {activeUser.setsGradedCount} sets • Calibration GPA: {activeUser.gradingGpa}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {activeDrafter.setsGraded.map((set) => (
+              {activeUser.setsGraded.map((set) => (
                 <div
                   key={set.setCode}
                   className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 space-y-2"
@@ -334,7 +334,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                 Community Consensus Sleepers
               </h3>
               <p className="text-xs text-slate-400">
-                Cards drafters severely underrated compared to empirical 17Lands win rates
+                Cards users severely underrated compared to empirical 17Lands win rates
               </p>
             </div>
           </div>
@@ -386,7 +386,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                 Community Consensus Traps
               </h3>
               <p className="text-xs text-slate-400">
-                Cards drafters severely overrated compared to empirical 17Lands win rates
+                Cards users severely overrated compared to empirical 17Lands win rates
               </p>
             </div>
           </div>

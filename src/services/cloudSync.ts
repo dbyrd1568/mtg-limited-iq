@@ -299,7 +299,7 @@ export async function pullRemoteUserData(userId: string): Promise<{
 
 export async function migrateLocalDataToCloud(
   cloudUserId: string,
-  localGuestId: string = 'user_default'
+  localGuestId: string = 'guest'
 ): Promise<void> {
   if (!isSupabaseConfigured() || !isCloudUUID(cloudUserId)) {
     return;
@@ -429,7 +429,7 @@ export async function retrySync(userId?: string): Promise<boolean> {
   try {
     const { stats } = await pullRemoteUserData(activeId);
     if (!stats) {
-      await migrateLocalDataToCloud(activeId, 'user_default');
+      await migrateLocalDataToCloud(activeId, 'guest');
     }
     setSyncStatus('synced');
     return true;

@@ -189,7 +189,7 @@ export const AdminFeatureUsageView: React.FC<AdminFeatureUsageViewProps> = ({ fe
 
                 <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
                   <span>{feat.totalInteractions} total uses</span>
-                  <span>{feat.uniqueUsers} unique drafters</span>
+                  <span>{feat.uniqueUsers} unique users</span>
                 </div>
               </div>
             </div>

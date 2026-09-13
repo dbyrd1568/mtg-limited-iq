@@ -323,7 +323,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Drafters & Users ({users.length})</span>
+          <span>Users ({users.length})</span>
         </button>
 
         <button

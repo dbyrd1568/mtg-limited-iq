@@ -11,15 +11,6 @@ const LEGACY_STATS_KEY = 'mtg_limited_user_stats_v1';
 const LEGACY_EVALS_KEY = 'mtg_limited_card_evaluations_v1';
 const LEGACY_LAST_SET_KEY = 'mtg_last_selected_set_code_v1';
 
-const DEFAULT_INITIAL_USER: UserAccount = {
-  id: 'user_default',
-  name: 'Devon',
-  avatarColor: '#8b5cf6',
-  provider: 'local',
-  createdAt: new Date().toISOString(),
-  lastLoginAt: new Date().toISOString(),
-};
-
 const defaultCategories: Record<QuestionCategory, { attempted: number; correct: number }> = {
   p1p1_pick: { attempted: 0, correct: 0 },
   trap_or_sleeper: { attempted: 0, correct: 0 },
@@ -53,28 +44,13 @@ export const defaultStats: UserProfileStats = {
 export function getAllUsers(): UserAccount[] {
   try {
     const raw = localStorage.getItem(USERS_LIST_KEY);
-    if (!raw) {
-      if (isProdEnvironment()) {
-        return [];
-      }
-      // Initialize with default initial user and migrate legacy data in dev
-      const initialUsers = [DEFAULT_INITIAL_USER];
-      localStorage.setItem(USERS_LIST_KEY, JSON.stringify(initialUsers));
-      localStorage.setItem(ACTIVE_USER_ID_KEY, DEFAULT_INITIAL_USER.id);
-
-      // Migrate legacy data to default user if present
-      migrateLegacyDataToUser(DEFAULT_INITIAL_USER.id);
-      return initialUsers;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as UserAccount[];
-    if (isProdEnvironment()) {
-      // In production, strictly filter out any local unauthenticated accounts
-      return parsed.filter((u) => u.provider !== 'local' || isCloudUUID(u.id));
-    }
-    return parsed.length > 0 ? parsed : [DEFAULT_INITIAL_USER];
+    // Strictly filter out any unauthenticated local mock accounts
+    return parsed.filter((u) => u.provider !== 'local' || isCloudUUID(u.id));
   } catch (e) {
     console.error('Failed to load users list:', e);
-    return isProdEnvironment() ? [] : [DEFAULT_INITIAL_USER];
+    return [];
   }
 }
 
@@ -83,16 +59,15 @@ export function getActiveUser(): UserAccount | null {
     const users = getAllUsers();
     const activeId = localStorage.getItem(ACTIVE_USER_ID_KEY);
     const found = users.find((u) => u.id === activeId);
-    if (isProdEnvironment()) {
-      if (found && (found.provider !== 'local' || isCloudUUID(found.id))) {
-        return found;
+    if (found) {
+      if (found.provider === 'local' && !isCloudUUID(found.id)) {
+        return null;
       }
-      return null;
+      return found;
     }
-    if (found) return found;
-    return users[0] || DEFAULT_INITIAL_USER;
+    return null;
   } catch (e) {
-    return isProdEnvironment() ? null : DEFAULT_INITIAL_USER;
+    return null;
   }
 }
 
@@ -199,11 +174,12 @@ export function updateUserAccount(updated: UserAccount): void {
 export function deleteUserAccount(userId: string): void {
   try {
     const users = getAllUsers().filter((u) => u.id !== userId);
-    if (users.length === 0) {
-      users.push(DEFAULT_INITIAL_USER);
-    }
     localStorage.setItem(USERS_LIST_KEY, JSON.stringify(users));
-    localStorage.setItem(ACTIVE_USER_ID_KEY, users[0].id);
+    if (users.length > 0) {
+      localStorage.setItem(ACTIVE_USER_ID_KEY, users[0].id);
+    } else {
+      localStorage.removeItem(ACTIVE_USER_ID_KEY);
+    }
 
     // Clean up user specific data
     localStorage.removeItem(`mtg_stats_${userId}`);
@@ -237,7 +213,7 @@ function migrateLegacyDataToUser(userId: string): void {
 
 export function loadUserStats(userId?: string): UserProfileStats {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const raw = localStorage.getItem(`mtg_stats_${activeId}`);
     if (!raw) return defaultStats;
     const parsed = JSON.parse(raw) as Partial<UserProfileStats>;
@@ -260,7 +236,7 @@ export function loadUserStats(userId?: string): UserProfileStats {
 
 export function saveUserStats(stats: UserProfileStats, userId?: string): void {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     stats.lastActive = new Date().toISOString();
     stats.overallAccuracy = stats.totalQuestions > 0 ? Math.round((stats.totalCorrect / stats.totalQuestions) * 100) : 0;
     stats.level = Math.max(1, Math.floor(stats.xp / 500) + 1);
@@ -280,7 +256,7 @@ export function calculateMasteryRank(accuracy: number, attempts: number): 'Novic
 }
 
 export function recordQuizCompletion(result: QuizResult, userId?: string): UserProfileStats {
-  const activeId = userId || getActiveUser()?.id || 'user_default';
+  const activeId = userId || getActiveUser()?.id || 'guest';
   const stats = loadUserStats(activeId);
 
   stats.totalQuizzes += 1;
@@ -384,7 +360,7 @@ export function recordQuizCompletion(result: QuizResult, userId?: string): UserP
 
 export function loadUserEvaluations(userId?: string): Record<string, UserCardEvaluation> {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const raw = localStorage.getItem(`mtg_evaluations_${activeId}`);
     return raw ? JSON.parse(raw) : {};
   } catch (e) {
@@ -395,7 +371,7 @@ export function loadUserEvaluations(userId?: string): Record<string, UserCardEva
 
 export function saveUserEvaluation(evaluation: UserCardEvaluation, userId?: string): void {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const current = loadUserEvaluations(activeId);
     const key = `${evaluation.setCode.toLowerCase()}_${evaluation.cardName.toLowerCase()}`;
     current[key] = {
@@ -411,7 +387,7 @@ export function saveUserEvaluation(evaluation: UserCardEvaluation, userId?: stri
 
 export function clearUserEvaluationsForSet(setCode: string, userId?: string): Record<string, UserCardEvaluation> {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const current = loadUserEvaluations(activeId);
     const prefix = `${setCode.toLowerCase()}_`;
     const updated: Record<string, UserCardEvaluation> = {};
@@ -435,7 +411,7 @@ export function clearUserEvaluationsForSet(setCode: string, userId?: string): Re
 
 export function isSetFullyGraded(setCode: string, totalCardsCount?: number, userId?: string): boolean {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const evals = loadUserEvaluations(activeId);
     const prefix = `${setCode.toLowerCase()}_`;
     const setEvals = Object.keys(evals).filter(
@@ -462,7 +438,7 @@ export function isSetFullyGraded(setCode: string, totalCardsCount?: number, user
 
 export function getBlindGradingForSet(setCode: string, userId?: string, totalCardsCount?: number): boolean {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const raw = localStorage.getItem(`mtg_blind_grading_${activeId}_${setCode.toUpperCase()}`);
     if (raw !== null) {
       return JSON.parse(raw);
@@ -477,7 +453,7 @@ export function getBlindGradingForSet(setCode: string, userId?: string, totalCar
 
 export function setBlindGradingForSet(setCode: string, isBlind: boolean, userId?: string): void {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     localStorage.setItem(`mtg_blind_grading_${activeId}_${setCode.toUpperCase()}`, JSON.stringify(isBlind));
   } catch (e) {
     console.error('Failed to save blind grading preference:', e);
@@ -486,7 +462,7 @@ export function setBlindGradingForSet(setCode: string, isBlind: boolean, userId?
 
 export function getLastSelectedSetCode(userId?: string): string | null {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     return localStorage.getItem(`mtg_last_set_${activeId}`) || localStorage.getItem(LEGACY_LAST_SET_KEY);
   } catch (e) {
     return null;
@@ -495,7 +471,7 @@ export function getLastSelectedSetCode(userId?: string): string | null {
 
 export function saveLastSelectedSetCode(code: string, userId?: string): void {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     localStorage.setItem(`mtg_last_set_${activeId}`, code.toUpperCase());
     localStorage.setItem(LEGACY_LAST_SET_KEY, code.toUpperCase());
   } catch (e) {
@@ -527,7 +503,7 @@ export function setHasSeenWelcomeTour(hasSeen: boolean): void {
 
 export function get17LandsTierListUrl(setCode: string, userId?: string): string | null {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const key = `mtg_17lands_tier_url_${activeId}_${setCode.toUpperCase()}`;
     return localStorage.getItem(key) || null;
   } catch (e) {
@@ -537,7 +513,7 @@ export function get17LandsTierListUrl(setCode: string, userId?: string): string 
 
 export function save17LandsTierListUrl(setCode: string, url: string, userId?: string): void {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const key = `mtg_17lands_tier_url_${activeId}_${setCode.toUpperCase()}`;
     const trimmed = url.trim();
     if (trimmed) {
@@ -553,7 +529,7 @@ export function save17LandsTierListUrl(setCode: string, url: string, userId?: st
 // ==================== EXPORT & IMPORT ====================
 
 export function exportUserDataAsJSON(userId?: string): string {
-  const activeId = userId || getActiveUser()?.id || 'user_default';
+  const activeId = userId || getActiveUser()?.id || 'guest';
   const user = getActiveUser();
   const stats = loadUserStats(activeId);
   const evaluations = loadUserEvaluations(activeId);
@@ -568,7 +544,7 @@ export function exportUserDataAsJSON(userId?: string): string {
 
 export function importUserDataFromJSON(jsonString: string, userId?: string): boolean {
   try {
-    const activeId = userId || getActiveUser()?.id || 'user_default';
+    const activeId = userId || getActiveUser()?.id || 'guest';
     const data = JSON.parse(jsonString);
     if (data.stats) {
       saveUserStats(data.stats, activeId);

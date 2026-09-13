@@ -158,7 +158,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search drafters by name, email, or ID..."
+            placeholder="Search users by name, email, or ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:border-violet-500 transition-colors"
@@ -205,7 +205,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
           <select
             value={providerFilter}
             onChange={(e) => setProviderFilter(e.target.value)}
-            aria-label="Filter drafters by auth provider"
+            aria-label="Filter users by auth provider"
             className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-hidden cursor-pointer"
           >
             <option value="ALL">All Providers</option>
@@ -213,7 +213,6 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
             <option value="discord">Discord</option>
             <option value="apple">Apple</option>
             <option value="email">Email</option>
-            <option value="local">Local</option>
           </select>
         </div>
       </div>
@@ -229,11 +228,11 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                     onClick={() => handleToggleSort('name')}
                     className="flex items-center gap-1.5 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
                   >
-                    <span>Drafter</span>
+                    <span>User</span>
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
-                <th className="py-3.5 px-4">Contact / Email</th>
+                <th className="py-3.5 px-4">Email</th>
                 <th className="py-3.5 px-4">Provider</th>
                 <th className="py-3.5 px-4">
                   <button
@@ -278,7 +277,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
               {filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 dark:text-slate-500">
-                    No registered drafters found matching the criteria.
+                    No registered users found matching the criteria.
                   </td>
                 </tr>
               ) : (
@@ -314,8 +313,8 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                   </td>
 
                   {/* Email */}
-                  <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-                    {user.email || 'Local User'}
+                  <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-mono text-xs font-semibold">
+                    {user.email || '—'}
                   </td>
 
                   {/* Provider Badge */}
@@ -378,11 +377,11 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                             handleRevokeAdmin(user);
                           }}
                           disabled={actionLoadingId === user.id}
-                          className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-800 border border-rose-200 dark:border-rose-800/60 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                          title="Revoke Admin Access"
+                          className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-700 border border-rose-200 dark:border-rose-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                          title="Remove Admin Access"
                         >
-                          <ShieldOff className="w-3 h-3" />
-                          <span className="hidden xl:inline">Revoke</span>
+                          <ShieldOff className="w-3.5 h-3.5" />
+                          <span>Remove Admin</span>
                         </button>
                       )}
                       {!user.isAdmin && (user.email || user.id) && (
@@ -392,11 +391,11 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                             handleGrantAdmin(user);
                           }}
                           disabled={actionLoadingId === user.id}
-                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-violet-600 text-slate-600 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-violet-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-violet-600 text-slate-600 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-violet-700 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
                           title="Grant Admin Access"
                         >
-                          <UserPlus className="w-3 h-3" />
-                          <span className="hidden xl:inline">Make Admin</span>
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>Make Admin</span>
                         </button>
                       )}
                       <button
@@ -449,7 +448,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
 
               <button
                 onClick={() => onSelectUser(null)}
-                aria-label="Close drafter dossier drawer"
+                aria-label="Close user dossier drawer"
                 className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -540,7 +539,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
               </div>
             </div>
 
-            {/* Drafter Profile Metadata */}
+            {/* User Profile Metadata */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                 <span>Email Address:</span>
@@ -614,8 +613,8 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                     disabled={actionLoadingId === selectedUser.id}
                     className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{actionLoadingId === selectedUser.id ? 'Revoking...' : 'Revoke Admin Access'}</span>
+                    <ShieldOff className="w-4 h-4" />
+                    <span>{actionLoadingId === selectedUser.id ? 'Removing...' : 'Remove Admin Access'}</span>
                   </button>
                 </div>
               ) : (
@@ -623,7 +622,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                   <div className="space-y-0.5">
                     <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <Shield className="w-4 h-4 text-slate-400" />
-                      <span>Standard Drafter Account</span>
+                      <span>Standard User Account</span>
                     </div>
                     <div className="text-[11px] text-slate-400">
                       Restricted to player grading, quiz tools, and personal evaluation history.

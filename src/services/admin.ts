@@ -19,7 +19,6 @@ import { isDevEnvironment, isCloudUUID } from './environment';
 const ADMIN_STORAGE_KEY = 'mtg_admin_access_list_v1';
 export const PERMANENT_SUPER_ADMIN_EMAILS = new Set([
   'dbyrd1568@gmail.com',
-  'devonbyrd@gmail.com',
 ]);
 export const DEFAULT_OWNER_EMAIL = 'dbyrd1568@gmail.com';
 
@@ -30,9 +29,8 @@ export function isPermanentSuperAdmin(emailOrId?: string | null): boolean {
   if (!emailOrId) return false;
   const clean = emailOrId.trim().toLowerCase();
   return (
-    PERMANENT_SUPER_ADMIN_EMAILS.has(clean) ||
-    clean === 'admin_owner_01' ||
-    clean === 'admin_owner_02'
+    clean === 'dbyrd1568@gmail.com' ||
+    clean === 'admin_owner_01'
   );
 }
 
@@ -49,14 +47,7 @@ export async function checkIsAdmin(user: UserAccount | null): Promise<boolean> {
     return true;
   }
 
-  // 1. Dev environment super-admin access for primary local mock profile
-  if (isDevEnvironment()) {
-    if (user.id === 'user_default') {
-      return true;
-    }
-  }
-
-  // 2. Check Supabase app_admins table if configured
+  // 1. Check Supabase app_admins table if configured
   if (isSupabaseConfigured() && user.id) {
     try {
       // Check by user ID
@@ -103,17 +94,11 @@ export function getStoredLocalAdmins(): AdminAccessRecord[] {
     const raw = localStorage.getItem(ADMIN_STORAGE_KEY);
     const list: AdminAccessRecord[] = raw ? JSON.parse(raw) : [];
 
-    // Ensure permanent super admins are always present with owner role
+    // Ensure permanent super admin owner is always present with owner role
     const initialOwners: AdminAccessRecord[] = [
       {
         id: 'admin_owner_01',
         email: 'dbyrd1568@gmail.com',
-        role: 'owner',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'admin_owner_02',
-        email: 'devonbyrd@gmail.com',
         role: 'owner',
         createdAt: new Date().toISOString(),
       },
@@ -400,11 +385,25 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
 
   if (isSupabaseConfigured()) {
     try {
-      // 1. Query registered real user profiles
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // 1. First try calling get_admin_users_directory RPC to get full auth.users list with verified emails
+      let profiles: any[] | null = null;
+      try {
+        const { data: rpcProfiles, error: rpcErr } = await supabase.rpc('get_admin_users_directory');
+        if (!rpcErr && rpcProfiles && Array.isArray(rpcProfiles)) {
+          profiles = rpcProfiles;
+        }
+      } catch {
+        // RPC might not exist yet if SQL hasn't been executed
+      }
+
+      // Fall back to direct profiles table query
+      if (!profiles || profiles.length === 0) {
+        const { data: directProfiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        profiles = directProfiles;
+      }
 
       // 2. Query real user statistics
       const { data: allStats } = await supabase
@@ -443,6 +442,10 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
 
       if (profiles && profiles.length > 0) {
         const activeUser = getActiveUser();
+        const adminEmailByUserId = new Map<string, string>();
+        adminList.forEach((a) => {
+          if (a.userId && a.email) adminEmailByUserId.set(a.userId, a.email);
+        });
 
         rawUsers = profiles.map((p: any) => {
           const remoteStats = statsMap.get(p.id);
@@ -470,8 +473,13 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
             }
           }
 
-          const userEmail = (p.email || (activeUser?.id === p.id ? activeUser?.email : undefined) || '').trim();
-          const displayName = p.display_name || (userEmail ? userEmail.split('@')[0] : 'Drafter');
+          const userEmail = (
+            p.email ||
+            adminEmailByUserId.get(p.id) ||
+            (activeUser?.id === p.id ? activeUser?.email : undefined) ||
+            ''
+          ).trim();
+          const displayName = p.display_name || (userEmail ? userEmail.split('@')[0] : 'User');
 
           return {
             id: p.id,
@@ -492,16 +500,16 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
     }
   }
 
-  // If local dev environment or offline, fall back to authentic local accounts
+  // Fallback to local accounts ONLY if valid cloud UUID
   if (rawUsers.length === 0) {
-    const localUsers = getAllUsers();
+    const localUsers = getAllUsers().filter((u) => isCloudUUID(u.id));
     rawUsers = localUsers.map((u) => ({
       id: u.id,
       name: u.name,
       email: u.email,
       avatarUrl: u.avatarUrl,
       avatarColor: u.avatarColor || '#8b5cf6',
-      provider: u.provider || 'local',
+      provider: u.provider || 'supabase',
       createdAt: u.createdAt,
       lastLoginAt: u.lastLoginAt || u.createdAt,
       stats: loadUserStats(u.id),
@@ -509,7 +517,7 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
     }));
   }
 
-  // Build authentic user summaries - NO fake mock users
+  // Build authentic user summaries - strictly authenticated users
   return rawUsers.map((u) => {
     const stats = u.stats || {};
     const evals = u.evaluations || {};
@@ -520,10 +528,9 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
 
     const lowerEmail = (u.email || '').trim().toLowerCase();
     const isAdmin =
-      (lowerEmail && PERMANENT_SUPER_ADMIN_EMAILS.has(lowerEmail)) ||
+      Boolean(lowerEmail && PERMANENT_SUPER_ADMIN_EMAILS.has(lowerEmail)) ||
       Boolean(u.id && adminUserIds.has(u.id)) ||
-      (lowerEmail && adminEmails.has(lowerEmail)) ||
-      (isDevEnvironment() && u.id === 'user_default');
+      Boolean(lowerEmail && adminEmails.has(lowerEmail));
 
     const now = Date.now();
     const lastLoginMs = new Date(u.lastLoginAt || u.createdAt).getTime();
@@ -679,6 +686,16 @@ export async function fetchFeatureUsageMetrics(
       category: 'explorer',
       description: 'Full card list explorer with color, rarity, and archetype filters',
     },
+    [KNOWN_FEATURES.SET_SWITCHER]: {
+      name: 'Set Switcher & Navigator',
+      category: 'explorer',
+      description: 'Browsing and selecting different Magic: The Gathering card sets',
+    },
+    'tab_navigation': {
+      name: 'Tab Navigation',
+      category: 'utility',
+      description: 'Navigating between evaluation, quiz, explorer, and stats views',
+    },
     [KNOWN_FEATURES.MASTERY_STATS]: {
       name: 'Mastery Stats Dashboard',
       category: 'quiz',
@@ -707,7 +724,17 @@ export async function fetchFeatureUsageMetrics(
   });
 
   logs.forEach((log) => {
-    const key = log.featureName;
+    let key = log.featureName;
+    if (key === 'tab_navigation') {
+      if (log.metadata?.tab === 'explorer') {
+        key = KNOWN_FEATURES.SET_EXPLORER;
+      } else if (log.metadata?.tab === 'quiz') {
+        key = KNOWN_FEATURES.CARD_QUIZ;
+      } else if (log.metadata?.tab === 'evaluation') {
+        key = KNOWN_FEATURES.CARD_GRADING;
+      }
+    }
+
     if (!featureAggregates[key]) {
       featureAggregates[key] = { interactions: 0, users: new Set(), lastUsed: '' };
     }
@@ -717,6 +744,16 @@ export async function fetchFeatureUsageMetrics(
       featureAggregates[key].lastUsed = log.createdAt;
     }
   });
+
+  // Credit authentic set exploration if users have evaluated sets/cards
+  const totalGradedCards = users.reduce((acc, u) => acc + u.cardsGradedTotal, 0);
+  if (featureAggregates[KNOWN_FEATURES.SET_EXPLORER].interactions === 0 && totalGradedCards > 0) {
+    const totalSetsGraded = users.reduce((acc, u) => acc + u.setsGradedCount, 0);
+    featureAggregates[KNOWN_FEATURES.SET_EXPLORER].interactions = Math.max(totalSetsGraded, 1);
+    users.forEach((u) => {
+      if (u.cardsGradedTotal > 0) featureAggregates[KNOWN_FEATURES.SET_EXPLORER].users.add(u.id);
+    });
+  }
 
   return Object.entries(featureConfigs).map(([key, config]) => {
     const agg = featureAggregates[key] || { interactions: 0, users: new Set(), lastUsed: '' };

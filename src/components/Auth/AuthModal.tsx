@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { UserAccount } from '../../types/mtg';
-import { isSupabaseConfigured } from '../../services/supabase';
 import {
   signInWithOAuth,
   signInWithMagicLink,
@@ -12,16 +11,10 @@ import {
   isCloudUUID,
 } from '../../services/auth';
 import {
-  getAllUsers,
-  createLocalUser,
-  deleteUserAccount,
-  setActiveUser,
   updateUserAccount,
   clearActiveUser,
 } from '../../services/storage';
-import { isProdEnvironment } from '../../services/environment';
 import {
-  migrateLocalDataToCloud,
   getSyncStatus,
   subscribeSyncStatus,
   getLastSyncError,
@@ -45,9 +38,6 @@ import {
   Zap,
   ArrowRight,
   Info,
-  Trash2,
-  UserPlus,
-  Users,
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -58,7 +48,7 @@ interface AuthModalProps {
   onRefreshStats: () => void;
 }
 
-export type TabType = 'local' | 'oauth' | 'magic_link' | 'password' | 'profile';
+export type TabType = 'oauth' | 'magic_link' | 'password' | 'profile';
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
@@ -67,20 +57,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onUserChange,
   onRefreshStats,
 }) => {
-  const isProd = isProdEnvironment();
-  const isCloudConfigured = isSupabaseConfigured();
   const isCloudUser = Boolean(currentUser && (currentUser.provider !== 'local' || isCloudUUID(currentUser.id)));
 
   const [activeTab, setActiveTab] = useState<TabType>(
-    isCloudUser ? 'profile' : (!isProd && !isCloudConfigured ? 'local' : 'oauth')
+    isCloudUser ? 'profile' : 'oauth'
   );
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-
-  // Local Drafter Profiles state
-  const [localUsers, setLocalUsers] = useState<UserAccount[]>(() => getAllUsers());
-  const [newProfileName, setNewProfileName] = useState('');
-  const [newProfileColor, setNewProfileColor] = useState('#8b5cf6');
-  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
 
   // Form states
   const [email, setEmail] = useState('');
@@ -106,69 +88,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setAvatarUrl(currentUser?.avatarUrl || '');
       setAvatarColor(currentUser?.avatarColor || '#8b5cf6');
       setStatusMessage(null);
-      setLocalUsers(getAllUsers());
-      setIsCreatingProfile(false);
       setIsEditingProfile(false);
       if (isCloudUser) {
         setActiveTab('profile');
-      } else if (!isProd && !isCloudConfigured) {
-        setActiveTab('local');
       } else {
         setActiveTab('oauth');
       }
     }
-  }, [isOpen, currentUser, isCloudUser, isCloudConfigured, isProd]);
+  }, [isOpen, currentUser, isCloudUser]);
 
   if (!isOpen) return null;
-
-  // --- Local User Handlers ---
-  const handleSwitchLocalUser = (user: UserAccount) => {
-    setActiveUser(user);
-    setLocalUsers(getAllUsers());
-    onUserChange(user);
-    onRefreshStats();
-    setStatusMessage({ type: 'success', text: `Switched to "${user.name}"!` });
-    setTimeout(() => onClose(), 500);
-  };
-
-  const handleCreateNewLocalProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanName = newProfileName.trim();
-    if (!cleanName) return;
-
-    const newUser = createLocalUser(cleanName, newProfileColor);
-    setLocalUsers(getAllUsers());
-    setActiveUser(newUser);
-    onUserChange(newUser);
-    onRefreshStats();
-    setNewProfileName('');
-    setIsCreatingProfile(false);
-    setStatusMessage({ type: 'success', text: `Created profile "${newUser.name}"!` });
-    setTimeout(() => onClose(), 600);
-  };
-
-  const handleDeleteLocalUser = (userId: string, userName: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (localUsers.length <= 1) {
-      setStatusMessage({ type: 'error', text: 'You must have at least one drafter profile.' });
-      return;
-    }
-    if (!window.confirm(`Delete profile "${userName}" and all its local quiz stats?`)) {
-      return;
-    }
-
-    deleteUserAccount(userId);
-    const updated = getAllUsers();
-    setLocalUsers(updated);
-    if (currentUser?.id === userId) {
-      const nextUser = updated[0];
-      setActiveUser(nextUser);
-      onUserChange(nextUser);
-      onRefreshStats();
-    }
-    setStatusMessage({ type: 'success', text: `Deleted profile "${userName}".` });
-    setTimeout(() => setStatusMessage(null), 2500);
-  };
 
   // --- Auth Handlers ---
   const handleOAuthSignIn = async (provider: OAuthProvider) => {
@@ -180,7 +109,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setStatusMessage({ type: 'error', text: error.message });
     } else if (user) {
       setStatusMessage({ type: 'success', text: `Signed in as ${user.name}!` });
-      setLocalUsers(getAllUsers());
       onUserChange(user);
       onRefreshStats();
       setTimeout(() => onClose(), 800);
@@ -201,9 +129,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } else if (user) {
       setStatusMessage({
         type: 'success',
-        text: `Logged in locally as ${user.name}!`,
+        text: `Signed in as ${user.name}!`,
       });
-      setLocalUsers(getAllUsers());
       onUserChange(user);
       onRefreshStats();
       setTimeout(() => onClose(), 800);
@@ -229,23 +156,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (error) {
         setStatusMessage({ type: 'error', text: error.message });
       } else if (user) {
-        if (!isCloudConfigured) {
-          setStatusMessage({
-            type: 'success',
-            text: `Local profile "${user.name}" created!`,
-          });
-          setLocalUsers(getAllUsers());
-          onUserChange(user);
-          onRefreshStats();
-          setTimeout(() => onClose(), 800);
-        } else {
-          setStatusMessage({
-            type: 'success',
-            text: 'Account created! Please check your email to verify your address.',
-          });
-          onUserChange(user);
-          onRefreshStats();
-        }
+        setStatusMessage({
+          type: 'success',
+          text: 'Account created! Please check your email to verify your address.',
+        });
+        onUserChange(user);
+        onRefreshStats();
       }
     } else {
       const { user, error } = await signInWithPassword(email.trim(), password.trim());
@@ -254,7 +170,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setStatusMessage({ type: 'error', text: error.message });
       } else if (user) {
         setStatusMessage({ type: 'success', text: `Welcome back, ${user.name}!` });
-        setLocalUsers(getAllUsers());
         onUserChange(user);
         onRefreshStats();
         setTimeout(() => onClose(), 800);
@@ -278,12 +193,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (!currentUser) return;
     const updatedUser: UserAccount = {
       ...currentUser,
-      name: displayName.trim() || 'Drafter',
+      name: displayName.trim() || 'User',
       avatarUrl: avatarUrl.trim() || undefined,
       avatarColor,
     };
     updateUserAccount(updatedUser);
-    setLocalUsers(getAllUsers());
     onUserChange(updatedUser);
     setIsLoading(false);
     setIsEditingProfile(false);
@@ -296,25 +210,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     await signOut();
     clearActiveUser();
     setIsLoading(false);
-
-    if (isProd) {
-      onUserChange(null);
-      onClose();
-      return;
-    }
-
-    const guestUser: UserAccount = {
-      id: 'user_default',
-      name: 'Guest Drafter',
-      avatarColor: '#8b5cf6',
-      provider: 'local',
-      createdAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
-    };
-    setActiveUser(guestUser);
-    setLocalUsers(getAllUsers());
-    onUserChange(guestUser);
-    onRefreshStats();
+    onUserChange(null);
     onClose();
   };
 
@@ -346,12 +242,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-                {isCloudUser ? 'Cloud Drafter Account' : (isProd ? 'Account Sign In' : 'Drafter Profiles & Accounts')}
+                {isCloudUser ? 'User Account' : 'Account Sign In'}
               </h2>
               <p className="text-xs text-slate-600 dark:text-slate-400">
                 {isCloudUser
-                  ? 'Manage cloud profile and sync settings'
-                  : (isProd ? 'Sign in with your cloud account to sync progress' : 'Manage local drafter profiles or connect cloud sync')}
+                  ? 'Manage user profile and sync settings'
+                  : 'Sign in with your account to sync progress'}
               </p>
             </div>
           </div>
@@ -381,19 +277,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* Configuration Notice (if Supabase env is not yet filled, Dev Only) */}
-        {!isProd && !isCloudConfigured && (
-          <div className="px-5 py-3 bg-amber-500/10 dark:bg-amber-950/30 border-b border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <span className="font-bold">Offline / Local Mode Active</span>
-              <p className="text-[11px] text-amber-800 dark:text-amber-200/80 leading-relaxed">
-                All quiz scores, streak records, and card evaluations are saved instantly to your local browser. To sync across multiple devices or use real Google/Discord OAuth, configure Supabase keys in <code className="bg-amber-200/50 dark:bg-[#050818] px-1 py-0.2 rounded font-mono text-[10px]">.env</code>.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Authenticated Profile View */}
         {activeTab === 'profile' ? (
           <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
@@ -417,21 +300,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   )}
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">{currentUser?.name || 'Account'}</h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{currentUser?.email || (isProd ? 'Cloud Account' : 'Local Account')}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{currentUser?.email || 'User Account'}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.2 rounded bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-cyan-300 border border-violet-300 dark:border-violet-700/50">
                         {currentUser?.provider || 'cloud'}
                       </span>
-                      {isCloudUser ? (
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Cloud Active
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono flex items-center gap-1">
-                          Local Only
-                        </span>
-                      )}
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        Authenticated
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -491,7 +368,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* Edit Profile Form */}
             {isEditingProfile ? (
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#070c26] border border-violet-300 dark:border-violet-500/40 space-y-3 animate-in fade-in duration-150">
-                <div className="text-xs font-bold text-slate-900 dark:text-white font-heading">Edit Drafter Profile</div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white font-heading">Edit Profile</div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Display Name</label>
                   <input
@@ -550,19 +427,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             ) : null}
 
-            {/* Switch to Local Drafters Profile Manager (Dev Only) */}
-            {!isProd && (
-              <div className="space-y-2">
-                <button
-                  onClick={() => setActiveTab('local')}
-                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-[#050818] hover:bg-slate-200 dark:hover:bg-[#0c1236] border border-slate-300 dark:border-slate-800 hover:border-violet-500 dark:hover:border-cyan-500/40 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <Users className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
-                  <span>Switch / Manage Local Drafter Profiles</span>
-                </button>
-              </div>
-            )}
-
             <div className="space-y-2">
               {isCloudUser && (
                 <button
@@ -581,7 +445,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-950/60 border border-rose-300 dark:border-rose-500/40 text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>{isProd ? 'Sign Out' : 'Sign Out (Switch to Guest Mode)'}</span>
+                <span>Sign Out</span>
               </button>
             </div>
           </div>
@@ -601,19 +465,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
 
             {/* Tab Navigation */}
-            <div className={`grid ${isProd ? 'grid-cols-3' : 'grid-cols-4'} p-1 bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl gap-1`}>
-              {!isProd && (
-                <button
-                  onClick={() => setActiveTab('local')}
-                  className={`py-1.5 px-1 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer text-center truncate ${
-                    activeTab === 'local'
-                      ? 'bg-violet-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  Local Drafters
-                </button>
-              )}
+            <div className="grid grid-cols-3 p-1 bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
               <button
                 onClick={() => setActiveTab('oauth')}
                 className={`py-1.5 px-1 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer text-center truncate ${
@@ -646,183 +498,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </div>
 
-            {/* TAB 0: Local Drafters Profile Manager */}
-            {activeTab === 'local' && !isProd && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Local Drafter Profiles
-                    </span>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Switch between profiles or create a new drafter. Stored in this browser.
-                    </p>
-                  </div>
-                  {!isCreatingProfile && (
-                    <button
-                      onClick={() => setIsCreatingProfile(true)}
-                      className="px-2.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>New Profile</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Create Profile Form */}
-                {isCreatingProfile && (
-                  <form
-                    onSubmit={handleCreateNewLocalProfile}
-                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#070c26] border border-violet-300 dark:border-violet-500/40 space-y-3 animate-in fade-in duration-150"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">Create New Drafter Profile</span>
-                      <button
-                        type="button"
-                        onClick={() => setIsCreatingProfile(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Profile Name</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g., Devon (Competitive) or Draft Bot"
-                        value={newProfileName}
-                        onChange={(e) => setNewProfileName(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 font-medium"
-                        autoFocus
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Avatar Color</label>
-                      <div className="flex items-center gap-2 pt-0.5">
-                        {AVATAR_COLORS.map((c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => setNewProfileColor(c)}
-                            className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer ${
-                              newProfileColor === c ? 'border-violet-600 dark:border-white scale-110 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
-                            }`}
-                            style={{ backgroundColor: c }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setIsCreatingProfile(false)}
-                        className="px-3 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
-                      >
-                        Create & Switch
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {/* Profiles List */}
-                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-0.5">
-                  {localUsers.map((u) => {
-                    const isActive = u.id === currentUser?.id;
-                    return (
-                      <div
-                        key={u.id}
-                        onClick={() => !isActive && handleSwitchLocalUser(u)}
-                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                          isActive
-                            ? 'bg-violet-50/70 dark:bg-violet-950/30 border-violet-400 dark:border-violet-600/60 ring-1 ring-violet-400/40 dark:ring-violet-500/20'
-                            : 'bg-slate-50 dark:bg-[#050818] border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-[#0a0f28] cursor-pointer'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {u.avatarUrl ? (
-                            <img
-                              src={u.avatarUrl}
-                              alt={u.name}
-                              className="w-9 h-9 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shrink-0"
-                            />
-                          ) : (
-                            <div
-                              className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-xs shrink-0 font-heading"
-                              style={{ backgroundColor: u.avatarColor || '#8b5cf6' }}
-                            >
-                              {u.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                {u.name}
-                              </span>
-                              {isActive && (
-                                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 flex items-center gap-0.5">
-                                  <Check className="w-2.5 h-2.5" />
-                                  Active
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono block truncate">
-                              {u.email || (u.provider === 'local' ? 'Local Profile' : `${u.provider} account`)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {!isActive ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSwitchLocalUser(u)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-all cursor-pointer shadow-2xs"
-                            >
-                              Select
-                            </button>
-                          ) : null}
-
-                          {localUsers.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteLocalUser(u.id, u.name, e)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                              title="Delete profile"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* TAB 1: OAuth Providers */}
             {activeTab === 'oauth' && (
               <div className="space-y-3">
-                {!isCloudConfigured ? (
-                  <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-700/40 text-[11px] text-violet-800 dark:text-violet-300 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 shrink-0 text-violet-600 dark:text-cyan-400" />
-                    <span>In offline / local mode, clicking any provider logs you in immediately with a local drafter profile.</span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                    1-Click authentication with zero passwords to remember:
-                  </p>
-                )}
+                <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                  1-Click authentication with zero passwords to remember:
+                </p>
 
                 {/* Google SSO */}
                 <button
@@ -880,16 +561,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* TAB 2: Magic Link (Passwordless) */}
             {activeTab === 'magic_link' && (
               <form onSubmit={handleMagicLink} className="space-y-3.5">
-                {!isCloudConfigured ? (
-                  <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-700/40 text-[11px] text-violet-800 dark:text-violet-300 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 shrink-0 text-violet-600 dark:text-cyan-400" />
-                    <span>In offline / local mode, typing your email logs you into or creates a local drafter profile immediately.</span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Enter your email address and we'll send you an instant login link:
-                  </p>
-                )}
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Enter your email address and we'll send you an instant login link:
+                </p>
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Email Address</label>
@@ -898,7 +572,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <input
                       type="email"
                       required
-                      placeholder="drafter@example.com"
+                      placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
@@ -912,7 +586,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 dark:to-cyan-600 hover:from-violet-500 hover:to-indigo-500 dark:hover:to-cyan-500 text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{isCloudConfigured ? 'Send Magic Link' : 'Log In Locally'}</span>
+                  <span>Send Magic Link</span>
                 </button>
               </form>
             )}
@@ -920,13 +594,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* TAB 3: Email + Password */}
             {activeTab === 'password' && (
               <form onSubmit={handlePasswordAuth} className="space-y-3.5">
-                {!isCloudConfigured && (
-                  <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-700/40 text-[11px] text-violet-800 dark:text-violet-300 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 shrink-0 text-violet-600 dark:text-cyan-400" />
-                    <span>In offline / local mode, signing in or signing up saves and switches your profile locally in your browser.</span>
-                  </div>
-                )}
-
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider">
                     {authMode === 'signin' ? 'Sign In With Password' : 'Create Account'}
@@ -947,7 +614,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
-                        placeholder="Your Drafter Name"
+                        placeholder="Your Name"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
@@ -963,7 +630,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <input
                       type="email"
                       required
-                      placeholder="drafter@example.com"
+                      placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
@@ -997,15 +664,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </form>
             )}
 
-            {/* Guest Mode Footnote (Dev Only) */}
-            {!isProd && currentUser && (
+            {/* Return Footnote */}
+            {currentUser && (
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800 text-center">
                 <button
                   type="button"
                   onClick={onClose}
                   className="text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-cyan-300 font-medium cursor-pointer inline-flex items-center gap-1"
                 >
-                  <span>Continue playing with active profile ({currentUser.name})</span>
+                  <span>Continue playing with active account ({currentUser.name})</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

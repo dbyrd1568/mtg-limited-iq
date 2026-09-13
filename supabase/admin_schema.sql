@@ -1,15 +1,48 @@
 -- ==============================================================================
 -- MTG LIMITED IQ: SECURE ADMIN SCHEMA & TELEMETRY
 -- Run this script in your Supabase SQL Editor to configure:
--- 1. profiles email column: ensures user email is available in profile directory
--- 2. app_admins: Table containing authorized administrator users & emails
--- 3. user_activity_logs: Telemetry table tracking user logins & feature usage
+-- 1. profiles email column & backfill: ensures verified user email is in profiles
+-- 2. app_admins: Table containing authorized administrator users & emails (dbyrd1568@gmail.com owner)
+-- 3. user_activity_logs: Telemetry table tracking user logins, set exploration & features
 -- 4. is_admin(): Security definer function checking admin permissions
--- 5. Row-Level Security (RLS) policies granting admins access to user metrics
+-- 5. get_admin_users_directory(): Security definer RPC returning all users with emails from auth.users
+-- 6. Row-Level Security (RLS) policies granting admins access to user metrics
 -- ==============================================================================
 
--- 0. EXTEND PROFILES WITH EMAIL COLUMN
+-- 0. EXTEND PROFILES WITH EMAIL COLUMN & BACKFILL FROM AUTH.USERS
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
+
+-- Backfill emails for existing profiles from auth.users
+UPDATE public.profiles p
+SET email = u.email
+FROM auth.users u
+WHERE p.id = u.id AND (p.email IS NULL OR p.email = '');
+
+-- Automatic trigger to populate profiles on auth user creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, display_name, email, avatar_url, updated_at)
+  VALUES (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    new.email,
+    new.raw_user_meta_data->>'avatar_url',
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET 
+    email = coalesce(public.profiles.email, excluded.email),
+    display_name = coalesce(public.profiles.display_name, excluded.display_name),
+    updated_at = now();
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT OR UPDATE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- 1. APP ADMINS TABLE
 CREATE TABLE IF NOT EXISTS public.app_admins (
@@ -21,7 +54,6 @@ CREATE TABLE IF NOT EXISTS public.app_admins (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Index on user_id and lower(email) for fast permission lookups
 CREATE INDEX IF NOT EXISTS idx_app_admins_user_id ON public.app_admins(user_id);
 CREATE INDEX IF NOT EXISTS idx_app_admins_email ON public.app_admins(lower(email));
 
@@ -30,19 +62,18 @@ CREATE TABLE IF NOT EXISTS public.user_activity_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   user_name TEXT,
-  event_type TEXT NOT NULL, -- e.g. 'login', 'feature_used', 'grade_card', 'card_quiz', 'set_switcher'
-  feature_name TEXT NOT NULL, -- e.g. 'card_grading', 'card_quiz', 'archetype_forecast', 'set_explorer'
+  event_type TEXT NOT NULL, -- e.g. 'login', 'feature_used', 'grade_card', 'set_switcher', 'set_explorer'
+  feature_name TEXT NOT NULL, -- e.g. 'card_grading', 'card_quiz', 'set_explorer', 'set_switcher'
   metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Indexes for time-series analytics and user/feature filtering
 CREATE INDEX IF NOT EXISTS idx_activity_created_at ON public.user_activity_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_feature ON public.user_activity_logs(feature_name);
 CREATE INDEX IF NOT EXISTS idx_activity_user_feature ON public.user_activity_logs(user_id, feature_name);
 
 -- 3. IS_ADMIN SECURITY DEFINER FUNCTION
--- Securely verifies if the current caller is an authorized admin
+-- Sole permanent owner: dbyrd1568@gmail.com
 CREATE OR REPLACE FUNCTION public.is_admin(check_user_id UUID DEFAULT auth.uid())
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -52,9 +83,9 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- 0. Check verified JWT email for permanent super admins
+  -- 0. Check verified JWT email for permanent super admin
   caller_email := lower(auth.jwt() ->> 'email');
-  IF caller_email IN ('dbyrd1568@gmail.com', 'devonbyrd@gmail.com') THEN
+  IF caller_email IN ('dbyrd1568@gmail.com') THEN
     RETURN true;
   END IF;
 
@@ -74,11 +105,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. PRE-PROVISION OWNER ADMINS & LINK TO AUTH USERS
+-- 4. PRE-PROVISION SOLE OWNER ADMIN & LINK TO AUTH USERS
 INSERT INTO public.app_admins (email, role)
 VALUES 
-  ('dbyrd1568@gmail.com', 'owner'),
-  ('devonbyrd@gmail.com', 'owner')
+  ('dbyrd1568@gmail.com', 'owner')
 ON CONFLICT (email) DO NOTHING;
 
 UPDATE public.app_admins a
@@ -87,11 +117,41 @@ FROM auth.users u
 WHERE lower(a.email) = lower(u.email)
   AND a.user_id IS NULL;
 
--- 5. ENABLE ROW LEVEL SECURITY
+-- 5. ADMIN USERS DIRECTORY RPC FUNCTION
+-- Allows verified admins to retrieve all registered users directly with verified emails from auth.users
+CREATE OR REPLACE FUNCTION public.get_admin_users_directory()
+RETURNS TABLE (
+  id UUID,
+  email TEXT,
+  display_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Admins only.';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    u.id,
+    u.email::TEXT,
+    coalesce(p.display_name, split_part(u.email, '@', 1))::TEXT as display_name,
+    p.avatar_url,
+    u.created_at,
+    coalesce(p.updated_at, u.updated_at, u.created_at) as updated_at
+  FROM auth.users u
+  LEFT JOIN public.profiles p ON p.id = u.id
+  ORDER BY u.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. ENABLE ROW LEVEL SECURITY
 ALTER TABLE public.app_admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_activity_logs ENABLE ROW LEVEL SECURITY;
 
--- 6. APP ADMINS POLICIES
+-- 7. APP ADMINS POLICIES
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Admins can view admins list" ON public.app_admins;
   DROP POLICY IF EXISTS "Admins can add new admins" ON public.app_admins;
@@ -106,32 +166,30 @@ CREATE POLICY "Admins can add new admins"
   ON public.app_admins FOR INSERT
   WITH CHECK (public.is_admin());
 
+-- Only admins can delete, and owner dbyrd1568@gmail.com can NEVER be deleted
 CREATE POLICY "Admins can delete admins"
   ON public.app_admins FOR DELETE
   USING (
     public.is_admin()
     AND role != 'owner'
-    AND lower(email) NOT IN ('dbyrd1568@gmail.com', 'devonbyrd@gmail.com')
+    AND lower(email) != 'dbyrd1568@gmail.com'
   );
 
--- 7. USER ACTIVITY LOGS POLICIES
+-- 8. USER ACTIVITY LOGS POLICIES
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Users can insert activity logs" ON public.user_activity_logs;
   DROP POLICY IF EXISTS "Admins can view all activity logs" ON public.user_activity_logs;
 END $$;
 
--- Authenticated and anonymous users can submit telemetry events
 CREATE POLICY "Users can insert activity logs"
   ON public.user_activity_logs FOR INSERT
   WITH CHECK (true);
 
--- Only verified admins can read activity logs
 CREATE POLICY "Admins can view all activity logs"
   ON public.user_activity_logs FOR SELECT
   USING (public.is_admin());
 
--- 8. EXTEND EXISTING TABLES TO GRANT ADMIN READ ACCESS
--- Allow admins to view all user_stats and card_evaluations for cross-user reporting
+-- 9. EXTEND EXISTING TABLES TO GRANT ADMIN READ ACCESS
 DO $$ BEGIN
   DROP POLICY IF EXISTS "Admins can view all user stats" ON public.user_stats;
   DROP POLICY IF EXISTS "Admins can view all card evaluations" ON public.card_evaluations;
