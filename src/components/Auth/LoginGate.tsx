@@ -9,7 +9,6 @@ import {
 } from '../../services/auth';
 import { UserAccount } from '../../types/mtg';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../../services/theme';
-import { isDevEnvironment } from '../../services/environment';
 import {
   Mail,
   Lock,
@@ -259,31 +258,6 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
               )}
 
 
-
-              {/* Dev Mode 1-Click Bypass */}
-              {isDevEnvironment() && (
-                <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/50 text-amber-900 dark:text-amber-200 text-xs flex flex-col gap-2.5 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold flex items-center gap-1.5">
-                      <span>🛠️ Localhost Dev Mode</span>
-                    </span>
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
-                      Local Admin Bypass
-                    </span>
-                  </div>
-                  <p className="text-[11px] leading-tight text-amber-800 dark:text-amber-300">
-                    Remote Supabase redirects are disabled locally to keep you on localhost.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleOAuthSignIn('google')}
-                    disabled={isLoading}
-                    className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
-                  >
-                    <span>⚡ 1-Click Sign-In as Devon Byrd (Admin)</span>
-                  </button>
-                </div>
-              )}
 
               {/* Auth Tab Navigation */}
               <div className="grid grid-cols-3 p-1 bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl gap-1 mb-5">

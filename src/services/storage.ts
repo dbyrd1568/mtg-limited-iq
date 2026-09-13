@@ -47,8 +47,8 @@ export function getAllUsers(): UserAccount[] {
     const raw = localStorage.getItem(USERS_LIST_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as UserAccount[];
-    // Strictly filter out any unauthenticated local mock accounts ONLY in production
-    if (isProdEnvironment()) {
+    // Strictly filter out any unauthenticated local mock accounts when Supabase is configured
+    if (isSupabaseConfigured()) {
       return parsed.filter((u) => u.provider !== 'local' || isCloudUUID(u.id));
     }
     return parsed;
@@ -64,13 +64,13 @@ export function getActiveUser(): UserAccount | null {
     const activeId = localStorage.getItem(ACTIVE_USER_ID_KEY);
     const found = users.find((u) => u.id === activeId);
     if (found) {
-      if (isProdEnvironment() && found.provider === 'local' && !isCloudUUID(found.id)) {
+      if (isSupabaseConfigured() && found.provider === 'local' && !isCloudUUID(found.id)) {
         return null;
       }
       return found;
     }
-    // Offline development fallback: provide default admin account ONLY if Supabase is not configured
-    if (!isProdEnvironment() && !isSupabaseConfigured()) {
+    // Offline development fallback: provide default account ONLY if Supabase is not configured
+    if (!isSupabaseConfigured()) {
       const devUser: UserAccount = {
         id: 'admin_owner_01',
         name: 'Devon Byrd (Local Admin)',
