@@ -5,6 +5,20 @@ import { readFileSync } from 'fs';
 
 const { version } = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
+function packageJsonWatcherPlugin() {
+  return {
+    name: 'vite-plugin-package-json-watcher',
+    configureServer(server: any) {
+      server.watcher.add('package.json');
+      server.watcher.on('change', (file: string) => {
+        if (file.endsWith('package.json')) {
+          server.restart();
+        }
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   define: {
@@ -13,6 +27,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    packageJsonWatcherPlugin(),
   ],
   server: {
     port: 5173,
