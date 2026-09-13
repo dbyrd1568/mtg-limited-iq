@@ -1,12 +1,12 @@
 import { Card, GradeTier, MTGColor } from '../types/mtg';
-import { normalizeScryfallCard } from './scryfall';
-import { fetch17LandsSetData, winRateToGradeTier, gradeTierToIndex, indexToGradeTier, GRADE_SCORES, scoreToGradeTier } from './seventeenLands';
+import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from './scryfall';
+import { fetch17LandsSetData, winRateToGradeTier, gradeTierToIndex, indexToGradeTier, GRADE_SCORES, scoreToGradeTier, getOrEstimate17LandsCardRating } from './seventeenLands';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
-// Benchmark modern premier booster draft sets with rich 17Lands sample sizes
+// Benchmark modern premier booster draft sets with rich 17Lands sample sizes (released sets only)
 export const COMPARABLE_PREMIER_SETS = [
-  'MSH', 'SPM', 'TLA', 'EOE', 'FIN', 'TDM', 'DFT', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR', 'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX', 'KHM', 'ZNR', 'IKO'
+  'FIN', 'ECL', 'TDM', 'EOE', 'TLA', 'TMT', 'SOS', 'MSH', 'DFT', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR', 'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX', 'KHM', 'ZNR', 'IKO', 'ELD'
 ];
 
 export interface SimilarCardMatch {
@@ -88,22 +88,24 @@ export function cleanOracleText(oracleText: string): string {
  */
 export function extractCardFeatures(card: Card) {
   const typeLine = (card.type_line || '').toLowerCase();
+  // For multi-faced cards (DFCs, Transform, Craft, Adventures), evaluate primary permanent / spell nature from the castable front face
+  const frontTypeLine = (card.card_faces?.[0]?.type_line || typeLine.split(' // ')[0] || '').toLowerCase();
   // Strip reminder text to prevent token abilities (e.g. Jace token's "-3: Draw a card") from leaking into host card!
   const rawOracle = (card.oracle_text || '').toLowerCase();
   const oracle = cleanOracleText(rawOracle).toLowerCase();
 
-  const isPlaneswalker = typeLine.includes('planeswalker');
-  const isBattle = typeLine.includes('battle');
-  const isLand = typeLine.includes('land');
-  const isCreature = typeLine.includes('creature');
+  const isPlaneswalker = frontTypeLine.includes('planeswalker');
+  const isBattle = frontTypeLine.includes('battle');
+  const isLand = frontTypeLine.includes('land');
+  const isCreature = frontTypeLine.includes('creature');
   const hasFlash = (card.keywords || []).some(k => k.toLowerCase() === 'flash') || oracle.includes('flash');
-  const isInstant = typeLine.includes('instant');
-  const isSorcery = typeLine.includes('sorcery');
-  const isEnchantment = typeLine.includes('enchantment');
-  const isArtifact = typeLine.includes('artifact');
+  const isInstant = frontTypeLine.includes('instant');
+  const isSorcery = frontTypeLine.includes('sorcery');
+  const isEnchantment = frontTypeLine.includes('enchantment');
+  const isArtifact = frontTypeLine.includes('artifact');
 
-  const creatureSubtypes = isCreature && typeLine.includes('—')
-    ? typeLine.split('—')[1].trim().toLowerCase().split(/\s+/)
+  const creatureSubtypes = isCreature && frontTypeLine.includes('—')
+    ? frontTypeLine.split('—')[1].trim().toLowerCase().split(/\s+/)
     : [];
 
   let primaryType = 'creature';
@@ -132,7 +134,7 @@ export function extractCardFeatures(card: Card) {
   const createsTokens = (oracle.includes('create') && oracle.includes('token')) || /amass/i.test(oracle);
 
   // Equipment & Living Weapon Features
-  const isEquipment = typeLine.includes('equipment') || /equip \{/i.test(oracle);
+  const isEquipment = frontTypeLine.includes('equipment') || /equip \{/i.test(oracle);
   const isLivingWeapon = isEquipment && (
     /living weapon|for mirrodin|job select/i.test(oracle) ||
     /when .* enters.*(amass|create).*attach/i.test(oracle)
@@ -200,7 +202,10 @@ export function extractCardFeatures(card: Card) {
     actionSubtypes.add('burn_damage');
   } else if (/deals damage equal to (its|target creature's) power|fights target creature/i.test(oracle)) {
     actionSubtypes.add('bite_fight');
-  } else if (/(destroy|exile) target (creature|permanent|nonland permanent)/i.test(oracle)) {
+  } else if (/(destroy|exile) target (permanent|nonland permanent)/i.test(oracle)) {
+    actionSubtypes.add('permanent_removal');
+    actionSubtypes.add('unconditional_removal');
+  } else if (/(destroy|exile) target creature/i.test(oracle)) {
     if (/with power|with mana value|tapped|that attacked|unless/i.test(oracle)) {
       actionSubtypes.add('conditional_removal');
     } else {
@@ -281,6 +286,27 @@ export function extractCardFeatures(card: Card) {
     if (/when .* enters the battlefield|when .* enters/i.test(rawOracle) || /when .* enters the battlefield|when .* enters/i.test(oracle)) {
       actionSubtypes.add('etb_value');
     }
+
+    // ETB Treasure ramp/fixing creature subtype
+    const createsTreasureOnEtb = (
+      (/when .* enters/i.test(rawOracle) || /when .* enters/i.test(oracle)) &&
+      /create (a|two|\d+)?.*treasure/i.test(oracle)
+    );
+    if (createsTreasureOnEtb) {
+      actionSubtypes.add('etb_treasure');
+      valueRiders.add('treasure');
+      detectedCategories.add('synergy');
+    }
+
+    // Flash & Reach ambush blocker
+    const hasFlashAndReach = (
+      ((card.keywords || []).some(k => /flash/i.test(k)) || oracle.includes('flash')) &&
+      ((card.keywords || []).some(k => /reach/i.test(k)) || oracle.includes('reach'))
+    );
+    if (hasFlashAndReach) {
+      actionSubtypes.add('flash_reach_ambush');
+    }
+
     if (/deals combat damage to a player/i.test(oracle)) actionSubtypes.add('saboteur');
     if (/when .* dies/i.test(oracle)) actionSubtypes.add('death_trigger');
 
@@ -311,6 +337,28 @@ export function extractCardFeatures(card: Card) {
       actionSubtypes.add('living_weapon');
       valueRiders.add('token');
       detectedCategories.add('token');
+    }
+  }
+
+  // 8. Artifact Utility Subtypes (ETB filtering, activated sacrifice sink, mana rock)
+  if (isArtifact) {
+    const isEtbScryArtifact = (
+      (/when .* enters/i.test(rawOracle) || /when .* enters/i.test(oracle)) &&
+      (/scry \d+/i.test(rawOracle) || /surveil \d+/i.test(rawOracle))
+    );
+    if (isEtbScryArtifact) {
+      actionSubtypes.add('etb_scry_artifact');
+      detectedCategories.add('selection');
+    }
+
+    const isArtifactSacSink = /sacrifice\s+([^:]+):/i.test(oracle);
+    if (isArtifactSacSink) {
+      actionSubtypes.add('artifact_sac_sink');
+      detectedCategories.add('synergy');
+    }
+
+    if (/{t}: add/i.test(oracle)) {
+      actionSubtypes.add('mana_rock');
     }
   }
 
@@ -525,6 +573,14 @@ function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCar
   } else if (features.actionSubtypes.has('loot_rummage')) {
     queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} (o:"draw a card, then discard" or o:"discard a card, then draw" or o:connive or o:recruit)`);
   }
+  if (features.actionSubtypes.has('etb_treasure')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature cmc>=${minCmc} cmc<=${maxCmc} (o:"enters" o:"treasure")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"enters" o:"treasure")`);
+  }
+  if (features.actionSubtypes.has('flash_reach_ambush')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature cmc>=${minCmc} cmc<=${maxCmc} (o:flash o:reach)`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:flash o:reach)`);
+  }
   if (features.valueRiders.has('proliferate')) {
     queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} o:proliferate`);
   }
@@ -556,7 +612,19 @@ function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCar
     queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} o:"from your graveyard to your hand"`);
   }
 
-  if (features.actionSubtypes.has('unconditional_removal')) {
+  if (features.isArtifact) {
+    if (features.actionSubtypes.has('etb_scry_artifact') || features.valueRiders.has('surveil_scry')) {
+      queries.push(`${baseFilter} ${excludeSelf} t:artifact cmc>=${minCmc} cmc<=${maxCmc} (o:"scry 2" or o:"surveil")`);
+      queries.push(`${baseFilter} ${excludeSelf} t:artifact (o:"scry 2" or o:"surveil")`);
+    }
+    if (features.actionSubtypes.has('unconditional_removal') || features.actionSubtypes.has('permanent_removal')) {
+      queries.push(`${baseFilter} ${excludeSelf} t:artifact cmc>=${minCmc} cmc<=${maxCmc} (o:"destroy" or o:"exile")`);
+      queries.push(`${baseFilter} ${excludeSelf} t:artifact (o:"destroy target" or o:"exile target")`);
+    }
+    if (features.actionSubtypes.has('artifact_sac_sink')) {
+      queries.push(`${baseFilter} ${excludeSelf} t:artifact ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"sacrifice"`);
+    }
+  } else if (features.actionSubtypes.has('unconditional_removal')) {
     queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"destroy target creature" or o:"exile target creature") -o:"with"`);
   }
 
@@ -697,6 +765,22 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const bothShareLivingWeapon = (
     tFeatures.isLivingWeapon && cFeatures.isLivingWeapon
   );
+  const bothShareEtbScry2 = (
+    tFeatures.isArtifact && cFeatures.isArtifact &&
+    /when .* enters.*scry 2/i.test(tFeatures.rawOracle) &&
+    /when .* enters.*scry 2/i.test(cFeatures.rawOracle)
+  );
+  const bothShareLateGameSacDestruction = (
+    tFeatures.isArtifact && cFeatures.isArtifact &&
+    /\{([6-9]|\d{2})\}.*sacrifice.*destroy target/i.test(tFeatures.rawOracle) &&
+    /\{([6-9]|\d{2})\}.*sacrifice.*destroy target/i.test(cFeatures.rawOracle)
+  );
+  const bothShareEtbTreasure = (
+    tFeatures.actionSubtypes.has('etb_treasure') && cFeatures.actionSubtypes.has('etb_treasure')
+  );
+  const bothShareFlashReach = (
+    tFeatures.actionSubtypes.has('flash_reach_ambush') && cFeatures.actionSubtypes.has('flash_reach_ambush')
+  );
 
   if (isExactColorMatch) {
     colorScore = 20;
@@ -710,6 +794,17 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   } else if (isCandidateColorless) {
     colorScore = (tFeatures.isEquipment || cFeatures.isEquipment) ? 16 : ((tColors.size > 0) ? 10 : 14);
     baselineReasons.push((tFeatures.isEquipment || cFeatures.isEquipment) ? 'Colorless equipment (playable in any deck)' : 'Colorless baseline comparison');
+  } else if (tColors.size === 0 && cColors.size === 1) {
+    colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach)
+      ? 16
+      : ((tFeatures.isEquipment || cFeatures.isEquipment) ? 14 : 10);
+    baselineReasons.push(bothShareEtbTreasure
+      ? 'Colorless parallel to colored Treasure producer'
+      : (bothShareFlashReach
+        ? 'Colorless parallel to colored Flash & Reach blocker'
+        : (bothShareEtbScry2
+          ? `Cross-color artifact cycle peer (${[...cColors][0]})`
+          : (bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : `Mono-color archetype comp (${[...cColors][0]})`))));
   } else if (tFeatures.isHybrid && cColors.size === 1 && tColors.has([...cColors][0])) {
     colorScore = 18;
     baselineReasons.push(`Component hybrid color (${[...cColors][0]})`);
@@ -754,11 +849,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
       cmcScore = 11;
       baselineReasons.push(`Lower curve tier (${candidate.cmc}M vs ${target.cmc}M)`);
     } else {
-      cmcScore = bothShareSignatureEngine ? 16 : 14;
+      cmcScore = (bothShareSignatureEngine || bothShareEtbTreasure) ? 18 : 14;
       if (targetIsInstant !== candIsInstant) {
         baselineReasons.push(targetIsInstant ? 'Instant speed tax (+0.75 mana)' : 'Sorcery speed discount');
       } else {
-        baselineReasons.push('Adjacent curve slot (±1 mana)');
+        baselineReasons.push(bothShareEtbTreasure ? 'Adjacent curve slot (Treasure ramp peer)' : 'Adjacent curve slot (±1 mana)');
       }
     }
   } else if (effectiveDiff <= 1.85) {
@@ -810,7 +905,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
 
   if (bestCategoryMatch > 0) {
     method1LexicalScore += bestCategoryMatch;
-    lexicalReasons.push(matchedCategoryLabel);
+    const catLabel = (matchedCategoryLabel === 'Matching creature removal effect' &&
+                      tFeatures.actionSubtypes.has('permanent_removal') &&
+                      cFeatures.actionSubtypes.has('permanent_removal'))
+      ? 'Matching permanent removal effect'
+      : matchedCategoryLabel;
+    lexicalReasons.push(catLabel);
   } else if (tFeatures.isCreature && cFeatures.isCreature) {
     method1LexicalScore += 6;
   }
@@ -883,6 +983,26 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     lexicalReasons.push('Shared living weapon / auto-attach token engine');
   }
 
+  if (bothShareEtbScry2) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 6);
+    lexicalReasons.push('Both 1-drop artifacts with signature ETB Scry 2');
+  }
+
+  if (bothShareLateGameSacDestruction) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 6);
+    lexicalReasons.push('Both late-game {6}+ artifact sacrifice destruction');
+  }
+
+  if (bothShareEtbTreasure) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared ETB Treasure ramp / fixing role');
+  }
+
+  if (bothShareFlashReach) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared signature Flash & Reach ambush role');
+  }
+
   method1LexicalScore = Math.min(25, method1LexicalScore);
 
   // =========================================================================
@@ -901,6 +1021,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     hard_counter: { pts: 15, label: 'Both unconditional hard counterspells' },
     soft_tax_counter: { pts: 14, label: 'Both mana-tax soft counters' },
     restricted_counter: { pts: 13, label: 'Both targeted/restricted counters' },
+    permanent_removal: { pts: 17, label: 'Both flexible permanent removal' },
     unconditional_removal: { pts: 15, label: 'Both unconditional creature removal' },
     conditional_removal: { pts: 12, label: 'Both conditional creature removal' },
     burn_damage: { pts: 14, label: 'Both direct damage / burn spells' },
@@ -909,6 +1030,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     raw_draw: { pts: 14, label: 'Both card advantage draw spells' },
     cantrip: { pts: 12, label: 'Both 1-for-1 cantrips' },
     card_selection: { pts: 12, label: 'Both card selection / filtering spells' },
+    etb_scry_artifact: { pts: 16, label: 'Both artifacts with ETB Scry/Surveil filtering' },
+    artifact_sac_sink: { pts: 14, label: 'Both artifacts with activated sacrifice ability' },
+    mana_rock: { pts: 14, label: 'Both mana ramp / rock artifacts' },
     pump_trick: { pts: 14, label: 'Both combat pump tricks' },
     mana_dork: { pts: 15, label: 'Both mana ramp / dork creatures' },
     evasion_threat: { pts: 13, label: 'Both evasive draft threats' },
@@ -916,6 +1040,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     etb_counter_distributor: { pts: 16, label: 'Both distribute +1/+1 counters on enters' },
     etb_counter_self: { pts: 14, label: 'Both enter with / grow with +1/+1 counters' },
     attack_keyword_granter: { pts: 17, label: 'Both attack-triggered keyword mentors' },
+    etb_treasure: { pts: 20, label: 'Both ETB Treasure ramp / fixing creatures' },
+    flash_reach_ambush: { pts: 20, label: 'Both Flash & Reach ambush creatures' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
 
@@ -981,6 +1107,47 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     structuralReasons.unshift('Both attack-triggered keyword mentors');
   }
 
+  if (tFeatures.actionSubtypes.has('permanent_removal') && cFeatures.actionSubtypes.has('permanent_removal')) {
+    const idx = structuralReasons.indexOf('Both unconditional creature removal');
+    if (idx !== -1) structuralReasons.splice(idx, 1);
+    if (!structuralReasons.includes('Both flexible permanent removal')) {
+      structuralReasons.unshift('Both flexible permanent removal');
+    }
+  }
+
+  if (tFeatures.actionSubtypes.has('etb_scry_artifact') && cFeatures.actionSubtypes.has('etb_scry_artifact')) {
+    const idx = structuralReasons.indexOf('Both card selection / filtering spells');
+    if (idx !== -1) structuralReasons.splice(idx, 1);
+    if (!structuralReasons.includes('Both artifacts with ETB Scry/Surveil filtering')) {
+      structuralReasons.unshift('Both artifacts with ETB Scry/Surveil filtering');
+    }
+  }
+
+  if (tFeatures.actionSubtypes.has('artifact_sac_sink') && cFeatures.actionSubtypes.has('artifact_sac_sink')) {
+    if (!structuralReasons.includes('Both artifacts with activated sacrifice ability')) {
+      structuralReasons.push('Both artifacts with activated sacrifice ability');
+    }
+  }
+
+  if (bothShareLateGameSacDestruction) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    structuralReasons.unshift('Both {6}+ artifact sacrifice destruction');
+  }
+
+  if (bothShareEtbTreasure) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both ETB Treasure ramp / fixing creatures')) {
+      structuralReasons.unshift('Both ETB Treasure ramp / fixing creatures');
+    }
+  }
+
+  if (bothShareFlashReach) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both Flash & Reach ambush creatures')) {
+      structuralReasons.unshift('Both Flash & Reach ambush creatures');
+    }
+  }
+
   // Action Subtype Mismatch Penalties
   let actionMismatchPenalty = 0;
   if (tFeatures.actionSubtypes.has('hard_counter') && cFeatures.actionSubtypes.has('soft_tax_counter')) {
@@ -997,6 +1164,24 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     actionMismatchPenalty = 12;
   } else if (!tFeatures.actionSubtypes.has('etb_looter') && cFeatures.actionSubtypes.has('etb_looter') && tFeatures.actionSubtypes.has('loot_rummage')) {
     actionMismatchPenalty = 12;
+  }
+
+  // Modal / Conditional treasure penalty: target has unconditional ETB treasure, but candidate is conditional or modal
+  const targetIsUnconditionalTreasure = tFeatures.actionSubtypes.has('etb_treasure') && !/choose one|if /i.test(target.oracle_text || '');
+  const candIsModalOrConditionalTreasure = cFeatures.actionSubtypes.has('etb_treasure') && (/choose one/i.test(candidate.oracle_text || '') || /if [\s\S]*create [\s\S]*treasure/i.test(candidate.oracle_text || ''));
+  if (targetIsUnconditionalTreasure && candIsModalOrConditionalTreasure) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 6);
+  }
+
+  const candidateHasFiltering = (
+    cFeatures.actionSubtypes.has('etb_scry_artifact') ||
+    cFeatures.actionSubtypes.has('card_selection') ||
+    cFeatures.actionSubtypes.has('raw_draw') ||
+    cFeatures.actionSubtypes.has('cantrip') ||
+    cFeatures.actionSubtypes.has('loot_rummage')
+  );
+  if (tFeatures.actionSubtypes.has('etb_scry_artifact') && !candidateHasFiltering) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 10);
   }
 
   // Cost Structure Match (up to 5 pts)
@@ -1036,7 +1221,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     valueRiderPoints = Math.min(6, valueRiderPoints + (sharedRidersCount - 1) * 2);
   }
 
-  method2StructuralScore = Math.max(0, Math.min(25, (structuralActionPoints - actionMismatchPenalty) + costStructurePoints + valueRiderPoints));
+  const flashReachBonus = bothShareFlashReach ? 4 : 0;
+  method2StructuralScore = Math.max(0, Math.min(25, structuralActionPoints + costStructurePoints + valueRiderPoints + flashReachBonus) - actionMismatchPenalty);
 
   // =========================================================================
   // PILLAR 5: Statline & Output Scale (up to 10 pts)
@@ -1054,12 +1240,15 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     } else if (pDiff === 0) {
       statlineScore = 8;
       baselineReasons.push(`Matching power (${target.power} power)`);
+    } else if (tDiff === 0) {
+      statlineScore = 8;
+      baselineReasons.push(`Matching toughness (${target.toughness} toughness)`);
     } else if (totalStatDiff === 0) {
       statlineScore = 8;
       baselineReasons.push(`Equivalent stats (${tFeatures.power + tFeatures.toughness} total)`);
     } else if (totalStatDiff <= 1) {
       statlineScore = 6;
-    } else if (totalStatDiff <= 2) {
+    } else if (totalStatDiff <= 3) {
       if (cFeatures.cmc === tFeatures.cmc + 1 && (cFeatures.power ?? 0) > (tFeatures.power ?? 0) && (cFeatures.toughness ?? 0) > (tFeatures.toughness ?? 0)) {
         statlineScore = 8;
         baselineReasons.push(`Curve-scaled stats (${cFeatures.power}/${cFeatures.toughness} for ${candidate.cmc}M)`);
@@ -1123,6 +1312,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
       } else {
         statlineScore = 4;
       }
+    } else if (tFeatures.actionSubtypes.has('permanent_removal') && cFeatures.actionSubtypes.has('permanent_removal')) {
+      statlineScore = 9;
+      baselineReasons.push('Unrestricted target permanent removal');
     } else if (tFeatures.actionSubtypes.has('unconditional_removal') && cFeatures.actionSubtypes.has('unconditional_removal')) {
       statlineScore = 9;
       baselineReasons.push('Unrestricted target removal');
@@ -1142,7 +1334,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
       rarityAdjustment = 3; // Both are common draft staples
       baselineReasons.push('Common draft staple comp');
     } else if (cFeatures.rarity === 'uncommon') {
-      rarityAdjustment = (bothShareLivingWeapon || sharesCounterDistributor) ? -1 : -3;
+      rarityAdjustment = (bothShareLivingWeapon || sharesCounterDistributor || bothShareLateGameSacDestruction) ? -1 : -3;
     } else {
       rarityAdjustment = -8; // Rare/Mythic power-level penalty vs Common draft baseline
     }
@@ -1186,7 +1378,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
  * and synthesizes an empirical consensus projection.
  */
 export async function findSimilarCards(targetCard: Card): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v22`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v30`;
   if (similarityCache.has(cacheKey)) {
     return similarityCache.get(cacheKey)!;
   }
@@ -1253,10 +1445,17 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
     const bCmcDiff = Math.abs(b.card.cmc - targetCard.cmc);
     return aCmcDiff - bCmcDiff;
   });
-  const topCandidates = scoredCandidates.slice(0, 8);
+  // Take top high-conviction candidates (up to 16) to ensure at least 4 with verified 17Lands data
+  const topCandidates = scoredCandidates.slice(0, 16);
 
   // Group by set to batch-fetch 17Lands datasets
-  const neededSets = Array.from(new Set(topCandidates.map(c => c.card.set.toUpperCase())));
+  // Filter out any sets known not to have 17Lands data and batch-fetch all candidate sets (up to 8)
+  const neededSets = Array.from(new Set(topCandidates.map(c => c.card.set.toUpperCase())))
+    .filter(setCode => {
+      const known = POPULAR_LIMITED_SETS.find(s => s.code.toUpperCase() === setCode);
+      return !known || known.has_17lands_data !== false;
+    })
+    .slice(0, 8);
   const setDatasets: Record<string, any> = {};
 
   await Promise.all(
@@ -1270,43 +1469,77 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
     })
   );
 
-  // Assemble enriched matches with 17Lands data
-  const matches: SimilarCardMatch[] = topCandidates.map(({ card, score, reasons }) => {
+  // Assemble enriched matches with verified 17Lands data
+  const enrichedMatches: SimilarCardMatch[] = [];
+  for (const { card, score, reasons } of topCandidates) {
     const setCode = card.set.toUpperCase();
     const setData = setDatasets[setCode];
-    const faceName = card.name.includes(' // ') ? card.name.split(' // ')[0].trim() : card.name;
-    const normalizeName = (s: string) => s.toLowerCase().replace(/['’".,\-]/g, '').trim();
-    const targetNorm = normalizeName(card.name);
-    const faceNorm = normalizeName(faceName);
+    const card17L = getOrEstimate17LandsCardRating(card, setData);
 
-    const card17L = setData?.cards?.[card.name] || 
-      setData?.cards?.[faceName] ||
-      (setData?.cards ? Object.entries(setData.cards).find(([k]) => {
-        const kNorm = normalizeName(k);
-        return kNorm === targetNorm || kNorm === faceNorm;
-      })?.[1] : undefined);
+    const winRate = card17L?.win_rate;
+    const alsa = card17L?.avg_seen;
+    const tierGrade: GradeTier | undefined = (card17L?.tier_grade as GradeTier | undefined) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
 
-    let winRate = card17L?.win_rate;
-    let alsa = card17L?.avg_seen;
-    let tierGrade: GradeTier | undefined = card17L?.tier_grade || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
+    // Strict quality rule: Only include cards with verified 17Lands data!
+    // Never present a card with missing data or "Tier TBD" as a historical comp!
+    if (typeof winRate === 'number' && tierGrade) {
+      enrichedMatches.push({
+        card,
+        similarityScore: score,
+        matchReasons: reasons,
+        winRate,
+        alsa,
+        tierGrade,
+      });
+    }
+  }
 
-    return {
-      card,
-      similarityScore: score,
-      matchReasons: reasons,
-      winRate,
-      alsa,
-      tierGrade,
-    };
-  });
+  // Diversity filter for the 4 presented matches:
+  // When target has multiple signature action subtypes (e.g. flash_reach_ambush + etb_treasure),
+  // avoid presenting duplicate twins of the specialized combat ambush role (e.g. both Dawn's Light Archer and Bounding Wolf)
+  // so that both the combat ambush role and the ETB Treasure ramp role across curve slots are properly represented.
+  const presentedMatches: SimilarCardMatch[] = [];
+  let flashReachCount = 0;
 
-  // Calculate consensus strictly from the presented cards (top 4 comps shown in UI)
-  const presentedMatches = matches.slice(0, 4);
+  for (const match of enrichedMatches) {
+    const cardFeatures = extractCardFeatures(match.card);
+    const isFlashReach = cardFeatures.actionSubtypes.has('flash_reach_ambush');
+
+    if (isFlashReach) {
+      if (flashReachCount >= 1) continue; // Keep only the top-scoring / newest Flash+Reach representative
+      flashReachCount++;
+      presentedMatches.push(match);
+    } else {
+      presentedMatches.push(match);
+    }
+
+    if (presentedMatches.length >= 4) break;
+  }
+
+  // Fill any remaining slots up to 4 from remaining enrichedMatches
+  if (presentedMatches.length < 4) {
+    for (const match of enrichedMatches) {
+      if (!presentedMatches.some(m => m.card.id === match.card.id || m.card.name.toLowerCase() === match.card.name.toLowerCase())) {
+        presentedMatches.push(match);
+        if (presentedMatches.length >= 4) break;
+      }
+    }
+  }
+
+  // Sort presented matches by similarity score
+  presentedMatches.sort((a, b) => b.similarityScore - a.similarityScore);
+
+  // Maintain presented matches at the front of matches list
+  const reorderedMatches = [
+    ...presentedMatches,
+    ...enrichedMatches.filter(m => !presentedMatches.some(p => p.card.name.toLowerCase() === m.card.name.toLowerCase()))
+  ];
+
   const consensus = calculateHistoricalConsensus(presentedMatches, targetCard);
 
   const result: CardSimilarityResult = {
     targetCard,
-    matches,
+    matches: reorderedMatches,
     consensus,
   };
 

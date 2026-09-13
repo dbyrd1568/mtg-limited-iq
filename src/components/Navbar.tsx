@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Check, Link2, Sun, Moon, RefreshCw, HelpCircle, Shield } from 'lucide-react';
+import { ChevronDown, Check, Link2, Sun, Moon, RefreshCw, HelpCircle, Shield, Download } from 'lucide-react';
 import { SetInfo, UserProfileStats, UserAccount } from '../types/mtg';
 import { getSyncStatus, subscribeSyncStatus, SyncStatus } from '../services/cloudSync';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../services/theme';
@@ -19,6 +19,7 @@ interface NavbarProps {
   isAdmin?: boolean;
   onOpenAuthModal: () => void;
   onOpenWelcomeTour?: () => void;
+  onOpenExportModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -31,6 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isAdmin,
   onOpenAuthModal,
   onOpenWelcomeTour,
+  onOpenExportModal,
 }) => {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
@@ -176,6 +178,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 aria-label="Getting Started Guide"
               >
                 <HelpCircle className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Export Grades & Data Button (Available for ALL users) */}
+            {onOpenExportModal && (
+              <button
+                onClick={onOpenExportModal}
+                className="p-2 sm:px-3 sm:py-1.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer shrink-0 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-cyan-300 flex items-center gap-1.5 justify-center"
+                title="Export Card Grades, 17Lands Tier List & Backups (CSV / TSV / JSON)"
+                aria-label="Export Grades and Backups"
+              >
+                <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                <span className="hidden sm:inline text-xs font-semibold">Export</span>
               </button>
             )}
 

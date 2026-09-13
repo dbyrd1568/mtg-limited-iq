@@ -7,7 +7,7 @@ import { SimilarCardsModal } from '../Evaluation/SimilarCardsModal';
 import { ExportGradesModal } from '../Evaluation/ExportGradesModal';
 import { ManaCostRenderer, ManaSymbol } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
-import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
 import { GradeComparisonCard } from '../UI/GradeComparisonCard';
 import { PlaneswalkerSymbol } from '../UI/PlaneswalkerSymbol';
@@ -302,6 +302,10 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
     if (!selectedCardForModal) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
       if (e.key === 'ArrowLeft') {
         handlePrevCard();
       } else if (e.key === 'ArrowRight') {
@@ -1448,13 +1452,18 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           targetCard={similarCardsModalCard}
           currentGrade={userEvaluations[`${similarCardsModalCard.set.toLowerCase()}_${similarCardsModalCard.name.toLowerCase()}`]?.userGrade}
           target17LandsData={
-            effective17LandsData?.cards?.[similarCardsModalCard.name]
-              ? {
-                  winRate: effective17LandsData.cards[similarCardsModalCard.name].win_rate,
-                  alsa: effective17LandsData.cards[similarCardsModalCard.name].avg_seen,
-                  tierGrade: effective17LandsData.cards[similarCardsModalCard.name].tier_grade as GradeTier,
-                }
-              : undefined
+            (() => {
+              const rating = get17LandsCardRating(similarCardsModalCard, effective17LandsData)
+                || getOrEstimate17LandsCardRating(similarCardsModalCard, effective17LandsData);
+              if (rating && typeof rating.win_rate === 'number') {
+                return {
+                  winRate: rating.win_rate,
+                  alsa: rating.avg_seen,
+                  tierGrade: (rating.tier_grade as GradeTier) || winRateToGradeTier(rating.win_rate),
+                };
+              }
+              return undefined;
+            })()
           }
           onAdoptGrade={(targetCard, grade) => {
             handleQuickGradeInModal(targetCard, grade);

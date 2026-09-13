@@ -807,16 +807,16 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             </p>
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
               <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400">
-                &ge; 88%: Pro Tour Caliber
+                &ge; 59%: Pro Tour Caliber (LSV / Top Creators)
               </div>
               <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-cyan-600 dark:text-cyan-400">
-                78% – 87%: Diamond / Mythic
+                49% – 58%: Diamond / Mythic Drafter
+              </div>
+              <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-violet-600 dark:text-cyan-300">
+                39% – 48%: Solid / Capable Drafter
               </div>
               <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400">
-                63% – 77%: Solid / Developing
-              </div>
-              <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-rose-600 dark:text-rose-400">
-                &lt; 58%: Format Misread
+                29% – 38%: Baseline / Developing
               </div>
             </div>
           </div>

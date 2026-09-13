@@ -12,6 +12,8 @@ import {
   getColorSortIndex,
   getRaritySortIndex,
   get17LandsCardRating,
+  getOrEstimate17LandsCardRating,
+  get17LandsCardUrl,
 } from '../../services/seventeenLands';
 import { getBlindGradingForSet, setBlindGradingForSet } from '../../services/storage';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
@@ -21,7 +23,8 @@ import { SimilarCardsModal } from './SimilarCardsModal';
 import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
-import { Trophy, Award, Filter, Search, Zap, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2 } from 'lucide-react';
+import { CalibrationScatterPlot } from './CalibrationScatterPlot';
+import { Trophy, Award, Filter, Search, Zap, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink } from 'lucide-react';
 import { ExportGradesModal } from './ExportGradesModal';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
@@ -52,6 +55,7 @@ interface EvaluationHubProps {
   onSelectedColorsChange?: (c: string[]) => void;
   onSelectedRaritiesChange?: (r: string[]) => void;
   onSelectedRolesChange?: (r: string[]) => void;
+  availableSets?: SetInfo[];
 }
 
 export const EvaluationHub: React.FC<EvaluationHubProps> = ({
@@ -75,6 +79,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   onSelectedColorsChange,
   onSelectedRaritiesChange,
   onSelectedRolesChange,
+  availableSets,
 }) => {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   // Only use authentic 17Lands data with sufficient sample size and matching setCode
@@ -179,6 +184,23 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     setGradeDisplayMode(mode);
     if (typeof window !== 'undefined') {
       localStorage.setItem('mtg_grade_display_mode', mode);
+    }
+  };
+
+  const [analyticsViewMode, setAnalyticsViewMode] = useState<'both' | 'plot' | 'ledger'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mtg_analytics_view_mode');
+      if (saved === 'both' || saved === 'plot' || saved === 'ledger') {
+        return saved;
+      }
+    }
+    return 'both';
+  });
+
+  const handleSetAnalyticsViewMode = (mode: 'both' | 'plot' | 'ledger') => {
+    setAnalyticsViewMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mtg_analytics_view_mode', mode);
     }
   };
 
@@ -293,8 +315,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         return parseInt(a.collector_number || '0') - parseInt(b.collector_number || '0');
       }
       if (cardListSortBy === 'winrate') {
-        const wrA = effective17LandsData?.cards[a.name]?.win_rate || 0.5;
-        const wrB = effective17LandsData?.cards[b.name]?.win_rate || 0.5;
+        const wrA = get17LandsCardRating(a, effective17LandsData)?.win_rate || 0.5;
+        const wrB = get17LandsCardRating(b, effective17LandsData)?.win_rate || 0.5;
         return wrB - wrA;
       }
       return 0;
@@ -308,7 +330,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     const list = cards.map((card) => {
       const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
       const userEval = userEvaluations[evalKey];
-      const landData = effective17LandsData?.cards ? effective17LandsData.cards[card.name] : undefined;
+      const landData = get17LandsCardRating(card, effective17LandsData);
 
       let tierGap = 0;
       let actualTier: GradeTier | null = null;
@@ -1114,6 +1136,11 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                         {calibrationSummary.correctCount} of {calibrationSummary.totalRated} Correct (±1 Step)
                       </div>
+                      {calibrationSummary.weightedScore !== undefined && calibrationSummary.weightedScore !== calibrationSummary.calibrationScore && (
+                        <div className="text-[10px] text-violet-600 dark:text-cyan-400 font-mono font-semibold mt-0.5">
+                          {calibrationSummary.weightedScore}% Weighted (+50% credit for ±2 steps)
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1260,35 +1287,63 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   </div>
 
                   {/* Evaluator Grade & GPA Rubric Table */}
-                  <div className="space-y-2">
-                    <h5 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
-                      <span className="w-5 h-5 rounded bg-amber-100 dark:bg-amber-600/30 text-amber-700 dark:text-amber-300 font-mono font-bold flex items-center justify-center text-[11px]">3</span>
-                      Overall Evaluator Grade & GPA Curve
-                    </h5>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 text-[11px] font-mono">
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                  <div className="space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <h5 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs">
+                        <span className="w-5 h-5 rounded bg-amber-100 dark:bg-amber-600/30 text-amber-700 dark:text-amber-300 font-mono font-bold flex items-center justify-center text-[11px]">3</span>
+                        Curved MTG Limited Evaluator Grade & GPA Rubric
+                      </h5>
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        Calibrated to 17Lands set review data (LSV / Sierkovitz ~60-65% pro benchmark)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Pre-release draft grading is high-variance forecasting. Top Pro Tour competitors and premier Limited creators average <strong>58%–65% accuracy</strong> within ±1 step. Pure random guessing across 11 tiers is <strong>~25%</strong>. Evaluator grades and GPA are curved to reward true format intuition rather than an unrealistic 100% academic scale:
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[11px] font-mono">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-emerald-300 dark:border-emerald-600/40">
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">A+ (4.0 GPA)</span>
-                        <p className="text-[10px] text-slate-500">≥ 93% Accuracy</p>
+                        <p className="text-[10px] text-slate-500">&ge; 64% (Pro Tour Peak)</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-emerald-200 dark:border-emerald-700/40">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">A (3.8–4.0)</span>
+                        <p className="text-[10px] text-slate-500">59% – 63% (Top Creator)</p>
                       </div>
                       <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400">A (4.0 GPA)</span>
-                        <p className="text-[10px] text-slate-500">88% - 92% Accuracy</p>
+                        <span className="font-bold text-cyan-600 dark:text-cyan-400">A- (3.5–3.8)</span>
+                        <p className="text-[10px] text-slate-500">54% – 58% (Mythic Tier)</p>
                       </div>
                       <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
-                        <span className="font-bold text-cyan-600 dark:text-cyan-400">A- (3.7 GPA)</span>
-                        <p className="text-[10px] text-slate-500">83% - 87% Accuracy</p>
+                        <span className="font-bold text-sky-600 dark:text-sky-400">B+ (3.2–3.5)</span>
+                        <p className="text-[10px] text-slate-500">49% – 53% (Diamond Tier)</p>
                       </div>
                       <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
-                        <span className="font-bold text-sky-600 dark:text-sky-400">B+ (3.3 GPA)</span>
-                        <p className="text-[10px] text-slate-500">78% - 82% Accuracy</p>
+                        <span className="font-bold text-sky-600 dark:text-sky-400">B (2.8–3.2)</span>
+                        <p className="text-[10px] text-slate-500">44% – 48% (Strong Drafter)</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-700/50">
+                        <span className="font-bold text-violet-700 dark:text-cyan-300">B- (2.5–2.8)</span>
+                        <p className="text-[10px] text-slate-500">39% – 43% (Capable Drafter)</p>
                       </div>
                       <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
-                        <span className="font-bold text-sky-600 dark:text-sky-400">B (3.0 GPA)</span>
-                        <p className="text-[10px] text-slate-500">73% - 77% Accuracy</p>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">C+ (2.2–2.5)</span>
+                        <p className="text-[10px] text-slate-500">34% – 38% (Developing)</p>
                       </div>
                       <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
-                        <span className="font-bold text-slate-700 dark:text-slate-300">C+ & Under</span>
-                        <p className="text-[10px] text-slate-500">≤ 72% Accuracy</p>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">C (1.8–2.2)</span>
+                        <p className="text-[10px] text-slate-500">29% – 33% (Baseline)</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                        <span className="font-bold text-amber-600 dark:text-amber-400">C- (1.5–1.8)</span>
+                        <p className="text-[10px] text-slate-500">24% – 28% (~Random Base)</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                        <span className="font-bold text-amber-600 dark:text-amber-400">D (1.0–1.5)</span>
+                        <p className="text-[10px] text-slate-500">18% – 23% (Misread)</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-rose-300 dark:border-rose-800/60 col-span-2 sm:col-span-2">
+                        <span className="font-bold text-rose-600 dark:text-rose-400">F (0.0–1.0 GPA)</span>
+                        <p className="text-[10px] text-slate-500">&lt; 18% (Inverted read only)</p>
                       </div>
                     </div>
                   </div>
@@ -1296,8 +1351,75 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               )}
             </div>
 
-            {/* Color Breakdown */}
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
+            {/* View Mode Toggle Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800/80">
+              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#090e24] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => handleSetAnalyticsViewMode('both')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    analyticsViewMode === 'both'
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Show both the calibration scatter plot and detailed data ledger"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Dashboard (All)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetAnalyticsViewMode('plot')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    analyticsViewMode === 'plot'
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="View only the 2D calibration scatter plot comparing expected vs actual win rates"
+                >
+                  <Target className="w-3.5 h-3.5" />
+                  <span>Scatter Plot Graph</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetAnalyticsViewMode('ledger')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    analyticsViewMode === 'ledger'
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="View color accuracy breakdown, distribution curve, and card-by-card comparison ledger"
+                >
+                  <BarChart2 className="w-3.5 h-3.5" />
+                  <span>Ledger & Breakdown</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-2 font-mono">
+                <span>Active Set: <strong className="text-violet-700 dark:text-cyan-300">{currentSetCode.toUpperCase()}</strong></span>
+                <span>•</span>
+                <span>{calibrationSummary.totalRated} Graded</span>
+              </div>
+            </div>
+
+            {/* 2D Calibration Scatter Plot Graph */}
+            {(analyticsViewMode === 'both' || analyticsViewMode === 'plot') && (
+              <CalibrationScatterPlot
+                cards={cards}
+                currentSetCode={currentSetCode}
+                currentSetName={currentSetName}
+                userEvaluations={userEvaluations}
+                seventeenLandsData={effective17LandsData}
+                onSelectCard={handleSelectCardForModal}
+                availableSets={availableSets}
+              />
+            )}
+
+            {/* Detailed Analytics, Distribution Curve, Traps/Sleepers & Card Comparison Ledger */}
+            {(analyticsViewMode === 'both' || analyticsViewMode === 'ledger') && (
+              <>
+                {/* Color Breakdown */}
+                <div className="p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -1440,7 +1562,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           <span>Your Grade: <strong className="text-amber-700 dark:text-amber-300">{comp.userEvaluation?.userGrade}</strong></span>
                           <span>•</span>
-                          <span>17Lands: <strong className="text-rose-600 dark:text-rose-400">{comp.seventeenLandsData?.tier_grade || 'C'} ({((comp.seventeenLandsData?.win_rate || 0.5) * 100).toFixed(1)}%)</strong></span>
+                          <a
+                            href={get17LandsCardUrl(comp.card.set || currentSetCode, comp.card, comp.seventeenLandsData)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline font-bold"
+                            title={`Open ${comp.card.name} on 17lands.com`}
+                          >
+                            <span>17Lands: {comp.seventeenLandsData?.tier_grade || 'C'} ({((comp.seventeenLandsData?.win_rate || 0.5) * 100).toFixed(1)}%)</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
                         </div>
                       </div>
                       <span className="text-xs font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-500/10 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-500/30 shrink-0">
@@ -1481,7 +1613,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           <span>Your Grade: <strong className="text-amber-700 dark:text-amber-300">{comp.userEvaluation?.userGrade}</strong></span>
                           <span>•</span>
-                          <span>17Lands: <strong className="text-emerald-600 dark:text-emerald-400">{comp.seventeenLandsData?.tier_grade || 'B'} ({((comp.seventeenLandsData?.win_rate || 0.55) * 100).toFixed(1)}%)</strong></span>
+                          <a
+                            href={get17LandsCardUrl(comp.card.set || currentSetCode, comp.card, comp.seventeenLandsData)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-bold"
+                            title={`Open ${comp.card.name} on 17lands.com`}
+                          >
+                            <span>17Lands: {comp.seventeenLandsData?.tier_grade || 'B'} ({((comp.seventeenLandsData?.win_rate || 0.55) * 100).toFixed(1)}%)</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
                         </div>
                       </div>
                       <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30 shrink-0">
@@ -1662,9 +1804,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                             {!row.userGrade ? (
                               <span className="text-slate-400 dark:text-slate-600 font-mono">—</span>
                             ) : row.actualTier ? (
-                              <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800/80">
-                                {isBlindGrading ? '—' : row.actualTier}
-                              </span>
+                              <a
+                                href={get17LandsCardUrl(row.card.set || currentSetCode, row.card, row.landData)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 hover:bg-emerald-200 dark:hover:bg-emerald-900/80 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800/80 transition-colors inline-flex items-center gap-1 group/l17"
+                                title={`Open ${row.card.name} on 17lands.com`}
+                              >
+                                <span>{isBlindGrading ? '—' : row.actualTier}</span>
+                                {!isBlindGrading && <ExternalLink className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 opacity-60 group-hover/l17:opacity-100 transition-opacity" />}
+                              </a>
                             ) : (
                               <span className="text-amber-600 dark:text-amber-400 font-semibold">TBD</span>
                             )}
@@ -1676,7 +1826,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                           ) : isBlindGrading ? (
                             <span className="text-slate-400 dark:text-slate-500 font-mono">???</span>
                           ) : row.winRate !== undefined ? (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{(row.winRate * 100).toFixed(1)}%</span>
+                            <a
+                              href={get17LandsCardUrl(row.card.set || currentSetCode, row.card, row.landData)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline font-bold inline-flex items-center gap-1 group/wr"
+                              title={`View ${row.card.name} win rate on 17lands.com`}
+                            >
+                              <span>{(row.winRate * 100).toFixed(1)}%</span>
+                              <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover/wr:opacity-100 transition-opacity" />
+                            </a>
                           ) : (
                             <span className="text-amber-600 dark:text-amber-400 font-semibold">TBD</span>
                           )}
@@ -1722,6 +1882,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               </table>
             </div>
           </div>
+              </>
+            )}
         </div>
         )
       )}
@@ -1838,13 +2000,18 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           targetCard={similarCardsModalCard}
           currentGrade={userEvaluations[`${similarCardsModalCard.set.toLowerCase()}_${similarCardsModalCard.name.toLowerCase()}`]?.userGrade}
           target17LandsData={
-            effective17LandsData?.cards?.[similarCardsModalCard.name]
-              ? {
-                  winRate: effective17LandsData.cards[similarCardsModalCard.name].win_rate,
-                  alsa: effective17LandsData.cards[similarCardsModalCard.name].avg_seen,
-                  tierGrade: effective17LandsData.cards[similarCardsModalCard.name].tier_grade as GradeTier,
-                }
-              : undefined
+            (() => {
+              const rating = get17LandsCardRating(similarCardsModalCard, effective17LandsData)
+                || getOrEstimate17LandsCardRating(similarCardsModalCard, effective17LandsData);
+              if (rating && typeof rating.win_rate === 'number') {
+                return {
+                  winRate: rating.win_rate,
+                  alsa: rating.avg_seen,
+                  tierGrade: (rating.tier_grade as GradeTier) || winRateToGradeTier(rating.win_rate),
+                };
+              }
+              return undefined;
+            })()
           }
           onAdoptGrade={(targetCard, grade) => {
             handleQuickGrade(targetCard, grade);

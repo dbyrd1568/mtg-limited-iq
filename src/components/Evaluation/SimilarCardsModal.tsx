@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, GradeTier } from '../../types/mtg';
 import { findSimilarCards, CardSimilarityResult, SimilarCardMatch } from '../../services/cardSimilarity';
-import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
@@ -34,6 +34,24 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [adoptedSourceId, setAdoptedSourceId] = useState<string | null>(null);
   const [inspectCardMatch, setInspectCardMatch] = useState<SimilarCardMatch | null>(null);
+
+  // Guarantee target card 17lands data is resolved even if caller didn't pass it
+  const effectiveTarget17L = useMemo<CardPerformanceMetrics | undefined>(() => {
+    if (target17LandsData && typeof target17LandsData.winRate === 'number') {
+      return target17LandsData;
+    }
+    if (targetCard) {
+      const r = getOrEstimate17LandsCardRating(targetCard);
+      if (r && typeof r.win_rate === 'number') {
+        return {
+          winRate: r.win_rate,
+          alsa: r.avg_seen,
+          tierGrade: (r.tier_grade as GradeTier) || winRateToGradeTier(r.win_rate),
+        };
+      }
+    }
+    return undefined;
+  }, [targetCard, target17LandsData]);
 
   // Fetch comps on open or target change
   useEffect(() => {
@@ -484,10 +502,27 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                               {/* 17Lands Draft Performance Record under card */}
                               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 font-mono space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">17Lands</span>
-                                  <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">
+                                  <a
+                                    href={get17LandsCardUrl(comp.set, comp)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 hover:underline flex items-center gap-1 group/l17"
+                                    title={`Open ${comp.name} (${comp.set.toUpperCase()}) on 17lands.com`}
+                                  >
+                                    <span>17Lands</span>
+                                    <ExternalLink className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 group-hover/l17:translate-x-0.5 transition-transform" />
+                                  </a>
+                                  <a
+                                    href={get17LandsCardUrl(comp.set, comp)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-xs font-black text-emerald-900 dark:text-emerald-200 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
+                                    title={`Open ${comp.name} on 17lands.com`}
+                                  >
                                     Tier {match.tierGrade || 'TBD'}
-                                  </span>
+                                  </a>
                                 </div>
 
                                 {(match.winRate !== undefined || match.alsa !== undefined) && (
@@ -495,9 +530,17 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                     {match.winRate !== undefined && (
                                       <div>
                                         <span className="text-slate-500 dark:text-slate-400 block text-[9px] uppercase">GIH WR</span>
-                                        <span className="text-emerald-700 dark:text-emerald-300 font-bold text-xs">
-                                          {(match.winRate * 100).toFixed(1)}%
-                                        </span>
+                                        <a
+                                          href={get17LandsCardUrl(comp.set, comp)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:underline inline-flex items-center gap-0.5"
+                                          title={`View GIH win rate for ${comp.name} on 17lands.com`}
+                                        >
+                                          <span>{(match.winRate * 100).toFixed(1)}%</span>
+                                          <ExternalLink className="w-2 h-2" />
+                                        </a>
                                       </div>
                                     )}
                                     {match.alsa !== undefined && (
@@ -510,6 +553,18 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                     )}
                                   </div>
                                 )}
+
+                                <a
+                                  href={get17LandsCardUrl(comp.set, comp)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full py-1 px-2 rounded-lg text-[10px] font-bold font-mono text-center flex items-center justify-center gap-1 text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 border border-emerald-300 dark:border-emerald-700/80 transition-colors shadow-2xs"
+                                  title={`Open ${comp.name} (${comp.set.toUpperCase()}) on 17lands.com`}
+                                >
+                                  <span>View on 17Lands</span>
+                                  <ExternalLink className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                                </a>
                               </div>
 
                               {/* Use Grade button directly below card */}
@@ -794,9 +849,9 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
                           17Lands Record
                         </span>
-                        {target17LandsData?.tierGrade ? (
+                        {effectiveTarget17L?.tierGrade ? (
                           <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-emerald-600 text-white shadow-2xs">
-                            Tier {target17LandsData.tierGrade}
+                            Tier {effectiveTarget17L.tierGrade}
                           </span>
                         ) : currentGrade ? (
                           <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-violet-600 text-white shadow-2xs">
@@ -804,7 +859,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           </span>
                         ) : (
                           <span className="text-[10px] font-semibold font-mono px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
-                            Tier TBD
+                            Unreleased Set
                           </span>
                         )}
                       </div>
@@ -813,16 +868,16 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 block text-[10px]">GIH WR</span>
                           <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
-                            {target17LandsData?.winRate !== undefined
-                              ? `${(target17LandsData.winRate * 100).toFixed(1)}%`
-                              : 'TBD (Unreleased)'}
+                            {effectiveTarget17L?.winRate !== undefined
+                              ? `${(effectiveTarget17L.winRate * 100).toFixed(1)}%`
+                              : 'Telemetry Pending'}
                           </span>
                         </div>
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 block text-[10px]">ALSA</span>
                           <span className="text-slate-700 dark:text-slate-200 font-bold text-sm">
-                            {target17LandsData?.alsa !== undefined
-                              ? target17LandsData.alsa.toFixed(2)
+                            {effectiveTarget17L?.alsa !== undefined
+                              ? effectiveTarget17L.alsa.toFixed(2)
                               : 'Pending'}
                           </span>
                         </div>
@@ -911,34 +966,59 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     {/* 17Lands Metrics Card under card */}
                     <div className="w-full p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2 font-mono">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-                          17Lands Record
-                        </span>
-                        {inspectCardMatch.tierGrade ? (
-                          <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-emerald-600 text-white shadow-2xs">
-                            Tier {inspectCardMatch.tierGrade}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-semibold font-mono px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
-                            Tier TBD
-                          </span>
-                        )}
+                        <a
+                          href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 hover:underline flex items-center gap-1 group/l17"
+                          title={`Open ${inspectCardMatch.card.name} (${inspectCardMatch.card.set.toUpperCase()}) on 17lands.com`}
+                        >
+                          <span>17Lands Record</span>
+                          <ExternalLink className="w-3 h-3 text-emerald-600 dark:text-emerald-400 group-hover/l17:translate-x-0.5 transition-transform" />
+                        </a>
+                        <a
+                          href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-emerald-600 text-white shadow-2xs hover:bg-emerald-500 transition-colors"
+                          title={`Open ${inspectCardMatch.card.name} on 17lands.com`}
+                        >
+                          Tier {inspectCardMatch.tierGrade || (typeof inspectCardMatch.winRate === 'number' ? winRateToGradeTier(inspectCardMatch.winRate) : 'C')}
+                        </a>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 block text-[10px]">GIH WR</span>
-                          <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
-                            {inspectCardMatch.winRate !== undefined ? `${(inspectCardMatch.winRate * 100).toFixed(1)}%` : 'N/A'}
-                          </span>
+                          <a
+                            href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-700 dark:text-emerald-300 font-bold text-sm hover:underline inline-flex items-center gap-1"
+                            title={`Open ${inspectCardMatch.card.name} on 17lands.com`}
+                          >
+                            <span>{inspectCardMatch.winRate !== undefined ? `${(inspectCardMatch.winRate * 100).toFixed(1)}%` : '-'}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
                         </div>
                         <div>
                           <span className="text-slate-500 dark:text-slate-400 block text-[10px]">ALSA</span>
                           <span className="text-slate-700 dark:text-slate-200 font-bold text-sm">
-                            {inspectCardMatch.alsa !== undefined ? inspectCardMatch.alsa.toFixed(2) : 'N/A'}
+                            {inspectCardMatch.alsa !== undefined ? inspectCardMatch.alsa.toFixed(2) : '-'}
                           </span>
                         </div>
                       </div>
+
+                      <a
+                        href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-1.5 px-2.5 rounded-xl text-xs font-bold font-mono text-center flex items-center justify-center gap-1.5 text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:hover:bg-emerald-800/80 border border-emerald-300 dark:border-emerald-700/80 transition-colors shadow-2xs"
+                        title={`Open ${inspectCardMatch.card.name} (${inspectCardMatch.card.set.toUpperCase()}) on 17lands.com`}
+                      >
+                        <span>View on 17Lands</span>
+                        <ExternalLink className="w-3 h-3 text-emerald-600 dark:text-emerald-300" />
+                      </a>
 
                       {inspectCardMatch.tierGrade && onAdoptGrade && (
                         <button
@@ -993,15 +1073,16 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     </div>
 
                     {/* Links */}
-                    <div className="flex items-center gap-3 pt-2">
+                    <div className="flex items-center gap-3 pt-2 flex-wrap">
                       <a
                         href={get17LandsCardUrl(inspectCardMatch.card.set, inspectCardMatch.card)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 hover:underline font-mono text-xs font-semibold"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/80 font-mono text-xs font-bold transition-all shadow-2xs"
+                        title={`Open ${inspectCardMatch.card.name} on 17lands.com`}
                       >
-                        <span>View on 17Lands</span>
-                        <ExternalLink className="w-3 h-3" />
+                        <span>View on 17Lands.com</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                       <a
                         href={inspectCardMatch.card.scryfall_uri || `https://scryfall.com/search?q=%21%22${encodeURIComponent(inspectCardMatch.card.name)}%22`}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, GradeTier, SeventeenLandsSetData, UserCardEvaluation } from '../../types/mtg';
-import { GRADE_TIERS, GRADE_SCORES, getColorSortIndex, getRaritySortIndex, winRateToGradeTier, get17LandsCardRating } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, getColorSortIndex, getRaritySortIndex, winRateToGradeTier, get17LandsCardRating, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
 import { CardObfuscator } from '../CardObfuscator';
 import { X, ChevronLeft, ChevronRight, Zap, FileText, Check, Eye, EyeOff, Scale, ArrowUpDown, PlayingCardsFan, ArrowRight, CheckCircle2, ExternalLink, BarChart2, Filter } from 'lucide-react';
@@ -126,7 +126,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   const currentCard = orderedCards[currentIndex] || card;
   const evalKey = currentCard ? `${currentCard.set?.toLowerCase() || ''}_${currentCard.name?.toLowerCase() || ''}` : '';
   const currentEval = userEvaluations[evalKey];
-  const landData = get17LandsCardRating(currentCard, seventeenLandsData);
+  const landData = get17LandsCardRating(currentCard, seventeenLandsData) || getOrEstimate17LandsCardRating(currentCard, seventeenLandsData);
 
   // Rated count strictly across the current set
   const ratedCountInSet = useMemo(() => {
@@ -138,13 +138,13 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
     }).length;
   }, [cards, userEvaluations, currentCard?.set]);
 
-  // Sync note text when active card changes
+  // Sync note text when active card changes or modal opens
   useEffect(() => {
-    if (currentCard) {
+    if (isOpen && currentCard) {
       const key = `${currentCard.set?.toLowerCase() || ''}_${currentCard.name?.toLowerCase() || ''}`;
       setNoteText(userEvaluations[key]?.notes || '');
     }
-  }, [currentCard?.id, userEvaluations]);
+  }, [isOpen, currentCard?.id]);
 
   // Rate active card and strictly advance to next unrated card
   const handleRate = (tier: GradeTier) => {
@@ -260,10 +260,29 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
       userGrade: currentEval?.userGrade || 'C',
       userScore: currentEval?.userScore || 2.5,
       pickPriority: currentEval?.pickPriority || 'Mid Pick',
-      notes: newText.trim() || undefined,
+      notes: newText,
       updatedAt: new Date().toISOString(),
     };
     onSaveEvaluation(evaluation);
+  };
+
+  const handleBlur = () => {
+    if (!currentCard) return;
+    const trimmed = noteText.trim();
+    if (trimmed !== noteText) {
+      setNoteText(trimmed);
+      const evaluation: UserCardEvaluation = {
+        cardId: currentCard.id,
+        cardName: currentCard.name,
+        setCode: currentCard.set,
+        userGrade: currentEval?.userGrade || 'C',
+        userScore: currentEval?.userScore || 2.5,
+        pickPriority: currentEval?.pickPriority || 'Mid Pick',
+        notes: trimmed || undefined,
+        updatedAt: new Date().toISOString(),
+      };
+      onSaveEvaluation(evaluation);
+    }
   };
 
   if (!isOpen || !currentCard) return null;
@@ -473,6 +492,8 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                 rows={2}
                 value={noteText}
                 onChange={(e) => handleNoteChange(e.target.value)}
+                onBlur={handleBlur}
+                onKeyDown={(e) => e.stopPropagation()}
                 placeholder="Write thoughts on this card (e.g., 'Bomb P1P1', 'Key payoff for spells', 'Too slow vs aggro')..."
                 className="w-full p-2 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 resize-none transition-all leading-relaxed"
               />

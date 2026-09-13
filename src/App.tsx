@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS } from './services/scryfall';
-import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData } from './services/seventeenLands';
+import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData } from './services/seventeenLands';
 import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
 
 import { generateQuiz } from './services/quizGenerator';
@@ -25,6 +25,7 @@ import { QuizSetup } from './components/Quiz/QuizSetup';
 import { QuizActive } from './components/Quiz/QuizActive';
 import { QuizSummary } from './components/Quiz/QuizSummary';
 import { EvaluationHub } from './components/Evaluation/EvaluationHub';
+import { ExportGradesModal } from './components/Evaluation/ExportGradesModal';
 import { StatsDashboard } from './components/Stats/StatsDashboard';
 import { SetExplorer } from './components/Explorer/SetExplorer';
 import { parseAppUrlParams, updateAppUrlParams } from './services/urlParams';
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(() => !hasSeenWelcomeTour());
+  const [isGlobalExportModalOpen, setIsGlobalExportModalOpen] = useState<boolean>(false);
 
   const isProd = isProdEnvironment();
 
@@ -299,7 +301,9 @@ export const App: React.FC = () => {
       }
     );
 
-    const landsPromise = fetch17LandsSetData(set.code);
+    const landsPromise = set.has_17lands_data !== false
+      ? fetch17LandsSetData(set.code)
+      : Promise.resolve(null);
 
     try {
       const [fetchedCards, landsData] = await Promise.all([cardsPromise, landsPromise]);
@@ -312,7 +316,13 @@ export const App: React.FC = () => {
         Object.keys(landsData.cards || {}).length >= 5
       ) {
         setSeventeenLandsData(landsData);
-      } else if (!preloaded) {
+      } else if (preloaded) {
+        setSeventeenLandsData(preloaded);
+      } else if (set.has_17lands_data !== false && fetchedCards && fetchedCards.length > 0) {
+        // Ensure every set that has 17Lands draft history has rich telemetry
+        const estimated = generateEstimated17LandsData(fetchedCards);
+        setSeventeenLandsData(estimated);
+      } else {
         setSeventeenLandsData(null);
       }
     } catch (err) {
@@ -505,6 +515,7 @@ export const App: React.FC = () => {
         isAdmin={isAdmin}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onOpenWelcomeTour={() => setIsWelcomeTourOpen(true)}
+        onOpenExportModal={() => setIsGlobalExportModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -706,6 +717,7 @@ export const App: React.FC = () => {
                 onSelectedColorsChange={setSharedSelectedColors}
                 onSelectedRaritiesChange={setSharedSelectedRarities}
                 onSelectedRolesChange={setSharedSelectedRoles}
+                availableSets={allSets}
               />
             )}
 
@@ -788,6 +800,17 @@ export const App: React.FC = () => {
           setIsWelcomeTourOpen(false);
           setIsSetSelectorOpen(true);
         }}
+      />
+
+      {/* Global Export & Backup Modal (Accessible to all users from Top Navigation) */}
+      <ExportGradesModal
+        isOpen={isGlobalExportModalOpen}
+        onClose={() => setIsGlobalExportModalOpen(false)}
+        cards={cards}
+        evaluations={userEvaluations}
+        seventeenLandsData={seventeenLandsData}
+        currentSet={currentSet || allSets[0]}
+        userId={currentUser?.id}
       />
     </div>
   );

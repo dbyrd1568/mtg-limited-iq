@@ -1,6 +1,6 @@
 import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS } from '../services/scryfall';
 import { generateQuiz } from '../services/quizGenerator';
-import { calculateSetCalibration, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl } from '../services/seventeenLands';
+import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl } from '../services/seventeenLands';
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
 import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
@@ -435,5 +435,41 @@ console.assert(rvrUrl.includes('expansion=RAVM'), `RVR 17Lands URL must target e
 
 console.log('   ✓ Expanded 17Lands sets verified in catalog with accurate telemetry flags.');
 console.log('   ✓ 17Lands expansion code alias resolution verified.');
+
+// =========================================================================
+// TEST 11: Empirical MTG Limited Evaluator Grade Curve & Weighted GPA
+// =========================================================================
+console.log('\n[TEST 11] Empirical MTG Limited Evaluator Grade Curve & Weighted GPA:');
+
+// Test 43% (The user's score): 33 of 76 correct (±1 step)
+const userScoreEval = accuracyToEvaluatorGrade(43);
+console.log(`   43% Accuracy -> Grade: ${userScoreEval.grade}, GPA: ${userScoreEval.gpa.toFixed(2)}, Title: "${userScoreEval.title}"`);
+console.assert(userScoreEval.grade === 'B-', `43% must be B- on the MTG curve (got ${userScoreEval.grade})`);
+console.assert(userScoreEval.gpa >= 2.5 && userScoreEval.gpa <= 2.8, `43% GPA must be ~2.74 (got ${userScoreEval.gpa})`);
+console.assert(userScoreEval.grade !== 'F', '43% must NOT be an F!');
+
+// Test 62% (LSV / Top Content Creator Benchmark):
+const lsvEval = accuracyToEvaluatorGrade(62);
+console.log(`   62% Accuracy (Top Creator Benchmark) -> Grade: ${lsvEval.grade}, GPA: ${lsvEval.gpa.toFixed(2)}, Title: "${lsvEval.title}"`);
+console.assert(lsvEval.grade === 'A', `62% must be Pro Tour Caliber A (got ${lsvEval.grade})`);
+console.assert(lsvEval.gpa >= 3.8, `62% GPA must be >= 3.8 (got ${lsvEval.gpa})`);
+
+// Test 66% (Peak historic performance):
+const eliteEval = accuracyToEvaluatorGrade(66);
+console.log(`   66% Accuracy (Peak Ceiling) -> Grade: ${eliteEval.grade}, GPA: ${eliteEval.gpa.toFixed(2)}, Title: "${eliteEval.title}"`);
+console.assert(eliteEval.grade === 'A+', `66% must be A+ (got ${eliteEval.grade})`);
+console.assert(eliteEval.gpa === 4.0, `66% GPA must be 4.0 (got ${eliteEval.gpa})`);
+
+// Test 26% (Random guessing baseline):
+const randomEval = accuracyToEvaluatorGrade(26);
+console.log(`   26% Accuracy (Random Guess Baseline) -> Grade: ${randomEval.grade}, GPA: ${randomEval.gpa.toFixed(2)}, Title: "${randomEval.title}"`);
+console.assert(randomEval.grade === 'C-', `26% must be C- (got ${randomEval.grade})`);
+
+// Test 10% (Inverted / anti-correlated read):
+const invertedEval = accuracyToEvaluatorGrade(10);
+console.log(`   10% Accuracy (Inverted Read) -> Grade: ${invertedEval.grade}, GPA: ${invertedEval.gpa.toFixed(2)}, Title: "${invertedEval.title}"`);
+console.assert(invertedEval.grade === 'F', `10% must be F (got ${invertedEval.grade})`);
+
+console.log('   ✓ MTG Limited empirical evaluator grade curve & smooth GPA verified.');
 
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');

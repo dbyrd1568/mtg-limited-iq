@@ -1,8 +1,8 @@
 import React from 'react';
 import { Card, GradeTier, SeventeenLandsCardRating, UserCardEvaluation } from '../../types/mtg';
-import { GRADE_TIERS, gradeTierToIndex, winRateToGradeTier } from '../../services/seventeenLands';
+import { GRADE_TIERS, gradeTierToIndex, winRateToGradeTier, get17LandsCardUrl } from '../../services/seventeenLands';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
-import { Scale, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, ShieldAlert, Sparkles, BarChart2, Award } from 'lucide-react';
+import { Scale, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, ShieldAlert, Sparkles, BarChart2, Award, ExternalLink } from 'lucide-react';
 
 interface GradeComparisonCardProps {
   card: Card;
@@ -213,20 +213,46 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
         {/* 3. 17L Column (Togglable) */}
         {show17L && (
           <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/25 border-2 border-emerald-400 dark:border-emerald-500/50 space-y-0.5 shadow-xs">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <span>17Lands</span>
+            <div className="flex items-center justify-between gap-1 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span>17Lands</span>
+              </div>
+              {landData && !isBlindGrading && (
+                <a
+                  href={get17LandsCardUrl(card.set, card, landData)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-emerald-700 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 hover:underline flex items-center gap-0.5 font-mono font-bold"
+                  title={`Open ${card.name} (${card.set.toUpperCase()}) on 17lands.com`}
+                >
+                  <span>17Lands ↗</span>
+                </a>
+              )}
             </div>
 
             <div className="flex items-baseline gap-2 pt-0.5">
               {userGrade && actualGrade && !isBlindGrading ? (
                 <>
-                  <span className="text-lg font-black font-mono px-2 py-0.5 rounded-lg bg-emerald-600 text-white border border-emerald-400 shadow-xs">
-                    {actualGrade}
-                  </span>
-                  <span className="text-xs font-black font-mono text-emerald-700 dark:text-emerald-300">
-                    {((landData?.win_rate || 0) * 100).toFixed(1)}% WR
-                  </span>
+                  <a
+                    href={get17LandsCardUrl(card.set, card, landData)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-lg font-black font-mono px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 shadow-xs transition-colors inline-flex items-center gap-1"
+                    title={`View ${card.name} on 17lands.com`}
+                  >
+                    <span>{actualGrade}</span>
+                    <ExternalLink className="w-3 h-3 text-emerald-200" />
+                  </a>
+                  <a
+                    href={get17LandsCardUrl(card.set, card, landData)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-black font-mono text-emerald-700 dark:text-emerald-300 hover:underline inline-flex items-center gap-0.5"
+                    title={`View ${card.name} win rate on 17lands.com`}
+                  >
+                    <span>{((landData?.win_rate || 0) * 100).toFixed(1)}% WR</span>
+                  </a>
                 </>
               ) : (
                 <span className="text-base font-semibold text-emerald-500/80 font-mono">

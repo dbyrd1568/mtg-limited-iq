@@ -121,6 +121,7 @@ export interface SetCalibrationSummary {
   totalRated: number;
   totalCards: number;
   calibrationScore: number; // 0-100% (accuracy based on <= 1 step correct rule)
+  weightedScore?: number; // 0-100% (includes 50% partial credit for 2-step misses)
   overallGrade: GradeTier; // Overall Evaluator Report Card Grade (e.g. A+, A, A-, B+, etc.)
   overallTitle: string; // e.g. "Pro Tour Caliber Drafter"
   overallDescription: string;
