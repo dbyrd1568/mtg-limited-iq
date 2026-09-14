@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardObfuscationConfig } from '../types/mtg';
 import { RotateCw, Sparkles, EyeOff } from 'lucide-react';
 import { ManaCostRenderer } from './UI/ManaSymbol';
+import { CardImage } from './UI/CardImage';
 
 interface CardObfuscatorProps {
   card: Card;
@@ -29,7 +30,6 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
   showSublabel = true,
 }) => {
   const [faceIndex, setFaceIndex] = useState<number>(0);
-  const [imgLoaded, setImgLoaded] = useState<boolean>(false);
 
   if (!card) return null;
 
@@ -41,17 +41,12 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
     card.card_faces[1]?.image_uris?.normal
   );
   const currentFace = isTransformCard && card.card_faces ? card.card_faces[faceIndex] : null;
-
-  // Determine current image uri
-  const imageUri = currentFace?.image_uris?.normal ||
-    card?.image_uris?.normal ||
-    card?.image_uris?.large ||
-    currentFace?.image_uris?.large ||
-    'https://cards.scryfall.io/back.jpg';
+  const activeCardData = currentFace ? { ...card, ...currentFace } : card;
 
   const artCropUri = currentFace?.image_uris?.art_crop ||
     card.image_uris?.art_crop ||
-    imageUri;
+    currentFace?.image_uris?.normal ||
+    card?.image_uris?.normal;
 
   const isArtOnly = obfuscation.target === 'art_only';
   const isMasked = obfuscation.target !== 'none' && !obfuscation.isRevealed;
@@ -132,24 +127,19 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
       <div
         className={`relative rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-[#070a1c] card-foil-sheen ${SIZE_CLASSES[size]} ${getRarityGlow(card.rarity)}`}
       >
-        {/* Loading Spinner */}
-        {!imgLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#050818] text-slate-400">
-            <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-
         {/* Art Only Mask Mode */}
         {isArtOnly && !obfuscation.isRevealed ? (
           <div className="relative w-full h-full flex flex-col bg-[#050818] p-2">
             <div className="relative w-full h-full rounded-xl overflow-hidden border border-violet-500/40 shadow-inner">
-              <img
+              <CardImage
+                card={activeCardData}
                 src={artCropUri}
                 alt={card.name}
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                onLoad={() => setImgLoaded(true)}
+                className="w-full h-full"
+                imageClassName="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                loading="lazy"
               />
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#050818] via-[#050818]/80 to-transparent p-2 text-center">
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#050818] via-[#050818]/80 to-transparent p-2 text-center pointer-events-none z-10">
                 <span className="text-xs font-bold text-cyan-300 flex items-center justify-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   Recognize this artwork?
@@ -160,11 +150,13 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
         ) : (
           /* Full Card Art with Mask Overlays */
           <div className="relative w-full h-full">
-            <img
-              src={imageUri}
+            <CardImage
+              card={activeCardData}
+              src={currentFace?.image_uris?.normal || card?.image_uris?.normal}
               alt={card.name}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-              onLoad={() => setImgLoaded(true)}
+              className="w-full h-full"
+              imageClassName="w-full h-full object-cover"
+              loading="lazy"
             />
 
             {/* Targeted Obfuscation Mask */}
@@ -178,7 +170,6 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setImgLoaded(false);
               setFaceIndex(prev => (prev === 0 ? 1 : 0));
             }}
             className="absolute top-2.5 right-2.5 z-30 bg-[#06091d]/90 hover:bg-[#0e1438] border border-violet-400/60 text-cyan-300 p-1.5 rounded-full shadow-xl transition-all cursor-pointer hover:scale-110"
@@ -208,3 +199,5 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
     </div>
   );
 };
+
+export default CardObfuscator;

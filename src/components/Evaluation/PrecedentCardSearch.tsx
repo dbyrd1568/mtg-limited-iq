@@ -296,6 +296,14 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
                       alt={card.name}
                       className="w-8 h-11 rounded object-cover shadow-2xs shrink-0 border border-slate-200 dark:border-slate-700"
                       loading="lazy"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const cleanFrontName = card.name.replace(/^A-/, '').split(' // ')[0].trim();
+                        const gathererUrl = `https://gatherer.wizards.com/Handlers/Image.ashx?type=card&name=${encodeURIComponent(cleanFrontName)}`;
+                        if (target.src !== gathererUrl) {
+                          target.src = gathererUrl;
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-8 h-11 rounded bg-slate-200 dark:bg-slate-800 shrink-0 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-400">

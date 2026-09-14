@@ -1115,6 +1115,14 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                                     alt={signpostCard.name}
                                     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                                     loading="lazy"
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      const cleanFrontName = signpostCard.name.replace(/^A-/, '').split(' // ')[0].trim();
+                                      const gathererUrl = `https://gatherer.wizards.com/Handlers/Image.ashx?type=card&name=${encodeURIComponent(cleanFrontName)}`;
+                                      if (target.src !== gathererUrl) {
+                                        target.src = gathererUrl;
+                                      }
+                                    }}
                                   />
                                 </div>
 

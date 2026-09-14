@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, GradeTier } from '../../types/mtg';
-import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch } from '../../services/cardSimilarity';
+import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch, generateGuaranteedFallbackResult } from '../../services/cardSimilarity';
 import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { getTargetCardOverrides, savePrecedentOverride, removePrecedentOverride, clearTargetCardOverrides, PrecedentSlotOverride } from '../../services/precedentOverrides';
 import { PrecedentCardSearch } from './PrecedentCardSearch';
@@ -8,7 +8,8 @@ import { PrecedentSlotPickerModal } from './PrecedentSlotPickerModal';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
-import { X, Scale, Check, PlayingCardsFan, HelpCircle, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, Sparkles } from 'lucide-react';
+import { CardImage } from '../UI/CardImage';
+import { X, Scale, Check, PlayingCardsFan, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, Sparkles } from 'lucide-react';
 
 export interface CardPerformanceMetrics {
   winRate?: number;
@@ -194,16 +195,20 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
       setSlotPickerCard(null);
       setPreselectedSlotIndex(null);
       setDirectSwapSlotIndex(null);
+      // Immediately populate with instant guaranteed comps so data is NEVER null or empty
+      setData(generateGuaranteedFallbackResult(targetCard, allCards));
       setLoading(true);
       setInspectCardMatch(null);
       setAdoptedSourceId(null);
-      findSimilarCards(targetCard)
+      findSimilarCards(targetCard, allCards)
         .then((result) => {
-          setData(result);
+          if (result && result.matches && result.matches.length > 0) {
+            setData(result);
+          }
         })
         .catch((err) => {
           console.error('Failed to find similar cards:', err);
-          setData(null);
+          setData((prev) => prev || generateGuaranteedFallbackResult(targetCard, allCards));
         })
         .finally(() => {
           setLoading(false);
@@ -217,7 +222,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
       setPreselectedSlotIndex(null);
       setDirectSwapSlotIndex(null);
     }
-  }, [isOpen, targetCard]);
+  }, [isOpen, targetCard, allCards]);
 
   // Keyboard navigation (Esc to close, ArrowLeft / ArrowRight to step through cards)
   useEffect(() => {
@@ -264,9 +269,20 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     }
   };
 
+  // Guarantee active data is always populated from guaranteed fallback if data is null or empty
+  const activeData = useMemo(() => {
+    if (data && data.matches && data.matches.length > 0) {
+      return data;
+    }
+    if (targetCard) {
+      return generateGuaranteedFallbackResult(targetCard, allCards);
+    }
+    return null;
+  }, [data, targetCard, allCards]);
+
   // Overlay user-customized slot overrides onto algorithmic matches
   const presentedMatches = useMemo(() => {
-    const raw = data?.matches?.slice(0, 4) || [];
+    const raw = activeData?.matches?.slice(0, 4) || [];
     if (!raw.length) return [];
 
     const merged = [...raw];
@@ -276,7 +292,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
       }
     }
     return merged;
-  }, [data, customOverrides]);
+  }, [activeData, customOverrides]);
 
   const hasCustomOverrides = useMemo(() => {
     return Object.keys(customOverrides).length > 0;
@@ -288,7 +304,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     setIsReplacingSlot(true);
     try {
       const repMatch = await buildCustomPrecedentMatch(targetCard, slotPickerCard);
-      const rawMatches = data?.matches?.slice(0, 4) || [];
+      const rawMatches = activeData?.matches?.slice(0, 4) || [];
       const origMatch = rawMatches[slotIndex] || null;
 
       savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
@@ -307,7 +323,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     setIsReplacingSlot(true);
     try {
       const repMatch = await buildCustomPrecedentMatch(targetCard, replacementCard);
-      const rawMatches = data?.matches?.slice(0, 4) || [];
+      const rawMatches = activeData?.matches?.slice(0, 4) || [];
       const origMatch = rawMatches[slotIndex] || null;
 
       savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
@@ -428,9 +444,16 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
                   Precedent Engine
                 </span>
-                <span className="hidden md:inline text-xs text-slate-500 dark:text-slate-400">
-                  • 17Lands Premier Draft comps
-                </span>
+                {loading ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-violet-600 dark:text-cyan-400 font-medium">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span className="hidden sm:inline">Refreshing 17Lands data...</span>
+                  </span>
+                ) : (
+                  <span className="hidden md:inline text-xs text-slate-500 dark:text-slate-400">
+                    • 17Lands Premier Draft comps
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -448,7 +471,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 custom-scrollbar">
 
-          {loading ? (
+          {loading && !activeData ? (
             <div className="py-24 flex flex-col items-center justify-center gap-3 text-center">
               <Loader2 className="w-9 h-9 text-violet-600 dark:text-cyan-400 animate-spin" />
               <div className="space-y-1">
@@ -457,18 +480,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                   Querying premier draft statistics across WOE, BLB, OTJ, MKM, LCI, DMU, and more
-                </p>
-              </div>
-            </div>
-          ) : !data || data.matches.length === 0 ? (
-            <div className="py-16 text-center space-y-3">
-              <HelpCircle className="w-10 h-10 text-slate-400 mx-auto" />
-              <div className="space-y-1">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                  No direct historical comps found
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                  This card may have an unprecedented combination of mechanics, colors, or mana value in modern premier draft sets.
                 </p>
               </div>
             </div>
@@ -485,15 +496,15 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       Average:
                     </span>
                     <span className="text-xs sm:text-sm font-black font-mono px-2 py-0.5 rounded-lg bg-violet-600 text-white shadow-2xs shrink-0">
-                      Tier {presentedGradeStats?.averageGrade || data.consensus.projectedTier}
+                      Tier {presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C'}
                     </span>
                     {presentedGradeStats?.avgWinRate !== undefined ? (
                       <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
                         {(presentedGradeStats.avgWinRate * 100).toFixed(1)}% WR
                       </span>
-                    ) : data.consensus.averageWinRate !== undefined ? (
+                    ) : activeData?.consensus.averageWinRate !== undefined ? (
                       <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
-                        {(data.consensus.averageWinRate * 100).toFixed(1)}% WR
+                        {(activeData.consensus.averageWinRate * 100).toFixed(1)}% WR
                       </span>
                     ) : null}
                   </div>
@@ -506,7 +517,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       Median:
                     </span>
                     <span className="text-xs sm:text-sm font-black font-mono px-2 py-0.5 rounded-lg bg-indigo-600 text-white shadow-2xs shrink-0">
-                      Tier {presentedGradeStats?.medianGrade || data.consensus.projectedTier}
+                      Tier {presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C'}
                     </span>
                     {presentedGradeStats?.medianWinRate !== undefined && (
                       <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-300 shrink-0">
@@ -522,11 +533,11 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         Range: {presentedGradeStats.minTier === presentedGradeStats.maxTier ? presentedGradeStats.minTier : `${presentedGradeStats.minTier} to ${presentedGradeStats.maxTier}`}
                       </span>
                     </>
-                  ) : (data.consensus.tierRangeMin && data.consensus.tierRangeMax) ? (
+                  ) : (activeData?.consensus.tierRangeMin && activeData?.consensus.tierRangeMax) ? (
                     <>
                       <span className="text-slate-300 dark:text-slate-700 font-light hidden md:inline">|</span>
                       <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
-                        Range: {data.consensus.tierRangeMin === data.consensus.tierRangeMax ? data.consensus.tierRangeMin : `${data.consensus.tierRangeMin} to ${data.consensus.tierRangeMax}`}
+                        Range: {activeData.consensus.tierRangeMin === activeData.consensus.tierRangeMax ? activeData.consensus.tierRangeMin : `${activeData.consensus.tierRangeMin} to ${activeData.consensus.tierRangeMax}`}
                       </span>
                     </>
                   ) : null}
@@ -542,38 +553,38 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     {/* Use Grade Average Button */}
                     <button
                       type="button"
-                      onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data.consensus.projectedTier, 'average')}
+                      onClick={() => handleAdopt(presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C', 'average')}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 border ${
                         adoptedSourceId === 'average'
                           ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
                           : 'bg-violet-600 hover:bg-violet-700 text-white border-violet-500 shadow-2xs hover:scale-[1.01]'
                       }`}
-                      title={`Adopt Grade Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})`}
+                      title={`Adopt Grade Average (${presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C'})`}
                     >
                       <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-80'}`} />
                       <span>
                         {adoptedSourceId === 'average'
-                          ? `Used Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})`
-                          : `Use Grade Average (${presentedGradeStats?.averageGrade || data.consensus.projectedTier})`}
+                          ? `Used Average (${presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C'})`
+                          : `Use Grade Average (${presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C'})`}
                       </span>
                     </button>
 
                     {/* Use Median Grade Button */}
                     <button
                       type="button"
-                      onClick={() => handleAdopt(presentedGradeStats?.medianGrade || data.consensus.projectedTier, 'median')}
+                      onClick={() => handleAdopt(presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C', 'median')}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 border ${
                         adoptedSourceId === 'median'
                           ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
                           : 'bg-slate-900 dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-white border-slate-700 dark:border-slate-600 shadow-2xs hover:border-indigo-400 hover:scale-[1.01]'
                       }`}
-                      title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || data.consensus.projectedTier})`}
+                      title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C'})`}
                     >
                       <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'median' ? 'text-emerald-200' : 'opacity-80'}`} />
                       <span>
                         {adoptedSourceId === 'median'
-                          ? `Used Median (${presentedGradeStats?.medianGrade || data.consensus.projectedTier})`
-                          : `Use Median Grade (${presentedGradeStats?.medianGrade || data.consensus.projectedTier})`}
+                          ? `Used Median (${presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C'})`
+                          : `Use Median Grade (${presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C'})`}
                       </span>
                     </button>
                   </div>
@@ -620,34 +631,34 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     </div>
 
                     {/* Quick Adopt Grade Average & Median Buttons for Target Card */}
-                    {onAdoptGrade && (presentedGradeStats?.averageGrade || data?.consensus?.projectedTier) && (
+                    {onAdoptGrade && (presentedGradeStats?.averageGrade || activeData?.consensus?.projectedTier) && (
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
-                          onClick={() => handleAdopt(presentedGradeStats?.averageGrade || data!.consensus.projectedTier, 'average')}
+                          onClick={() => handleAdopt(presentedGradeStats?.averageGrade || activeData!.consensus.projectedTier, 'average')}
                           className={`py-1.5 px-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1 cursor-pointer border shadow-2xs ${
                             adoptedSourceId === 'average'
                               ? 'bg-emerald-600 text-white border-emerald-500'
                               : 'bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/60 text-violet-700 dark:text-cyan-300 border-violet-200 dark:border-violet-800/60'
                           }`}
-                          title={`Adopt Average Grade (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}
+                          title={`Adopt Average Grade (${presentedGradeStats?.averageGrade || activeData?.consensus?.projectedTier})`}
                         >
                           <Check className={`w-3 h-3 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-70'}`} />
-                          <span className="truncate">{adoptedSourceId === 'average' ? `Avg (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})` : `Use Avg (${presentedGradeStats?.averageGrade || data?.consensus?.projectedTier})`}</span>
+                          <span className="truncate">{adoptedSourceId === 'average' ? `Avg (${presentedGradeStats?.averageGrade || activeData?.consensus?.projectedTier})` : `Use Avg (${presentedGradeStats?.averageGrade || activeData?.consensus?.projectedTier})`}</span>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => handleAdopt(presentedGradeStats?.medianGrade || data!.consensus.projectedTier, 'median')}
+                          onClick={() => handleAdopt(presentedGradeStats?.medianGrade || activeData!.consensus.projectedTier, 'median')}
                           className={`py-1.5 px-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1 cursor-pointer border shadow-2xs ${
                             adoptedSourceId === 'median'
                               ? 'bg-emerald-600 text-white border-emerald-500'
                               : 'bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
                           }`}
-                          title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || data?.consensus?.projectedTier})`}
+                          title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || activeData?.consensus?.projectedTier})`}
                         >
                           <Check className={`w-3 h-3 ${adoptedSourceId === 'median' ? 'text-emerald-200' : 'opacity-70'}`} />
-                          <span className="truncate">{adoptedSourceId === 'median' ? `Med (${presentedGradeStats?.medianGrade || data?.consensus?.projectedTier})` : `Use Med (${presentedGradeStats?.medianGrade || data?.consensus?.projectedTier})`}</span>
+                          <span className="truncate">{adoptedSourceId === 'median' ? `Med (${presentedGradeStats?.medianGrade || activeData?.consensus?.projectedTier})` : `Use Med (${presentedGradeStats?.medianGrade || activeData?.consensus?.projectedTier})`}</span>
                         </button>
                       </div>
                     )}
@@ -801,10 +812,12 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                 className="relative w-full h-[293px] sm:h-[321px] rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-[#050818] shadow-md hover:ring-2 hover:ring-violet-400 dark:hover:ring-cyan-400 group-hover:ring-2 group-hover:ring-violet-400 dark:group-hover:ring-cyan-400 transition-all cursor-pointer block text-left"
                                 title={`Click to view full card details for ${comp.name}`}
                               >
-                                <img
+                                <CardImage
+                                  card={comp}
                                   src={imageUri}
                                   alt={comp.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none"
+                                  className="w-full h-full"
+                                  imageClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none"
                                   loading="lazy"
                                 />
                               </button>

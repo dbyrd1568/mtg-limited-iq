@@ -3,6 +3,7 @@ import { Card } from '../../types/mtg';
 import { SimilarCardMatch, calculateCardSimilarity } from '../../services/cardSimilarity';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
+import { CardImage } from '../UI/CardImage';
 import { X, ArrowRight, Check, Sparkles, RefreshCw, HelpCircle } from 'lucide-react';
 
 interface PrecedentSlotPickerModalProps {
@@ -93,17 +94,16 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
             </span>
 
             <div className="flex items-start gap-3.5">
-              {repImageUri ? (
-                <img
+              <div className="w-16 h-22 rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
+                <CardImage
+                  card={replacementCard}
                   src={repImageUri}
                   alt={replacementCard.name}
-                  className="w-16 h-22 rounded-xl object-cover shadow-sm border border-slate-200 dark:border-slate-700 shrink-0"
+                  className="w-full h-full"
+                  imageClassName="w-full h-full object-cover"
+                  loading="eager"
                 />
-              ) : (
-                <div className="w-16 h-22 rounded-xl bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0">
-                  MTG
-                </div>
-              )}
+              </div>
 
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
