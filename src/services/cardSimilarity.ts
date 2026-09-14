@@ -2447,7 +2447,7 @@ export async function findSimilarCards(
   targetCard: Card,
   fallbackPool: Card[] = []
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v50`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v51`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -2537,9 +2537,16 @@ export async function findSimilarCards(
       }
     }
 
-    // Curated Benchmark Safety Net: If fewer than 12 candidates exist, inject from benchmark library and fallbackPool
+    // Curated Benchmark Candidates: Always inject high-relevance curated benchmark cards into candidate pool
+    const benchmarkCandidates = getCuratedBenchmarkCandidates(targetCard, fallbackPool);
+    benchmarkCandidates.slice(0, 10).forEach((c) => {
+      if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
+          c.name.toLowerCase() !== targetCard.name.toLowerCase()) {
+        candidateCards.push(c);
+      }
+    });
+
     if (candidateCards.length < 12) {
-      const benchmarkCandidates = getCuratedBenchmarkCandidates(targetCard, fallbackPool);
       benchmarkCandidates.forEach((c) => {
         if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
             c.name.toLowerCase() !== targetCard.name.toLowerCase()) {
