@@ -736,13 +736,47 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-emerald-200 dark:border-emerald-800/60">
                       Comparable Historical Cards ({presentedMatches.length})
                     </span>
-                    <span className="text-[11px] font-mono text-slate-400">
-                      Click any card to inspect
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {hasCustomOverrides && (
+                        <button
+                          type="button"
+                          onClick={handleResetAllSlots}
+                          className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/60"
+                          title="Reset all custom slot replacements back to default"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reset Comps</span>
+                        </button>
+                      )}
+                      <span className="text-[11px] font-mono text-slate-400">
+                        Click any card to inspect
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Precedent Search & Substitute Input */}
+                  <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-[#050818]/90 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
+                        <span>Search & Substitute Precedent Card</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        Search any card across Magic history
+                      </span>
+                    </div>
+                    <PrecedentCardSearch
+                      targetCard={targetCard}
+                      onSelectCard={(selectedCard) => {
+                        setSlotPickerCard(selectedCard);
+                        setPreselectedSlotIndex(null);
+                      }}
+                      placeholder="Search any card to substitute (e.g. Doom Blade, Murder, Lightning Strike)..."
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 gap-6">
-                    {presentedMatches.map((match) => {
+                    {presentedMatches.map((match, matchIdx) => {
                       const comp = match.card;
                       const imageUri = comp.image_uris?.normal ||
                         comp.image_uris?.large ||
@@ -848,9 +882,16 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             <div className="flex-1 min-w-0 space-y-3.5 w-full">
                               <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
                                 <div className="min-w-0">
-                                  <h5 className="font-bold text-slate-900 dark:text-white text-lg group-hover:text-violet-600 dark:group-hover:text-cyan-300 transition-colors" title={comp.name}>
-                                    {comp.name}
-                                  </h5>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h5 className="font-bold text-slate-900 dark:text-white text-lg group-hover:text-violet-600 dark:group-hover:text-cyan-300 transition-colors" title={comp.name}>
+                                      {comp.name}
+                                    </h5>
+                                    {match.isCustomOverride && (
+                                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-mono text-[10px] font-bold border border-amber-300/60 dark:border-amber-700/60">
+                                        Custom Comp
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 pt-0.5 flex-wrap">
                                     <SetSymbol setCode={comp.set} size="xs" />
                                     <span className="font-bold uppercase text-violet-700 dark:text-cyan-300">{comp.set}</span>
@@ -862,9 +903,47 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                         <span className="text-slate-700 dark:text-slate-300 font-semibold">{comp.type_line}</span>
                                       </>
                                     )}
+                                    {match.originalCardName && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="text-amber-700 dark:text-amber-400 italic">Replaced {match.originalCardName}</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
-                                {comp.mana_cost && <ManaCostRenderer manaCost={comp.mana_cost} size="md" />}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {/* Quick Swap/Replace button */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDirectSwapSlotIndex(matchIdx);
+                                    }}
+                                    className="px-2.5 py-1 rounded-xl text-slate-600 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono font-bold shadow-2xs"
+                                    title={`Replace ${comp.name} in slot ${matchIdx + 1}`}
+                                  >
+                                    <ArrowLeftRight className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
+                                    <span>Swap</span>
+                                  </button>
+
+                                  {/* Revert button if this is a custom override */}
+                                  {match.isCustomOverride && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRevertSlot(matchIdx);
+                                      }}
+                                      className="px-2.5 py-1 rounded-xl text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700/60 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono font-bold shadow-2xs"
+                                      title="Revert slot back to original suggested card"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                      <span>Revert</span>
+                                    </button>
+                                  )}
+
+                                  {comp.mana_cost && <ManaCostRenderer manaCost={comp.mana_cost} size="md" />}
+                                </div>
                               </div>
 
                               {/* Match percentage & reasons */}
@@ -1417,6 +1496,78 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Precedent Slot Picker Modal (Workflow: Search first -> Pick slot) */}
+      {slotPickerCard && (
+        <PrecedentSlotPickerModal
+          isOpen={Boolean(slotPickerCard)}
+          onClose={() => {
+            setSlotPickerCard(null);
+            setPreselectedSlotIndex(null);
+          }}
+          targetCard={targetCard}
+          replacementCard={slotPickerCard}
+          currentMatches={presentedMatches}
+          preselectedSlotIndex={preselectedSlotIndex}
+          onConfirmSlotReplacement={handleConfirmSlotReplacement}
+        />
+      )}
+
+      {/* Direct Slot Swap Search Modal (Workflow: Click Swap on slot -> Search replacement) */}
+      {directSwapSlotIndex !== null && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 flex items-center justify-center text-violet-700 dark:text-cyan-400">
+                  <ArrowLeftRight className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white font-heading">
+                    Replace Precedent Slot {directSwapSlotIndex + 1}
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    Currently: {presentedMatches[directSwapSlotIndex]?.card.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDirectSwapSlotIndex(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 font-mono">
+              Search for any Magic card to substitute into Slot {directSwapSlotIndex + 1}:
+            </p>
+
+            <PrecedentCardSearch
+              targetCard={targetCard}
+              onSelectCard={(selectedCard) => {
+                handleDirectSwapSelect(selectedCard, directSwapSlotIndex);
+              }}
+              placeholder="Type card name to replace this slot..."
+            />
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDirectSwapSlotIndex(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold font-mono text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

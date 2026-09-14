@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "type-check": "tsc -b",
     "preview": "vite preview",
     "prepare": "husky",
     "release": "release-it",
     "release:patch": "release-it patch",
     "release:minor": "release-it minor",
-    "release:major": "release-it major"
+    "release:major": "release-it major",
+    "deploy:trigger": "gh workflow run deploy.yml"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

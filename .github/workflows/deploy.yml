@@ -1,31 +1,60 @@
-name: 🚀 Build & Deploy to Cloudflare Workers
+name: 🚀 Deploy to Cloudflare Workers (Production)
 
 on:
+  # Nightly off-peak release window: 3:30 AM Central Time (08:30 UTC)
+  schedule:
+    - cron: '30 8 * * *'
+
+  # Semantic release tags (e.g. created via npm run release:patch)
   push:
-    branches:
-      - main
     tags:
       - 'v*'
+
+  # On-demand manual release trigger via GitHub web or mobile UI
   workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Release summary or notes'
+        required: false
+        default: 'On-demand production release'
 
 jobs:
   deploy:
-    name: Build & Deploy
+    name: Build & Deploy to Production
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: ⚙️ Setup Node
+      - name: 🔍 Check for recent changes (Scheduled runs only)
+        id: check_changes
+        if: github.event_name == 'schedule'
+        run: |
+          COMMITS_24H=$(git log --since="24 hours ago" --oneline)
+          if [ -z "$COMMITS_24H" ]; then
+            echo "No commits pushed to repository in the last 24 hours. Skipping nightly deployment."
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          else
+            echo "Detected recent commits:"
+            echo "$COMMITS_24H"
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: ⚙️ Setup Node.js
+        if: github.event_name != 'schedule' || steps.check_changes.outputs.should_deploy == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: 📦 Install dependencies
+        if: github.event_name != 'schedule' || steps.check_changes.outputs.should_deploy == 'true'
         run: npm ci
 
-      - name: 🔨 Build
+      - name: 🔨 Production Build
+        if: github.event_name != 'schedule' || steps.check_changes.outputs.should_deploy == 'true'
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://irxgoelllogcyoiumxup.supabase.co' }}
@@ -33,6 +62,7 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || '887571958598-8apf1m4sv9mdva72ii8oqmh2vunt8e93.apps.googleusercontent.com' }}
 
       - name: ☁️ Deploy to Cloudflare Workers
+        if: github.event_name != 'schedule' || steps.check_changes.outputs.should_deploy == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
