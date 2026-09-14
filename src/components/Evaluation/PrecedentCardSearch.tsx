@@ -18,7 +18,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
   targetCard,
   onSelectCard,
   className = '',
-  placeholder = 'Search any card to add as precedent (e.g. Doom Blade, Murder, Shock)...',
+  placeholder = 'Search name, mana {2}{W}, stats 2/3, or type...',
 }) => {
   const [query, setQuery] = useState<string>('');
   const [results, setResults] = useState<Card[]>([]);
@@ -60,8 +60,15 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
+        // Transform shorthand syntax for Scryfall:
+        // 1. "2/3" -> "pow=2 tou=3"
+        // 2. "{2}{W}" -> "m:{2}{W}"
+        const transformed = trimmed
+          .replace(/\b([0-9]+|\*)\/([0-9]+|\*)\b/g, 'pow=$1 tou=$2')
+          .replace(/(^|\s)((?:\{[a-zA-Z0-9/]+\})+)/g, '$1m:$2');
+
         // Search Scryfall prioritizing booster draft sets and non-funny cards
-        const scryfallQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token`;
+        const scryfallQuery = `${transformed} (is:booster or not:funny) -layout:art_series -t:token`;
         const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(scryfallQuery)}&order=released&dir=desc`;
 
         const res = await fetch(url, {
@@ -208,6 +215,44 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
             </button>
           ) : null}
         </div>
+      </div>
+
+      {/* Quick Search Syntax Tip */}
+      <div className="flex items-center gap-1.5 px-1 pt-1.5 text-[11px] font-mono text-slate-500 dark:text-slate-400 flex-wrap">
+        <span className="text-violet-600 dark:text-cyan-400 font-bold">Search tip:</span>
+        <span>Use</span>
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('{2}{W}');
+            inputRef.current?.focus();
+          }}
+          className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+        >
+          {'{2}{W}'}
+        </button>
+        <span>for mana,</span>
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('2/3');
+            inputRef.current?.focus();
+          }}
+          className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+        >
+          2/3
+        </button>
+        <span>for P/T stats, or combine like</span>
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('flying 2/3 {2}{W}');
+            inputRef.current?.focus();
+          }}
+          className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+        >
+          flying 2/3 {'{2}{W}'}
+        </button>
       </div>
 
       {/* Autocomplete Dropdown */}

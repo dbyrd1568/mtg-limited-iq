@@ -6,6 +6,7 @@ import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
 import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint } from '../services/cardSimilarity';
 import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes } from '../services/wotcArchetypes';
+import { cardMatchesQuery } from '../services/cardSearchParser';
 
 console.log('=== MTG Limited IQ Verification Tests ===\n');
 
@@ -627,4 +628,37 @@ console.assert(dynamicArchetype.description.startsWith('Wizards designed'), 'Dyn
 
 console.log('   ✓ Curated WOTC archetypes, 5-pair asymmetric sets, and on-the-fly synthesis verified.');
 
+// =========================================================================
+// TEST 13: Search Syntax: Mana Cost {2}{W}, Power/Toughness 2/3 & Combined Queries
+// =========================================================================
+console.log('\n[TEST 13] Search Syntax: Mana Cost {2}{W}, Power/Toughness 2/3 & Combined:');
+const testCourser: Card = {
+  id: 'courser-1',
+  name: 'Pegasus Courser',
+  set: 'M19',
+  set_name: 'Core Set 2019',
+  collector_number: '32',
+  mana_cost: '{2}{W}',
+  cmc: 3,
+  type_line: 'Creature — Pegasus',
+  oracle_text: 'Flying\nWhenever Pegasus Courser attacks, another target attacking creature gains flying until end of turn.',
+  power: '2',
+  toughness: '3',
+  colors: ['W'],
+  color_identity: ['W'],
+  rarity: 'common',
+  keywords: ['Flying'],
+};
+
+console.assert(cardMatchesQuery(testCourser, '{2}{W}'), '{2}{W} must match Pegasus Courser');
+console.assert(!cardMatchesQuery(testCourser, '{1}{W}'), '{1}{W} must NOT match Pegasus Courser');
+console.assert(cardMatchesQuery(testCourser, '2/3'), '2/3 stats must match Pegasus Courser without affecting text');
+console.assert(!cardMatchesQuery(testCourser, '3/3'), '3/3 stats must NOT match Pegasus Courser');
+console.assert(cardMatchesQuery(testCourser, 'flying 2/3 {2}{W}'), 'Combined flying 2/3 {2}{W} must match');
+console.assert(cardMatchesQuery(testCourser, 'pt:2/3'), 'pt:2/3 must match Pegasus Courser');
+console.assert(cardMatchesQuery(testCourser, 'pt>=2/2'), 'pt>=2/2 must match Pegasus Courser');
+console.assert(cardMatchesQuery(testCourser, 'm:{2}{W}'), 'm:{2}{W} must match Pegasus Courser');
+console.log('   ✓ Mana cost {2}{W}, P/T stats 2/3, and combined queries verified.');
+
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
+

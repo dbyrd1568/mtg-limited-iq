@@ -72,7 +72,7 @@ export function tokenizeQuery(query: string): SearchToken[] {
   // Optional leading '-' for negation
   // Optional prefix and operator: (field)(:|!=|<=|>=|<|>|=)
   // Value: either quoted string "..." or non-whitespace characters
-  const tokenRegex = /(-)?(?:([a-zA-Z]+)(:|!=|<=|>=|<|>|=))?("(?:[^"\\]|\\.)*"|\S+)/g;
+  const tokenRegex = /(-)?(?:([a-zA-Z/]+)(:|!=|<=|>=|<|>|=))?("(?:[^"\\]|\\.)*"|\S+)/g;
 
   let match: RegExpExecArray | null;
   while ((match = tokenRegex.exec(trimmed)) !== null) {
@@ -89,6 +89,30 @@ export function tokenizeQuery(query: string): SearchToken[] {
     if (!valueRaw) continue;
 
     if (!fieldRaw) {
+      // 1. Auto-detect P/T pattern: e.g. "2/3", "1/1", "*/*", "0/4", "3/*", "*/2"
+      const ptMatch = valueRaw.match(/^([0-9]+|\*)\/([0-9]+|\*)$/);
+      if (ptMatch) {
+        tokens.push({
+          field: 'pt',
+          operator: ':',
+          value: valueRaw,
+          isNegated,
+        });
+        continue;
+      }
+
+      // 2. Auto-detect mana cost pattern: e.g. "{2}{W}", "{W}", "{1}{B}{B}", "{X}{R}", "{U/R}"
+      const manaBraceMatch = valueRaw.match(/^(\{[a-zA-Z0-9/]+\})+$/);
+      if (manaBraceMatch) {
+        tokens.push({
+          field: 'mana',
+          operator: ':',
+          value: valueRaw,
+          isNegated,
+        });
+        continue;
+      }
+
       // General text token
       tokens.push({
         field: 'text',
@@ -108,7 +132,13 @@ export function tokenizeQuery(query: string): SearchToken[] {
     else if (fieldRaw === 'id' || fieldRaw === 'ci' || fieldRaw === 'identity') field = 'identity';
     else if (fieldRaw === 'pow' || fieldRaw === 'power') field = 'power';
     else if (fieldRaw === 'tou' || fieldRaw === 'toughness') field = 'toughness';
-    else if (fieldRaw === 'mv' || fieldRaw === 'cmc' || fieldRaw === 'mana') field = 'cmc';
+    else if (fieldRaw === 'pt' || fieldRaw === 'pow/tou' || fieldRaw === 'p/t' || fieldRaw === 'stats') field = 'pt';
+    else if (fieldRaw === 'm' || fieldRaw === 'cost') field = 'mana';
+    else if (fieldRaw === 'mana') {
+      if (valueRaw.includes('{') || isNaN(Number(valueRaw))) field = 'mana';
+      else field = 'cmc';
+    }
+    else if (fieldRaw === 'mv' || fieldRaw === 'cmc') field = 'cmc';
     else if (fieldRaw === 'r' || fieldRaw === 'rarity') field = 'rarity';
     else if (fieldRaw === 's' || fieldRaw === 'e' || fieldRaw === 'set') field = 'set';
     else if (fieldRaw === 'kw' || fieldRaw === 'keyword') field = 'keyword';
@@ -248,13 +278,14 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
 
   switch (field) {
     case 'text': {
-      // Matches name, oracle text, type line, collector number, or user notes
+      // Matches name, oracle text, type line, mana cost, collector number, or user notes
       const nameMatch = card.name.toLowerCase().includes(lowerVal);
       const oracleMatch = (card.oracle_text || '').toLowerCase().includes(lowerVal);
       const typeMatch = (card.type_line || '').toLowerCase().includes(lowerVal);
+      const manaMatch = (card.mana_cost || '').toLowerCase().includes(lowerVal);
       const numberMatch = (card.collector_number || '').toLowerCase() === lowerVal;
       const noteMatch = userNote ? userNote.toLowerCase().includes(lowerVal) : false;
-      matched = nameMatch || oracleMatch || typeMatch || numberMatch || noteMatch;
+      matched = nameMatch || oracleMatch || typeMatch || manaMatch || numberMatch || noteMatch;
       break;
     }
 
@@ -323,6 +354,61 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
         matched = card.toughness.trim() === value.trim();
       } else {
         matched = compareNumbers(actualTou, expectedTou, operator);
+      }
+      break;
+    }
+
+    case 'pt': {
+      const parts = value.split('/');
+      if (parts.length === 2) {
+        const expPow = parts[0].trim();
+        const expTou = parts[1].trim();
+
+        const matchFacePT = (cardPow?: string, cardTou?: string) => {
+          if (cardPow === undefined || cardTou === undefined) return false;
+          const cpTrim = cardPow.trim();
+          const ctTrim = cardTou.trim();
+
+          const cP = parseFloat(cpTrim);
+          const cT = parseFloat(ctTrim);
+          const eP = parseFloat(expPow);
+          const eT = parseFloat(expTou);
+
+          const powMatches = expPow === '*' ? true : (!isNaN(cP) && !isNaN(eP) ? compareNumbers(cP, eP, operator) : cpTrim.toLowerCase() === expPow.toLowerCase());
+          const touMatches = expTou === '*' ? true : (!isNaN(cT) && !isNaN(eT) ? compareNumbers(cT, eT, operator) : ctTrim.toLowerCase() === expTou.toLowerCase());
+
+          return powMatches && touMatches;
+        };
+
+        const mainMatch = matchFacePT(card.power, card.toughness);
+        const facesMatch = (card.card_faces || []).some((f) => matchFacePT(f.power, f.toughness));
+        matched = mainMatch || facesMatch;
+      }
+      break;
+    }
+
+    case 'mana': {
+      let normQuery = value;
+      if (!normQuery.includes('{') && /^[0-9a-zA-Z/]+$/.test(normQuery)) {
+        normQuery = normQuery.replace(/([0-9]+|[a-zA-Z])/g, '{$1}');
+      }
+      normQuery = normQuery.replace(/\{([a-zA-Z0-9/]+)\}/g, (_, s) => `{${s.toUpperCase()}}`).replace(/\s+/g, '');
+
+      const cardCost = (card.mana_cost || '').replace(/\s+/g, '').toUpperCase();
+      const faceCosts = (card.card_faces || []).map((f) => (f.mana_cost || '').replace(/\s+/g, '').toUpperCase());
+      const allCosts = [cardCost, ...faceCosts].filter(Boolean);
+
+      if (allCosts.length === 0) {
+        matched = false;
+        break;
+      }
+
+      if (operator === '=') {
+        matched = allCosts.some((c) => c === normQuery);
+      } else if (operator === ':' || operator === '>=') {
+        matched = allCosts.some((c) => c === normQuery || c.includes(normQuery));
+      } else if (operator === '!=') {
+        matched = !allCosts.some((c) => c === normQuery || c.includes(normQuery));
       }
       break;
     }

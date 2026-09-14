@@ -96,6 +96,48 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
         </div>
       </div>
 
+      {/* Quick Search Syntax Tip Bar */}
+      {!isQueryActive && (
+        <div className="flex items-center gap-1.5 px-1 pt-0.5 text-[11px] font-mono text-slate-500 dark:text-slate-400 flex-wrap">
+          <span className="text-violet-600 dark:text-cyan-400 font-bold">Search tip:</span>
+          <span>Try</span>
+          <button
+            type="button"
+            onClick={() => onChangeQuery('{2}{W}')}
+            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+            title="Search for cards with mana cost {2}{W}"
+          >
+            {'{2}{W}'}
+          </button>
+          <span>for mana,</span>
+          <button
+            type="button"
+            onClick={() => onChangeQuery('2/3')}
+            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+            title="Search for creatures with 2/3 power and toughness"
+          >
+            2/3
+          </button>
+          <span>for P/T stats,</span>
+          <button
+            type="button"
+            onClick={() => onChangeQuery('flying 2/3')}
+            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+            title="Search for flying creatures with 2/3 stats"
+          >
+            flying 2/3
+          </button>
+          <span>or</span>
+          <button
+            type="button"
+            onClick={() => setIsCheatSheetOpen(true)}
+            className="text-violet-600 dark:text-cyan-400 hover:underline font-bold cursor-pointer"
+          >
+            syntax guide →
+          </button>
+        </div>
+      )}
+
       {/* Active Filter Summary Pill (when query is non-empty) */}
       {isQueryActive && matchCount !== undefined && totalCount !== undefined && (
         <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-violet-50/80 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50 text-xs text-violet-900 dark:text-cyan-200">

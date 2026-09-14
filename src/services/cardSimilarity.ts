@@ -58,6 +58,8 @@ const EFFECT_PATTERNS: EffectPattern[] = [
   { pattern: /counter target (spell|noncreature spell|creature spell)/i, label: 'Counterspell', category: 'counter' },
   { pattern: /draw (a|\d+) cards?/i, label: 'Card Draw', category: 'draw' },
   { pattern: /target creature gets [+-]\d+\/[+-]\d+/i, label: 'Stat Modifier', category: 'trick' },
+  { pattern: /(creatures|attacking creatures|other creatures) you control get [+-]\d+\/[+-]\d+/i, label: 'Team Stat Buff / Anthem', category: 'trick' },
+  { pattern: /\{[0-9WUBRG]+\}(, \{t\})?: (creatures|attacking creatures|other creatures) you control get/i, label: 'Activated Team Pump / Mana Sink', category: 'trick' },
   { pattern: /create (a|\d+) .* token/i, label: 'Token Creation', category: 'token' },
   { pattern: /put (a|\d+) \+1\/\+1 counter/i, label: '+1/+1 Counter', category: 'counters' },
   { pattern: /return target .* to its owner's hand/i, label: 'Bounce Effect', category: 'bounce' },
@@ -104,6 +106,7 @@ export function extractCardFeatures(card: Card) {
   const isLand = frontTypeLine.includes('land');
   const isCreature = frontTypeLine.includes('creature');
   const hasFlash = (card.keywords || []).some(k => k.toLowerCase() === 'flash') || oracle.includes('flash');
+  const hasFlying = (card.keywords || []).some(k => k.toLowerCase() === 'flying') || oracle.includes('flying');
   const isInstant = frontTypeLine.includes('instant');
   const isSorcery = frontTypeLine.includes('sorcery');
   const isEnchantment = frontTypeLine.includes('enchantment');
@@ -411,6 +414,26 @@ export function extractCardFeatures(card: Card) {
       actionSubtypes.add('attack_keyword_granter');
       detectedCategories.add('trick');
     }
+
+    const isTeamPump = /(creatures|attacking creatures|other creatures) you control get \+[0-9]\/\+[0-9]/i.test(oracle);
+    const isActivatedTeamPump = (
+      /\{[0-9WUBRG]+\}(, \{t\})?: (creatures|attacking creatures|other creatures) you control get/i.test(oracle) ||
+      (oracle.includes(':') && isTeamPump)
+    );
+
+    if (isActivatedTeamPump) {
+      actionSubtypes.add('activated_team_pump');
+      actionSubtypes.add('team_pump');
+      detectedCategories.add('trick');
+    } else if (isTeamPump) {
+      actionSubtypes.add('team_pump');
+      detectedCategories.add('trick');
+    }
+
+    const isManaSink = /\{[4-9X]|\{[1-9][0-9]\}|\{[0-9WUBRG]\}\{[0-9WUBRG]\}\{[0-9WUBRG]\}\{[0-9WUBRG]\}/i.test(oracle.split(':')[0] || '');
+    if (isManaSink && oracle.includes(':')) {
+      actionSubtypes.add('mana_sink');
+    }
   }
 
   // ETB Counter Distribution & Growth Subtypes
@@ -496,6 +519,7 @@ export function extractCardFeatures(card: Card) {
     equipCost,
     grantedKeywords,
     hasFlash,
+    hasFlying,
     isCombatTrick,
     isAura,
     isAbilityLossAura,
@@ -780,12 +804,32 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"when" o:"enters" o:"+1/+1 counter" or o:"explores")`);
   }
 
-  // Signature creature subtypes (e.g. Wolf, Merfolk, Elf, Goblin - ignoring generic human/soldier/warrior/druid/wizard/cleric/rogue/citizen/scout)
-  const signatureSubtypes = features.creatureSubtypes.filter(s =>
-    !['human', 'soldier', 'warrior', 'druid', 'wizard', 'cleric', 'rogue', 'citizen', 'scout'].includes(s)
+  if (features.actionSubtypes.has('activated_team_pump')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"creatures you control get +1/+1" or o:"creatures you control get")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:":" o:"creatures you control get")`);
+    if (features.hasFlying) {
+      queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} o:"flying" (o:"creatures you control get" or o:":" o:"+1/+1")`);
+    }
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"creatures you control get +1/+1"`);
+  } else if (features.actionSubtypes.has('team_pump')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"creatures you control get +1/+1" or o:"other creatures you control get")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"creatures you control get"`);
+  }
+
+  // Signature creature subtypes: ONLY query if card explicitly has tribal mechanics/synergies referencing that subtype!
+  // In MTG Limited, creature subtype is purely cosmetic unless the card is a tribal payoff/lord.
+  const isTribalPayoff = features.creatureSubtypes.some(s =>
+    !['human', 'soldier', 'warrior', 'druid', 'wizard', 'cleric', 'rogue', 'citizen', 'scout'].includes(s) &&
+    features.cleanOracle.includes(s)
   );
-  if (signatureSubtypes.length > 0) {
-    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} t:${signatureSubtypes[0]} cmc>=${minCmc} cmc<=${maxCmc}`);
+  if (isTribalPayoff) {
+    const signatureSubtypes = features.creatureSubtypes.filter(s =>
+      !['human', 'soldier', 'warrior', 'druid', 'wizard', 'cleric', 'rogue', 'citizen', 'scout'].includes(s) &&
+      features.cleanOracle.includes(s)
+    );
+    if (signatureSubtypes.length > 0) {
+      queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} t:${signatureSubtypes[0]} cmc>=${minCmc} cmc<=${maxCmc}`);
+    }
   }
 
   // METHOD 1 LEXICAL QUERY TIERS (Clauses, Keywords, Statlines)
@@ -1072,6 +1116,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const bothShareAuraRemoval = (
     tFeatures.isAuraRemoval && cFeatures.isAuraRemoval
   );
+  const bothShareActivatedTeamPump = (
+    tFeatures.actionSubtypes.has('activated_team_pump') && cFeatures.actionSubtypes.has('activated_team_pump')
+  );
+  const bothShareTeamPump = (
+    tFeatures.actionSubtypes.has('team_pump') && cFeatures.actionSubtypes.has('team_pump')
+  );
 
   if (isExactColorMatch) {
     colorScore = 20;
@@ -1141,14 +1191,19 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     baselineReasons.push(`Near-identical tempo (±${effectiveDiff.toFixed(1)} mana)`);
   } else if (effectiveDiff <= 1.15) {
     if (tFeatures.isCreature && cFeatures.isCreature && cFeatures.cmc < tFeatures.cmc) {
-      cmcScore = 11;
-      baselineReasons.push(`Lower curve tier (${candidate.cmc}M vs ${target.cmc}M)`);
+      if (bothShareSignatureEngine || bothShareEtbTreasure || bothShareActivatedTeamPump) {
+        cmcScore = 17;
+        baselineReasons.push(bothShareActivatedTeamPump ? 'Curve-adjacent activated team pump peer' : `Adjacent curve slot (${candidate.cmc}M vs ${target.cmc}M)`);
+      } else {
+        cmcScore = 11;
+        baselineReasons.push(`Lower curve tier (${candidate.cmc}M vs ${target.cmc}M)`);
+      }
     } else {
-      cmcScore = (bothShareSignatureEngine || bothShareEtbTreasure) ? 18 : 14;
+      cmcScore = (bothShareSignatureEngine || bothShareEtbTreasure || bothShareActivatedTeamPump) ? 18 : 14;
       if (targetIsInstant !== candIsInstant) {
         baselineReasons.push(targetIsInstant ? 'Instant speed tax (+0.75 mana)' : 'Sorcery speed discount');
       } else {
-        baselineReasons.push(bothShareEtbTreasure ? 'Adjacent curve slot (Treasure ramp peer)' : 'Adjacent curve slot (±1 mana)');
+        baselineReasons.push(bothShareActivatedTeamPump ? 'Adjacent curve slot (team pump peer)' : (bothShareEtbTreasure ? 'Adjacent curve slot (Treasure ramp peer)' : 'Adjacent curve slot (±1 mana)'));
       }
     }
   } else if (effectiveDiff <= 1.85) {
@@ -1211,13 +1266,22 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   }
 
   // Shared creature subtypes (e.g. Wolf, Merfolk, Elf, Goblin)
+  // In MTG Limited, creature subtypes are flavor/cosmetic unless the card explicitly has tribal mechanics/payoffs!
   if (tFeatures.isCreature && cFeatures.isCreature) {
     const sharedSubtypes = tFeatures.creatureSubtypes.filter(s =>
       !['human', 'soldier', 'warrior', 'druid', 'wizard', 'cleric', 'rogue', 'citizen', 'scout'].includes(s) && cFeatures.creatureSubtypes.includes(s)
     );
     if (sharedSubtypes.length > 0) {
-      method1LexicalScore += 6;
-      lexicalReasons.push(`Shared creature type: ${sharedSubtypes.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}`);
+      const isTribalRelevant = sharedSubtypes.some(s =>
+        tFeatures.cleanOracle.includes(s) || cFeatures.cleanOracle.includes(s)
+      );
+      if (isTribalRelevant) {
+        method1LexicalScore += 5;
+        lexicalReasons.push(`Shared tribal type: ${sharedSubtypes.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}`);
+      } else {
+        // Incidental non-tribal creature subtype: subtle 1 pt tie-breaker, no noisy reason
+        method1LexicalScore += 1;
+      }
     }
   }
 
@@ -1343,6 +1407,14 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     lexicalReasons.push('Shared pacifism lockdown Aura');
   }
 
+  if (bothShareActivatedTeamPump) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 14);
+    lexicalReasons.push('Shared activated team-pump mana sink ("creatures you control get +1/+1")');
+  } else if (bothShareTeamPump) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 10);
+    lexicalReasons.push('Shared team-wide stat buff ("creatures you control get +1/+1")');
+  }
+
   method1LexicalScore = Math.min(25, method1LexicalScore);
 
   // =========================================================================
@@ -1350,6 +1422,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   // =========================================================================
   let structuralActionPoints = 0;
   const ACTION_SUBTYPE_VALUES: Record<string, { pts: number; label: string }> = {
+    activated_team_pump: { pts: 20, label: 'Both creatures with activated team-pump mana sink' },
+    team_pump: { pts: 16, label: 'Both creatures with team-wide stat buff' },
+    mana_sink: { pts: 14, label: 'Both creatures with late-game mana sink' },
     living_weapon: { pts: 18, label: 'Both Living Weapon / auto-attaching token equipment' },
     equipment: { pts: 12, label: 'Both draft equipment' },
     connive_recruit: { pts: 18, label: 'Both ETB looting with board value (Recruit & Connive)' },
@@ -1433,13 +1508,25 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     structuralActionPoints = Math.min(20, structuralActionPoints + (sharedSubtypesCount - 1) * 3);
   }
 
-  // Shared signature creature subtype synergy (e.g. Wolf)
+  // Shared signature creature subtype synergy (e.g. Wolf, Elf - ONLY when tribal relevant)
   const sharedSignatureSubtypes = tFeatures.creatureSubtypes.filter(s =>
     !['human', 'soldier', 'warrior', 'druid', 'wizard', 'cleric', 'rogue', 'citizen', 'scout'].includes(s) && cFeatures.creatureSubtypes.includes(s)
   );
   if (sharedSignatureSubtypes.length > 0) {
-    structuralActionPoints = Math.min(20, structuralActionPoints + 3);
-    structuralReasons.push(`Shared tribal archetype: ${sharedSignatureSubtypes.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}`);
+    const isTribalRelevant = sharedSignatureSubtypes.some(s =>
+      tFeatures.cleanOracle.includes(s) || cFeatures.cleanOracle.includes(s)
+    );
+    if (isTribalRelevant) {
+      structuralActionPoints = Math.min(20, structuralActionPoints + 3);
+      structuralReasons.push(`Shared tribal archetype: ${sharedSignatureSubtypes.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}`);
+    }
+  }
+
+  // Highlight signature Limited roles
+  if (tFeatures.actionSubtypes.has('activated_team_pump') && cFeatures.actionSubtypes.has('activated_team_pump')) {
+    structuralReasons.unshift('Both creatures with activated team-pump mana sink');
+  } else if (tFeatures.actionSubtypes.has('team_pump') && cFeatures.actionSubtypes.has('team_pump')) {
+    structuralReasons.unshift('Both creatures with team-wide stat buff');
   }
 
   // Highlight signature Limited roles
@@ -1739,7 +1826,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
       rarityAdjustment = 3; // Both are common draft staples
       baselineReasons.push('Common draft staple comp');
     } else if (cFeatures.rarity === 'uncommon') {
-      rarityAdjustment = (bothShareLivingWeapon || sharesCounterDistributor || bothShareLateGameSacDestruction || bothShareFlyingLifegain) ? -1 : -3;
+      rarityAdjustment = (bothShareLivingWeapon || sharesCounterDistributor || bothShareLateGameSacDestruction || bothShareFlyingLifegain || bothShareActivatedTeamPump) ? -1 : -3;
     } else {
       rarityAdjustment = -8; // Rare/Mythic power-level penalty vs Common draft baseline
     }
@@ -1834,7 +1921,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
  * and synthesizes an empirical consensus projection.
  */
 export async function findSimilarCards(targetCard: Card): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v44`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v45`;
   if (similarityCache.has(cacheKey)) {
     return similarityCache.get(cacheKey)!;
   }
@@ -2050,34 +2137,38 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
 
   for (const match of sortedForPresentation) {
     const cardFeatures = extractCardFeatures(match.card);
-    const primarySubtype = cardFeatures.actionSubtypes.has('ability_loss_aura')
-      ? 'ability_loss_aura'
-      : (cardFeatures.actionSubtypes.has('freeze_aura')
-        ? 'freeze_aura'
-        : (cardFeatures.actionSubtypes.has('pacifism_aura')
-          ? 'pacifism_aura'
-          : (cardFeatures.actionSubtypes.has('aura_removal')
-            ? 'aura_removal'
-            : (cardFeatures.actionSubtypes.has('flash_reach_ambush')
-              ? 'flash_reach_ambush'
-              : (cardFeatures.actionSubtypes.has('etb_treasure')
-                ? 'etb_treasure'
-                : (cardFeatures.actionSubtypes.has('land_tutor_top')
-                  ? 'land_tutor_top'
-                  : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
-                    ? 'flying_lifegain_evasion'
-                    : (cardFeatures.actionSubtypes.has('combat_removal')
-                      ? 'combat_removal'
-                      : (cardFeatures.actionSubtypes.has('removal_with_compensation')
-                        ? 'removal_with_compensation'
-                        : (cardFeatures.actionSubtypes.has('power_toughness_removal')
-                          ? 'power_toughness_removal'
-                          : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+')))))))))));
+    const primarySubtype = cardFeatures.actionSubtypes.has('activated_team_pump')
+      ? 'activated_team_pump'
+      : (cardFeatures.actionSubtypes.has('team_pump')
+        ? 'team_pump'
+        : (cardFeatures.actionSubtypes.has('ability_loss_aura')
+          ? 'ability_loss_aura'
+          : (cardFeatures.actionSubtypes.has('freeze_aura')
+            ? 'freeze_aura'
+            : (cardFeatures.actionSubtypes.has('pacifism_aura')
+              ? 'pacifism_aura'
+              : (cardFeatures.actionSubtypes.has('aura_removal')
+                ? 'aura_removal'
+                : (cardFeatures.actionSubtypes.has('flash_reach_ambush')
+                  ? 'flash_reach_ambush'
+                  : (cardFeatures.actionSubtypes.has('etb_treasure')
+                    ? 'etb_treasure'
+                    : (cardFeatures.actionSubtypes.has('land_tutor_top')
+                      ? 'land_tutor_top'
+                      : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
+                        ? 'flying_lifegain_evasion'
+                        : (cardFeatures.actionSubtypes.has('combat_removal')
+                          ? 'combat_removal'
+                          : (cardFeatures.actionSubtypes.has('removal_with_compensation')
+                            ? 'removal_with_compensation'
+                            : (cardFeatures.actionSubtypes.has('power_toughness_removal')
+                              ? 'power_toughness_removal'
+                              : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+')))))))))))));
     const roleKey = primarySubtype;
 
     const maxAllowed = (primarySubtype === 'flash_reach_ambush' || primarySubtype === 'combat_removal')
       ? 1
-      : (primarySubtype === 'removal_with_compensation' ? 3 : 2);
+      : (primarySubtype === 'removal_with_compensation' || primarySubtype === 'activated_team_pump' ? 3 : 2);
     const currentCount = roleCmcCounts[roleKey] || 0;
 
     if (currentCount < maxAllowed) {

@@ -200,6 +200,14 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
                       <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300 font-sans">Toughness</td>
                     </tr>
                     <tr>
+                      <td className="px-3 py-1.5 font-bold text-amber-600 dark:text-amber-400">2/3, PT</td>
+                      <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300 font-sans">Power / Toughness Stats</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-1.5 font-bold text-amber-600 dark:text-amber-400">{'{2}{W}'}, M</td>
+                      <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300 font-sans">Exact Mana Cost Symbols</td>
+                    </tr>
+                    <tr>
                       <td className="px-3 py-1.5 font-bold text-amber-600 dark:text-amber-400">R</td>
                       <td className="px-3 py-1.5 text-slate-700 dark:text-slate-300 font-sans">Rarity</td>
                     </tr>
@@ -295,6 +303,18 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {[
+                  {
+                    code: '{2}{W}',
+                    desc: 'Search for cards with exact or partial mana cost {2}{W}',
+                  },
+                  {
+                    code: '2/3',
+                    desc: 'Search for creatures with 2 power and 3 toughness (without affecting text)',
+                  },
+                  {
+                    code: 'flying 2/3 {2}{W}',
+                    desc: 'Combines text keyword, 2/3 power/toughness, and {2}{W} mana cost',
+                  },
                   {
                     code: 't:cat c<=WGB',
                     desc: 'Any cat with a mana cost that includes White, Green, Black, or Colorless',
