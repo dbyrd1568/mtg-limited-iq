@@ -1,0 +1,312 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Card } from '../../types/mtg';
+import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from '../../services/scryfall';
+import { ManaCostRenderer } from '../UI/ManaSymbol';
+import { SetSymbol } from '../UI/SetSymbol';
+import { Search, X, Loader2, Sparkles, Check, Database } from 'lucide-react';
+
+const SCRYFALL_API_BASE = 'https://api.scryfall.com';
+
+interface PrecedentCardSearchProps {
+  targetCard: Card;
+  onSelectCard: (card: Card) => void;
+  className?: string;
+  placeholder?: string;
+}
+
+export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
+  targetCard,
+  onSelectCard,
+  className = '',
+  placeholder = 'Search any card to add as precedent (e.g. Doom Blade, Murder, Shock)...',
+}) => {
+  const [query, setQuery] = useState<string>('');
+  const [results, setResults] = useState<Card[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Search execution with debouncing
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      setIsOpen(false);
+      setLoading(false);
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        // Search Scryfall prioritizing booster draft sets and non-funny cards
+        const scryfallQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token`;
+        const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(scryfallQuery)}&order=released&dir=desc`;
+
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'MTGLimitedIQ/2.0',
+            Accept: 'application/json',
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.data)) {
+            const normalized: Card[] = data.data
+              .filter((rc: any) => !rc.name.startsWith('A-') && !rc.promo_types?.includes('rebalanced'))
+              .map(normalizeScryfallCard)
+              // Exclude target card itself
+              .filter(
+                (c: Card) =>
+                  c.name.toLowerCase() !== targetCard.name.toLowerCase() ||
+                  c.set.toLowerCase() !== targetCard.set.toLowerCase()
+              );
+
+            // Prioritize cards with 17lands data and unique card names
+            const deduped: Card[] = [];
+            const seenNames = new Set<string>();
+
+            // First pass: prefer printings in known 17Lands sets
+            for (const c of normalized) {
+              const nameLower = c.name.toLowerCase();
+              const has17L = POPULAR_LIMITED_SETS.some(
+                (s) => s.code.toUpperCase() === c.set.toUpperCase() && s.has_17lands_data !== false
+              );
+              if (!seenNames.has(nameLower) && has17L) {
+                seenNames.add(nameLower);
+                deduped.push(c);
+              }
+            }
+
+            // Second pass: include any remaining unique names
+            for (const c of normalized) {
+              const nameLower = c.name.toLowerCase();
+              if (!seenNames.has(nameLower)) {
+                seenNames.add(nameLower);
+                deduped.push(c);
+              }
+            }
+
+            setResults(deduped.slice(0, 10));
+            setIsOpen(deduped.length > 0);
+            setSelectedIndex(-1);
+          } else {
+            setResults([]);
+            setIsOpen(false);
+          }
+        } else {
+          setResults([]);
+          setIsOpen(false);
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn('Scryfall card search failed:', err);
+          setResults([]);
+          setIsOpen(false);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }, 280);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, targetCard]);
+
+  const handleSelect = useCallback(
+    (card: Card) => {
+      onSelectCard(card);
+      setQuery('');
+      setResults([]);
+      setIsOpen(false);
+      setSelectedIndex(-1);
+    },
+    [onSelectCard]
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen || results.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && selectedIndex < results.length) {
+        handleSelect(results[selectedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className={`relative ${className}`}>
+      {/* Search Bar Input */}
+      <div className="relative flex items-center group">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-violet-600 dark:group-focus-within:text-cyan-400 transition-colors" />
+
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => {
+            if (results.length > 0) setIsOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full pl-10 pr-9 py-2.5 bg-white dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 shadow-xs transition-all"
+        />
+
+        {/* Right Icon: Spinner or Clear */}
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+          {loading ? (
+            <Loader2 className="w-4 h-4 text-violet-600 dark:text-cyan-400 animate-spin" />
+          ) : query ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setResults([]);
+                setIsOpen(false);
+                inputRef.current?.focus();
+              }}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Autocomplete Dropdown */}
+      {isOpen && results.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden max-h-[360px] overflow-y-auto custom-scrollbar animate-in fade-in-50 duration-150">
+          <div className="p-2 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-[#050818] flex items-center justify-between">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Select card to substitute into precedents
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">
+              {results.length} results
+            </span>
+          </div>
+
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {results.map((card, idx) => {
+              const isSelected = idx === selectedIndex;
+              const has17L = POPULAR_LIMITED_SETS.some(
+                (s) => s.code.toUpperCase() === card.set.toUpperCase() && s.has_17lands_data !== false
+              );
+              const imgUri =
+                card.image_uris?.small ||
+                card.image_uris?.normal ||
+                (card.card_faces && card.card_faces[0]?.image_uris?.small);
+
+              return (
+                <li
+                  key={`${card.set}_${card.id}`}
+                  onClick={() => handleSelect(card)}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  className={`p-2.5 flex items-center gap-3 cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-950 dark:text-cyan-100'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-800 dark:text-slate-200'
+                  }`}
+                >
+                  {/* Card Thumbnail */}
+                  {imgUri ? (
+                    <img
+                      src={imgUri}
+                      alt={card.name}
+                      className="w-8 h-11 rounded object-cover shadow-2xs shrink-0 border border-slate-200 dark:border-slate-700"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-8 h-11 rounded bg-slate-200 dark:bg-slate-800 shrink-0 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-400">
+                      MTG
+                    </div>
+                  )}
+
+                  {/* Card Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-xs truncate font-heading">
+                        {card.name}
+                      </span>
+                      {card.mana_cost && (
+                        <div className="shrink-0 scale-90 origin-right">
+                          <ManaCostRenderer manaCost={card.mana_cost} size="sm" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 pt-0.5 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <SetSymbol setCode={card.set} size="xs" />
+                        <span className="font-bold uppercase text-violet-700 dark:text-cyan-400">
+                          {card.set}
+                        </span>
+                      </div>
+                      <span>•</span>
+                      <span className="capitalize">{card.rarity}</span>
+                      {card.type_line && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate max-w-[140px] sm:max-w-[220px]">
+                            {card.type_line}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 17Lands telemetry indicator */}
+                  {has17L && (
+                    <span
+                      className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1"
+                      title="17Lands premier draft telemetry verified for this set"
+                    >
+                      <Database className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>17Lands</span>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};

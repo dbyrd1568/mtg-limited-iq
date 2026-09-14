@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, GradeTier } from '../../types/mtg';
-import { findSimilarCards, CardSimilarityResult, SimilarCardMatch } from '../../services/cardSimilarity';
+import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch } from '../../services/cardSimilarity';
 import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
+import { getTargetCardOverrides, savePrecedentOverride, removePrecedentOverride, clearTargetCardOverrides, PrecedentSlotOverride } from '../../services/precedentOverrides';
+import { PrecedentCardSearch } from './PrecedentCardSearch';
+import { PrecedentSlotPickerModal } from './PrecedentSlotPickerModal';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
-import { X, Scale, Check, PlayingCardsFan, HelpCircle, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Scale, Check, PlayingCardsFan, HelpCircle, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, Sparkles } from 'lucide-react';
 
 export interface CardPerformanceMetrics {
   winRate?: number;
@@ -47,6 +50,13 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [adoptedSourceId, setAdoptedSourceId] = useState<string | null>(null);
   const [inspectCardMatch, setInspectCardMatch] = useState<SimilarCardMatch | null>(null);
+
+  // User-customized precedent overrides state
+  const [customOverrides, setCustomOverrides] = useState<Record<number, PrecedentSlotOverride>>({});
+  const [slotPickerCard, setSlotPickerCard] = useState<Card | null>(null);
+  const [preselectedSlotIndex, setPreselectedSlotIndex] = useState<number | null>(null);
+  const [isReplacingSlot, setIsReplacingSlot] = useState<boolean>(false);
+  const [directSwapSlotIndex, setDirectSwapSlotIndex] = useState<number | null>(null);
 
   // Guarantee target card 17lands data is resolved even if caller didn't pass it
   const effectiveTarget17L = useMemo<CardPerformanceMetrics | undefined>(() => {
@@ -180,6 +190,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   // Fetch comps on open or target change
   useEffect(() => {
     if (isOpen && targetCard) {
+      setCustomOverrides(getTargetCardOverrides(targetCard));
+      setSlotPickerCard(null);
+      setPreselectedSlotIndex(null);
+      setDirectSwapSlotIndex(null);
       setLoading(true);
       setInspectCardMatch(null);
       setAdoptedSourceId(null);
@@ -198,6 +212,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
       setData(null);
       setInspectCardMatch(null);
       setAdoptedSourceId(null);
+      setCustomOverrides({});
+      setSlotPickerCard(null);
+      setPreselectedSlotIndex(null);
+      setDirectSwapSlotIndex(null);
     }
   }, [isOpen, targetCard]);
 
@@ -207,7 +225,12 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (inspectCardMatch) {
+        if (directSwapSlotIndex !== null) {
+          setDirectSwapSlotIndex(null);
+        } else if (slotPickerCard) {
+          setSlotPickerCard(null);
+          setPreselectedSlotIndex(null);
+        } else if (inspectCardMatch) {
           setInspectCardMatch(null);
         } else {
           onClose();
@@ -217,7 +240,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
       // Do not navigate cards if typing in an input/textarea or currently inspecting a comp detail submodal
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
-      if (activeTag === 'input' || activeTag === 'textarea' || inspectCardMatch) return;
+      if (activeTag === 'input' || activeTag === 'textarea' || inspectCardMatch || slotPickerCard || directSwapSlotIndex !== null) return;
 
       if ((e.key === 'ArrowLeft' || e.key === '[') && canNavigatePrev) {
         e.preventDefault();
@@ -230,7 +253,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, inspectCardMatch, onClose, canNavigatePrev, canNavigateNext, handlePrevCard, handleNextCard]);
+  }, [isOpen, inspectCardMatch, slotPickerCard, directSwapSlotIndex, onClose, canNavigatePrev, canNavigateNext, handlePrevCard, handleNextCard]);
 
   if (!isOpen || !targetCard) return null;
 
@@ -241,10 +264,73 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     }
   };
 
-  // Only display up to top 4 highest similarity matches
+  // Overlay user-customized slot overrides onto algorithmic matches
   const presentedMatches = useMemo(() => {
-    return data?.matches?.slice(0, 4) || [];
-  }, [data]);
+    const raw = data?.matches?.slice(0, 4) || [];
+    if (!raw.length) return [];
+
+    const merged = [...raw];
+    for (let slot = 0; slot < 4; slot++) {
+      if (customOverrides[slot]) {
+        merged[slot] = customOverrides[slot].replacementMatch;
+      }
+    }
+    return merged;
+  }, [data, customOverrides]);
+
+  const hasCustomOverrides = useMemo(() => {
+    return Object.keys(customOverrides).length > 0;
+  }, [customOverrides]);
+
+  const handleConfirmSlotReplacement = async (slotIndex: number) => {
+    if (!targetCard || !slotPickerCard) return;
+
+    setIsReplacingSlot(true);
+    try {
+      const repMatch = await buildCustomPrecedentMatch(targetCard, slotPickerCard);
+      const rawMatches = data?.matches?.slice(0, 4) || [];
+      const origMatch = rawMatches[slotIndex] || null;
+
+      savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
+      setCustomOverrides(getTargetCardOverrides(targetCard));
+    } catch (err) {
+      console.error('Failed to substitute precedent card:', err);
+    } finally {
+      setIsReplacingSlot(false);
+      setSlotPickerCard(null);
+      setPreselectedSlotIndex(null);
+    }
+  };
+
+  const handleDirectSwapSelect = async (replacementCard: Card, slotIndex: number) => {
+    if (!targetCard) return;
+    setIsReplacingSlot(true);
+    try {
+      const repMatch = await buildCustomPrecedentMatch(targetCard, replacementCard);
+      const rawMatches = data?.matches?.slice(0, 4) || [];
+      const origMatch = rawMatches[slotIndex] || null;
+
+      savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
+      setCustomOverrides(getTargetCardOverrides(targetCard));
+    } catch (err) {
+      console.error('Failed to directly swap precedent card:', err);
+    } finally {
+      setIsReplacingSlot(false);
+      setDirectSwapSlotIndex(null);
+    }
+  };
+
+  const handleRevertSlot = (slotIndex: number) => {
+    if (!targetCard) return;
+    removePrecedentOverride(targetCard, slotIndex);
+    setCustomOverrides(getTargetCardOverrides(targetCard));
+  };
+
+  const handleResetAllSlots = () => {
+    if (!targetCard) return;
+    clearTargetCardOverrides(targetCard);
+    setCustomOverrides({});
+  };
 
   // Compute the average grade strictly from the comparison cards presented on screen
   const presentedGradeStats = useMemo(() => {

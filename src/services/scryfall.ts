@@ -118,6 +118,9 @@ export function isRemovalSpell(card: Card): boolean {
     'deals damage equal to its power to target',
     'enchanted creature can\'t attack or block',
     'enchanted creature doesn\'t untap',
+    'loses all abilities',
+    'has no abilities',
+    'base power and toughness',
   ];
 
   return removalPatterns.some(pat => oracle.includes(pat));

@@ -10,6 +10,7 @@ import { SimilarCardsModal } from './SimilarCardsModal';
 import confetti from 'canvas-confetti';
 
 export type GradingSortOrder = 'number' | 'color' | 'rarity_asc' | 'rarity_desc' | 'unrated_first' | 'alpha';
+export type GraderNavMode = 'all' | 'ungraded';
 
 interface QuickRateModalProps {
   isOpen: boolean;
@@ -57,6 +58,21 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   onClearFilter,
 }) => {
   const [sortOrder, setSortOrder] = useState<GradingSortOrder>('number');
+  const [navMode, setNavMode] = useState<GraderNavMode>(() => {
+    try {
+      const saved = localStorage.getItem('mtg_grader_nav_mode');
+      if (saved === 'all' || saved === 'ungraded') return saved;
+    } catch (e) {}
+    return 'all';
+  });
+
+  const handleToggleNavMode = (mode: GraderNavMode) => {
+    setNavMode(mode);
+    try {
+      localStorage.setItem('mtg_grader_nav_mode', mode);
+    } catch (e) {}
+  };
+
   const [noteText, setNoteText] = useState<string>('');
   const [isSimilarModalOpen, setIsSimilarModalOpen] = useState<boolean>(false);
 
@@ -173,54 +189,140 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
 
     onSaveEvaluation(evaluation);
 
-    // Find the NEXT UNGRADED card strictly forward first
-    let nextCard: Card | null = null;
+    if (navMode === 'ungraded') {
+      // Find the NEXT UNGRADED card strictly forward first
+      let nextUnrated: Card | null = null;
+      for (let i = currentIndex + 1; i < orderedCards.length; i++) {
+        const c = orderedCards[i];
+        const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+        if (c.id !== currentCard.id && !userEvaluations[key]) {
+          nextUnrated = c;
+          break;
+        }
+      }
+
+      // Wrap around from beginning if not found forward
+      if (!nextUnrated) {
+        for (let i = 0; i < currentIndex; i++) {
+          const c = orderedCards[i];
+          const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+          if (c.id !== currentCard.id && !userEvaluations[key]) {
+            nextUnrated = c;
+            break;
+          }
+        }
+      }
+
+      if (nextUnrated) {
+        onSelectCard(nextUnrated);
+      } else {
+        // 100% Set Evaluation Complete! 🎉
+        try {
+          confetti({
+            particleCount: 160,
+            spread: 100,
+            origin: { y: 0.6 },
+            colors: ['#8b5cf6', '#06b6d4', '#fbbf24', '#ff4d2e', '#10b981'],
+          });
+        } catch (e) {}
+      }
+    } else {
+      // 'all' mode: advance to next card in sequence if available
+      if (currentIndex < orderedCards.length - 1) {
+        onSelectCard(orderedCards[currentIndex + 1]);
+      }
+
+      // Check if all cards in set are now graded
+      const remainingUngraded = cards.filter((c) => {
+        if (c.id === currentCard.id) return false;
+        const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+        return !userEvaluations[key];
+      }).length;
+      if (remainingUngraded === 0) {
+        try {
+          confetti({
+            particleCount: 160,
+            spread: 100,
+            origin: { y: 0.6 },
+            colors: ['#8b5cf6', '#06b6d4', '#fbbf24', '#ff4d2e', '#10b981'],
+          });
+        } catch (e) {}
+      }
+    }
+  };
+
+  // Next card based on current navMode (all vs ungraded)
+  const nextCard = useMemo(() => {
+    if (!currentCard || orderedCards.length === 0) return null;
+
+    if (navMode === 'all') {
+      if (currentIndex < orderedCards.length - 1) {
+        return orderedCards[currentIndex + 1];
+      }
+      return null;
+    }
+
+    // Ungraded mode: find next ungraded card forward first
     for (let i = currentIndex + 1; i < orderedCards.length; i++) {
       const c = orderedCards[i];
       const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
       if (c.id !== currentCard.id && !userEvaluations[key]) {
-        nextCard = c;
-        break;
+        return c;
       }
     }
-
-    // Wrap around from beginning if not found forward
-    if (!nextCard) {
-      for (let i = 0; i < currentIndex; i++) {
-        const c = orderedCards[i];
-        const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
-        if (c.id !== currentCard.id && !userEvaluations[key]) {
-          nextCard = c;
-          break;
-        }
+    // Wrap around to start if not found forward
+    for (let i = 0; i < currentIndex; i++) {
+      const c = orderedCards[i];
+      const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+      if (c.id !== currentCard.id && !userEvaluations[key]) {
+        return c;
       }
     }
+    return null;
+  }, [currentCard, currentIndex, orderedCards, navMode, userEvaluations]);
 
+  // Previous card based on current navMode (all vs ungraded)
+  const prevCard = useMemo(() => {
+    if (!currentCard || orderedCards.length === 0) return null;
+
+    if (navMode === 'all') {
+      if (currentIndex > 0) {
+        return orderedCards[currentIndex - 1];
+      }
+      return null;
+    }
+
+    // Ungraded mode: find prev ungraded card backward first
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const c = orderedCards[i];
+      const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+      if (c.id !== currentCard.id && !userEvaluations[key]) {
+        return c;
+      }
+    }
+    // Wrap around to end if not found backward
+    for (let i = orderedCards.length - 1; i > currentIndex; i--) {
+      const c = orderedCards[i];
+      const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+      if (c.id !== currentCard.id && !userEvaluations[key]) {
+        return c;
+      }
+    }
+    return null;
+  }, [currentCard, currentIndex, orderedCards, navMode, userEvaluations]);
+
+  const isNextDisabled = !nextCard;
+  const isPrevDisabled = !prevCard;
+
+  const handleNext = () => {
     if (nextCard) {
       onSelectCard(nextCard);
-    } else {
-      // 100% Set Evaluation Complete! 🎉
-      try {
-        confetti({
-          particleCount: 160,
-          spread: 100,
-          origin: { y: 0.6 },
-          colors: ['#8b5cf6', '#06b6d4', '#fbbf24', '#ff4d2e', '#10b981'],
-        });
-      } catch (e) {}
-    }
-  };
-
-  // Manual Next / Prev moves strictly in order (1 card at a time)
-  const handleNext = () => {
-    if (currentIndex < orderedCards.length - 1) {
-      onSelectCard(orderedCards[currentIndex + 1]);
     }
   };
 
   const handlePrev = () => {
-    if (currentIndex > 0) {
-      onSelectCard(orderedCards[currentIndex - 1]);
+    if (prevCard) {
+      onSelectCard(prevCard);
     }
   };
 
@@ -238,9 +340,9 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
       }
 
       if (e.key === 'ArrowRight') {
-        handleNext();
+        if (nextCard) onSelectCard(nextCard);
       } else if (e.key === 'ArrowLeft') {
-        handlePrev();
+        if (prevCard) onSelectCard(prevCard);
       } else if (e.key === 'Escape') {
         onClose();
       }
@@ -248,7 +350,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, currentIndex, orderedCards.length]);
+  }, [isOpen, nextCard, prevCard, onClose, onSelectCard]);
 
   const handleNoteChange = (newText: string) => {
     if (!currentCard) return;
@@ -298,9 +400,9 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
               <Zap className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading truncate">Rapid Set Evaluation Laboratory</h2>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading truncate">Card Evaluation</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                Card {currentIndex + 1} of {orderedCards.length} {orderedCards.length < 100 ? '(Preview / Spoiled Cards)' : 'in set'} • {ratedCountInSet} of {orderedCards.length} rated in {currentCard.set?.toUpperCase()}
+                Card {currentIndex + 1} of {orderedCards.length} {orderedCards.length < 100 ? '(Preview / Spoiled Cards)' : 'in set'} • {ratedCountInSet} of {orderedCards.length} rated in {currentCard.set?.toUpperCase()} • {navMode === 'ungraded' ? 'Ungraded Only' : 'All Cards'}
               </p>
             </div>
           </div>
@@ -387,7 +489,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
             <button
               onClick={onClose}
               className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shrink-0"
-              title="Close rapid grader"
+              title="Close card evaluator"
             >
               <X className="w-5 h-5" />
             </button>
@@ -534,35 +636,102 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
             })}
           </div>
 
-          {/* Prev / Next Navigation */}
-          <div className="flex items-center justify-between pt-1">
+          {/* Prev / Next Navigation & Ungraded / All Filter Toggle */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
             <button
+              type="button"
               onClick={handlePrev}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-              title="Previous Ungraded Card (←)"
+              disabled={isPrevDisabled}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                isPrevDisabled
+                  ? 'opacity-30 cursor-not-allowed text-slate-400 dark:text-slate-600'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white cursor-pointer hover:bg-slate-200/70 dark:hover:bg-slate-800'
+              }`}
+              title={
+                navMode === 'ungraded'
+                  ? isPrevDisabled
+                    ? 'No previous ungraded cards'
+                    : 'Previous Ungraded Card (←)'
+                  : isPrevDisabled
+                  ? 'First card in sequence'
+                  : 'Previous Card (←)'
+              }
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Previous</span>
             </button>
 
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">Card {currentIndex + 1} of {orderedCards.length}</span>
-              {ungradedCount > 0 ? (
-                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300 font-bold text-[11px]">
-                  {ungradedCount} Ungraded Left
+            {/* Segmented Toggle: All Cards vs Ungraded Only */}
+            <div className="flex items-center gap-2.5">
+              <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-200/80 dark:bg-[#050818] border border-slate-300/80 dark:border-slate-800 text-xs font-semibold shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleToggleNavMode('all')}
+                  className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-xs ${
+                    navMode === 'all'
+                      ? 'bg-white dark:bg-violet-600 text-slate-900 dark:text-white shadow-xs font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  title="Navigate through all cards sequentially"
+                >
+                  All Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleNavMode('ungraded')}
+                  className={`px-2.5 sm:px-3 py-1 rounded-lg transition-all cursor-pointer text-xs flex items-center gap-1.5 ${
+                    navMode === 'ungraded'
+                      ? 'bg-white dark:bg-violet-600 text-slate-900 dark:text-white shadow-xs font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  title="Navigate only through cards you haven't graded yet"
+                >
+                  <span>Ungraded Only</span>
+                  {ungradedCount > 0 && (
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono leading-tight ${
+                        navMode === 'ungraded'
+                          ? 'bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-cyan-300 font-bold'
+                          : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                      }`}
+                    >
+                      {ungradedCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-slate-500 dark:text-slate-400 hidden md:inline">
+                  Card {currentIndex + 1} of {orderedCards.length}
                 </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-emerald-300 font-bold text-[11px] flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  100% Graded
-                </span>
-              )}
+                {ungradedCount === 0 && (
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-emerald-300 font-bold text-[11px] flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    100% Graded
+                  </span>
+                )}
+              </div>
             </div>
 
             <button
+              type="button"
               onClick={handleNext}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-              title="Next Ungraded Card (→)"
+              disabled={isNextDisabled}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                isNextDisabled
+                  ? 'opacity-30 cursor-not-allowed text-slate-400 dark:text-slate-600'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white cursor-pointer hover:bg-slate-200/70 dark:hover:bg-slate-800'
+              }`}
+              title={
+                navMode === 'ungraded'
+                  ? isNextDisabled
+                    ? 'No more ungraded cards'
+                    : 'Next Ungraded Card (→)'
+                  : isNextDisabled
+                  ? 'Last card in sequence'
+                  : 'Next Card (→)'
+              }
             >
               <span>Next</span>
               <ChevronRight className="w-4 h-4" />
@@ -581,8 +750,8 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
           onSelectTargetCard={onSelectCard}
           onNavigatePrev={handlePrev}
           onNavigateNext={handleNext}
-          hasPrev={currentIndex > 0}
-          hasNext={currentIndex < orderedCards.length - 1}
+          hasPrev={!isPrevDisabled}
+          hasNext={!isNextDisabled}
           currentGrade={currentEval?.userGrade}
           target17LandsData={
             landData

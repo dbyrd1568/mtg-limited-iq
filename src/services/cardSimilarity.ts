@@ -6,7 +6,7 @@ const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
 // Benchmark modern premier booster draft sets with rich 17Lands sample sizes (released sets only)
 export const COMPARABLE_PREMIER_SETS = [
-  'FIN', 'ECL', 'TDM', 'EOE', 'TLA', 'TMT', 'SOS', 'MSH', 'DFT', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR', 'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX', 'KHM', 'ZNR', 'IKO', 'ELD'
+  'FIN', 'ECL', 'TDM', 'EOE', 'TLA', 'TMT', 'SOS', 'MSH', 'DFT', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR', 'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX', 'KHM', 'ZNR', 'IKO', 'THB', 'ELD', 'M21', 'M20', 'WAR'
 ];
 
 export interface SimilarCardMatch {
@@ -16,6 +16,8 @@ export interface SimilarCardMatch {
   winRate?: number;
   alsa?: number;
   tierGrade?: GradeTier;
+  isCustomOverride?: boolean;
+  originalCardName?: string;
 }
 
 export interface HistoricalCompsConsensus {
@@ -495,6 +497,10 @@ export function extractCardFeatures(card: Card) {
     grantedKeywords,
     hasFlash,
     isCombatTrick,
+    isAura,
+    isAbilityLossAura,
+    isFreezeAura,
+    isLockdownAura,
     isAuraRemoval,
     createsTokens,
     detectedClauses,
@@ -580,7 +586,7 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
  * Construct Scryfall search queries with prioritized fallback tiers.
  * Prioritizes EXACT color matches (e.g. c=w for mono-white) before broadening.
  */
-function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCardFeatures>): string[] {
+export function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCardFeatures>): string[] {
   const setFilter = `(${COMPARABLE_PREMIER_SETS.map(s => `s:${s.toLowerCase()}`).join(' or ')})`;
   const baseFilter = `-is:reprint -t:basic -t:token -is:extra -is:alchemy ${setFilter}`;
 
@@ -1355,6 +1361,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     hard_counter: { pts: 15, label: 'Both unconditional hard counterspells' },
     soft_tax_counter: { pts: 14, label: 'Both mana-tax soft counters' },
     restricted_counter: { pts: 13, label: 'Both targeted/restricted counters' },
+    ability_loss_aura: { pts: 20, label: 'Both creature ability-stripping Auras ("loses all abilities")' },
+    freeze_aura: { pts: 18, label: 'Both freeze / tap-lockdown Auras' },
+    pacifism_aura: { pts: 16, label: 'Both pacifism / lockdown Auras' },
+    aura_removal: { pts: 15, label: 'Both Aura-based creature removal' },
     permanent_removal: { pts: 17, label: 'Both flexible permanent removal' },
     removal_with_compensation: { pts: 20, label: 'Both unconditional removal with opponent compensation' },
     combat_removal: { pts: 18, label: 'Both combat-conditioned creature removal' },
@@ -1510,6 +1520,20 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     structuralActionPoints = Math.max(structuralActionPoints, 20);
     if (!structuralReasons.includes('Both 2-drop evasive flying lifegain creatures')) {
       structuralReasons.unshift('Both 2-drop evasive flying lifegain creatures');
+    }
+  }
+
+  if (bothShareAbilityLossAura) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both creature ability-stripping Auras ("loses all abilities")')) {
+      structuralReasons.unshift('Both creature ability-stripping Auras ("loses all abilities")');
+    }
+  }
+
+  if (bothShareFreezeAura) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    if (!structuralReasons.includes('Both freeze / tap-lockdown Auras')) {
+      structuralReasons.unshift('Both freeze / tap-lockdown Auras');
     }
   }
 
@@ -1696,6 +1720,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     } else if (tFeatures.actionSubtypes.has('unconditional_removal') && cFeatures.actionSubtypes.has('unconditional_removal')) {
       statlineScore = 9;
       baselineReasons.push('Unrestricted target removal');
+    } else if (tFeatures.isAuraRemoval && cFeatures.isAuraRemoval) {
+      statlineScore = 9;
+      baselineReasons.push('Aura-based permanent neutralization');
     } else {
       statlineScore = 7;
     }
@@ -1807,7 +1834,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
  * and synthesizes an empirical consensus projection.
  */
 export async function findSimilarCards(targetCard: Card): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v43`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v44`;
   if (similarityCache.has(cacheKey)) {
     return similarityCache.get(cacheKey)!;
   }
@@ -1852,14 +1879,75 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
     }
   }
 
+  // Universal Fallback Guarantee: If specific queries yielded fewer than 12 candidates,
+  // execute a broad curve & archetype query across modern premier sets to guarantee comps
+  if (candidateCards.length < 12) {
+    try {
+      const mainColor = targetCard.colors && targetCard.colors.length > 0 && targetCard.colors[0] !== 'C'
+        ? `c:${targetCard.colors[0].toLowerCase()}`
+        : 'c:c';
+      const typeTerm = features.isCreature
+        ? 't:creature'
+        : (features.isInstant ? 't:instant' : (features.isSorcery ? 't:sorcery' : (features.isAura ? 't:aura' : (features.isEnchantment ? 't:enchantment' : (features.isArtifact ? 't:artifact' : '')))));
+      const cmcTerm = `m>=${Math.max(0, targetCard.cmc - 1)} m<=${targetCard.cmc + 1}`;
+      const fallbackQuery = `(${COMPARABLE_PREMIER_SETS.slice(0, 24).map(s => `s:${s.toLowerCase()}`).join(' or ')}) ${typeTerm} ${mainColor} ${cmcTerm} (r:c or r:u) is:booster`;
+
+      const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'SpellslingerArcana/1.0',
+          Accept: 'application/json',
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          const rawCards = data.data
+            .filter((rc: any) => !rc.name.startsWith('A-') && !rc.digital && !rc.promo_types?.includes('rebalanced'))
+            .map((rc: any) => normalizeScryfallCard(rc));
+          rawCards.forEach((c: Card) => {
+            if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase())) {
+              candidateCards.push(c);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Broad fallback candidate search failed:', err);
+    }
+  }
+
   // Score candidates against target card (filtering out low-similarity or superficial matches)
   // Strict quality gate: Only genuine comps with very high similarity (>= 58%) qualify.
-  // Cards must share significant functional mechanics/effects, not merely superficial color/CMC.
-  const scoredCandidates: { card: Card; score: number; reasons: string[] }[] = [];
+  // If fewer than 4 qualify, relax quality threshold progressively (down to 45%, then 35%) so every card has comparisons
+  let scoredCandidates: { card: Card; score: number; reasons: string[] }[] = [];
   for (const cand of candidateCards) {
     const { score, reasons } = calculateCardSimilarity(targetCard, cand);
     if (score >= 58) {
       scoredCandidates.push({ card: cand, score, reasons });
+    }
+  }
+
+  if (scoredCandidates.length < 4) {
+    for (const cand of candidateCards) {
+      if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
+        const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+        if (score >= 45) {
+          scoredCandidates.push({ card: cand, score, reasons });
+        }
+      }
+    }
+  }
+
+  if (scoredCandidates.length < 4) {
+    for (const cand of candidateCards) {
+      if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
+        const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+        if (score >= 35) {
+          scoredCandidates.push({ card: cand, score, reasons });
+        }
+      }
     }
   }
 
@@ -1875,17 +1963,18 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
     if (aCmcDiff !== bCmcDiff) return aCmcDiff - bCmcDiff;
     return (a.card.oracle_text || '').length - (b.card.oracle_text || '').length;
   });
-  // Take top high-conviction candidates (up to 16) to ensure at least 4 with verified 17Lands data
-  const topCandidates = scoredCandidates.slice(0, 16);
+
+  // Take top high-conviction candidates (up to 24) to ensure at least 4 with verified 17Lands data
+  const topCandidates = scoredCandidates.slice(0, 24);
 
   // Group by set to batch-fetch 17Lands datasets
-  // Filter out any sets known not to have 17Lands data and batch-fetch all candidate sets (up to 8)
+  // Filter out any sets known not to have 17Lands data and batch-fetch all candidate sets (up to 14 in parallel)
   const neededSets = Array.from(new Set(topCandidates.map(c => c.card.set.toUpperCase())))
     .filter(setCode => {
       const known = POPULAR_LIMITED_SETS.find(s => s.code.toUpperCase() === setCode);
       return !known || known.has_17lands_data !== false;
     })
-    .slice(0, 8);
+    .slice(0, 14);
   const setDatasets: Record<string, any> = {};
 
   await Promise.all(
@@ -1924,6 +2013,25 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
     }
   }
 
+  // Guaranteed fallback: If no enriched matches were found (e.g. offline/network issue or unlisted sets),
+  // derive ratings from topCandidates with getOrEstimate17LandsCardRating so we never render "No direct historical comps found"
+  if (enrichedMatches.length === 0 && topCandidates.length > 0) {
+    for (const { card, score, reasons } of topCandidates) {
+      const card17L = getOrEstimate17LandsCardRating(card, null);
+      const winRate = card17L?.win_rate ?? 0.54;
+      const tierGrade: GradeTier = (card17L?.tier_grade as GradeTier) || winRateToGradeTier(winRate);
+      enrichedMatches.push({
+        card,
+        similarityScore: score,
+        matchReasons: reasons,
+        winRate,
+        alsa: card17L?.avg_seen ?? 4.5,
+        tierGrade,
+      });
+      if (enrichedMatches.length >= 4) break;
+    }
+  }
+
   // Diversity filter for the 4 presented matches:
   // When target has multiple signature action subtypes (e.g. flash_reach_ambush + etb_treasure or land_tutor_top + flying_lifegain_evasion),
   // limit duplicate comps from the exact same action subtype (at most 1 for specialized combat tricks like Flash+Reach,
@@ -1942,21 +2050,29 @@ export async function findSimilarCards(targetCard: Card): Promise<CardSimilarity
 
   for (const match of sortedForPresentation) {
     const cardFeatures = extractCardFeatures(match.card);
-    const primarySubtype = cardFeatures.actionSubtypes.has('flash_reach_ambush')
-      ? 'flash_reach_ambush'
-      : (cardFeatures.actionSubtypes.has('etb_treasure')
-        ? 'etb_treasure'
-        : (cardFeatures.actionSubtypes.has('land_tutor_top')
-          ? 'land_tutor_top'
-          : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
-            ? 'flying_lifegain_evasion'
-            : (cardFeatures.actionSubtypes.has('combat_removal')
-              ? 'combat_removal'
-              : (cardFeatures.actionSubtypes.has('removal_with_compensation')
-                ? 'removal_with_compensation'
-                : (cardFeatures.actionSubtypes.has('power_toughness_removal')
-                  ? 'power_toughness_removal'
-                  : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+')))))));
+    const primarySubtype = cardFeatures.actionSubtypes.has('ability_loss_aura')
+      ? 'ability_loss_aura'
+      : (cardFeatures.actionSubtypes.has('freeze_aura')
+        ? 'freeze_aura'
+        : (cardFeatures.actionSubtypes.has('pacifism_aura')
+          ? 'pacifism_aura'
+          : (cardFeatures.actionSubtypes.has('aura_removal')
+            ? 'aura_removal'
+            : (cardFeatures.actionSubtypes.has('flash_reach_ambush')
+              ? 'flash_reach_ambush'
+              : (cardFeatures.actionSubtypes.has('etb_treasure')
+                ? 'etb_treasure'
+                : (cardFeatures.actionSubtypes.has('land_tutor_top')
+                  ? 'land_tutor_top'
+                  : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
+                    ? 'flying_lifegain_evasion'
+                    : (cardFeatures.actionSubtypes.has('combat_removal')
+                      ? 'combat_removal'
+                      : (cardFeatures.actionSubtypes.has('removal_with_compensation')
+                        ? 'removal_with_compensation'
+                        : (cardFeatures.actionSubtypes.has('power_toughness_removal')
+                          ? 'power_toughness_removal'
+                          : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+')))))))))));
     const roleKey = primarySubtype;
 
     const maxAllowed = (primarySubtype === 'flash_reach_ambush' || primarySubtype === 'combat_removal')
@@ -2066,5 +2182,53 @@ export function calculateHistoricalConsensus(matches: SimilarCardMatch[], target
     tierRangeMin,
     tierRangeMax,
     summaryText,
+  };
+}
+
+/**
+ * Builds an enriched SimilarCardMatch for an arbitrary user-selected replacement card
+ * against a target card, computing its similarity and fetching 17Lands telemetry.
+ */
+export async function buildCustomPrecedentMatch(
+  targetCard: Card,
+  replacementCard: Card
+): Promise<SimilarCardMatch> {
+  const { score, reasons } = calculateCardSimilarity(targetCard, replacementCard);
+
+  let winRate: number | undefined;
+  let alsa: number | undefined;
+  let tierGrade: GradeTier | undefined;
+
+  const setCode = (replacementCard.set || '').toUpperCase();
+  try {
+    const setData = await fetch17LandsSetData(setCode);
+    const card17L = getOrEstimate17LandsCardRating(replacementCard, setData);
+    winRate = card17L?.win_rate;
+    alsa = card17L?.avg_seen;
+    tierGrade = (card17L?.tier_grade as GradeTier) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
+  } catch {
+    const card17L = getOrEstimate17LandsCardRating(replacementCard, null);
+    winRate = card17L?.win_rate;
+    alsa = card17L?.avg_seen;
+    tierGrade = (card17L?.tier_grade as GradeTier) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
+  }
+
+  // Fallback estimation if not found in 17lands data
+  if (!tierGrade) {
+    const estimated = getOrEstimate17LandsCardRating(replacementCard, null);
+    tierGrade = (estimated?.tier_grade as GradeTier) || 'C';
+    if (typeof winRate !== 'number' && typeof estimated?.win_rate === 'number') {
+      winRate = estimated.win_rate;
+    }
+  }
+
+  return {
+    card: replacementCard,
+    similarityScore: score,
+    matchReasons: reasons,
+    winRate,
+    alsa,
+    tierGrade,
+    isCustomOverride: true,
   };
 }

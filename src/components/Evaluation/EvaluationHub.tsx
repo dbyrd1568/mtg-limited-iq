@@ -24,7 +24,7 @@ import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
 import { CalibrationScatterPlot } from './CalibrationScatterPlot';
-import { Trophy, Award, Filter, Search, Zap, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink } from 'lucide-react';
+import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink } from 'lucide-react';
 import { ExportGradesModal } from './ExportGradesModal';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
@@ -527,7 +527,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           </button>
         </div>
 
-        {/* Right: Export, Clear, Blind Mode Toggle & Rapid Grader Action */}
+        {/* Right: Export, Clear, Blind Mode Toggle */}
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <button
             type="button"
@@ -574,19 +574,6 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               <span>17L: TBD</span>
             </div>
           )}
-
-          <button
-            onClick={() => {
-              const firstUngraded = cards.find(
-                (c) => !userEvaluations[`${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`]
-              );
-              handleSelectCardForModal(firstUngraded || cards[0] || null);
-            }}
-            className="px-3 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider font-heading transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border border-violet-400/40 shrink-0 whitespace-nowrap"
-          >
-            <Zap className="w-3.5 h-3.5 fill-white shrink-0" />
-            <span>Rapid Grade</span>
-          </button>
         </div>
       </div>
 
