@@ -165,20 +165,29 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Oteclan Landmark', 'LCI', '{1}', 1, 'Artifact', 'When Oteclan Landmark enters the battlefield, scry 2. Craft with land {2}{W}.', ['W']),
   createBenchmarkCard('Railway Brawler', 'OTJ', '{3}{G}{G}', 5, 'Creature — Rhino Warrior', 'Plot {2}{G}{G}. Reach, trample. Whenever another creature enters the battlefield under your control, double its power and toughness until end of turn.', ['G'], '5', '5', 'mythic', ['Reach', 'Trample']),
   createBenchmarkCard('Professor Onyx', 'STX', '{4}{B}{B}', 6, 'Planeswalker — Liliana', 'Magecraft — Whenever you cast or copy an instant or sorcery spell, each opponent loses 2 life and you gain 2 life.', ['B'], undefined, undefined, 'mythic'),
+  createBenchmarkCard('Enlightened Tutor', 'EMA', '{W}', 1, 'Instant', 'Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top.', ['W'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Search for Glory', 'KHM', '{2}{W}', 3, 'Snow Sorcery', 'Search your library for a snow permanent card, a legendary card, or a Saga card, reveal it, put it into your hand, then shuffle. You gain 1 life for each {S} spent to cast this spell.', ['W'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Idyllic Tutor', 'THB', '{2}{W}', 3, 'Sorcery', 'Search your library for an enchantment card, reveal it, put it into your hand, then shuffle.', ['W'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Solve the Equation', 'STX', '{2}{U}', 3, 'Sorcery', 'Search your library for an instant or sorcery card, reveal it, put it into your hand, then shuffle.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Demonic Counsel', 'DSK', '{1}{B}', 2, 'Sorcery', 'Search your library for a Demon card, reveal it, put it into your hand, then shuffle. Delirium — If there are four or more card types among cards in your graveyard, instead search your library for any card, put it into your hand, then shuffle.', ['B'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Insatiable Avarice', 'OTJ', '{B}', 1, 'Sorcery', 'Spree\n+ {2} — Search your library for a card, then shuffle and put that card on top.\n+ {B}{B} — Target player draws three cards and loses 3 life.', ['B'], undefined, undefined, 'rare'),
 ];
 
 // Known Limited functional effect clauses with category classification
 export interface EffectPattern {
   pattern: RegExp;
   label: string;
-  category: 'removal' | 'damage' | 'counter' | 'draw' | 'selection' | 'trick' | 'bounce' | 'pacifism' | 'token' | 'counters' | 'sweeper' | 'synergy' | 'graveyard' | 'equipment';
+  category: 'removal' | 'damage' | 'counter' | 'draw' | 'selection' | 'trick' | 'bounce' | 'pacifism' | 'token' | 'counters' | 'sweeper' | 'synergy' | 'graveyard' | 'equipment' | 'tutor';
 }
 
 const EFFECT_PATTERNS: EffectPattern[] = [
   { pattern: /(destroy|exile) (up to one )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or )?creature/i, label: 'Creature Removal', category: 'removal' },
   { pattern: /(destroy|exile) (up to one )?target creature/i, label: 'Creature Removal', category: 'removal' },
   { pattern: /destroy target \[(attacking|blocking|tapped)\] creature/i, label: 'Creature Removal', category: 'removal' },
-  { pattern: /(destroy|exile) target (permanent|nonland permanent)/i, label: 'Permanent Removal', category: 'removal' },
+  { pattern: /(destroy|exile) target (permanent|nonland permanent|artifact, creature, or enchantment|artifact|enchantment)/i, label: 'Permanent Removal', category: 'removal' },
+  { pattern: /search your library for .* card.*put that card on top|search your library for .* then shuffle and put that card on top/i, label: 'Top-of-Library Tutor', category: 'tutor' },
+  { pattern: /search your library for .* into your hand/i, label: 'Library Tutor to Hand', category: 'tutor' },
+  { pattern: /search your library for/i, label: 'Library Tutor / Search', category: 'tutor' },
   { pattern: /deals \d+ damage to (any target|target creature)/i, label: 'Burn / Direct Damage', category: 'damage' },
   { pattern: /deals \d+ damage to each creature/i, label: 'Board Wipe / Sweeper', category: 'sweeper' },
   { pattern: /destroy all creatures/i, label: 'Board Wipe / Wrath', category: 'sweeper' },
@@ -370,9 +379,13 @@ export function extractCardFeatures(card: Card) {
     actionSubtypes.add('burn_damage');
   } else if (/deals damage equal to (its|target creature's) power|fights target creature/i.test(oracle)) {
     actionSubtypes.add('bite_fight');
-  } else if (/(destroy|exile) target (permanent|nonland permanent)/i.test(oracle)) {
+  } else if (/(destroy|exile) target (permanent|nonland permanent|artifact, creature, or enchantment)/i.test(oracle)) {
     actionSubtypes.add('permanent_removal');
     actionSubtypes.add('unconditional_removal');
+    detectedCategories.add('removal');
+  } else if (/(destroy|exile) target (artifact|enchantment)/i.test(oracle)) {
+    actionSubtypes.add('artifact_enchantment_removal');
+    detectedCategories.add('removal');
   } else {
     const isCreatureDestructionOrExile = (
       /(destroy|exile) (up to one )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or )?creature/i.test(oracle) ||
@@ -630,6 +643,53 @@ export function extractCardFeatures(card: Card) {
     }
   }
 
+  // 9. Library Search & Tutor Subtypes (Spells and non-creature tutors)
+  const isTutor = /search your library/i.test(oracle);
+  let isTutorTop = false;
+  let isTutorHand = false;
+  let isTutorBattlefield = false;
+  let isPlaneswalkerTutor = false;
+  let isLegendaryTutor = false;
+
+  if (isTutor) {
+    actionSubtypes.add('library_tutor');
+    detectedCategories.add('tutor');
+    detectedCategories.add('selection');
+
+    if (/put that card on top|then shuffle and put that card on top|shuffle, then put that card on top/i.test(oracle) || /search your library .* on top/i.test(oracle)) {
+      isTutorTop = true;
+      actionSubtypes.add('tutor_to_top');
+    }
+    if (/into your hand/i.test(oracle)) {
+      isTutorHand = true;
+      actionSubtypes.add('tutor_to_hand');
+    }
+    if (/onto the battlefield/i.test(oracle)) {
+      isTutorBattlefield = true;
+      actionSubtypes.add('tutor_to_battlefield');
+    }
+    if (/planeswalker/i.test(oracle)) {
+      isPlaneswalkerTutor = true;
+      actionSubtypes.add('planeswalker_tutor');
+    }
+    if (/legendary/i.test(oracle)) {
+      isLegendaryTutor = true;
+      actionSubtypes.add('legendary_tutor');
+    }
+    if (/(basic )?land card/i.test(oracle)) {
+      actionSubtypes.add('land_tutor');
+    }
+    if (/creature card/i.test(oracle)) {
+      actionSubtypes.add('creature_tutor');
+    }
+    if (/(instant|sorcery) card/i.test(oracle)) {
+      actionSubtypes.add('spell_tutor');
+    }
+    if (/(permanent|enchantment|artifact|saga|aura|equipment) card/i.test(oracle)) {
+      actionSubtypes.add('permanent_tutor');
+    }
+  }
+
   // Cost Structure
   let costProfile: 'additional_cost' | 'cost_reduction' | 'standard_cost' = 'standard_cost';
   if (/as an additional cost|kicker|spree|gift|bargain|casualty|sacrifice (a|another) (creature|artifact)|tap an untapped|behold/i.test(oracle)) {
@@ -699,7 +759,13 @@ export function extractCardFeatures(card: Card) {
     isConnive,
     isRecruit,
     isModalSpell,
-    isRemoval: detectedCategories.has('removal') || isAuraRemoval || actionSubtypes.has('sweeper') || actionSubtypes.has('burn_damage') || actionSubtypes.has('bite_fight') || actionSubtypes.has('permanent_removal') || actionSubtypes.has('unconditional_removal') || actionSubtypes.has('conditional_removal') || actionSubtypes.has('power_toughness_removal') || actionSubtypes.has('toughness_4_plus_removal'),
+    isTutor,
+    isTutorTop,
+    isTutorHand,
+    isTutorBattlefield,
+    isPlaneswalkerTutor,
+    isLegendaryTutor,
+    isRemoval: detectedCategories.has('removal') || isAuraRemoval || actionSubtypes.has('sweeper') || actionSubtypes.has('burn_damage') || actionSubtypes.has('bite_fight') || actionSubtypes.has('permanent_removal') || actionSubtypes.has('unconditional_removal') || actionSubtypes.has('conditional_removal') || actionSubtypes.has('power_toughness_removal') || actionSubtypes.has('toughness_4_plus_removal') || actionSubtypes.has('artifact_enchantment_removal'),
   };
 }
 
@@ -745,6 +811,18 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
   const cSpell = cFeatures.isInstant || cFeatures.isSorcery;
 
   if (tSpell && cSpell) {
+    // Pure library tutor cannot compare to removal spells, combat tricks, sweepers, or counterspells!
+    const isPureTutor = (f: ReturnType<typeof extractCardFeatures>) =>
+      (f.actionSubtypes.has('library_tutor') || f.detectedCategories.has('tutor')) &&
+      !f.isRemoval && !f.isCombatTrick;
+
+    const isNonTutorInteraction = (f: ReturnType<typeof extractCardFeatures>) =>
+      (f.isRemoval || f.isCombatTrick || f.detectedCategories.has('counter') || f.detectedCategories.has('sweeper')) &&
+      !f.actionSubtypes.has('library_tutor') && !f.detectedCategories.has('tutor');
+
+    if (isPureTutor(tFeatures) && isNonTutorInteraction(cFeatures)) return false;
+    if (isPureTutor(cFeatures) && isNonTutorInteraction(tFeatures)) return false;
+
     // Pure combat tricks must match instant speed (modal removal or spells that also provide removal like Valorous Stance are valid comps for removal)
     const isPureCombatTrick = (f: ReturnType<typeof extractCardFeatures>) =>
       f.isCombatTrick &&
@@ -851,6 +929,21 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
       queries.push(`${baseFilter} ${excludeSelf} t:equipment o:"gets +${features.equipPowerBuff}/"`);
     }
     queries.push(`${baseFilter} ${excludeSelf} t:equipment cmc>=${minCmc} cmc<=${maxCmc}`);
+    return queries;
+  }
+
+  // Dedicated Library Search & Tutor Queries (e.g. Loyal Tutor, Search for Glory, Enlightened Tutor)
+  if (features.actionSubtypes.has('library_tutor')) {
+    if (features.actionSubtypes.has('tutor_to_top')) {
+      queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) o:"search your library" (o:"put that card on top" or o:"on top")`);
+    }
+    if (features.actionSubtypes.has('planeswalker_tutor') || features.actionSubtypes.has('legendary_tutor')) {
+      queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) o:"search your library" (o:"planeswalker" or o:"legendary")`);
+    }
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} o:"search your library"`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) cmc<=3 o:"search your library"`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) o:"search your library"`);
+    queries.push(`${baseFilter} ${excludeSelf} o:"search your library"`);
     return queries;
   }
 
@@ -1306,6 +1399,19 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const bothShareTeamPump = (
     tFeatures.actionSubtypes.has('team_pump') && cFeatures.actionSubtypes.has('team_pump')
   );
+  const bothShareLibraryTutor = (
+    tFeatures.actionSubtypes.has('library_tutor') && cFeatures.actionSubtypes.has('library_tutor')
+  );
+  const bothShareTutorToTop = (
+    tFeatures.actionSubtypes.has('tutor_to_top') && cFeatures.actionSubtypes.has('tutor_to_top')
+  );
+  const bothShareTutorToHand = (
+    tFeatures.actionSubtypes.has('tutor_to_hand') && cFeatures.actionSubtypes.has('tutor_to_hand')
+  );
+  const bothShareTutorPlaneswalkerOrLegendary = (
+    (tFeatures.actionSubtypes.has('planeswalker_tutor') || tFeatures.actionSubtypes.has('legendary_tutor')) &&
+    (cFeatures.actionSubtypes.has('planeswalker_tutor') || cFeatures.actionSubtypes.has('legendary_tutor'))
+  );
 
   if (isExactColorMatch) {
     colorScore = 20;
@@ -1423,6 +1529,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     counters: { pts: 8, label: 'Matching counter synergy' },
     synergy: { pts: 7, label: 'Matching ETB / synergy trigger' },
     equipment: { pts: 11, label: 'Matching equipment subtype' },
+    tutor: { pts: 14, label: 'Matching library search / tutor effect' },
   };
 
   let bestCategoryMatch = 0;
@@ -1611,6 +1718,19 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     lexicalReasons.push('Shared team-wide stat buff ("creatures you control get +1/+1")');
   }
 
+  if (bothShareTutorToTop) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 16);
+    lexicalReasons.push('Shared top-of-library tutor effect ("put that card on top")');
+  } else if (bothShareLibraryTutor) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared library search / tutor mechanic ("search your library")');
+  }
+
+  if (bothShareTutorPlaneswalkerOrLegendary) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 8);
+    lexicalReasons.push('Shared planeswalker / legendary tutor target');
+  }
+
   method1LexicalScore = Math.min(25, method1LexicalScore);
 
   // =========================================================================
@@ -1664,6 +1784,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     etb_treasure: { pts: 20, label: 'Both ETB Treasure ramp / fixing creatures' },
     flash_reach_ambush: { pts: 20, label: 'Both Flash & Reach ambush creatures' },
     land_tutor_top: { pts: 20, label: 'Both creature ETB land search to top of library' },
+    tutor_to_top: { pts: 22, label: 'Both top-of-library tutor spells' },
+    planeswalker_tutor: { pts: 20, label: 'Both planeswalker tutor spells' },
+    legendary_tutor: { pts: 18, label: 'Both legendary tutor spells' },
+    library_tutor: { pts: 18, label: 'Both library search / tutor spells' },
+    tutor_to_hand: { pts: 16, label: 'Both search library to hand spells' },
     flying_lifegain_evasion: { pts: 20, label: 'Both 2-drop evasive flying lifegain creatures' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
@@ -1842,8 +1967,27 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     }
   }
 
+  if (bothShareTutorToTop) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both top-of-library tutor spells')) {
+      structuralReasons.unshift('Both top-of-library tutor spells');
+    }
+  } else if (bothShareLibraryTutor) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    if (!structuralReasons.includes('Both library search / tutor spells')) {
+      structuralReasons.unshift('Both library search / tutor spells');
+    }
+  }
+
   // Action Subtype Mismatch Penalties
   let actionMismatchPenalty = 0;
+
+  // Target is tutor, but candidate is NOT tutor (or vice-versa)
+  if (tFeatures.actionSubtypes.has('library_tutor') && !cFeatures.actionSubtypes.has('library_tutor')) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 25);
+  } else if (!tFeatures.actionSubtypes.has('library_tutor') && cFeatures.actionSubtypes.has('library_tutor')) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 25);
+  }
 
   // Target is creature removal, but candidate is NOT creature removal
   const tIsCreatureRemoval = tFeatures.isRemoval || tFeatures.actionSubtypes.has('power_toughness_removal') || tFeatures.actionSubtypes.has('conditional_removal') || tFeatures.actionSubtypes.has('unconditional_removal');
@@ -2046,6 +2190,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     } else if (tFeatures.isAuraRemoval && cFeatures.isAuraRemoval) {
       statlineScore = 9;
       baselineReasons.push('Aura-based permanent neutralization');
+    } else if (bothShareTutorToTop) {
+      statlineScore = 10;
+      baselineReasons.push('Exact top-of-library tutor mechanic');
+    } else if (bothShareLibraryTutor) {
+      statlineScore = 9;
+      baselineReasons.push('Matching library tutor effect');
     } else {
       statlineScore = 7;
     }
@@ -2226,6 +2376,15 @@ export function getCuratedBenchmarkCandidates(
     else if (cmcDiff === 1) relevance += 10;
     else if (cmcDiff === 2) relevance += 5;
 
+    // Tutor Priority: Noncreature tutors must prioritize other library tutors and penalize removal/tricks
+    const targetIsTutor = (targetIsInstant || targetIsSorcery) && /search your library/i.test(targetCard.oracle_text || '');
+    const cIsTutor = /search your library/i.test(c.oracle_text || '');
+    if (targetIsTutor && cIsTutor) {
+      relevance += 50;
+    } else if (targetIsTutor && !cIsTutor && (c.oracle_text || '').match(/destroy|exile|\+\d+\/\+\d+|counter target/i)) {
+      relevance -= 50;
+    }
+
     return { card: c, relevance };
   });
 
@@ -2288,7 +2447,7 @@ export async function findSimilarCards(
   targetCard: Card,
   fallbackPool: Card[] = []
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v49`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v50`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -2533,43 +2692,48 @@ export async function findSimilarCards(
 
     for (const match of sortedForPresentation) {
       const cardFeatures = extractCardFeatures(match.card);
-      const primarySubtype = cardFeatures.actionSubtypes.has('activated_team_pump')
-        ? 'activated_team_pump'
-        : (cardFeatures.actionSubtypes.has('team_pump')
-          ? 'team_pump'
-          : (cardFeatures.actionSubtypes.has('toughness_4_plus_removal')
-            ? 'toughness_4_plus_removal'
-            : (cardFeatures.actionSubtypes.has('modal_removal')
-              ? 'modal_removal'
-              : (cardFeatures.actionSubtypes.has('ability_loss_aura')
-                ? 'ability_loss_aura'
-                : (cardFeatures.actionSubtypes.has('freeze_aura')
-                  ? 'freeze_aura'
-                  : (cardFeatures.actionSubtypes.has('pacifism_aura')
-                    ? 'pacifism_aura'
-                    : (cardFeatures.actionSubtypes.has('aura_removal')
-                      ? 'aura_removal'
-                      : (cardFeatures.actionSubtypes.has('flash_reach_ambush')
-                        ? 'flash_reach_ambush'
-                        : (cardFeatures.actionSubtypes.has('etb_treasure')
-                          ? 'etb_treasure'
-                          : (cardFeatures.actionSubtypes.has('land_tutor_top')
-                            ? 'land_tutor_top'
-                            : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
-                              ? 'flying_lifegain_evasion'
-                              : (cardFeatures.actionSubtypes.has('combat_removal')
-                                ? 'combat_removal'
-                                : (cardFeatures.actionSubtypes.has('removal_with_compensation')
-                                  ? 'removal_with_compensation'
-                                  : (cardFeatures.actionSubtypes.has('power_toughness_removal')
-                                    ? 'power_toughness_removal'
-                                    : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+')))))))))))))));
+      const primarySubtype = cardFeatures.actionSubtypes.has('tutor_to_top')
+        ? 'tutor_to_top'
+        : (cardFeatures.actionSubtypes.has('library_tutor')
+          ? 'library_tutor'
+          : (cardFeatures.actionSubtypes.has('activated_team_pump')
+            ? 'activated_team_pump'
+            : (cardFeatures.actionSubtypes.has('team_pump')
+              ? 'team_pump'
+              : (cardFeatures.actionSubtypes.has('toughness_4_plus_removal')
+                ? 'toughness_4_plus_removal'
+                : (cardFeatures.actionSubtypes.has('modal_removal')
+                  ? 'modal_removal'
+                  : (cardFeatures.actionSubtypes.has('ability_loss_aura')
+                    ? 'ability_loss_aura'
+                    : (cardFeatures.actionSubtypes.has('freeze_aura')
+                      ? 'freeze_aura'
+                      : (cardFeatures.actionSubtypes.has('pacifism_aura')
+                        ? 'pacifism_aura'
+                        : (cardFeatures.actionSubtypes.has('aura_removal')
+                          ? 'aura_removal'
+                          : (cardFeatures.actionSubtypes.has('flash_reach_ambush')
+                            ? 'flash_reach_ambush'
+                            : (cardFeatures.actionSubtypes.has('etb_treasure')
+                              ? 'etb_treasure'
+                              : (cardFeatures.actionSubtypes.has('land_tutor_top')
+                                ? 'land_tutor_top'
+                                : (cardFeatures.actionSubtypes.has('flying_lifegain_evasion')
+                                  ? 'flying_lifegain_evasion'
+                                  : (cardFeatures.actionSubtypes.has('combat_removal')
+                                    ? 'combat_removal'
+                                    : (cardFeatures.actionSubtypes.has('removal_with_compensation')
+                                      ? 'removal_with_compensation'
+                                      : (cardFeatures.actionSubtypes.has('power_toughness_removal')
+                                        ? 'power_toughness_removal'
+                                        : [...cardFeatures.actionSubtypes].filter(s => s !== 'aggressive_attacker' && s !== 'defensive_wall' && s !== 'etb_value').sort().join('+')))))))))))))))));
       const roleKey = primarySubtype;
 
+      const isTargetTutor = features.actionSubtypes.has('library_tutor');
       const isTargetConditionalRemoval = features.actionSubtypes.has('toughness_4_plus_removal') || features.actionSubtypes.has('power_toughness_removal') || features.actionSubtypes.has('modal_removal');
       const maxAllowed = (primarySubtype === 'flash_reach_ambush' || primarySubtype === 'combat_removal')
         ? 1
-        : (primarySubtype === 'activated_team_pump' || (isTargetConditionalRemoval && (primarySubtype === 'toughness_4_plus_removal' || primarySubtype === 'modal_removal' || primarySubtype === 'power_toughness_removal'))
+        : ((isTargetTutor && (primarySubtype === 'library_tutor' || primarySubtype === 'tutor_to_top')) || primarySubtype === 'activated_team_pump' || (isTargetConditionalRemoval && (primarySubtype === 'toughness_4_plus_removal' || primarySubtype === 'modal_removal' || primarySubtype === 'power_toughness_removal'))
           ? 4
           : (primarySubtype === 'removal_with_compensation' ? 3 : 2));
       const currentCount = roleCmcCounts[roleKey] || 0;

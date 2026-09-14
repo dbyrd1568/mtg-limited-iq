@@ -6,6 +6,66 @@ import { SetSymbol } from '../UI/SetSymbol';
 import { Search, X, Loader2, Sparkles, Check, Database } from 'lucide-react';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
+ 
+/**
+ * Transforms a user query into an optimized Scryfall search query
+ * supporting oracle rules text, card names, mana costs, and creature stats.
+ */
+export function buildScryfallPrecedentQuery(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+
+  // 1. Shorthand syntax transformations:
+  // - "2/3" -> "pow=2 tou=3"
+  // - "{2}{W}" -> "m:{2}{W}"
+  const working = trimmed
+    .replace(/\b([0-9]+|\*)\/([0-9]+|\*)\b/g, 'pow=$1 tou=$2')
+    .replace(/(^|\s)((?:\{[a-zA-Z0-9/]+\})+)/g, '$1m:$2');
+
+  // 2. Tokenize respecting quoted strings and key:value syntax
+  const tokenRegex = /([a-zA-Z0-9_]+[:=](?:"[^"]*"|[^\s]+))|("[^"]*")|([^\s]+)/g;
+  const matches = Array.from(working.matchAll(tokenRegex));
+
+  const syntaxFilters: string[] = [];
+  const freeTextTokens: string[] = [];
+
+  for (const match of matches) {
+    const rawToken = match[0];
+    if (!rawToken) continue;
+
+    // Check if token already has an explicit field operator (e.g. o:, oracle:, t:, type:, c:, pow=, m:, etc.)
+    if (/^[a-zA-Z0-9_]+[:=]/.test(rawToken)) {
+      syntaxFilters.push(rawToken);
+    } else if (rawToken.startsWith('"') && rawToken.endsWith('"') && rawToken.length >= 2) {
+      // Exact quoted phrase: search both name AND oracle text
+      const unquoted = rawToken.slice(1, -1).trim();
+      if (unquoted) {
+        syntaxFilters.push(`("${unquoted}" or o:"${unquoted}")`);
+      }
+    } else {
+      freeTextTokens.push(rawToken);
+    }
+  }
+
+  // 3. Process unadorned free text terms
+  if (freeTextTokens.length > 0) {
+    if (freeTextTokens.length === 1) {
+      const word = freeTextTokens[0];
+      // Single word: matches card name OR oracle text
+      syntaxFilters.push(`("${word}" or o:"${word}")`);
+    } else {
+      // Multiple words:
+      // Search exact phrase in name OR exact phrase in oracle text OR all individual words in oracle text
+      const phrase = freeTextTokens.join(' ');
+      const individualOracle = freeTextTokens.map((w) => `o:${w}`).join(' ');
+      syntaxFilters.push(`("${phrase}" or o:"${phrase}" or (${individualOracle}))`);
+    }
+  }
+
+  // 4. Draft sets & booster prioritization
+  const baseFilter = '(is:booster or not:funny) -layout:art_series -t:token';
+  return `${syntaxFilters.join(' ')} ${baseFilter}`.trim();
+}
 
 interface PrecedentCardSearchProps {
   targetCard: Card;
@@ -18,7 +78,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
   targetCard,
   onSelectCard,
   className = '',
-  placeholder = 'Search name, mana {2}{W}, stats 2/3, or type...',
+  placeholder = 'Search name, oracle text (e.g. "destroy target"), stats 2/3, or mana...',
 }) => {
   const [query, setQuery] = useState<string>('');
   const [results, setResults] = useState<Card[]>([]);
@@ -60,24 +120,29 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        // Transform shorthand syntax for Scryfall:
-        // 1. "2/3" -> "pow=2 tou=3"
-        // 2. "{2}{W}" -> "m:{2}{W}"
-        const transformed = trimmed
-          .replace(/\b([0-9]+|\*)\/([0-9]+|\*)\b/g, 'pow=$1 tou=$2')
-          .replace(/(^|\s)((?:\{[a-zA-Z0-9/]+\})+)/g, '$1m:$2');
-
-        // Search Scryfall prioritizing booster draft sets and non-funny cards
-        const scryfallQuery = `${transformed} (is:booster or not:funny) -layout:art_series -t:token`;
+        const scryfallQuery = buildScryfallPrecedentQuery(trimmed);
         const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(scryfallQuery)}&order=released&dir=desc`;
 
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           signal: controller.signal,
           headers: {
             'User-Agent': 'MTGLimitedIQ/2.0',
             Accept: 'application/json',
           },
         });
+
+        // Fallback: If expanded query didn't match, attempt literal query
+        if (!res.ok && res.status === 404) {
+          const fallbackQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token`;
+          const fallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
+          res = await fetch(fallbackUrl, {
+            signal: controller.signal,
+            headers: {
+              'User-Agent': 'MTGLimitedIQ/2.0',
+              Accept: 'application/json',
+            },
+          });
+        }
 
         if (res.ok) {
           const data = await res.json();
@@ -115,6 +180,13 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
                 seenNames.add(nameLower);
                 deduped.push(c);
               }
+            }
+
+            // Prioritize exact name match at the top if present
+            const exactIdx = deduped.findIndex(c => c.name.toLowerCase() === trimmed.toLowerCase());
+            if (exactIdx > 0) {
+              const [exactMatch] = deduped.splice(exactIdx, 1);
+              deduped.unshift(exactMatch);
             }
 
             setResults(deduped.slice(0, 10));
@@ -220,29 +292,38 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
       {/* Quick Search Syntax Tip */}
       <div className="flex items-center gap-1.5 px-1 pt-1.5 text-[11px] font-mono text-slate-500 dark:text-slate-400 flex-wrap">
         <span className="text-violet-600 dark:text-cyan-400 font-bold">Search tip:</span>
-        <span>Use</span>
+        <span>Oracle text:</span>
         <button
           type="button"
           onClick={() => {
-            setQuery('{2}{W}');
+            setQuery('"destroy target"');
             inputRef.current?.focus();
           }}
           className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
         >
-          {'{2}{W}'}
+          "destroy target"
         </button>
-        <span>for mana,</span>
         <button
           type="button"
           onClick={() => {
-            setQuery('2/3');
+            setQuery('"draw a card"');
             inputRef.current?.focus();
           }}
           className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
         >
-          2/3
+          "draw a card"
         </button>
-        <span>for P/T stats, or combine like</span>
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('counter target');
+            inputRef.current?.focus();
+          }}
+          className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+        >
+          counter target
+        </button>
+        <span>• Stats:</span>
         <button
           type="button"
           onClick={() => {
@@ -341,7 +422,22 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
                           </span>
                         </>
                       )}
+                      {card.power !== undefined && card.toughness !== undefined && (
+                        <>
+                          <span>•</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {card.power}/{card.toughness}
+                          </span>
+                        </>
+                      )}
                     </div>
+
+                    {/* Oracle Rules Text Preview */}
+                    {card.oracle_text && (
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 font-sans pt-0.5 leading-snug">
+                        {card.oracle_text}
+                      </p>
+                    )}
                   </div>
 
                   {/* 17Lands telemetry indicator */}

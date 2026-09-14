@@ -782,7 +782,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         setSlotPickerCard(selectedCard);
                         setPreselectedSlotIndex(null);
                       }}
-                      placeholder="Search any card to substitute (e.g. Doom Blade, Murder, Lightning Strike)..."
+                      placeholder="Search by card name, oracle text (e.g. 'destroy target', 'draw card'), or mana..."
                     />
                   </div>
 
@@ -1565,7 +1565,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
               onSelectCard={(selectedCard) => {
                 handleDirectSwapSelect(selectedCard, directSwapSlotIndex);
               }}
-              placeholder="Type card name to replace this slot..."
+              placeholder="Search by card name, oracle text (e.g. 'destroy target', 'draw card'), or mana..."
             />
 
             <div className="pt-2 flex justify-end">
