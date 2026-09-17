@@ -51,6 +51,17 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 text-xs">
+          {/* Natural Search Highlight Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-500/10 via-cyan-500/10 to-emerald-500/10 border border-violet-200/80 dark:border-cyan-800/50 space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-violet-900 dark:text-cyan-200 text-xs font-heading">
+              <Sparkles className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
+              <span>Natural &amp; Flexible Search (No Syntax Codes Required!)</span>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 font-sans leading-relaxed text-[11px]">
+              You don&apos;t need <code className="px-1 py-0.5 rounded bg-violet-100 dark:bg-violet-950 font-mono font-bold text-violet-700 dark:text-cyan-300">o:</code> or quotes to find card rules text. Simply type natural phrases like <span className="font-bold text-slate-900 dark:text-white">"draw a card"</span> or <span className="font-bold text-slate-900 dark:text-white">"destroy target creature"</span> to search names, card faces, and rules text everywhere. Mana costs (<span className="font-bold">{'{2}{W}'}</span> or <span className="font-bold">2W</span>) and stats (<span className="font-bold">2/3</span>) are automatically inferred and can be freely mixed with text in any order!
+            </p>
+          </div>
+
           {/* Section 1: Text Comparisons */}
           <div className="space-y-2.5">
             <h3 className="font-heading font-black text-sm uppercase tracking-wider text-violet-700 dark:text-cyan-300 flex items-center gap-1.5">
@@ -303,6 +314,14 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {[
+                  {
+                    code: 'draw a card',
+                    desc: 'Automatically searches rules text and card faces without requiring o: or quotes',
+                  },
+                  {
+                    code: 'draw a card {1}{U}',
+                    desc: 'Combines rules text phrase with {1}{U} mana cost',
+                  },
                   {
                     code: '{2}{W}',
                     desc: 'Search for cards with exact or partial mana cost {2}{W}',

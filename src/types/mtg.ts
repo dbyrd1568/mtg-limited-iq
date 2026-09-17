@@ -9,11 +9,11 @@ export interface CardFace {
   power?: string;
   toughness?: string;
   image_uris?: {
-    small: string;
-    normal: string;
-    large: string;
-    art_crop: string;
-    png: string;
+    small?: string;
+    normal?: string;
+    large?: string;
+    art_crop?: string;
+    png?: string;
   };
   colors?: MTGColor[];
 }
@@ -36,11 +36,11 @@ export interface Card {
   rarity: MTGRarity;
   keywords: string[];
   image_uris?: {
-    small: string;
-    normal: string;
-    large: string;
-    art_crop: string;
-    png: string;
+    small?: string;
+    normal?: string;
+    large?: string;
+    art_crop?: string;
+    png?: string;
   };
   card_faces?: CardFace[];
   layout?: string;

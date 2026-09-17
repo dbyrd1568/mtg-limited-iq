@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Check, Link2, Sun, Moon, RefreshCw, HelpCircle, Shield, Download } from 'lucide-react';
+import { ChevronDown, Check, Link2, Sun, Moon, HelpCircle, Shield, Download, RefreshCw } from 'lucide-react';
 import { SetInfo, UserProfileStats, UserAccount } from '../types/mtg';
 import { getSyncStatus, subscribeSyncStatus, SyncStatus } from '../services/cloudSync';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../services/theme';
@@ -186,19 +186,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Export Grades & Data Button (Available for ALL users) */}
-            {onOpenExportModal && (
-              <button
-                onClick={onOpenExportModal}
-                className="p-2 sm:px-3 sm:py-1.5 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer shrink-0 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-cyan-300 flex items-center gap-1.5 justify-center"
-                title="Export Card Grades, 17Lands Tier List & Backups (CSV / TSV / JSON)"
-                aria-label="Export Grades and Backups"
-              >
-                <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span className="hidden sm:inline text-xs font-semibold">Export</span>
-              </button>
-            )}
-
             {/* Set Switcher Trigger */}
             <button
               onClick={onOpenSetSelector}
@@ -228,12 +215,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ChevronDown className={`w-3.5 h-3.5 transition-colors shrink-0 ${currentSet ? 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' : 'text-white'}`} />
             </button>
 
-            {/* User Profile / Auth Button with Live Cloud Sync Indicator */}
+            {/* User Profile / Auth Button with Semantic Sync Status Dot */}
             {currentUser ? (
               <button
                 onClick={onOpenAuthModal}
-                className="flex items-center gap-1.5 sm:gap-2 pl-1 pr-2 sm:pr-2.5 py-1 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer group shrink-0 whitespace-nowrap"
-                title={`Active Profile: ${currentUser.name} • Sync: ${syncStatus}`}
+                className="flex items-center gap-2 pl-1.5 pr-3 py-1 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer group shrink-0 whitespace-nowrap"
+                title={`Account: ${currentUser.name} • Cloud Sync: ${syncStatus}`}
               >
                 <div className="relative shrink-0">
                   {currentUser.avatarUrl && !avatarError ? (
@@ -253,66 +240,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   )}
 
-                  {/* Live Sync Status Indicator Dot */}
-                  {syncStatus === 'synced' && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#060919]" />
-                  )}
-                  {syncStatus === 'syncing' && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-500 ring-2 ring-white dark:ring-[#060919] animate-pulse" />
-                  )}
-                  {syncStatus === 'offline' && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#060919]" />
-                  )}
-                  {syncStatus === 'error' && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#060919]" />
-                  )}
+                  {/* Semantic Live Sync Status Indicator Dot */}
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-white dark:ring-[#060919] ${
+                      syncStatus === 'synced'
+                        ? 'bg-emerald-500'
+                        : syncStatus === 'syncing'
+                        ? 'bg-cyan-500 animate-pulse'
+                        : syncStatus === 'offline'
+                        ? 'bg-amber-500'
+                        : syncStatus === 'error'
+                        ? 'bg-rose-500'
+                        : 'bg-emerald-500'
+                    }`}
+                    title={`Cloud Sync: ${syncStatus}`}
+                  />
                 </div>
 
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white max-w-[70px] sm:max-w-[95px] truncate">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white max-w-[80px] sm:max-w-[120px] truncate">
                   {currentUser.name}
-                </span>
-
-                {isAdmin && (
-                  <span className="hidden sm:inline-flex items-center text-[9px] font-mono font-bold px-1 rounded bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
-                    ADMIN
-                  </span>
-                )}
-
-                {/* Visual Sync Badge Pill */}
-                <span
-                  className={`hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold tracking-tight border ${
-                    syncStatus === 'synced'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60'
-                      : syncStatus === 'syncing'
-                      ? 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800/60 animate-pulse'
-                      : syncStatus === 'offline'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60'
-                      : syncStatus === 'error'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60'
-                      : isProdEnvironment()
-                      ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/60'
-                      : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-                  }`}
-                >
-                  {syncStatus === 'synced' && 'Synced ✓'}
-                  {syncStatus === 'syncing' && 'Syncing ⟳'}
-                  {syncStatus === 'offline' && 'Offline ☁'}
-                  {syncStatus === 'local_only' && (isProdEnvironment() ? 'Cloud Active' : 'Local 💾')}
-                  {syncStatus === 'error' && 'Sync Error ⚠'}
-                </span>
-
-                {/* App Version Badge */}
-                <span className="hidden sm:inline text-[9px] font-mono text-slate-400 dark:text-slate-600 shrink-0">
-                  v{__APP_VERSION__}
-                </span>
-
-                {/* Sync Icon Feedback on Mobile */}
-                <span className="md:hidden">
-                  {syncStatus === 'syncing' ? (
-                    <RefreshCw className="w-3 h-3 text-cyan-500 animate-spin shrink-0" />
-                  ) : syncStatus === 'synced' ? (
-                    <Check className="w-3 h-3 text-emerald-500 shrink-0 opacity-80" />
-                  ) : null}
                 </span>
               </button>
             ) : (

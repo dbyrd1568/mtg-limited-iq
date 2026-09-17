@@ -7,6 +7,7 @@ import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../servic
 import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint } from '../services/cardSimilarity';
 import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes } from '../services/wotcArchetypes';
 import { cardMatchesQuery } from '../services/cardSearchParser';
+import { buildScryfallPrecedentQuery } from '../components/Evaluation/PrecedentCardSearch';
 
 console.log('=== MTG Limited IQ Verification Tests ===\n');
 
@@ -652,13 +653,126 @@ const testCourser: Card = {
 
 console.assert(cardMatchesQuery(testCourser, '{2}{W}'), '{2}{W} must match Pegasus Courser');
 console.assert(!cardMatchesQuery(testCourser, '{1}{W}'), '{1}{W} must NOT match Pegasus Courser');
+console.assert(cardMatchesQuery(testCourser, '2W'), 'Shorthand 2W must match Pegasus Courser');
+console.assert(!cardMatchesQuery(testCourser, '1W'), 'Shorthand 1W must NOT match Pegasus Courser');
 console.assert(cardMatchesQuery(testCourser, '2/3'), '2/3 stats must match Pegasus Courser without affecting text');
 console.assert(!cardMatchesQuery(testCourser, '3/3'), '3/3 stats must NOT match Pegasus Courser');
 console.assert(cardMatchesQuery(testCourser, 'flying 2/3 {2}{W}'), 'Combined flying 2/3 {2}{W} must match');
+console.assert(cardMatchesQuery(testCourser, '2/3 2W flying'), 'Combined in any order with shorthand mana 2W must match');
 console.assert(cardMatchesQuery(testCourser, 'pt:2/3'), 'pt:2/3 must match Pegasus Courser');
 console.assert(cardMatchesQuery(testCourser, 'pt>=2/2'), 'pt>=2/2 must match Pegasus Courser');
 console.assert(cardMatchesQuery(testCourser, 'm:{2}{W}'), 'm:{2}{W} must match Pegasus Courser');
-console.log('   ✓ Mana cost {2}{W}, P/T stats 2/3, and combined queries verified.');
+console.log('   ✓ Mana cost {2}{W}, shorthand 2W, P/T stats 2/3, and combined queries verified.');
+
+// Test 13B: Natural Rules Text Search Without o: or Quotes
+console.log('\n[TEST 13B] Natural Rules Text Inference (Without o: or Quotes):');
+const testOpt: Card = {
+  id: 'opt-1',
+  name: 'Opt',
+  set: 'ELD',
+  set_name: 'Throne of Eldraine',
+  collector_number: '59',
+  mana_cost: '{U}',
+  cmc: 1,
+  type_line: 'Instant',
+  oracle_text: 'Scry 1.\nDraw a card.',
+  colors: ['U'],
+  color_identity: ['U'],
+  rarity: 'common',
+  keywords: ['Scry'],
+};
+
+const testMurder: Card = {
+  id: 'murder-1',
+  name: 'Murder',
+  set: 'M20',
+  set_name: 'Core Set 2020',
+  collector_number: '109',
+  mana_cost: '{1}{B}{B}',
+  cmc: 3,
+  type_line: 'Instant',
+  oracle_text: 'Destroy target creature.',
+  colors: ['B'],
+  color_identity: ['B'],
+  rarity: 'common',
+  keywords: [],
+};
+
+const testDfcDraw: Card = {
+  id: 'dfc-draw-1',
+  name: 'Curious Discovery // Ponderous Thought',
+  set: 'MH3',
+  set_name: 'Modern Horizons 3',
+  collector_number: '77',
+  mana_cost: '{1}{U}',
+  cmc: 2,
+  type_line: 'Instant // Sorcery',
+  colors: ['U'],
+  color_identity: ['U'],
+  rarity: 'uncommon',
+  keywords: [],
+  card_faces: [
+    {
+      name: 'Curious Discovery',
+      mana_cost: '{1}{U}',
+      type_line: 'Instant',
+      oracle_text: 'Draw a card, then discard a card.',
+    },
+    {
+      name: 'Ponderous Thought',
+      mana_cost: '{3}{U}',
+      type_line: 'Sorcery',
+      oracle_text: 'Draw two cards.',
+    },
+  ],
+};
+
+const testVanillaFlyer: Card = {
+  id: 'flyer-1',
+  name: 'Suntail Hawk',
+  set: 'M15',
+  set_name: 'Magic 2015',
+  collector_number: '34',
+  mana_cost: '{W}',
+  cmc: 1,
+  type_line: 'Creature — Bird',
+  oracle_text: '',
+  power: '1',
+  toughness: '1',
+  colors: ['W'],
+  color_identity: ['W'],
+  rarity: 'common',
+  keywords: ['Flying'],
+};
+
+// Natural phrase matching: "draw a card" without o:
+console.assert(cardMatchesQuery(testOpt, 'draw a card'), '"draw a card" must match Opt without o: prefix');
+console.assert(!cardMatchesQuery(testMurder, 'draw a card'), '"draw a card" must NOT match Murder');
+console.assert(cardMatchesQuery(testMurder, 'destroy target creature'), '"destroy target creature" must match Murder without o:');
+console.assert(!cardMatchesQuery(testOpt, 'destroy target creature'), '"destroy target creature" must NOT match Opt');
+
+// Multi-factor natural query: phrase + mana
+console.assert(cardMatchesQuery(testOpt, 'draw a card {U}'), '"draw a card {U}" must match Opt');
+console.assert(!cardMatchesQuery(testOpt, 'draw a card {1}{B}'), '"draw a card {1}{B}" must NOT match Opt');
+
+// DFC card faces inference: oracle text on face matches
+console.assert(cardMatchesQuery(testDfcDraw, 'draw a card'), '"draw a card" must match DFC where text is on card_faces');
+console.assert(cardMatchesQuery(testDfcDraw, 'draw a card 1U'), 'Phrase + shorthand mana 1U must match DFC');
+
+// Keyword-only card without oracle text
+console.assert(cardMatchesQuery(testVanillaFlyer, 'flying'), 'Keyword "flying" must match card without oracle_text');
+console.assert(cardMatchesQuery(testVanillaFlyer, 'flying 1/1 {W}'), '"flying 1/1 {W}" must match Suntail Hawk');
+
+// Scryfall Precedent Query Builder verification
+const scryfallQ1 = buildScryfallPrecedentQuery('draw a card');
+console.assert(scryfallQ1.includes('o:"draw a card"'), 'Scryfall query must include o:"draw a card"');
+const scryfallQ2 = buildScryfallPrecedentQuery('flying 2/3 2W');
+console.assert(scryfallQ2.includes('pow=2 tou=3') && scryfallQ2.includes('m:{2}{W}'), 'Scryfall query must infer stats and shorthand mana');
+
+console.log('   ✓ Natural unquoted rules text inference verified.');
+console.log('   ✓ DFC card face text matching verified.');
+console.log('   ✓ Keyword-only matching without oracle text verified.');
+console.log('   ✓ Scryfall precedent search query generation verified.');
 
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
 

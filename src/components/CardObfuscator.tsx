@@ -137,7 +137,7 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
                 alt={card.name}
                 className="w-full h-full"
                 imageClassName="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                loading="lazy"
+                loading="eager"
               />
               <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#050818] via-[#050818]/80 to-transparent p-2 text-center pointer-events-none z-10">
                 <span className="text-xs font-bold text-cyan-300 flex items-center justify-center gap-1.5">
@@ -156,7 +156,7 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
               alt={card.name}
               className="w-full h-full"
               imageClassName="w-full h-full object-cover"
-              loading="lazy"
+              loading="eager"
             />
 
             {/* Targeted Obfuscation Mask */}

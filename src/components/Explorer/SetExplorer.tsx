@@ -371,8 +371,18 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           </p>
         </div>
 
-        {/* Sub-Tabs: Cards vs Supported Archetypes */}
+        {/* Sub-Tabs & Export */}
         <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title="Export card grades or tier list spreadsheet"
+          >
+            <Share2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <span>Export</span>
+          </button>
+
           <nav className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs">
             <button
               onClick={() => setActiveExplorerTab('cards')}

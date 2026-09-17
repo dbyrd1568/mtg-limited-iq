@@ -60,6 +60,45 @@ const RARITY_ORDINAL: Record<string, number> = {
 };
 
 /**
+ * Returns all searchable text segments on a card across all fields and card faces.
+ */
+export function getAllCardSearchableTexts(card: Card, userNote?: string): string[] {
+  const parts: string[] = [];
+
+  if (card.name) parts.push(card.name);
+  if (card.type_line) parts.push(card.type_line);
+  if (card.oracle_text) parts.push(card.oracle_text);
+  if (card.mana_cost) parts.push(card.mana_cost);
+  if (card.collector_number) parts.push(card.collector_number);
+  if (card.keywords && Array.isArray(card.keywords) && card.keywords.length > 0) {
+    parts.push(card.keywords.join(' '));
+  }
+  if ((card as any).flavor_text) parts.push((card as any).flavor_text);
+  if (card.archetype_tag) parts.push(card.archetype_tag);
+
+  if (card.card_faces && Array.isArray(card.card_faces)) {
+    for (const face of card.card_faces) {
+      if (face.name) parts.push(face.name);
+      if (face.type_line) parts.push(face.type_line);
+      if (face.oracle_text) parts.push(face.oracle_text);
+      if (face.mana_cost) parts.push(face.mana_cost);
+      if ((face as any).flavor_text) parts.push((face as any).flavor_text);
+    }
+  }
+
+  if (userNote) parts.push(userNote);
+
+  return parts;
+}
+
+/**
+ * Returns a unified lowercase string of all searchable text on a card.
+ */
+export function getFullCardSearchableText(card: Card, userNote?: string): string {
+  return getAllCardSearchableTexts(card, userNote).join(' \n ').toLowerCase();
+}
+
+/**
  * Parses raw search input string into an array of search tokens.
  * Supports quoted strings: o:"damage to any target" or "Acrobatic Leap"
  */
@@ -82,8 +121,12 @@ export function tokenizeQuery(query: string): SearchToken[] {
     let valueRaw = match[4] || '';
 
     // Strip surrounding quotes if present
-    if (valueRaw.startsWith('"') && valueRaw.endsWith('"') && valueRaw.length >= 2) {
+    const wasQuoted = valueRaw.startsWith('"') && valueRaw.endsWith('"') && valueRaw.length >= 2;
+    if (wasQuoted) {
       valueRaw = valueRaw.slice(1, -1);
+    } else {
+      // Strip trailing punctuation like commas or semicolons when unquoted (e.g. "flying, 2/3, {2}{W}")
+      valueRaw = valueRaw.replace(/[,;]+$/, '');
     }
 
     if (!valueRaw) continue;
@@ -101,9 +144,21 @@ export function tokenizeQuery(query: string): SearchToken[] {
         continue;
       }
 
-      // 2. Auto-detect mana cost pattern: e.g. "{2}{W}", "{W}", "{1}{B}{B}", "{X}{R}", "{U/R}"
+      // 2. Auto-detect bracketed mana cost pattern: e.g. "{2}{W}", "{W}", "{1}{B}{B}", "{X}{R}", "{U/R}"
       const manaBraceMatch = valueRaw.match(/^(\{[a-zA-Z0-9/]+\})+$/);
       if (manaBraceMatch) {
+        tokens.push({
+          field: 'mana',
+          operator: ':',
+          value: valueRaw,
+          isNegated,
+        });
+        continue;
+      }
+
+      // 3. Auto-detect shorthand mana pattern: e.g. "2W", "1U", "3BB", "1G", "4RR", "WW", "WUBRG"
+      const shorthandManaMatch = valueRaw.match(/^([0-9]+[wubrgcWUBRGC]+|[WUBRGC]{2,})$/);
+      if (shorthandManaMatch) {
         tokens.push({
           field: 'mana',
           operator: ':',
@@ -278,22 +333,21 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
 
   switch (field) {
     case 'text': {
-      // Matches name, oracle text, type line, mana cost, collector number, or user notes
-      const nameMatch = card.name.toLowerCase().includes(lowerVal);
-      const oracleMatch = (card.oracle_text || '').toLowerCase().includes(lowerVal);
-      const typeMatch = (card.type_line || '').toLowerCase().includes(lowerVal);
-      const manaMatch = (card.mana_cost || '').toLowerCase().includes(lowerVal);
+      // Matches full unified text across name, oracle text, card faces, type line, keywords, mana cost, collector number, or user notes
+      const fullText = getFullCardSearchableText(card, userNote);
       const numberMatch = (card.collector_number || '').toLowerCase() === lowerVal;
-      const noteMatch = userNote ? userNote.toLowerCase().includes(lowerVal) : false;
-      matched = nameMatch || oracleMatch || typeMatch || manaMatch || numberMatch || noteMatch;
+      matched = fullText.includes(lowerVal) || numberMatch;
       break;
     }
 
     case 'name': {
+      const cardName = card.name.toLowerCase();
+      const faceNames = (card.card_faces || []).map((f) => (f.name || '').toLowerCase());
+      const allNames = [cardName, ...faceNames];
       if (operator === '=' || operator === ':') {
-        matched = card.name.toLowerCase().includes(lowerVal);
+        matched = allNames.some((n) => n.includes(lowerVal));
       } else if (operator === '!=') {
-        matched = !card.name.toLowerCase().includes(lowerVal);
+        matched = !allNames.some((n) => n.includes(lowerVal));
       }
       break;
     }
@@ -303,7 +357,11 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
       // Also check card faces if present
       const facesText = card.card_faces?.map((f) => f.oracle_text?.toLowerCase() || '').join(' ') || '';
       const fullOracle = `${oracle} ${facesText}`;
-      matched = fullOracle.includes(lowerVal);
+      if (operator === '!=') {
+        matched = !fullOracle.includes(lowerVal);
+      } else {
+        matched = fullOracle.includes(lowerVal);
+      }
       break;
     }
 
@@ -311,7 +369,11 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
       const typeLine = (card.type_line || '').toLowerCase();
       const facesType = card.card_faces?.map((f) => f.type_line?.toLowerCase() || '').join(' ') || '';
       const fullType = `${typeLine} ${facesType}`;
-      matched = fullType.includes(lowerVal);
+      if (operator === '!=') {
+        matched = !fullType.includes(lowerVal);
+      } else {
+        matched = fullType.includes(lowerVal);
+      }
       break;
     }
 
@@ -426,7 +488,8 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
     case 'keyword': {
       const hasInKw = (card.keywords || []).some((k) => k.toLowerCase().includes(lowerVal));
       const hasInOracle = (card.oracle_text || '').toLowerCase().includes(lowerVal);
-      matched = hasInKw || hasInOracle;
+      const facesOracle = (card.card_faces || []).some((f) => (f.oracle_text || '').toLowerCase().includes(lowerVal));
+      matched = hasInKw || hasInOracle || facesOracle;
       break;
     }
 
@@ -445,9 +508,8 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
 
     default: {
       // Unknown field prefix: treat as general text search
-      matched = card.name.toLowerCase().includes(lowerVal) ||
-        (card.oracle_text || '').toLowerCase().includes(lowerVal) ||
-        (card.type_line || '').toLowerCase().includes(lowerVal);
+      const fullText = getFullCardSearchableText(card, userNote);
+      matched = fullText.includes(lowerVal);
       break;
     }
   }
@@ -457,7 +519,8 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
 
 /**
  * Checks if a card matches the full query string.
- * All space-separated tokens must match (AND).
+ * Supports auto-inferred multi-word text phrases (e.g. "draw a card", "counter target spell"),
+ * mana costs ({2}{W}, 2W), creature stats (2/3), and advanced filter tokens in any combination or order.
  * If contextSetCode is provided, guarantees card belongs to that set.
  */
 export function cardMatchesQuery(
@@ -479,7 +542,49 @@ export function cardMatchesQuery(
   const tokens = tokenizeQuery(trimmed);
   if (tokens.length === 0) return true;
 
-  return tokens.every((token) => matchToken(card, token, userNote));
+  // Split tokens into specific syntax filters and general text tokens
+  const nonTextTokens = tokens.filter((t) => t.field !== 'text');
+  const textTokens = tokens.filter((t) => t.field === 'text');
+
+  // All specific syntax tokens must match
+  if (!nonTextTokens.every((token) => matchToken(card, token, userNote))) {
+    return false;
+  }
+
+  // If no general text tokens exist, card has passed all syntax criteria
+  if (textTokens.length === 0) {
+    return true;
+  }
+
+  // If there are negated text tokens, verify they do not match
+  const negatedText = textTokens.filter((t) => t.isNegated);
+  if (negatedText.length > 0 && !negatedText.every((t) => matchToken(card, t, userNote))) {
+    return false;
+  }
+
+  const positiveText = textTokens.filter((t) => !t.isNegated);
+  if (positiveText.length === 0) {
+    return true;
+  }
+
+  // If there is only 1 positive text token, standard match applies
+  if (positiveText.length === 1) {
+    return matchToken(card, positiveText[0], userNote);
+  }
+
+  // Multi-word phrase inference:
+  // E.g. user typed "draw a card", "deals 2 damage", "create a 1/1"
+  // Try contiguous phrase match against card's searchable text first,
+  // then fallback to word intersection (all words present anywhere on card)
+  const fullCardText = getFullCardSearchableText(card, userNote);
+  const phrase = positiveText.map((t) => t.value).join(' ');
+
+  if (fullCardText.includes(phrase)) {
+    return true;
+  }
+
+  // Fallback: all individual text terms must be present
+  return positiveText.every((t) => matchToken(card, t, userNote));
 }
 
 /**

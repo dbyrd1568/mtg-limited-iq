@@ -95,20 +95,27 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Oltec Cloud Guard', 'LCI', '{3}{W}', 4, 'Creature — Human Soldier', 'Flying. When Oltec Cloud Guard enters the battlefield, create a 1/1 colorless Gnome artifact creature token.', ['W'], '3', '2', 'common', ['Flying']),
   createBenchmarkCard('Head of the Homestead', 'BLB', '{3}{W}', 4, 'Creature — Rabbit Citizen', 'When Head of the Homestead enters the battlefield, create two 1/1 white Rabbit creature tokens.', ['W'], '2', '2'),
   createBenchmarkCard('Warren Warleader', 'BLB', '{2}{W}{W}', 4, 'Creature — Rabbit Knight', 'Offspring {2}. Whenever you attack, choose one — Create a 1/1 white Rabbit; or attacking creatures get +1/+1 until end of turn.', ['W'], '4', '4', 'rare'),
+  createBenchmarkCard('Auspicious Arrival', 'MKM', '{1}{W}', 2, 'Instant', 'Target creature gets +2/+2 until end of turn. Investigate.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Imperial Oath', 'NEO', '{5}{W}', 6, 'Sorcery', 'Create three 2/2 white Samurai creature tokens with vigilance. Scry 3.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Hero in Training', 'MSC', '{2}{W}', 3, 'Creature — Human Hero', 'When Hero in Training enters the battlefield, draw a card. If you control another Hero, you gain 2 life.', ['W'], '2', '2', 'common'),
+  createBenchmarkCard('Stone Docent', 'SOS', '{1}{W}', 2, 'Creature — Spirit Chimera', '{W}, Exile this card from your graveyard: You gain 2 life. Surveil 1.', ['W'], '3', '1', 'common'),
 
   // Blue
   createBenchmarkCard('Consider', 'MID', '{U}', 1, 'Instant', 'Surveil 1. Draw a card.', ['U']),
   createBenchmarkCard('Shore Up', 'BLB', '{U}', 1, 'Instant', 'Target creature you control gets +1/+1 and gains hexproof until end of turn. Untap it.', ['U']),
   createBenchmarkCard('Into the Flood Maw', 'BLB', '{U}', 1, 'Instant', "Gift a tapped Fish. Return target nonland permanent an opponent controls to its owner's hand.", ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard("Long River's Pull", 'BLB', '{U}{U}', 2, 'Instant', 'Gift a card. Counter target creature spell. If the gift was promised, counter target spell instead.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard("Saruman's Trickery", 'LTR', '{1}{U}{U}', 3, 'Instant', 'Counter target spell. Amass Orcs 1.', ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Falcon Abomination', 'MID', '{2}{U}', 3, 'Creature — Zombie Bird', 'Flying. When Falcon Abomination enters the battlefield, create a 2/2 black Zombie creature token with decayed.', ['U'], '2', '2', 'common', ['Flying']),
   createBenchmarkCard('Waterwind Scout', 'LCI', '{2}{U}', 3, 'Creature — Merfolk Scout', 'Flying. When Waterwind Scout enters the battlefield, create a Map token.', ['U'], '2', '2', 'common', ['Flying']),
   createBenchmarkCard('Organ Hoarder', 'MID', '{3}{U}', 4, 'Creature — Zombie', 'When Organ Hoarder enters the battlefield, look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.', ['U'], '3', '2'),
+  createBenchmarkCard('Ancestral Reminiscence', 'LCI', '{3}{U}', 4, 'Sorcery', 'Draw three cards, then discard a card.', ['U'], undefined, undefined, 'common'),
   createBenchmarkCard('Daring Waverider', 'BLB', '{4}{U}{U}', 6, 'Creature — Otter Wizard', 'When Daring Waverider enters the battlefield, you may cast target instant or sorcery card from your graveyard without paying its mana cost.', ['U'], '4', '4', 'uncommon'),
 
   // Black
   createBenchmarkCard('Eaten Alive', 'MID', '{B}', 1, 'Sorcery', 'As an additional cost to cast this spell, sacrifice a creature or pay {2}{B}. Exile target creature or planeswalker.', ['B']),
   createBenchmarkCard('Disfigure', 'BRO', '{B}', 1, 'Instant', 'Target creature gets -2/-2 until end of turn.', ['B']),
+  createBenchmarkCard('Burglar Rat', 'GRN', '{1}{B}', 2, 'Creature — Rat', 'When Burglar Rat enters the battlefield, each opponent discards a card.', ['B'], '1', '1', 'common'),
   createBenchmarkCard('Fell', 'BLB', '{1}{B}', 2, 'Sorcery', 'Destroy target creature.', ['B'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Bonebind Orator', 'BLB', '{1}{B}', 2, 'Creature — Bat Cleric', 'Lifelink. {2}{B}, Exile Bonebind Orator from your graveyard: Return target creature card with mana value 2 or less from your graveyard to your hand.', ['B'], '2', '2', 'common', ['Lifelink']),
   createBenchmarkCard('Deep-Cavern Bat', 'LCI', '{1}{B}', 2, 'Creature — Bat', "Flying, lifelink. When Deep-Cavern Bat enters the battlefield, look at target opponent's hand and exile a nonland card until Deep-Cavern Bat leaves the battlefield.", ['B'], '1', '1', 'uncommon', ['Flying', 'Lifelink']),
@@ -127,6 +134,7 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Take Out the Trash', 'BLB', '{1}{R}', 2, 'Instant', 'Take Out the Trash deals 3 damage to target creature. If you control a legendary creature, you may draw a card, then discard a card.', ['R']),
   createBenchmarkCard('Conduit Goblin', 'MH3', '{1}{R}', 2, 'Creature — Goblin Warrior', 'Whenever Conduit Goblin attacks, another target attacking creature gains haste until end of turn.', ['R'], '2', '2'),
   createBenchmarkCard("Dragon's Fire", 'AFR', '{1}{R}', 2, 'Instant', "As an additional cost to cast this spell, you may reveal a Dragon card from your hand or choose a Dragon you control. Dragon's Fire deals 3 damage to target creature or planeswalker.", ['R']),
+  createBenchmarkCard('Fateful End', 'THB', '{2}{R}', 3, 'Instant', 'Fateful End deals 3 damage to any target. Scry 1.', ['R'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Redcap Thief', 'WOE', '{2}{R}', 3, 'Creature — Goblin Rogue', 'When Redcap Thief enters the battlefield, create a Treasure token.', ['R'], '2', '3'),
   createBenchmarkCard('Sunspine Lynx', 'BLB', '{2}{R}{R}', 4, 'Creature — Elemental Cat', "Players can't gain life. Damage can't be prevented. When Sunspine Lynx enters the battlefield, it deals damage to each player equal to the number of nonbasic lands that player controls.", ['R'], '5', '4', 'rare'),
 
@@ -147,9 +155,41 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Clockwork Percussionist', 'DSK', '{1}', 1, 'Artifact Creature — Monkey', 'Haste. When Clockwork Percussionist dies, exile the top card of your library. You may play it until the end of your next turn.', [], '1', '1', 'common', ['Haste']),
   createBenchmarkCard('Campus Guide', 'STX', '{2}', 2, 'Artifact Creature — Golem', 'When Campus Guide enters the battlefield, you may search your library for a basic land card, reveal it, then shuffle and put that card on top.', [], '2', '1'),
   createBenchmarkCard('Patchwork Banner', 'BLB', '{3}', 3, 'Artifact', 'As Patchwork Banner enters the battlefield, choose a creature type. Creatures you control of the chosen type get +1/+1. {T}: Add one mana of any color.', [], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Throwing Knife', 'OTJ', '{2}', 2, 'Artifact — Equipment', 'Equipped creature gets +1/+0. Whenever equipped creature attacks, you may sacrifice Throwing Knife. When you do, it deals 2 damage to any target and you draw a card. Equip {1}.', []),
+  createBenchmarkCard('Barrow-Blade', 'LTR', '{1}', 1, 'Artifact — Equipment', 'Equipped creature gets +1/+1. Whenever equipped creature blocks or becomes blocked by a creature, that creature loses all abilities until end of turn. Equip {1}.', []),
+  createBenchmarkCard('Kor Halberd', 'MOM', '{W}', 1, 'Artifact — Equipment', 'Equipped creature gets +1/+1 and has vigilance. Equip {1}.', ['W']),
+  createBenchmarkCard('Key to the City', 'BRO', '{2}', 2, 'Artifact', '{T}, Discard a card: Up to one target creature can\'t be blocked this turn. Whenever Key to the City becomes untapped, you may pay {2}. If you do, draw a card.', []),
+  createBenchmarkCard('Ecologist\'s Terrarium', 'NEO', '{2}', 2, 'Artifact', 'When Ecologist\'s Terrarium enters the battlefield, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle. {2}, {T}, Sacrifice Ecologist\'s Terrarium: Put a +1/+1 counter on target creature.', []),
+  createBenchmarkCard('Collector\'s Vault', 'WOE', '{2}', 2, 'Artifact', '{2}, {T}: Draw a card, then discard a card. Create a Treasure token.', []),
+  createBenchmarkCard('Sterling Hound', 'OTJ', '{3}', 3, 'Artifact Creature — Dog', 'When Sterling Hound enters the battlefield, surveil 2.', [], '3', '2', 'common'),
+  createBenchmarkCard('Circuit Mender', 'NEO', '{3}', 3, 'Artifact Creature — Insect', 'When Circuit Mender enters the battlefield, you gain 2 life. When Circuit Mender leaves the battlefield, draw a card.', [], '2', '3', 'uncommon'),
+  createBenchmarkCard('Burnished Hart', 'FDN', '{3}', 3, 'Artifact Creature — Elk', '{3}, Sacrifice Burnished Hart: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.', [], '2', '2', 'uncommon'),
+  createBenchmarkCard('Suspicious Bookcase', 'SNC', '{2}', 2, 'Artifact Creature — Wall', 'Defender. {3}, {T}: Target creature can\'t be blocked this turn.', [], '0', '4', 'uncommon', ['Defender']),
 
-  // Multicolor Archetypes
+  // Multicolor Archetypes & Signposts
+  createBenchmarkCard('Stickytongue Sentinel', 'BLB', '{2}{G}', 3, 'Creature — Frog Warrior', 'Reach. When Stickytongue Sentinel enters the battlefield, return another target permanent you control to its owner\'s hand.', ['G'], '3', '3', 'common', ['Reach']),
+  createBenchmarkCard('Infernal Vessel', 'FDN', '{2}{B}', 3, 'Creature — Human Warlock', 'When Infernal Vessel dies, if it wasn\'t a Demon, return it to the battlefield under its owner\'s control with two +1/+1 counters on it. It\'s a Demon in addition to its other types.', ['B'], '2', '1', 'uncommon'),
+  createBenchmarkCard('Easterling Vanguard', 'LTR', '{1}{B}', 2, 'Creature — Human Warrior', 'When Easterling Vanguard dies, amass Orcs 1.', ['B'], '2', '1', 'common'),
+  createBenchmarkCard('Skyfisher Spider', 'BRO', '{2}{B}{G}', 4, 'Creature — Spider', 'Reach. When Skyfisher Spider enters the battlefield, you may sacrifice another creature. When you do, destroy target nonland permanent. When Skyfisher Spider dies, you may gain 1 life for each creature card in your graveyard.', ['B', 'G'], '3', '3', 'uncommon', ['Reach']),
+  createBenchmarkCard('Ruthless Lawbringer', 'OTJ', '{1}{W}{B}', 3, 'Creature — Vampire Assassin', 'When Ruthless Lawbringer enters the battlefield, you may sacrifice another creature. When you do, destroy target nonland permanent.', ['W', 'B'], '3', '2', 'uncommon'),
+  createBenchmarkCard('Quaketusk Boar', 'BLB', '{3}{R}{R}', 5, 'Creature — Boar', 'Reach, trample, haste.', ['R'], '5', '5', 'uncommon', ['Reach', 'Trample', 'Haste']),
+  createBenchmarkCard('Gurgling Anointer', 'BRO', '{1}{B}{B}', 3, 'Creature — Phyrexian Horror', 'Flying. Whenever you draw your second card each turn, put a +1/+1 counter on Gurgling Anointer. When Gurgling Anointer dies, return target creature card with mana value less than or equal to Gurgling Anointer\'s power from your graveyard to the battlefield.', ['B'], '1', '3', 'uncommon', ['Flying']),
+  createBenchmarkCard('Faerie Vandal', 'SNC', '{1}{U}', 2, 'Creature — Faerie Rogue', 'Flash, flying. Whenever you draw your second card each turn, put a +1/+1 counter on Faerie Vandal.', ['U'], '1', '2', 'uncommon', ['Flash', 'Flying']),
+  createBenchmarkCard('Astral Wingspan', 'MOM', '{4}{U}', 5, 'Enchantment — Aura', 'Convoke. Enchant creature. When Astral Wingspan enters the battlefield, draw a card. Enchanted creature gets +2/+2 and has flying.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Lofty Dreams', 'ECL', '{3}{U}{U}', 5, 'Enchantment — Aura', 'Convoke. Enchant creature. When Lofty Dreams enters the battlefield, draw a card. Enchanted creature gets +2/+2 and has flying.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Malamet Brawler', 'LCI', '{1}{G}', 2, 'Creature — Cat Warrior', 'Whenever Malamet Brawler attacks, target attacking creature gains trample until end of turn.', ['G'], '2', '2', 'common'),
+  createBenchmarkCard('Flesh Burrower', 'DSK', '{1}{G}', 2, 'Creature — Insect', 'Deathtouch. Whenever Flesh Burrower attacks, another target creature gains deathtouch until end of turn.', ['G'], '2', '2', 'common', ['Deathtouch']),
+  createBenchmarkCard('Dawnhand Eulogist', 'ECL', '{3}{B}', 4, 'Creature — Elf Warlock', 'Menace. When Dawnhand Eulogist enters the battlefield, mill three cards, then if an Elf card is in your graveyard, each opponent loses 2 life and you gain 2 life.', ['B'], '3', '3', 'common', ['Menace']),
+  createBenchmarkCard('Yavimaya Iconoclast', 'DMU', '{1}{G}', 2, 'Creature — Elf Warrior', 'Trample. Kicker {R}. When Yavimaya Iconoclast enters the battlefield, if it was kicked, it gets +1/+1 and gains haste until end of turn.', ['G'], '3', '2', 'uncommon', ['Trample']),
+  createBenchmarkCard('Belligerent Yearling', 'LCI', '{1}{R}', 2, 'Creature — Dinosaur', 'Trample. Whenever another Dinosaur you control enters the battlefield, you may have Belligerent Yearling\'s base power become equal to that creature\'s power until end of turn.', ['R'], '3', '2', 'uncommon', ['Trample']),
+  createBenchmarkCard('Elfsworn Giant', 'FDN', '{3}{G}{G}', 5, 'Creature — Giant Warrior', 'Reach. Landfall — Whenever a land you control enters the battlefield, create a 1/1 green Elf creature token.', ['G'], '5', '3', 'uncommon', ['Reach']),
+  createBenchmarkCard('Steelclaw Lance', 'ELD', '{B}{R}', 2, 'Artifact — Equipment', 'Equipped creature gets +2/+2. Equip Knight {1}. Equip {3}.', ['B', 'R'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Cultivate', 'M11', '{2}{G}', 3, 'Sorcery', 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', ['G'], undefined, undefined, 'common'),
+
+  // Lands & Fetchlands
+  createBenchmarkCard('Terramorphic Expanse', 'SOS', '', 0, 'Land', '{T}, Sacrifice Terramorphic Expanse: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', [], undefined, undefined, 'common'),
+  createBenchmarkCard('Evolving Wilds', 'FDN', '', 0, 'Land', '{T}, Sacrifice Evolving Wilds: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', [], undefined, undefined, 'common'),
+  createBenchmarkCard('Escape Tunnel', 'MKM', '', 0, 'Land', '{T}, Sacrifice Escape Tunnel: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. {1}, {T}, Sacrifice Escape Tunnel: Target creature with power 2 or less can\'t be blocked this turn.', [], undefined, undefined, 'common'),
+  createBenchmarkCard('Rogue\'s Passage', 'FDN', '', 0, 'Land', '{T}: Add {C}. {4}, {T}: Target creature can\'t be blocked this turn.', [], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Expressive Iteration', 'STX', '{U}{R}', 2, 'Sorcery', 'Look at the top three cards of your library. Put one into your hand, one on the bottom of your library, and exile one. You may play the exiled card this turn.', ['U', 'R'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Rip Apart', 'STX', '{R}{W}', 2, 'Sorcery', 'Choose one — Rip Apart deals 3 damage to target creature or planeswalker; or destroy target artifact or enchantment.', ['R', 'W'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Killian, Ink Duelist', 'STX', '{W}{B}', 2, 'Creature — Human Warlock', 'Lifelink, menace. Spells you cast that target a creature cost {2} less to cast.', ['W', 'B'], '2', '2', 'uncommon', ['Lifelink', 'Menace']),
@@ -171,6 +211,24 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Solve the Equation', 'STX', '{2}{U}', 3, 'Sorcery', 'Search your library for an instant or sorcery card, reveal it, put it into your hand, then shuffle.', ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Demonic Counsel', 'DSK', '{1}{B}', 2, 'Sorcery', 'Search your library for a Demon card, reveal it, put it into your hand, then shuffle. Delirium — If there are four or more card types among cards in your graveyard, instead search your library for any card, put it into your hand, then shuffle.', ['B'], undefined, undefined, 'rare'),
   createBenchmarkCard('Insatiable Avarice', 'OTJ', '{B}', 1, 'Sorcery', 'Spree\n+ {2} — Search your library for a card, then shuffle and put that card on top.\n+ {B}{B} — Target player draws three cards and loses 3 life.', ['B'], undefined, undefined, 'rare'),
+
+  // Ramp Dorks (2-drop vs 3-drop), Mana Rocks, Powerstone / Heartwood Artifacts & Animating Auras
+  createBenchmarkCard('Poison Dart Frog', 'LCI', '{1}{G}', 2, 'Creature — Frog', 'Reach, deathtouch. {T}: Add one mana of any color. {2}: Poison Dart Frog gains deathtouch until end of turn.', ['G'], '1', '1', 'common', ['Reach', 'Deathtouch']),
+  createBenchmarkCard('Three Tree Rootweaver', 'BLB', '{1}{G}', 2, 'Creature — Mouse Druid', '{T}: Add one mana of any color. Spend this mana only to cast a creature spell.', ['G'], '1', '3', 'common'),
+  createBenchmarkCard('Deathbloom Gardener', 'DMU', '{2}{G}', 3, 'Creature — Elf Druid', 'Deathtouch. {T}: Add one mana of any color.', ['G'], '1', '1', 'common', ['Deathtouch']),
+  createBenchmarkCard('Oasis Gardener', 'OTJ', '{2}{G}', 3, 'Creature — Plant Druid', 'When Oasis Gardener enters the battlefield, you gain 2 life. {T}: Add one mana of any color.', ['G'], '2', '2', 'common'),
+  createBenchmarkCard('Weaver of Blossoms', 'VOW', '{2}{G}', 3, 'Creature — Human Werewolf', 'Daybound. {T}: Add one mana of any color.', ['G'], '2', '3', 'common'),
+  createBenchmarkCard('Dragonstorm Globe', 'TDM', '{3}', 3, 'Artifact', '{T}: Add one mana of any color. {3}, {T}: Dragon spells you cast this turn cost {1} less to cast.', []),
+  createBenchmarkCard('Starting Column', 'DFT', '{3}', 3, 'Artifact', '{T}: Add one mana of any color. {5}, {T}, Sacrifice Starting Column: Draw two cards.', []),
+  createBenchmarkCard('Argothian Opportunist', 'BRO', '{2}{G}', 3, 'Creature — Human Artificer', 'When Argothian Opportunist enters the battlefield, create a tapped Powerstone token.', ['G'], '3', '2', 'common'),
+  createBenchmarkCard('Zoetic Glyph', 'LCI', '{2}{U}', 3, 'Enchantment — Aura', 'Enchant artifact. Enchanted artifact is a Golem creature with base power and toughness 5/4 in addition to its other types. When Zoetic Glyph is put into a graveyard from the battlefield, discover 3.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Puppet Crafting', 'FRA', '{1}{G}', 2, 'Enchantment — Aura', 'Enchant artifact or non-Aura enchantment. Enchanted permanent is a Construct creature with base power and toughness 5/5 in addition to its other types. {4}{G}: Return this card from your graveyard to your hand.', ['G'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Hungering Puppetbeast', 'FRA', '{3}{G}{G}', 5, 'Artifact Creature — Beast Construct', 'When this creature enters, create a Heartwood token. {1}, Sacrifice another artifact: Put a +1/+1 counter on this creature. It gains your choice of trample, hexproof, or haste until end of turn.', ['G'], '4', '4', 'common'),
+  createBenchmarkCard('Tenured Tethermage', 'FRA', '{1}{R}{G}', 3, 'Creature — Human Artificer', 'When this creature enters, you may sacrifice a land. If you do, create two tapped Heartwood tokens. Tap two untapped artifacts you control: Put two +1/+1 counters on this creature.', ['R', 'G'], '1', '1', 'uncommon'),
+  createBenchmarkCard('Tinker\'s Tote', 'LCI', '{2}{W}', 3, 'Artifact', 'When Tinker\'s Tote enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens and you gain 2 life. {3}{W}, {T}, Sacrifice Tinker\'s Tote: Put a +1/+1 counter on each creature you control.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Gleaming Geardrake', 'MKM', '{U}{R}', 2, 'Artifact Creature — Drake', 'Flying. When Gleaming Geardrake enters the battlefield, investigate. Whenever you sacrifice an artifact, put a +1/+1 counter on Gleaming Geardrake.', ['U', 'R'], '1', '1', 'uncommon', ['Flying']),
+  createBenchmarkCard('Oni-Cult Anvil', 'NEO', '{B}{R}', 2, 'Artifact', 'Whenever one or more artifacts you control leave the battlefield during your turn, create a 1/1 colorless Construct artifact creature token. {T}, Sacrifice an artifact: Oni-Cult Anvil deals 1 damage to each opponent. You gain 1 life.', ['B', 'R'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Unctus\'s Retrofitter', 'ONE', '{1}{U}', 2, 'Creature — Phyrexian Artificer', 'When Unctus\'s Retrofitter enters the battlefield, target noncreature artifact you control becomes an artifact creature with base power and toughness 4/4 for as long as Unctus\'s Retrofitter remains on the battlefield.', ['U'], '2', '3', 'uncommon'),
 ];
 
 // Known Limited functional effect clauses with category classification
@@ -210,6 +268,14 @@ const EFFECT_PATTERNS: EffectPattern[] = [
   { pattern: /sacrifice/i, label: 'Sacrifice Synergy', category: 'synergy' },
   { pattern: /from your graveyard|exile this card from your graveyard|flashback|disturb|embalm|eternalize/i, label: 'Graveyard Value', category: 'graveyard' },
   { pattern: /equipped creature gets [+-]\d+\/[+-]\d+|equip \{/i, label: 'Equipment Buff', category: 'equipment' },
+  { pattern: /draw (your|their|a) second card|draws? (your|their|a) second card/i, label: 'Draw Second Card Synergy', category: 'synergy' },
+  { pattern: /landfall|whenever a land (you control )?enters/i, label: 'Landfall Synergy', category: 'synergy' },
+  { pattern: /target creature can't be blocked/i, label: 'Unblockable Effect', category: 'trick' },
+  { pattern: /heartwood token|powerstone token/i, label: 'Ramp Artifact Token (Heartwood/Powerstone)', category: 'synergy' },
+  { pattern: /enchant (artifact|non-aura enchantment|permanent).*base power and toughness|enchant artifact/i, label: 'Artifact Animation Aura', category: 'synergy' },
+  { pattern: /sacrifice (an|another) artifact/i, label: 'Artifact Sacrifice Payoff', category: 'synergy' },
+  { pattern: /tap \w+ untapped artifacts/i, label: 'Artifact Tap Payoff', category: 'synergy' },
+  { pattern: /\{t\}: add/i, label: 'Mana Production / Ramp', category: 'synergy' },
 ];
 
 export const COMBAT_KEYWORDS = [
@@ -234,7 +300,7 @@ export function extractCardFeatures(card: Card) {
   // For multi-faced cards (DFCs, Transform, Craft, Adventures), evaluate primary permanent / spell nature from the castable front face
   const frontTypeLine = (card.card_faces?.[0]?.type_line || typeLine.split(' // ')[0] || '').toLowerCase();
   // Strip reminder text to prevent token abilities (e.g. Jace token's "-3: Draw a card") from leaking into host card!
-  const rawOracle = (card.oracle_text || '').toLowerCase();
+  const rawOracle = (card.oracle_text || (card.card_faces ? card.card_faces.map(f => f.oracle_text).join('\n//\n') : '')).toLowerCase();
   const oracle = cleanOracleText(rawOracle).toLowerCase();
 
   const isPlaneswalker = frontTypeLine.includes('planeswalker');
@@ -294,7 +360,7 @@ export function extractCardFeatures(card: Card) {
 
   const isAuraRemoval = isAbilityLossAura || isFreezeAura || isLockdownAura || isExileAura;
 
-  const createsTokens = (oracle.includes('create') && oracle.includes('token')) || /amass/i.test(oracle);
+  const createsTokens = (oracle.includes('create') && oracle.includes('token')) || /amass/i.test(oracle) || /empower jace/i.test(rawOracle);
 
   // Equipment & Living Weapon Features
   const isEquipment = frontTypeLine.includes('equipment') || /equip \{/i.test(oracle);
@@ -503,6 +569,38 @@ export function extractCardFeatures(card: Card) {
     detectedCategories.add('selection');
   }
 
+  // Draw Second Card Each Turn Synergy (e.g. Bard the Bowman, Roxxon Brutes, Gurgling Anointer, Faerie Vandal)
+  const isSecondCardDrawn = /draw (your|their|a) second card|draws? (your|their|a) second card/i.test(oracle);
+  if (isSecondCardDrawn) {
+    actionSubtypes.add('second_card_drawn');
+    detectedCategories.add('synergy');
+    if (/draw (your|their|a) second card.*target creature/i.test(oracle) || (/draw (your|their|a) second card/i.test(oracle) && /put a \+1\/\+1 counter on target creature/i.test(oracle))) {
+      actionSubtypes.add('second_card_target_buff');
+    }
+  }
+
+  // Landfall Payoff (e.g. Thranduil Sindarin Liege, Silvan Reveler, Elfsworn Giant, Mole Man, Bloodghast)
+  const isLandfall = /landfall|whenever a land (you control )?enters/i.test(oracle);
+  if (isLandfall) {
+    actionSubtypes.add('landfall_payoff');
+    detectedCategories.add('synergy');
+    if (/create (a|two|\d+)?.*token/i.test(oracle)) {
+      actionSubtypes.add('landfall_token');
+      valueRiders.add('token');
+    }
+    if (/from your graveyard/i.test(oracle)) {
+      actionSubtypes.add('landfall_recursion');
+      detectedCategories.add('graveyard');
+    }
+  }
+
+  // Unblockable Ability Granter (e.g. Key to the Side-Door, Key to the City, Suspicious Bookcase, Rogue's Passage, Escape Tunnel)
+  const isUnblockableGranter = /target creature can't be blocked/i.test(oracle);
+  if (isUnblockableGranter) {
+    actionSubtypes.add('unblockable_granter');
+    detectedCategories.add('trick');
+  }
+
   // 5. Combat Trick Subtypes
   if (isCombatTrick) {
     if (/gets [+-]\d+\/[+-]\d+/i.test(oracle)) actionSubtypes.add('pump_trick');
@@ -512,7 +610,16 @@ export function extractCardFeatures(card: Card) {
 
   // 6. Creature Role Subtypes
   if (isCreature) {
-    if (/{t}: add/i.test(oracle)) actionSubtypes.add('mana_dork');
+    const isManaDork = (/{t}: add/i.test(oracle) || /{t}, (pay \d+ life, )?add/i.test(oracle));
+    if (isManaDork) {
+      actionSubtypes.add('mana_dork');
+      detectedCategories.add('synergy');
+      if ((card.cmc || 0) <= 2) {
+        actionSubtypes.add('two_drop_mana_dork');
+      } else {
+        actionSubtypes.add('three_drop_mana_dork');
+      }
+    }
     const hasEvasion = (card.keywords || []).some(k => /flying|menace|shadow|fear|intimidate/i.test(k)) ||
       /(^|\n)(flying|menace)\b/i.test(oracle) ||
       /\bthis creature can't be blocked\b/i.test(oracle) ||
@@ -597,6 +704,132 @@ export function extractCardFeatures(card: Card) {
     if (isManaSink && oracle.includes(':')) {
       actionSubtypes.add('mana_sink');
     }
+
+    // ETB Self-Bounce Permanent Engine (e.g. Mirkwood Nurturer, Stickytongue Sentinel, Mischievous Pup, Exosuit Savior)
+    const isEtbSelfBounce = (/when .* enters/i.test(rawOracle) || /when .* enters/i.test(oracle)) &&
+      (/return (another |a )?target permanent (you control|to its owner's hand)/i.test(oracle) || /return another permanent you control/i.test(oracle));
+    if (isEtbSelfBounce) {
+      actionSubtypes.add('etb_self_bounce');
+      detectedCategories.add('synergy');
+    }
+
+    // Dies-into-Token / Amass Replacement (e.g. Fearsome Goblin Pair, Easterling Vanguard, Infernal Vessel, Earth Village Ruffians)
+    const isDeathAmassOrToken = /when .* dies/i.test(oracle) &&
+      (oracle.includes('amass') || /create (a|two|\d+)?.*token/i.test(oracle) || /if it wasn't a .* return it/i.test(oracle));
+    if (isDeathAmassOrToken) {
+      actionSubtypes.add('death_amass_token');
+      valueRiders.add('token');
+      detectedCategories.add('token');
+    }
+
+    // ETB Sacrifice Creature for Removal / Damage (e.g. Bolg of the North, Skyfisher Spider, Killmonger, Ruthless Lawbringer, Boilerbilges Ripper)
+    const isEtbSacRemoval = (/when .* enters/i.test(rawOracle) || /when .* enters/i.test(oracle)) &&
+      /sacrifice another (creature|permanent)/i.test(oracle) &&
+      (oracle.includes('destroy') || /deals damage/i.test(oracle));
+    if (isEtbSacRemoval) {
+      actionSubtypes.add('etb_sac_removal');
+      detectedCategories.add('removal');
+    }
+
+    // Power 4 or Greater Synergies / Ferocious (e.g. The Chief Warg, Bitter Work, Hunter's Talent)
+    const hasPower4PlusSynergy = /creature with power 4 or greater/i.test(oracle) ||
+      (/power 4 or greater/i.test(oracle) && !/destroy|exile|toughness/i.test(oracle));
+    if (hasPower4PlusSynergy) {
+      actionSubtypes.add('power_4_plus_synergy');
+      detectedCategories.add('synergy');
+    }
+
+    // Cultivate Double-Land Ramp on a Creature / Spell (e.g. Troop of Ponies, Burnished Hart, Cultivate, Reach the Horizon)
+    const isCultivateRamp = /search your library for (up to )?(two|2) (basic )?land cards/i.test(oracle);
+    if (isCultivateRamp) {
+      actionSubtypes.add('cultivate_ramp');
+      valueRiders.add('ramp');
+      detectedCategories.add('ramp');
+    }
+  }
+
+  // Prepared creature / spell (Reality Fracture)
+  const isPreparedCreature = /enters prepared|becomes prepared|prepared\b/i.test(rawOracle);
+  if (isPreparedCreature) {
+    actionSubtypes.add('prepared_creature');
+    detectedCategories.add('synergy');
+  }
+
+  // Ramp Artifact Token Producers (Heartwood, Powerstone, Lander)
+  const createsRampToken = (
+    /create (a|two|\d+)?.*(heartwood|powerstone|lander) token/i.test(rawOracle) ||
+    /create (a|two|\d+)?.*(heartwood|powerstone|lander) token/i.test(oracle) ||
+    (isPreparedCreature && /(heartwood|powerstone)/i.test(rawOracle))
+  );
+  if (createsRampToken) {
+    actionSubtypes.add('ramp_token_producer');
+    valueRiders.add('token');
+    valueRiders.add('ramp');
+    detectedCategories.add('synergy');
+    if (/heartwood/i.test(rawOracle)) actionSubtypes.add('heartwood_token_producer');
+    if (/powerstone/i.test(rawOracle)) actionSubtypes.add('powerstone_token_producer');
+  }
+
+  // Artifact Animation Aura (e.g. Puppet Crafting, Zoetic Glyph, Ensoul Artifact)
+  const isArtifactAnimatorAura = (isEnchantment || /aura/i.test(typeLine) || isAura) && (
+    (/enchant (artifact|non-aura enchantment|permanent)/i.test(rawOracle) || /enchanted (artifact|permanent) is a/i.test(rawOracle) || /enchant artifact/i.test(rawOracle)) &&
+    (/is a .* creature/i.test(rawOracle) || /base power and toughness/i.test(rawOracle) || /construct|golem/i.test(rawOracle))
+  );
+  if (isArtifactAnimatorAura) {
+    actionSubtypes.add('artifact_animator_aura');
+    valueRiders.add('buff');
+    detectedCategories.add('synergy');
+  }
+
+  // Artifact Sacrifice Payoff (e.g. Hungering Puppetbeast, Tinker's Tote, Megatog, Gleaming Geardrake, Oni-Cult Anvil)
+  const isArtifactSacPayoff = (
+    /sacrifice (an|another) artifact:/i.test(oracle) ||
+    /whenever you sacrifice (an|another|one or more) artifacts?/i.test(oracle) ||
+    /whenever one or more artifacts you control leave the battlefield/i.test(oracle)
+  );
+  if (isArtifactSacPayoff) {
+    actionSubtypes.add('artifact_sacrifice_payoff');
+    detectedCategories.add('synergy');
+  }
+
+  // Artifact Tap Payoff (e.g. Tenured Tethermage, Inspiring Statuary)
+  const isArtifactTapPayoff = /tap (an|two|\d+|another)?\s+untapped artifacts? you control/i.test(oracle);
+  if (isArtifactTapPayoff) {
+    actionSubtypes.add('artifact_tap_payoff');
+    detectedCategories.add('synergy');
+  }
+
+  // Empower Jace Engine (Reality Fracture)
+  const empowerJaceMatch = rawOracle.match(/empower jace\s*(\d+)?/i);
+  const hasEmpowerJace = !!empowerJaceMatch;
+  const empowerJaceCount = empowerJaceMatch ? (empowerJaceMatch[1] ? parseInt(empowerJaceMatch[1], 10) : 1) : 0;
+
+  if (hasEmpowerJace) {
+    actionSubtypes.add('empower_jace');
+    actionSubtypes.add('amass_parallel'); // Rectangle Theory: generates/expands permanent planeswalker presence
+    valueRiders.add('token');
+    valueRiders.add('surveil_scry');
+    valueRiders.add('life_gain'); // Soft life gain / damage diversion away from player life total
+
+    if (empowerJaceCount >= 1) {
+      actionSubtypes.add('empower_jace_surveil');
+      detectedCategories.add('selection');
+    }
+
+    if (empowerJaceCount >= 3) {
+      actionSubtypes.add('empower_jace_draw');
+      detectedCategories.add('draw');
+      valueRiders.add('cantrip');
+      if (isCreature) {
+        actionSubtypes.add('etb_value');
+        actionSubtypes.add('cantrip');
+      }
+    }
+
+    if (empowerJaceCount >= 6) {
+      actionSubtypes.add('raw_draw');
+      detectedCategories.add('draw');
+    }
   }
 
   // ETB Counter Distribution & Growth Subtypes
@@ -640,6 +873,29 @@ export function extractCardFeatures(card: Card) {
 
     if (/{t}: add/i.test(oracle)) {
       actionSubtypes.add('mana_rock');
+    }
+
+    const isBasicTutorArtifact = /search your library for a (basic )?land card/i.test(oracle) && /into your hand/i.test(oracle);
+    if (isBasicTutorArtifact) {
+      actionSubtypes.add('basic_tutor_artifact');
+      detectedCategories.add('selection');
+    }
+  }
+
+  if (isAura) {
+    const isAuraGyRecursion = /return this card from your graveyard|from your graveyard to the battlefield attached/i.test(oracle);
+    if (isAuraGyRecursion) {
+      actionSubtypes.add('aura_gy_recursion');
+      detectedCategories.add('graveyard');
+    }
+  }
+
+  if (isLand) {
+    const isFetchLand = /search your library for a (basic )?land card/i.test(oracle) &&
+      (/battlefield tapped/i.test(oracle) || /sacrifice/i.test(oracle));
+    if (isFetchLand) {
+      actionSubtypes.add('fetch_land');
+      detectedCategories.add('ramp');
     }
   }
 
@@ -765,6 +1021,8 @@ export function extractCardFeatures(card: Card) {
     isTutorBattlefield,
     isPlaneswalkerTutor,
     isLegendaryTutor,
+    hasEmpowerJace,
+    empowerJaceCount,
     isRemoval: detectedCategories.has('removal') || isAuraRemoval || actionSubtypes.has('sweeper') || actionSubtypes.has('burn_damage') || actionSubtypes.has('bite_fight') || actionSubtypes.has('permanent_removal') || actionSubtypes.has('unconditional_removal') || actionSubtypes.has('conditional_removal') || actionSubtypes.has('power_toughness_removal') || actionSubtypes.has('toughness_4_plus_removal') || actionSubtypes.has('artifact_enchantment_removal'),
   };
 }
@@ -858,7 +1116,7 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   const baseFilter = `-is:reprint -t:basic -t:token -is:extra -is:alchemy ${setFilter}`;
 
   // Exclude the current set and exact same card name
-  const excludeSelf = `-s:${card.set.toLowerCase()} -!"${card.name}"`;
+  const excludeSelf = card.set ? `-s:${card.set.toLowerCase()} -!"${card.name}"` : `-!"${card.name}"`;
 
   // Color Query Tiers:
   // EXACT color syntax in Scryfall uses '=' (e.g. c=w for pure mono-white, c=c for colorless)
@@ -932,22 +1190,118 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     return queries;
   }
 
-  // Dedicated Library Search & Tutor Queries (e.g. Loyal Tutor, Search for Glory, Enlightened Tutor)
+  // Dedicated Library Search & Tutor Queries (e.g. Loyal Tutor, Search for Glory, Enlightened Tutor, Hobbit Hole, Ecologist's Terrarium)
   if (features.actionSubtypes.has('library_tutor')) {
+    const tutorTypeFilter = features.isLand
+      ? 't:land'
+      : (features.isArtifact ? 't:artifact' : (features.isCreature ? 't:creature' : '(t:instant or t:sorcery)'));
     if (features.actionSubtypes.has('tutor_to_top')) {
-      queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) o:"search your library" (o:"put that card on top" or o:"on top")`);
+      queries.push(`${baseFilter} ${excludeSelf} ${tutorTypeFilter} o:"search your library" (o:"put that card on top" or o:"on top")`);
     }
     if (features.actionSubtypes.has('planeswalker_tutor') || features.actionSubtypes.has('legendary_tutor')) {
-      queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) o:"search your library" (o:"planeswalker" or o:"legendary")`);
+      queries.push(`${baseFilter} ${excludeSelf} ${tutorTypeFilter} o:"search your library" (o:"planeswalker" or o:"legendary")`);
     }
-    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} o:"search your library"`);
-    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) cmc<=3 o:"search your library"`);
-    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) o:"search your library"`);
+    queries.push(`${baseFilter} ${excludeSelf} ${tutorTypeFilter} ${exactColorQuery} o:"search your library"`);
+    if (features.cmc > 0) {
+      queries.push(`${baseFilter} ${excludeSelf} ${tutorTypeFilter} cmc<=3 o:"search your library"`);
+    }
+    queries.push(`${baseFilter} ${excludeSelf} ${tutorTypeFilter} o:"search your library"`);
+    if (features.isLand) {
+      queries.push(`${baseFilter} ${excludeSelf} t:land (o:"search your library for a basic land card" or o:"cycling")`);
+      return queries;
+    }
     queries.push(`${baseFilter} ${excludeSelf} o:"search your library"`);
     return queries;
   }
 
   // SIGNATURE ENGINE MECHANIC QUERY (Cross-Color & Archetype-Level)
+  // Empower Jace Engine Queries (Functional cross-mechanic queries)
+  if (features.actionSubtypes.has('empower_jace')) {
+    if (features.isCreature) {
+      if (features.empowerJaceCount <= 2) {
+        queries.push(`${baseFilter} ${excludeSelf} t:creature (o:surveil or o:scry) cmc>=${minCmc} cmc<=${maxCmc}`);
+        queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:surveil or o:scry)`);
+        queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"when" o:"enters" (o:surveil or o:scry))`);
+      } else {
+        queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"when" o:"enters" o:"draw a card") cmc>=${minCmc} cmc<=${maxCmc}`);
+        queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"when" o:"enters" o:"draw a card")`);
+      }
+    } else if (features.isInstant || features.isSorcery) {
+      if (features.actionSubtypes.has('hard_counter') || features.detectedCategories.has('counter')) {
+        queries.push(`${baseFilter} ${excludeSelf} t:instant (o:"counter target" (o:amass or o:token or o:investigate))`);
+        queries.push(`${baseFilter} ${excludeSelf} t:instant ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"counter target spell"`);
+      } else if (features.isCombatTrick) {
+        queries.push(`${baseFilter} ${excludeSelf} t:instant (o:"target creature gets" (o:investigate or o:draw or o:amass))`);
+      } else if (features.empowerJaceCount >= 6) {
+        queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"draw three" or o:"draw two")`);
+      } else if (features.createsTokens) {
+        queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) (o:"create" o:"tokens" (o:scry or o:surveil or o:draw))`);
+      }
+    }
+  }
+
+  if (features.actionSubtypes.has('second_card_drawn')) {
+    queries.push(`${baseFilter} ${excludeSelf} (o:"second card each turn" or o:"second card")`);
+  }
+  if (features.actionSubtypes.has('etb_self_bounce')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"when" o:"enters" o:"return" o:"permanent you control to its owner's hand")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"when" o:"enters" o:"return another target permanent")`);
+  }
+  if (features.actionSubtypes.has('death_amass_token')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"when" o:"dies" (o:"amass" or o:"create" or o:"token"))`);
+  }
+  if (features.actionSubtypes.has('etb_sac_removal')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"enters" o:"sacrifice another" (o:"destroy" or o:"deals damage" or o:"excess damage"))`);
+  }
+  if (features.actionSubtypes.has('power_4_plus_synergy')) {
+    queries.push(`${baseFilter} ${excludeSelf} (o:"creature with power 4 or greater" or o:"power 4 or greater")`);
+  }
+  if (features.actionSubtypes.has('landfall_payoff')) {
+    queries.push(`${baseFilter} ${excludeSelf} (o:landfall or o:"whenever a land you control enters")`);
+  }
+  if (features.actionSubtypes.has('unblockable_granter')) {
+    queries.push(`${baseFilter} ${excludeSelf} o:"target creature can't be blocked"`);
+  }
+  if (features.actionSubtypes.has('cultivate_ramp')) {
+    queries.push(`${baseFilter} ${excludeSelf} (o:"search your library for up to two" or o:"search your library for two") o:"land"`);
+  }
+  if (features.actionSubtypes.has('fetch_land')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:land o:"search your library for a basic land card"`);
+    queries.push(`${baseFilter} ${excludeSelf} t:land (o:"search your library" or o:"cycling")`);
+  }
+  if (features.actionSubtypes.has('aura_gy_recursion')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:enchantment (o:"enchant creature" or o:"aura") (o:"graveyard" or o:"convoke")`);
+  }
+  if (features.actionSubtypes.has('basic_tutor_artifact')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:artifact (o:"search your library for a basic land card" or o:"basic land card, reveal it, put it into your hand")`);
+  }
+  if (features.actionSubtypes.has('ramp_token_producer')) {
+    queries.push(`${baseFilter} ${excludeSelf} (o:"heartwood token" or o:"powerstone token" or o:"treasure token")`);
+    queries.push(`${baseFilter} ${excludeSelf} (o:"create" o:"token" (o:"{t}: add" or o:"powerstone" or o:"heartwood"))`);
+  }
+  if (features.actionSubtypes.has('artifact_animator_aura')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:enchantment (o:"enchant artifact" or o:"enchanted artifact") (o:"base power and toughness" or o:"creature")`);
+    queries.push(`${baseFilter} ${excludeSelf} (o:"enchant artifact" or o:"enchant permanent") (o:"5/5" or o:"5/4" or o:"4/4" or o:"construct" or o:"golem")`);
+  }
+  if (features.actionSubtypes.has('artifact_sacrifice_payoff')) {
+    queries.push(`${baseFilter} ${excludeSelf} (o:"sacrifice an artifact" or o:"sacrifice another artifact")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"sacrifice an artifact" or o:"sacrifice another artifact")`);
+  }
+  if (features.actionSubtypes.has('artifact_tap_payoff')) {
+    queries.push(`${baseFilter} ${excludeSelf} (o:"tap an untapped artifact" or o:"tap two untapped artifacts" or o:"untapped artifacts you control")`);
+  }
+  if (features.actionSubtypes.has('two_drop_mana_dork')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=2 o:"{t}: add"`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature cmc=2 o:"{t}: add"`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc<=2 (o:"{t}: add" or o:"add one mana")`);
+  } else if (features.actionSubtypes.has('three_drop_mana_dork')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=3 o:"{t}: add"`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature cmc=3 o:"{t}: add"`);
+  }
+  if (features.actionSubtypes.has('mana_rock')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:artifact -t:creature cmc>=2 cmc<=3 o:"{t}: add"`);
+    queries.push(`${baseFilter} ${excludeSelf} t:artifact -t:creature cmc=3 o:"{t}: add"`);
+  }
   if (features.actionSubtypes.has('connive_recruit')) {
     queries.push(`${baseFilter} ${excludeSelf} t:creature (o:connive or o:recruit or o:"draw a card, then discard")`);
   } else if (features.actionSubtypes.has('attack_keyword_granter')) {
@@ -1063,9 +1417,6 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"deals" o:"damage to"`);
   }
 
-  if (features.actionSubtypes.has('mana_dork')) {
-    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=1 cmc<=2 o:"{t}: add"`);
-  }
 
   if (features.actionSubtypes.has('etb_counter_distributor')) {
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"when" o:"enters" o:"+1/+1 counter" or o:"explores")`);
@@ -1329,9 +1680,82 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   const bothShareAttackGranter = (
     tFeatures.actionSubtypes.has('attack_keyword_granter') && cFeatures.actionSubtypes.has('attack_keyword_granter')
   );
+  const bothShareSecondCardDrawn = (
+    tFeatures.actionSubtypes.has('second_card_drawn') && cFeatures.actionSubtypes.has('second_card_drawn')
+  );
+  const bothShareSecondCardTargetBuff = (
+    tFeatures.actionSubtypes.has('second_card_target_buff') && cFeatures.actionSubtypes.has('second_card_target_buff')
+  );
+  const bothShareEtbSelfBounce = (
+    tFeatures.actionSubtypes.has('etb_self_bounce') && cFeatures.actionSubtypes.has('etb_self_bounce')
+  );
+  const bothShareDeathAmassToken = (
+    tFeatures.actionSubtypes.has('death_amass_token') && cFeatures.actionSubtypes.has('death_amass_token')
+  );
+  const bothShareEtbSacRemoval = (
+    tFeatures.actionSubtypes.has('etb_sac_removal') && cFeatures.actionSubtypes.has('etb_sac_removal')
+  );
+  const bothSharePower4PlusSynergy = (
+    tFeatures.actionSubtypes.has('power_4_plus_synergy') && cFeatures.actionSubtypes.has('power_4_plus_synergy')
+  );
+  const bothShareLandfallPayoff = (
+    tFeatures.actionSubtypes.has('landfall_payoff') && cFeatures.actionSubtypes.has('landfall_payoff')
+  );
+  const bothShareUnblockableGranter = (
+    tFeatures.actionSubtypes.has('unblockable_granter') && cFeatures.actionSubtypes.has('unblockable_granter')
+  );
+  const bothShareCultivateRamp = (
+    tFeatures.actionSubtypes.has('cultivate_ramp') && cFeatures.actionSubtypes.has('cultivate_ramp')
+  );
+  const bothShareFetchLand = (
+    tFeatures.actionSubtypes.has('fetch_land') && cFeatures.actionSubtypes.has('fetch_land')
+  );
+  const bothShareAuraGyRecursion = (
+    tFeatures.actionSubtypes.has('aura_gy_recursion') && cFeatures.actionSubtypes.has('aura_gy_recursion')
+  );
+  const bothShareBasicTutorArtifact = (
+    tFeatures.actionSubtypes.has('basic_tutor_artifact') && cFeatures.actionSubtypes.has('basic_tutor_artifact')
+  );
+  const bothShareRampArtifactToken = (
+    tFeatures.actionSubtypes.has('ramp_token_producer') && cFeatures.actionSubtypes.has('ramp_token_producer')
+  );
+  const bothShareArtifactAnimatorAura = (
+    tFeatures.actionSubtypes.has('artifact_animator_aura') && cFeatures.actionSubtypes.has('artifact_animator_aura')
+  );
+  const bothShareArtifactSacPayoff = (
+    tFeatures.actionSubtypes.has('artifact_sacrifice_payoff') && cFeatures.actionSubtypes.has('artifact_sacrifice_payoff')
+  );
+  const bothShareArtifactTapPayoff = (
+    tFeatures.actionSubtypes.has('artifact_tap_payoff') && cFeatures.actionSubtypes.has('artifact_tap_payoff')
+  );
+  const bothShareTwoDropManaDork = (
+    tFeatures.actionSubtypes.has('two_drop_mana_dork') && cFeatures.actionSubtypes.has('two_drop_mana_dork')
+  );
+  const bothShareThreeDropManaDork = (
+    tFeatures.actionSubtypes.has('three_drop_mana_dork') && cFeatures.actionSubtypes.has('three_drop_mana_dork')
+  );
+  const bothShareManaRock = (
+    tFeatures.actionSubtypes.has('mana_rock') && cFeatures.actionSubtypes.has('mana_rock')
+  );
   const bothShareSignatureEngine = (
     (tFeatures.actionSubtypes.has('connive_recruit') && cFeatures.actionSubtypes.has('connive_recruit')) ||
-    bothShareAttackGranter
+    bothShareAttackGranter ||
+    bothShareSecondCardDrawn ||
+    bothShareEtbSelfBounce ||
+    bothShareDeathAmassToken ||
+    bothShareEtbSacRemoval ||
+    bothSharePower4PlusSynergy ||
+    bothShareLandfallPayoff ||
+    bothShareFetchLand ||
+    bothShareCultivateRamp ||
+    bothShareBasicTutorArtifact ||
+    bothShareRampArtifactToken ||
+    bothShareArtifactAnimatorAura ||
+    bothShareArtifactSacPayoff ||
+    bothShareArtifactTapPayoff ||
+    bothShareTwoDropManaDork ||
+    bothShareThreeDropManaDork ||
+    bothShareManaRock
   );
   const bothShareLivingWeapon = (
     tFeatures.isLivingWeapon && cFeatures.isLivingWeapon
@@ -1448,9 +1872,41 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     baselineReasons.push(`Component color (${[...cColors][0]})`);
   } else if (bothShareSignatureEngine) {
     colorScore = 14;
-    baselineReasons.push(bothShareAttackGranter
-      ? 'Cross-color engine mechanic peer (Attack trigger keyword mentor)'
-      : 'Cross-color engine mechanic peer (Recruit & Connive)');
+    baselineReasons.push(
+      bothShareRampArtifactToken
+        ? 'Cross-color engine mechanic peer (Ramp token generator: Heartwood/Powerstone)'
+        : (bothShareArtifactAnimatorAura
+          ? 'Cross-color archetype peer (Artifact-animating Aura)'
+          : (bothShareArtifactSacPayoff
+            ? 'Cross-color engine peer (Artifact sacrifice payoff)'
+            : (bothShareArtifactTapPayoff
+              ? 'Cross-color engine peer (Artifact tap payoff)'
+              : (bothShareTwoDropManaDork
+                ? 'Cross-color 2-drop mana ramp peer'
+                : (bothShareThreeDropManaDork
+                  ? 'Cross-color 3-drop mana ramp peer'
+                  : (bothShareManaRock
+                    ? 'Cross-color mana rock / fixing artifact peer'
+                    : (bothShareSecondCardDrawn
+                      ? 'Cross-color engine mechanic peer (Draw second card)'
+                      : (bothShareEtbSelfBounce
+                        ? 'Cross-color engine mechanic peer (ETB self-bounce permanent)'
+                        : (bothShareDeathAmassToken
+                          ? 'Cross-color engine mechanic peer (Dies into token / Amass)'
+                          : (bothShareEtbSacRemoval
+                            ? 'Cross-color engine mechanic peer (ETB sacrifice removal)'
+                            : (bothSharePower4PlusSynergy
+                              ? 'Cross-color engine mechanic peer (Power 4+ synergy)'
+                              : (bothShareLandfallPayoff
+                                ? 'Cross-color engine mechanic peer (Landfall trigger)'
+                                : (bothShareFetchLand
+                                  ? 'Cross-color mana fixer peer (Fetchland)'
+                                  : (bothShareCultivateRamp
+                                    ? 'Cross-color ramp peer (Cultivate)'
+                                    : (bothShareAttackGranter
+                                      ? 'Cross-color engine mechanic peer (Attack trigger keyword mentor)'
+                                      : 'Cross-color engine mechanic peer (Recruit & Connive)')))))))))))))))
+    );
   } else if (bothShareLivingWeapon) {
     colorScore = 14;
     baselineReasons.push('Cross-color engine mechanic peer (Living Weapon / Token Equipment)');
@@ -1790,6 +2246,28 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     library_tutor: { pts: 18, label: 'Both library search / tutor spells' },
     tutor_to_hand: { pts: 16, label: 'Both search library to hand spells' },
     flying_lifegain_evasion: { pts: 20, label: 'Both 2-drop evasive flying lifegain creatures' },
+    second_card_target_buff: { pts: 22, label: 'Both put +1/+1 counters on target creature upon drawing second card' },
+    second_card_drawn: { pts: 20, label: 'Both "draw second card each turn" engine payoffs' },
+    etb_self_bounce: { pts: 20, label: 'Both ETB self-bounce permanents for reset / value engine' },
+    death_amass_token: { pts: 20, label: 'Both dies-into-token / Amass army replacements' },
+    etb_sac_removal: { pts: 22, label: 'Both ETB sacrifice creature to remove / damage target' },
+    power_4_plus_synergy: { pts: 20, label: 'Both power 4 or greater combat / card-draw payoffs' },
+    landfall_payoff: { pts: 18, label: 'Both Landfall board-impact / value triggers' },
+    landfall_token: { pts: 20, label: 'Both Landfall creature token generators' },
+    landfall_recursion: { pts: 18, label: 'Both Landfall graveyard recursion triggers' },
+    unblockable_granter: { pts: 20, label: 'Both activated unblockable ability granters' },
+    cultivate_ramp: { pts: 22, label: 'Both double basic land ramp effects (Cultivate on a stick / spell)' },
+    fetch_land: { pts: 22, label: 'Both sacrifice-to-fetch basic land mana fixers' },
+    aura_gy_recursion: { pts: 18, label: 'Both auras with recursive / replacement card advantage' },
+    basic_tutor_artifact: { pts: 20, label: 'Both artifacts fetching basic land with late-game utility' },
+    ramp_token_producer: { pts: 22, label: 'Both ramp artifact token producers (Heartwood/Powerstone)' },
+    heartwood_token_producer: { pts: 22, label: 'Both Heartwood token ramp generators' },
+    powerstone_token_producer: { pts: 22, label: 'Both Powerstone token ramp generators' },
+    two_drop_mana_dork: { pts: 22, label: 'Both early 2-drop mana ramp creatures' },
+    three_drop_mana_dork: { pts: 20, label: 'Both 3-drop mana ramp creatures' },
+    artifact_animator_aura: { pts: 22, label: 'Both artifact-animating Auras (turning artifacts into big creatures)' },
+    artifact_sacrifice_payoff: { pts: 20, label: 'Both sacrifice artifact for counters / combat abilities' },
+    artifact_tap_payoff: { pts: 20, label: 'Both tap untapped artifacts for counters / value' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
 
@@ -1877,6 +2355,76 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
 
   if (bothShareAttackGranter) {
     structuralReasons.unshift('Both attack-triggered keyword mentors');
+  }
+
+  if (bothShareSecondCardTargetBuff) {
+    structuralReasons.unshift('Both put +1/+1 counters on target creature upon drawing second card');
+  } else if (bothShareSecondCardDrawn) {
+    structuralReasons.unshift('Both "draw second card each turn" engine payoffs');
+  }
+
+  if (bothShareEtbSelfBounce) {
+    structuralReasons.unshift('Both ETB self-bounce permanents for reset / value engine');
+  }
+
+  if (bothShareDeathAmassToken) {
+    structuralReasons.unshift('Both dies-into-token / Amass army replacements');
+  }
+
+  if (bothShareEtbSacRemoval) {
+    structuralReasons.unshift('Both ETB sacrifice creature to remove / damage target');
+  }
+
+  if (bothSharePower4PlusSynergy) {
+    structuralReasons.unshift('Both power 4 or greater combat / card-draw payoffs');
+  }
+
+  if (bothShareLandfallPayoff) {
+    structuralReasons.unshift('Both Landfall board-impact / value triggers');
+  }
+
+  if (bothShareUnblockableGranter) {
+    structuralReasons.unshift('Both activated unblockable ability granters');
+  }
+
+  if (bothShareCultivateRamp) {
+    structuralReasons.unshift('Both double basic land ramp effects (Cultivate on a stick / spell)');
+  }
+
+  if (bothShareFetchLand) {
+    structuralReasons.unshift('Both sacrifice-to-fetch basic land mana fixers');
+  }
+
+  if (bothShareAuraGyRecursion) {
+    structuralReasons.unshift('Both auras with recursive / replacement card advantage');
+  }
+
+  if (bothShareBasicTutorArtifact) {
+    structuralReasons.unshift('Both artifacts fetching basic land with late-game utility');
+  }
+
+  if (bothShareRampArtifactToken) {
+    structuralReasons.unshift('Both ramp artifact token producers (Heartwood/Powerstone)');
+  }
+
+  if (bothShareArtifactAnimatorAura) {
+    structuralReasons.unshift('Both artifact-animating Auras (turning artifacts into big creatures)');
+  }
+
+  if (bothShareArtifactSacPayoff) {
+    structuralReasons.unshift('Both sacrifice artifact for counters / combat abilities');
+  }
+
+  if (bothShareArtifactTapPayoff) {
+    structuralReasons.unshift('Both tap untapped artifacts for counters / value');
+  }
+
+  if (bothShareTwoDropManaDork) {
+    structuralReasons.unshift('Both early 2-drop mana ramp creatures');
+  } else if (bothShareThreeDropManaDork) {
+    structuralReasons.unshift('Both 3-drop mana ramp creatures');
+  } else if (bothShareManaRock) {
+    structuralReasons.unshift('Both mana rock / fixing artifacts');
   }
 
   if (tFeatures.actionSubtypes.has('permanent_removal') && cFeatures.actionSubtypes.has('permanent_removal')) {
@@ -2447,7 +2995,7 @@ export async function findSimilarCards(
   targetCard: Card,
   fallbackPool: Card[] = []
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v51`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v53`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {

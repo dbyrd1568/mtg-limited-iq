@@ -28,7 +28,7 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
   const [isCheatSheetOpen, setIsCheatSheetOpen] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const defaultPlaceholder = `Search cards (e.g. flying, t:creature, c<=rg)...`;
+  const defaultPlaceholder = `Search cards, rules text (e.g. draw a card), stats 2/3, mana {2}{W}...`;
 
   // Pressing '/' or 'Ctrl+K' focuses search input
   useEffect(() => {
@@ -103,6 +103,24 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
           <span>Try</span>
           <button
             type="button"
+            onClick={() => onChangeQuery('draw a card')}
+            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+            title="Search for cards that draw a card in rules text"
+          >
+            draw a card
+          </button>
+          <span>for rules text,</span>
+          <button
+            type="button"
+            onClick={() => onChangeQuery('2/3')}
+            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+            title="Search for creatures with 2/3 power and toughness"
+          >
+            2/3
+          </button>
+          <span>for stats,</span>
+          <button
+            type="button"
             onClick={() => onChangeQuery('{2}{W}')}
             className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
             title="Search for cards with mana cost {2}{W}"
@@ -112,20 +130,11 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
           <span>for mana,</span>
           <button
             type="button"
-            onClick={() => onChangeQuery('2/3')}
+            onClick={() => onChangeQuery('flying 2/3 {2}{W}')}
             className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-            title="Search for creatures with 2/3 power and toughness"
+            title="Search for flying creatures with 2/3 stats costing {2}{W}"
           >
-            2/3
-          </button>
-          <span>for P/T stats,</span>
-          <button
-            type="button"
-            onClick={() => onChangeQuery('flying 2/3')}
-            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-            title="Search for flying creatures with 2/3 stats"
-          >
-            flying 2/3
+            flying 2/3 {'{2}{W}'}
           </button>
           <span>or</span>
           <button

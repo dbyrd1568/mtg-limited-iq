@@ -818,7 +818,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                   alt={comp.name}
                                   className="w-full h-full"
                                   imageClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none"
-                                  loading="lazy"
+                                  loading="eager"
                                 />
                               </button>
 

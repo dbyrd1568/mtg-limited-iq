@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Card, MTGColor } from '../../types/mtg';
 import { ManaCostRenderer, ManaSymbol } from './ManaSymbol';
 import { SetSymbol } from './SetSymbol';
@@ -17,16 +17,27 @@ export interface CardImageProps {
   onError?: () => void;
 }
 
-// Module-level Scryfall CDN outage circuit breaker
+// Module-level Scryfall CDN failure tracking
+let scryfallFailureCount = 0;
+let scryfallLastFailure = 0;
 let scryfallCdnOffline = false;
 let scryfallCdnOfflineSince = 0;
 
 export function markScryfallCdnOffline() {
-  if (!scryfallCdnOffline) {
-    console.warn('[CardImage] Scryfall CDN failure detected. Circuit breaker active: routing to Gatherer / MTG Proxy fallback.');
+  const now = Date.now();
+  if (now - scryfallLastFailure > 10000) {
+    scryfallFailureCount = 1;
+  } else {
+    scryfallFailureCount++;
   }
-  scryfallCdnOffline = true;
-  scryfallCdnOfflineSince = Date.now();
+  scryfallLastFailure = now;
+
+  // Only activate global circuit breaker if at least 5 different image requests fail within 10 seconds
+  if (scryfallFailureCount >= 5 && !scryfallCdnOffline) {
+    console.warn('[CardImage] Scryfall CDN failure cluster detected. Circuit breaker active: routing to Gatherer / MTG Proxy fallback.');
+    scryfallCdnOffline = true;
+    scryfallCdnOfflineSince = now;
+  }
 }
 
 export function isScryfallCdnOffline(): boolean {
@@ -34,6 +45,7 @@ export function isScryfallCdnOffline(): boolean {
   // Re-probe Scryfall CDN after 3 minutes
   if (Date.now() - scryfallCdnOfflineSince > 3 * 60 * 1000) {
     scryfallCdnOffline = false;
+    scryfallFailureCount = 0;
     return false;
   }
   return true;
@@ -72,17 +84,15 @@ export function getCardImageCandidateUrls(card: Partial<Card>, customSrc?: strin
     }
   }
 
-  // 2. Primary Scryfall URI (use only 1 URL from Scryfall to avoid cascading timeouts on dead hosts)
+  // 2. Primary Scryfall URIs (normal -> large -> small)
   if (!cdnOffline) {
-    const scryfallUrl = card.image_uris?.normal ||
-      card.image_uris?.large ||
-      card.card_faces?.[0]?.image_uris?.normal ||
-      card.card_faces?.[0]?.image_uris?.large ||
-      card.image_uris?.small;
+    const normalUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
+    const largeUrl = card.image_uris?.large || card.card_faces?.[0]?.image_uris?.large;
+    const smallUrl = card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small;
 
-    if (scryfallUrl && !urls.includes(scryfallUrl)) {
-      urls.push(scryfallUrl);
-    }
+    if (normalUrl && !urls.includes(normalUrl)) urls.push(normalUrl);
+    if (largeUrl && !urls.includes(largeUrl)) urls.push(largeUrl);
+    if (smallUrl && !urls.includes(smallUrl)) urls.push(smallUrl);
   }
 
   // 3. Official Gatherer Image (ONLY for released sets; Gatherer has no spoiled cards)
@@ -334,7 +344,7 @@ export const CardImage: React.FC<CardImageProps> = ({
   alt,
   className = '',
   imageClassName = '',
-  loading = 'lazy',
+  loading = 'eager',
   showProxyFallback = true,
   onLoaded,
   onError,
@@ -346,6 +356,7 @@ export const CardImage: React.FC<CardImageProps> = ({
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [hasFailedAllSources, setHasFailedAllSources] = useState<boolean>(false);
   const currentKeyRef = useRef(cardKey);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   // Only reset when card identity changes, NOT on every re-render!
   useEffect(() => {
@@ -361,7 +372,7 @@ export const CardImage: React.FC<CardImageProps> = ({
 
   const currentUrl = candidateUrls[sourceIdx];
 
-  const handleImageError = () => {
+  const handleImageError = useCallback(() => {
     if (currentUrl && currentUrl.includes('cards.scryfall.io')) {
       markScryfallCdnOffline();
     }
@@ -374,12 +385,60 @@ export const CardImage: React.FC<CardImageProps> = ({
       setIsLoaded(true);
       if (onError) onError();
     }
-  };
+  }, [currentUrl, sourceIdx, candidateUrls.length, onError]);
 
-  const handleImageLoad = () => {
+  const handleImageLoad = useCallback(() => {
     setIsLoaded(true);
     if (onLoaded) onLoaded();
-  };
+  }, [onLoaded]);
+
+  // Callback ref: Instantly detects when a cached image has already downloaded upon DOM attachment
+  const setImgRef = useCallback((node: HTMLImageElement | null) => {
+    imgRef.current = node;
+    if (node && node.complete) {
+      if (node.naturalWidth > 0) {
+        setIsLoaded(true);
+        if (onLoaded) onLoaded();
+      } else if (node.src) {
+        handleImageError();
+      }
+    }
+  }, [onLoaded, handleImageError]);
+
+  // Effect to re-verify img.complete whenever currentUrl changes
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete) {
+      if (img.naturalWidth > 0) {
+        setIsLoaded(true);
+        if (onLoaded) onLoaded();
+      } else if (img.src) {
+        handleImageError();
+      }
+    }
+  }, [currentUrl, onLoaded, handleImageError]);
+
+  // Watchdog Timer: Never allow any image to remain in loading state forever (max 3.5s)
+  useEffect(() => {
+    if (isLoaded || hasFailedAllSources) return;
+
+    const timer = setTimeout(() => {
+      const img = imgRef.current;
+      if (img && img.complete && img.naturalWidth > 0) {
+        setIsLoaded(true);
+        if (onLoaded) onLoaded();
+      } else if (sourceIdx < candidateUrls.length - 1) {
+        setSourceIdx(prev => prev + 1);
+      } else {
+        // All sources timed out: gracefully show proxy card fallback
+        setHasFailedAllSources(true);
+        setIsLoaded(true);
+        if (onError) onError();
+      }
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, [isLoaded, hasFailedAllSources, sourceIdx, candidateUrls.length, onLoaded, onError]);
 
   if (hasFailedAllSources || !currentUrl) {
     if (showProxyFallback) {
@@ -399,12 +458,13 @@ export const CardImage: React.FC<CardImageProps> = ({
     <div className={`relative w-full h-full overflow-hidden ${className}`}>
       {/* Loading Skeleton */}
       {!isLoaded && (
-        <div className="absolute inset-0 bg-[#050818] flex items-center justify-center z-10">
+        <div className="absolute inset-0 bg-[#050818] flex items-center justify-center z-10 pointer-events-none">
           <Loader2 className="w-5 h-5 text-violet-500 dark:text-cyan-400 animate-spin opacity-70" />
         </div>
       )}
 
       <img
+        ref={setImgRef}
         src={currentUrl}
         alt={alt || card.name}
         className={`${imageClassName} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}

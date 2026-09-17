@@ -24,7 +24,7 @@ import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
 import { CalibrationScatterPlot } from './CalibrationScatterPlot';
-import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink } from 'lucide-react';
+import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink, Zap } from 'lucide-react';
 import { ExportGradesModal } from './ExportGradesModal';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
@@ -433,6 +433,29 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     onSaveEvaluation(evaluation);
   };
 
+  const handleOpenRapidGrader = () => {
+    const firstUngraded = cards.find(
+      (c) => !userEvaluations[`${c.set.toLowerCase()}_${c.name.toLowerCase()}`]
+    );
+    handleSelectCardForModal(firstUngraded || cards[0]);
+  };
+
+  const isFilteredActive = Boolean(
+    (!selectedColors.includes('ALL') && selectedColors.length > 0) ||
+    (!selectedRarities.includes('ALL') && selectedRarities.length > 0) ||
+    (!selectedRoles.includes('ALL') && selectedRoles.length > 0) ||
+    filterRatedStatus !== 'ALL' ||
+    searchQuery.trim() !== ''
+  );
+
+  const handleResetFilters = () => {
+    handleSelectedColors(['ALL']);
+    handleSelectedRarities(['ALL']);
+    handleSelectedRoles(['ALL']);
+    setFilterRatedStatus('ALL');
+    handleSearchQuery('');
+  };
+
   const formatTierGapVerdict = (gap: number) => {
     if (gap === 0) {
       return { text: '🎯 Exact Match vs 17Lands', color: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 font-bold', isCorrect: true };
@@ -467,64 +490,79 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, zero scrollbar) */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs no-scrollbar">
-        {/* Left: Sub-tabs (Text-only compact pills) */}
-        <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
+        {/* Left: Primary CTA & Sub-tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setActiveSubTab('grade')}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-              activeSubTab === 'grade'
-                ? 'bg-violet-600 text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-            }`}
+            type="button"
+            onClick={handleOpenRapidGrader}
+            className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
+            title="Open Rapid Grader to evaluate cards sequentially"
           >
-            Grade
+            <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
+            <span>Rapid Grade</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-violet-700/90 text-violet-100 border border-violet-500/40">
+              {ratedCountInSet}/{cards.length}
+            </span>
           </button>
 
-          <button
-            onClick={() => setActiveSubTab('forecast')}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-              activeSubTab === 'forecast'
-                ? 'bg-violet-600 text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            Archetypes
-          </button>
-
-          {effective17LandsData && (
+          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
             <button
-              onClick={() => setActiveSubTab('calibration')}
+              onClick={() => setActiveSubTab('grade')}
               className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                activeSubTab === 'calibration'
+                activeSubTab === 'grade'
                   ? 'bg-violet-600 text-white shadow-xs font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
               }`}
             >
-              17Lands {calibrationSummary.totalRated > 0 ? `(${calibrationSummary.calibrationScore}%)` : ''}
+              Grade
             </button>
-          )}
 
-          <button
-            onClick={() => setActiveSubTab('notes')}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-              activeSubTab === 'notes'
-                ? 'bg-violet-600 text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            Notes
-          </button>
+            <button
+              onClick={() => setActiveSubTab('forecast')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeSubTab === 'forecast'
+                  ? 'bg-violet-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              Archetypes
+            </button>
 
-          <button
-            onClick={() => setActiveSubTab('methodology')}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-              activeSubTab === 'methodology'
-                ? 'bg-violet-600 text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-            }`}
-          >
-            Guide
-          </button>
+            {effective17LandsData && (
+              <button
+                onClick={() => setActiveSubTab('calibration')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  activeSubTab === 'calibration'
+                    ? 'bg-violet-600 text-white shadow-xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                17Lands {calibrationSummary.totalRated > 0 ? `(${calibrationSummary.calibrationScore}%)` : ''}
+              </button>
+            )}
+
+            <button
+              onClick={() => setActiveSubTab('notes')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeSubTab === 'notes'
+                  ? 'bg-violet-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              Notes
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('methodology')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeSubTab === 'methodology'
+                  ? 'bg-violet-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              Guide
+            </button>
+          </div>
         </div>
 
         {/* Right: Export, Clear, Blind Mode Toggle */}
@@ -532,10 +570,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
-            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-violet-700 dark:text-cyan-300 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
             title="Export comparison spreadsheet or send grades to 17Lands"
           >
-            <Share2 className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
+            <Share2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
             <span>Export</span>
           </button>
 
@@ -579,11 +617,12 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
       {/* SUBTAB 1: Grade Cards List & Filter */}
       {activeSubTab === 'grade' && (
-        <div className="space-y-4">
-          {/* Comprehensive Filter Toolbar */}
-          <div className="p-3 sm:p-3.5 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2.5">
+        <div className="space-y-3.5">
+          {/* Streamlined 2-Row Filter Toolbar */}
+          <div className="p-3 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
+            {/* Row 1: Search, Sort, Status, and Benchmarks */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-              {/* Card Search Bar (Scryfall & Arena-style) */}
+              {/* Card Search Bar */}
               <div className="flex-1 max-w-xl">
                 <CardSearchBar
                   query={searchQuery}
@@ -597,14 +636,14 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               </div>
 
               {/* Sort By */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
                   Sort:
                 </span>
                 <select
                   value={cardListSortBy}
                   onChange={(e) => setCardListSortBy(e.target.value as any)}
-                  className="px-3 py-2 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
+                  className="px-2.5 py-1.5 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
                 >
                   <option value="number">Card # (#001 → #300)</option>
                   <option value="name">Card Name (A → Z)</option>
@@ -635,62 +674,51 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 ))}
               </div>
 
-              {/* Rating Source Toggle Controls (Me, LSV, 17L) */}
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1 hidden md:inline">
-                  Sources:
+              {/* Benchmark Data Toggles (LSV, 17Lands) */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden lg:inline">
+                  Benchmarks:
                 </span>
 
-                {/* 1. Me (Always Active / Locked) */}
-                <button
-                  type="button"
-                  disabled
-                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-600 text-white shadow-xs border border-violet-400/40 flex items-center gap-1 cursor-default"
-                  title="Your personal grade (Always active)"
-                >
-                  <Check className="w-3 h-3 text-white" />
-                  <span>Me</span>
-                </button>
-
-                {/* 2. LSV (Togglable) */}
+                {/* LSV (Togglable) */}
                 <button
                   type="button"
                   onClick={handleToggleLsv}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                     showLsv
-                      ? 'bg-amber-500 text-slate-950 shadow-xs border border-amber-400'
+                      ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-400/50 shadow-2xs'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
                   }`}
                   title="Toggle LSV (Limited Resources / Expert Pre-release) rating"
                 >
-                  {showLsv && <Check className="w-3 h-3 text-slate-950" />}
+                  {showLsv && <Check className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
                   <span>LSV</span>
                 </button>
 
-                {/* 3. 17L (Togglable) */}
+                {/* 17L (Togglable) */}
                 <button
                   type="button"
                   onClick={handleToggle17L}
                   className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                     show17L
-                      ? 'bg-emerald-600 text-white shadow-xs border border-emerald-400'
+                      ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-400/50 shadow-2xs'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
                   }`}
-                  title="Toggle 17Lands draft data"
+                  title="Toggle 17Lands draft telemetry"
                 >
-                  {show17L && <Check className="w-3 h-3 text-white" />}
-                  <span>17L</span>
+                  {show17L && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+                  <span>17Lands</span>
                 </button>
               </div>
             </div>
 
-            {/* Colors, Roles, and Rarities Filter Row */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {/* Mana Color Filter Bar with Official Arena Glow */}
+            {/* Row 2: Colors, Rarities, Roles, and Inline Reset */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+              {/* Mana Color Filter Bar */}
               <ManaColorFilterBar selectedColors={selectedColors} onSelectColors={handleSelectedColors} />
 
-              {/* Rarity Filter Pills (Multi-Select) */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
+              {/* Rarity Filter Pills */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                 {['ALL', 'common', 'uncommon', 'rare', 'mythic'].map((rar) => {
                   const isSelected = (rar === 'ALL' && (selectedRarities.includes('ALL') || selectedRarities.length === 0)) ||
                     (rar !== 'ALL' && selectedRarities.includes(rar));
@@ -722,7 +750,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 })}
               </div>
 
-              {/* Tactical Roles */}
+              {/* Tactical Roles (Clean neutral active state) */}
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
                 {[
                   { id: 'ALL', label: 'All' },
@@ -730,58 +758,43 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   { id: 'INSTANT', label: 'Instants' },
                   { id: 'TRICK', label: 'Tricks' },
                   { id: 'REMOVAL', label: 'Removal' },
-                ].map((role) => (
-                  <button
-                    key={role.id}
-                    onClick={() => {
-                      if (role.id === 'ALL') { handleSelectedRoles(['ALL']); return; }
-                      const current = selectedRoles.filter(r => r !== 'ALL');
-                      if (current.includes(role.id)) {
-                        const next = current.filter(r => r !== role.id);
-                        handleSelectedRoles(next.length === 0 ? ['ALL'] : next);
-                      } else {
-                        handleSelectedRoles([...current, role.id]);
-                      }
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      (role.id === 'ALL' && (selectedRoles.includes('ALL') || selectedRoles.length === 0)) ||
-                      (role.id !== 'ALL' && selectedRoles.includes(role.id))
-                        ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    {role.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Persistent Filter Display Counter */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-800/80 text-xs font-mono">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  Displaying <strong className="text-violet-700 dark:text-cyan-300 font-black">{filteredCards.length}</strong> of <strong>{cards.length}</strong> cards
-                </span>
-                {(!selectedColors.includes('ALL') || !selectedRarities.includes('ALL') || !selectedRoles.includes('ALL') || filterRatedStatus !== 'ALL' || searchQuery.trim() !== '') && (
-                  <span className="text-violet-600 dark:text-cyan-400 font-semibold">
-                    (filtered)
-                  </span>
-                )}
+                ].map((role) => {
+                  const isSelected = (role.id === 'ALL' && (selectedRoles.includes('ALL') || selectedRoles.length === 0)) ||
+                    (role.id !== 'ALL' && selectedRoles.includes(role.id));
+                  return (
+                    <button
+                      key={role.id}
+                      onClick={() => {
+                        if (role.id === 'ALL') { handleSelectedRoles(['ALL']); return; }
+                        const current = selectedRoles.filter(r => r !== 'ALL');
+                        if (current.includes(role.id)) {
+                          const next = current.filter(r => r !== role.id);
+                          handleSelectedRoles(next.length === 0 ? ['ALL'] : next);
+                        } else {
+                          handleSelectedRoles([...current, role.id]);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      {role.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              {(!selectedColors.includes('ALL') || !selectedRarities.includes('ALL') || !selectedRoles.includes('ALL') || filterRatedStatus !== 'ALL' || searchQuery.trim() !== '') && (
+              {/* Inline Reset Filters Button */}
+              {isFilteredActive && (
                 <button
                   type="button"
-                  onClick={() => {
-                    handleSelectedColors(['ALL']);
-                    handleSelectedRarities(['ALL']);
-                    handleSelectedRoles(['ALL']);
-                    setFilterRatedStatus('ALL');
-                    handleSearchQuery('');
-                  }}
-                  className="text-[11px] font-mono text-violet-700 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                  onClick={handleResetFilters}
+                  className="px-2.5 py-1 text-xs font-mono text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors flex items-center gap-1 cursor-pointer font-semibold ml-auto sm:ml-0 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/50"
+                  title="Clear all search and category filters"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3.5 h-3.5" />
                   <span>Reset Filters</span>
                 </button>
               )}
@@ -968,31 +981,29 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     </div>
                   </div>
 
-                  {/* Find Similar Cards Icon Button - Sitting right above the HR lined up with F */}
-                  <div className="flex justify-end -mb-2 z-10">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSimilarCardsModalCard(card);
-                      }}
-                      className="p-1 rounded-md text-slate-400 hover:text-violet-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
-                      title="Find similar cards (Precedent Engine)"
-                    >
-                      <PlayingCardsFan className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Quick Grade Selector Bar */}
+                  {/* Quick Grade Selector Bar with Inline Precedent Comps Action */}
                   <div
                     onClick={(e) => e.stopPropagation()}
                     className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5"
                   >
                     <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold">
-                      <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold" title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
+                      <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
-                        <span>Rate Card:</span>
+                        <span>Rate Card</span>
                       </span>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSimilarCardsModalCard(card);
+                        }}
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-[10px] font-mono font-medium"
+                        title="Find similar cards & historical comps (Precedent Engine)"
+                      >
+                        <PlayingCardsFan className="w-3 h-3" />
+                        <span>Comps</span>
+                      </button>
                     </div>
 
                     <div
@@ -1001,13 +1012,6 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     >
                       {GRADE_TIERS.map((tier) => {
                         const isSelected = userEval?.userGrade === tier;
-                        let color = 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-[#050818] dark:text-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
-                        if (tier.startsWith('A')) color = 'bg-amber-100 text-amber-950 border-amber-300 font-bold dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30 hover:bg-amber-500 hover:text-white';
-                        if (tier.startsWith('B')) color = 'bg-cyan-100 text-cyan-950 border-cyan-300 font-bold dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-500/30 hover:bg-cyan-500 hover:text-white';
-                        if (tier.startsWith('C')) color = 'bg-slate-100 text-slate-900 border-slate-300 font-bold dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700/50 hover:bg-slate-600 hover:text-white';
-                        if (tier === 'D') color = 'bg-orange-100 text-orange-950 border-orange-300 font-bold dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30 hover:bg-orange-500 hover:text-white';
-                        if (tier === 'F') color = 'bg-rose-100 text-rose-950 border-rose-300 font-bold dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30 hover:bg-rose-500 hover:text-white';
-
                         return (
                           <button
                             key={tier}
@@ -1016,10 +1020,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                               e.stopPropagation();
                               handleQuickGrade(card, tier);
                             }}
-                            className={`py-1 rounded-md text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                            className={`py-1 rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer border ${
                               isSelected
-                                ? 'bg-violet-600 text-white border-violet-400 font-black shadow-xs'
-                                : color
+                                ? 'bg-violet-600 text-white border-violet-500 shadow-xs font-black ring-1 ring-violet-400'
+                                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700'
                             }`}
                           >
                             {tier}

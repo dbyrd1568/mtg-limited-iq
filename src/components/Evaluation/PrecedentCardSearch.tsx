@@ -18,9 +18,16 @@ export function buildScryfallPrecedentQuery(input: string): string {
   // 1. Shorthand syntax transformations:
   // - "2/3" -> "pow=2 tou=3"
   // - "{2}{W}" -> "m:{2}{W}"
-  const working = trimmed
+  // - "2W", "1U", "3BB" -> "m:{2}{W}", "m:{1}{U}", "m:{3}{B}{B}"
+  let working = trimmed
     .replace(/\b([0-9]+|\*)\/([0-9]+|\*)\b/g, 'pow=$1 tou=$2')
     .replace(/(^|\s)((?:\{[a-zA-Z0-9/]+\})+)/g, '$1m:$2');
+
+  // Convert shorthand mana like 2W, 1U, 3BB, 1G, WW to m:{...}
+  working = working.replace(/\b([0-9]+[wubrgcWUBRGC]+|[WUBRGC]{2,})\b/g, (match) => {
+    const braced = match.replace(/([0-9]+|[a-zA-Z])/g, (m) => `{${m.toUpperCase()}}`);
+    return `m:${braced}`;
+  });
 
   // 2. Tokenize respecting quoted strings and key:value syntax
   const tokenRegex = /([a-zA-Z0-9_]+[:=](?:"[^"]*"|[^\s]+))|("[^"]*")|([^\s]+)/g;
@@ -43,7 +50,10 @@ export function buildScryfallPrecedentQuery(input: string): string {
         syntaxFilters.push(`("${unquoted}" or o:"${unquoted}")`);
       }
     } else {
-      freeTextTokens.push(rawToken);
+      const cleanToken = rawToken.replace(/[,;]+$/, '');
+      if (cleanToken) {
+        freeTextTokens.push(cleanToken);
+      }
     }
   }
 
@@ -78,7 +88,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
   targetCard,
   onSelectCard,
   className = '',
-  placeholder = 'Search name, oracle text (e.g. "destroy target"), stats 2/3, or mana...',
+  placeholder = 'Search name, rules text (e.g. draw a card), stats 2/3, or mana {2}{W}...',
 }) => {
   const [query, setQuery] = useState<string>('');
   const [results, setResults] = useState<Card[]>([]);
@@ -292,38 +302,47 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
       {/* Quick Search Syntax Tip */}
       <div className="flex items-center gap-1.5 px-1 pt-1.5 text-[11px] font-mono text-slate-500 dark:text-slate-400 flex-wrap">
         <span className="text-violet-600 dark:text-cyan-400 font-bold">Search tip:</span>
-        <span>Oracle text:</span>
+        <span>Try:</span>
         <button
           type="button"
           onClick={() => {
-            setQuery('"destroy target"');
+            setQuery('draw a card');
             inputRef.current?.focus();
           }}
           className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
         >
-          "destroy target"
+          draw a card
         </button>
         <button
           type="button"
           onClick={() => {
-            setQuery('"draw a card"');
+            setQuery('destroy target');
             inputRef.current?.focus();
           }}
           className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
         >
-          "draw a card"
+          destroy target
         </button>
         <button
           type="button"
           onClick={() => {
-            setQuery('counter target');
+            setQuery('2/3');
             inputRef.current?.focus();
           }}
           className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
         >
-          counter target
+          2/3
         </button>
-        <span>• Stats:</span>
+        <button
+          type="button"
+          onClick={() => {
+            setQuery('{2}{W}');
+            inputRef.current?.focus();
+          }}
+          className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+        >
+          {'{2}{W}'}
+        </button>
         <button
           type="button"
           onClick={() => {
