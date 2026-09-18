@@ -298,12 +298,13 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     return Object.keys(customOverrides).length > 0;
   }, [customOverrides]);
 
-  const handleConfirmSlotReplacement = async (slotIndex: number) => {
-    if (!targetCard || !slotPickerCard) return;
+  const handleConfirmSlotReplacement = async (slotIndex: number, chosenReplacement?: Card) => {
+    const cardToUse = chosenReplacement || slotPickerCard;
+    if (!targetCard || !cardToUse) return;
 
     setIsReplacingSlot(true);
     try {
-      const repMatch = await buildCustomPrecedentMatch(targetCard, slotPickerCard);
+      const repMatch = await buildCustomPrecedentMatch(targetCard, cardToUse);
       const rawMatches = activeData?.matches?.slice(0, 4) || [];
       const origMatch = rawMatches[slotIndex] || null;
 
@@ -485,8 +486,8 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
             </div>
           ) : (
             <>
-              {/* Compact Precedent Summary & Adoption Bar */}
-              <div className="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600/10 via-indigo-600/5 to-emerald-500/10 border border-violet-400/30 dark:border-cyan-400/30 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
+              {/* Compact Precedent Summary Banner */}
+              <div className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600/10 via-indigo-600/5 to-emerald-500/10 border border-violet-400/30 dark:border-cyan-400/30 shadow-xs flex items-center justify-between gap-2.5 sm:gap-3 flex-wrap">
                 {/* Metrics: Average, Median, Range */}
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
                   {/* Grade Average */}
@@ -541,54 +542,11 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       </span>
                     </>
                   ) : null}
-
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono hidden xl:inline">
-                    • Based on {presentedMatches.length} comparable cards
-                  </span>
                 </div>
 
-                {/* Side-by-side Adopt Buttons */}
-                {onAdoptGrade && (
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
-                    {/* Use Grade Average Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleAdopt(presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C', 'average')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 border ${
-                        adoptedSourceId === 'average'
-                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
-                          : 'bg-violet-600 hover:bg-violet-700 text-white border-violet-500 shadow-2xs hover:scale-[1.01]'
-                      }`}
-                      title={`Adopt Grade Average (${presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C'})`}
-                    >
-                      <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'average' ? 'text-emerald-200' : 'opacity-80'}`} />
-                      <span>
-                        {adoptedSourceId === 'average'
-                          ? `Used Average (${presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C'})`
-                          : `Use Grade Average (${presentedGradeStats?.averageGrade || activeData?.consensus.projectedTier || 'C'})`}
-                      </span>
-                    </button>
-
-                    {/* Use Median Grade Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleAdopt(presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C', 'median')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 border ${
-                        adoptedSourceId === 'median'
-                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-2xs'
-                          : 'bg-slate-900 dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-white border-slate-700 dark:border-slate-600 shadow-2xs hover:border-indigo-400 hover:scale-[1.01]'
-                      }`}
-                      title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C'})`}
-                    >
-                      <Check className={`w-3.5 h-3.5 ${adoptedSourceId === 'median' ? 'text-emerald-200' : 'opacity-80'}`} />
-                      <span>
-                        {adoptedSourceId === 'median'
-                          ? `Used Median (${presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C'})`
-                          : `Use Median Grade (${presentedGradeStats?.medianGrade || activeData?.consensus.projectedTier || 'C'})`}
-                      </span>
-                    </button>
-                  </div>
-                )}
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono hidden xl:inline">
+                  • Based on {presentedMatches.length} comparable cards
+                </span>
               </div>
 
               {/* Target Card vs Similar Comps Flex Container */}
@@ -639,7 +597,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           className={`py-1.5 px-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1 cursor-pointer border shadow-2xs ${
                             adoptedSourceId === 'average'
                               ? 'bg-emerald-600 text-white border-emerald-500'
-                              : 'bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/60 text-violet-700 dark:text-cyan-300 border-violet-200 dark:border-violet-800/60'
+                              : 'bg-violet-600 hover:bg-violet-700 text-white border-violet-500 shadow-2xs'
                           }`}
                           title={`Adopt Average Grade (${presentedGradeStats?.averageGrade || activeData?.consensus?.projectedTier})`}
                         >
@@ -653,7 +611,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           className={`py-1.5 px-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-1 cursor-pointer border shadow-2xs ${
                             adoptedSourceId === 'median'
                               ? 'bg-emerald-600 text-white border-emerald-500'
-                              : 'bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                              : 'bg-slate-900 dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-white border-slate-700 dark:border-slate-600 shadow-2xs'
                           }`}
                           title={`Adopt Median Grade (${presentedGradeStats?.medianGrade || activeData?.consensus?.projectedTier})`}
                         >
@@ -663,18 +621,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       </div>
                     )}
 
-
                     {/* Quick Grade Tier Buttons Grid */}
                     <div className="grid grid-cols-6 gap-1 pt-0.5">
                       {GRADE_TIERS.map((tier) => {
                         const isSelected = currentGrade === tier;
-                        let color = 'bg-white text-slate-800 border-slate-200 dark:bg-[#070b1e] dark:text-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
-                        if (tier.startsWith('A')) color = 'bg-amber-100 text-amber-950 border-amber-300 font-bold dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-500 hover:text-white';
-                        if (tier.startsWith('B')) color = 'bg-cyan-100 text-cyan-950 border-cyan-300 font-bold dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40 hover:bg-cyan-500 hover:text-white';
-                        if (tier.startsWith('C')) color = 'bg-slate-100 text-slate-900 border-slate-300 font-bold dark:bg-slate-800/50 dark:text-slate-200 dark:border-slate-700/60 hover:bg-slate-600 hover:text-white';
-                        if (tier === 'D') color = 'bg-orange-100 text-orange-950 border-orange-300 font-bold dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/40 hover:bg-orange-500 hover:text-white';
-                        if (tier === 'F') color = 'bg-rose-100 text-rose-950 border-rose-300 font-bold dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/40 hover:bg-rose-500 hover:text-white';
-
                         return (
                           <button
                             key={tier}
@@ -686,7 +636,9 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                               }
                             }}
                             className={`py-1 rounded-md text-[11px] font-mono font-bold transition-all border cursor-pointer ${
-                              isSelected ? 'ring-2 ring-violet-400 bg-violet-600 text-white font-black shadow-xs' : color
+                              isSelected
+                                ? 'bg-violet-600 text-white border-violet-500 shadow-xs font-black ring-2 ring-violet-400'
+                                : 'bg-white dark:bg-[#070b1e] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                             }`}
                           >
                             {tier}
@@ -1556,14 +1508,50 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 font-mono">
-              Search for any Magic card to substitute into Slot {directSwapSlotIndex + 1}:
-            </p>
+            {presentedMatches[directSwapSlotIndex]?.card && (
+              <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+                <div className="w-12 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 bg-[#050818]">
+                  <CardImage
+                    card={presentedMatches[directSwapSlotIndex].card}
+                    src={
+                      presentedMatches[directSwapSlotIndex].card.image_uris?.small ||
+                      presentedMatches[directSwapSlotIndex].card.image_uris?.normal ||
+                      (presentedMatches[directSwapSlotIndex].card.card_faces &&
+                        presentedMatches[directSwapSlotIndex].card.card_faces[0]?.image_uris?.small)
+                    }
+                    alt={presentedMatches[directSwapSlotIndex].card.name}
+                    className="w-full h-full"
+                    imageClassName="w-full h-full object-cover"
+                    loading="eager"
+                  />
+                </div>
+                <div className="flex-1 min-w-0 space-y-0.5">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="font-bold text-xs text-slate-900 dark:text-white truncate font-heading">
+                      {presentedMatches[directSwapSlotIndex].card.name}
+                    </span>
+                    {presentedMatches[directSwapSlotIndex].card.mana_cost && (
+                      <div className="scale-75 origin-right shrink-0">
+                        <ManaCostRenderer manaCost={presentedMatches[directSwapSlotIndex].card.mana_cost} size="xs" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                    {presentedMatches[directSwapSlotIndex].card.type_line}
+                  </div>
+                  <div className="text-[10px] font-mono text-violet-600 dark:text-cyan-400 font-bold">
+                    Currently in Slot {directSwapSlotIndex + 1}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <PrecedentCardSearch
               targetCard={targetCard}
               onSelectCard={(selectedCard) => {
-                handleDirectSwapSelect(selectedCard, directSwapSlotIndex);
+                setSlotPickerCard(selectedCard);
+                setPreselectedSlotIndex(directSwapSlotIndex);
+                setDirectSwapSlotIndex(null);
               }}
               placeholder="Search by card name, oracle text (e.g. 'destroy target', 'draw card'), or mana..."
             />

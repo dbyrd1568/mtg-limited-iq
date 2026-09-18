@@ -11,7 +11,7 @@ const SCRYFALL_API_BASE = 'https://api.scryfall.com';
  * Transforms a user query into an optimized Scryfall search query
  * supporting oracle rules text, card names, mana costs, and creature stats.
  */
-export function buildScryfallPrecedentQuery(input: string): string {
+export function buildScryfallPrecedentQuery(input: string, targetSet?: string): string {
   const trimmed = input.trim();
   if (!trimmed) return '';
 
@@ -72,8 +72,9 @@ export function buildScryfallPrecedentQuery(input: string): string {
     }
   }
 
-  // 4. Draft sets & booster prioritization
-  const baseFilter = '(is:booster or not:funny) -layout:art_series -t:token';
+  // 4. Draft sets & booster prioritization (Never compare a set to itself)
+  const excludeSet = targetSet ? ` -s:${targetSet.toLowerCase()}` : '';
+  const baseFilter = `(is:booster or not:funny) -layout:art_series -t:token${excludeSet}`;
   return `${syntaxFilters.join(' ')} ${baseFilter}`.trim();
 }
 
@@ -130,7 +131,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const scryfallQuery = buildScryfallPrecedentQuery(trimmed);
+        const scryfallQuery = buildScryfallPrecedentQuery(trimmed, targetCard.set);
         const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(scryfallQuery)}&order=released&dir=desc`;
 
         let res = await fetch(url, {
@@ -143,7 +144,8 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
 
         // Fallback: If expanded query didn't match, attempt literal query
         if (!res.ok && res.status === 404) {
-          const fallbackQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token`;
+          const excludeSet = targetCard.set ? ` -s:${targetCard.set.toLowerCase()}` : '';
+          const fallbackQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token${excludeSet}`;
           const fallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
           res = await fetch(fallbackUrl, {
             signal: controller.signal,
@@ -160,11 +162,11 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
             const normalized: Card[] = data.data
               .filter((rc: any) => !rc.name.startsWith('A-') && !rc.promo_types?.includes('rebalanced'))
               .map(normalizeScryfallCard)
-              // Exclude target card itself
+              // Exclude target card itself and NEVER compare a set to itself
               .filter(
                 (c: Card) =>
-                  c.name.toLowerCase() !== targetCard.name.toLowerCase() ||
-                  c.set.toLowerCase() !== targetCard.set.toLowerCase()
+                  c.name.toLowerCase() !== targetCard.name.toLowerCase() &&
+                  (!targetCard.set || !c.set || c.set.toLowerCase() !== targetCard.set.toLowerCase())
               );
 
             // Prioritize cards with 17lands data and unique card names
@@ -230,8 +232,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
   const handleSelect = useCallback(
     (card: Card) => {
       onSelectCard(card);
-      setQuery('');
-      setResults([]);
+      // Keep query intact so user does not lose their search if they review or cancel
       setIsOpen(false);
       setSelectedIndex(-1);
     },
