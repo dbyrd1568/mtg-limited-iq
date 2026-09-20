@@ -5,7 +5,7 @@ const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
 // Pre-curated list of 17Lands known expansion identifiers from https://www.17lands.com/data/filters
 export const KNOWN_17LANDS_EXPANSIONS = new Set([
-  'HOB', 'MSH', 'SOS', 'Y26SOS', 'TMT', 'ECL', 'Y26ECL', 'TLA', 'OM1', 'EOE', 'FIN', 'Y25EOE',
+  'HOB', 'MBC', 'MSH', 'SOS', 'Y26SOS', 'TMT', 'ECL', 'Y26ECL', 'TLA', 'OM1', 'EOE', 'FIN', 'Y25EOE',
   'TDM', 'Y25TDM', 'DFT', 'Y25DFT', 'PIO', 'FDN', 'DSK', 'Y25DSK', 'BLB', 'Y25BLB', 'MH3', 'OTJ',
   'Y24OTJ', 'MKM', 'Y24MKM', 'LCI', 'Y24LCI', 'WOE', 'Y24WOE', 'LTR', 'MOM', 'MAT', 'SIR', 'ONE',
   'Y23ONE', 'BRO', 'Y23BRO', 'DMU', 'Y23DMU', 'HBG', 'SNC', 'Y22SNC', 'NEO', 'DBL', 'VOW', 'RAVM',
@@ -18,9 +18,9 @@ export const KNOWN_17LANDS_EXPANSIONS = new Set([
 export const POPULAR_LIMITED_SETS: SetInfo[] = [
   // 2026 Sets
   { code: 'TRK', name: 'Star Trek', card_count: 135, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
-  { code: 'MBC', name: 'Mystery Booster Commander Edition', card_count: 80, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
+  { code: 'MBC', name: 'Mystery Booster Commander Edition', card_count: 80, released_at: '2026-08-01', set_type: 'draft_innovation', has_17lands_data: true, is_active_draft: true },
   { code: 'FRA', name: 'Reality Fracture', card_count: 290, released_at: '2026-10-02', set_type: 'expansion', has_17lands_data: false },
-  { code: 'HOB', name: 'The Hobbit', card_count: 321, released_at: '2026-08-14', set_type: 'expansion', has_17lands_data: true },
+  { code: 'HOB', name: 'The Hobbit', card_count: 321, released_at: '2026-08-14', set_type: 'expansion', has_17lands_data: true, is_active_draft: true },
   { code: 'MSH', name: 'Marvel Super Heroes', card_count: 453, released_at: '2026-06-01', set_type: 'expansion', has_17lands_data: true },
   { code: 'SOS', name: 'Secrets of Strixhaven', card_count: 368, released_at: '2026-04-24', set_type: 'expansion', has_17lands_data: true },
   { code: 'TMT', name: 'Teenage Mutant Ninja Turtles', card_count: 320, released_at: '2026-03-01', set_type: 'expansion', has_17lands_data: true },
@@ -99,31 +99,158 @@ export function isCombatTrick(card: Card): boolean {
   return hasBuff || hasKeywordGrant;
 }
 
+export function isCounterspell(card: Card): boolean {
+  const oracle = (card.oracle_text || '').toLowerCase();
+  const typeLine = (card.type_line || '').toLowerCase();
+  if (typeLine.includes('land')) return false;
+
+  const counterPatterns = [
+    'counter target',
+    'counter that spell',
+    'counters that spell',
+    'counter it unless',
+    'counter all other spells',
+    'exile target spell',
+  ];
+
+  return counterPatterns.some(pat => oracle.includes(pat));
+}
+
 export function isRemovalSpell(card: Card): boolean {
   const oracle = (card.oracle_text || '').toLowerCase();
   const typeLine = (card.type_line || '').toLowerCase();
   if (typeLine.includes('land')) return false;
 
+  // Counterspells are stack interaction, NOT board removal
+  // If a card solely counters spells and does not affect the battlefield, it's not removal
+  if (isCounterspell(card) && !oracle.includes('destroy target') && !oracle.includes('exile target creature') && !oracle.includes('return target')) {
+    return false;
+  }
+
   const removalPatterns = [
-    'destroy target',
-    'exile target',
+    // Targeted destruction of on-board permanents
+    'destroy target creature',
+    'destroy target permanent',
+    'destroy target artifact',
+    'destroy target enchantment',
+    'destroy target planeswalker',
+    'destroy target nonland permanent',
+    'destroy target tapped creature',
+    'destroy target attacking',
+    'destroy target blocking',
+    'destroy target monocolored',
+    'destroy target multicolored',
+    // Mass destruction (sweepers)
+    'destroy all creatures',
+    'destroy all nonland permanents',
+    'destroy each creature',
+    // Targeted exile of on-board permanents (avoid graveyard or library exile)
+    'exile target creature',
+    'exile target permanent',
+    'exile target artifact',
+    'exile target enchantment',
+    'exile target planeswalker',
+    'exile target nonland permanent',
+    'exile target tapped creature',
+    'exile target attacking',
+    // Mass exile (sweepers)
+    'exile all creatures',
+    'exile each creature',
+    'exile all nonland permanents',
+    // Direct damage to creatures
     'deals damage to target creature',
     'deals damage to any target',
     'deals damage to each creature',
-    'return target creature to its owner\'s hand',
-    'return target permanent to its owner\'s hand',
-    'put target creature into its owner\'s library',
+    'deals damage to all creatures',
+    'damage divided as you choose among any number of target creatures',
+    'deals damage to target attacking or blocking creature',
+    // -N/-N shrinking removal
     'target creature gets -',
+    'all creatures get -',
+    'each creature gets -',
+    // Fight and Bite spells
     'fights target',
     'deals damage equal to its power to target',
+    'deals damage equal to target creature\'s power',
+    // Pacifism / Arrest / Neutralizing auras
     'enchanted creature can\'t attack or block',
+    'enchanted permanent can\'t attack or block',
     'enchanted creature doesn\'t untap',
-    'loses all abilities',
+    'loses all abilities and is a',
+    'has base power and toughness 0/1',
+    'has base power and toughness 1/1',
     'has no abilities',
-    'base power and toughness',
+    // Bounce and Tuck (Tempo removal)
+    'return target creature to its owner\'s hand',
+    'return target permanent to its owner\'s hand',
+    'return target nonland permanent to its owner\'s hand',
+    'put target creature into its owner\'s library',
+    'put target permanent into its owner\'s library',
+    'put target creature on the bottom of its owner\'s library',
+    // Edict / Sacrifice effects
+    'target opponent sacrifices a creature',
+    'target player sacrifices a creature',
+    'each opponent sacrifices a creature',
+    'each player sacrifices a creature',
   ];
 
   return removalPatterns.some(pat => oracle.includes(pat));
+}
+
+export function isCardDrawSpell(card: Card): boolean {
+  const oracle = (card.oracle_text || '').toLowerCase();
+  const typeLine = (card.type_line || '').toLowerCase();
+  if (typeLine.includes('land')) return false;
+
+  const drawPatterns = [
+    'draw a card',
+    'draw two cards',
+    'draw three cards',
+    'draw four cards',
+    'draw x cards',
+    'draws a card',
+    'draws two cards',
+    'draw that many cards',
+    'draw cards equal to',
+  ];
+
+  const hasRawDraw = drawPatterns.some(pat => oracle.includes(pat));
+  const hasImpulseDraw = oracle.includes('exile the top') && (oracle.includes('you may play') || oracle.includes('you may cast'));
+  const hasSelectionIntoHand = oracle.includes('look at the top') && oracle.includes('into your hand');
+
+  return hasRawDraw || hasImpulseDraw || hasSelectionIntoHand;
+}
+
+export function isInteractionSpell(card: Card): boolean {
+  const oracle = (card.oracle_text || '').toLowerCase();
+  const typeLine = (card.type_line || '').toLowerCase();
+  if (typeLine.includes('land')) return false;
+
+  // 1. Board Removal
+  if (isRemovalSpell(card)) return true;
+
+  // 2. Stack Counterspells
+  if (isCounterspell(card)) return true;
+
+  // 3. Combat Tricks
+  if (isCombatTrick(card)) return true;
+
+  // 4. Hand Disruption (Discard)
+  const discardPatterns = [
+    'target opponent discards',
+    'target player discards',
+    'each opponent discards',
+    'reveals their hand and you choose',
+    'reveals his or her hand and you choose',
+  ];
+  if (discardPatterns.some(pat => oracle.includes(pat))) return true;
+
+  // 5. Stun / Tap Lock Interaction
+  if (oracle.includes('tap target creature') && (oracle.includes('stun counter') || oracle.includes('doesn\'t untap'))) {
+    return true;
+  }
+
+  return false;
 }
 
 export function identifySignpostArchetype(card: Card): string | undefined {
@@ -208,6 +335,10 @@ export function normalizeScryfallCard(rawCard: any): Card {
     card_faces,
     layout: rawCard.layout,
     scryfall_uri: rawCard.scryfall_uri,
+    booster: typeof rawCard.booster === 'boolean' ? rawCard.booster : undefined,
+    promo: typeof rawCard.promo === 'boolean' ? rawCard.promo : undefined,
+    finishes: Array.isArray(rawCard.finishes) ? rawCard.finishes : undefined,
+    frame_effects: Array.isArray(rawCard.frame_effects) ? rawCard.frame_effects : undefined,
     is_instant_speed: isInstant,
     is_creature: isCreature,
     is_land: isLand,
@@ -215,6 +346,9 @@ export function normalizeScryfallCard(rawCard: any): Card {
 
   card.is_combat_trick = isCombatTrick(card);
   card.is_removal = isRemovalSpell(card);
+  card.is_counterspell = isCounterspell(card);
+  card.is_card_draw = isCardDrawSpell(card);
+  card.is_interaction = isInteractionSpell(card);
   card.archetype_tag = identifySignpostArchetype(card);
 
   return card;
@@ -278,24 +412,89 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
   }
 }
 
+/**
+ * Deduplicates cards in a set by exact card name.
+ * When multiple treatments/variants exist for the same card in a set (e.g. standard frame vs showcase/borderless/extended art/promo),
+ * this preserves the canonical base booster printing:
+ * 1. Prefer booster pack printings (booster !== false) over special bonus/commander/promo sheets
+ * 2. Prefer non-promo printings (promo !== true) over promo versions
+ * 3. Prefer lowest numeric collector number (standard booster cards in MTG sets are always assigned the lowest collector numbers)
+ * 4. Maintain consistent set ordering
+ */
+export function deduplicateCards(cards: Card[]): Card[] {
+  if (!cards || cards.length === 0) return [];
+
+  const map = new Map<string, Card>();
+
+  for (const card of cards) {
+    if (!card || !card.name) continue;
+    const exactName = card.name.trim();
+    const key = exactName.toLowerCase();
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, card);
+      continue;
+    }
+
+    let preferCandidate = false;
+
+    // 1. Prefer booster packs over non-booster cards
+    if (existing.booster === false && card.booster === true) {
+      preferCandidate = true;
+    } else if (existing.booster === true && card.booster === false) {
+      preferCandidate = false;
+    } else if (existing.promo === true && card.promo === false) {
+      // 2. Prefer non-promo over promo
+      preferCandidate = true;
+    } else if (existing.promo === false && card.promo === true) {
+      preferCandidate = false;
+    } else {
+      // 3. Prefer lower numeric collector number (e.g. #2 Beza over #287 showcase Beza)
+      const existingNum = parseInt(existing.collector_number.replace(/\D/g, ''), 10);
+      const candidateNum = parseInt(card.collector_number.replace(/\D/g, ''), 10);
+
+      if (!isNaN(existingNum) && !isNaN(candidateNum)) {
+        if (candidateNum < existingNum) {
+          preferCandidate = true;
+        }
+      }
+    }
+
+    if (preferCandidate) {
+      map.set(key, card);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 export async function fetchCardsForSet(
   setCode: string,
   onProgress?: (loaded: number, total: number) => void,
   onCachedCards?: (cards: Card[]) => void
 ): Promise<Card[]> {
   const upperCode = setCode.toUpperCase();
-  const cacheKey = `scryfall_cards_${upperCode}_v6`;
-  const legacyCacheKey = `scryfall_cards_${upperCode}_v5`;
+  const cacheKey = `scryfall_cards_${upperCode}_v8`;
+  const legacyCacheKeys = [
+    `scryfall_cards_${upperCode}_v7`,
+    `scryfall_cards_${upperCode}_v6`,
+    `scryfall_cards_${upperCode}_v5`,
+  ];
 
   // 1. Read cached cards from IndexedDB if available and deliver immediately for instant UI
   let cachedCards: Card[] | null = null;
   try {
     let rawCached = await get<Card[]>(cacheKey);
     if (!rawCached || rawCached.length === 0) {
-      rawCached = await get<Card[]>(legacyCacheKey);
+      for (const legacyKey of legacyCacheKeys) {
+        rawCached = await get<Card[]>(legacyKey);
+        if (rawCached && rawCached.length > 0) break;
+      }
     }
     if (rawCached && rawCached.length > 0) {
-      const strictlyFiltered = rawCached.filter(c => c.set.toUpperCase() === upperCode);
+      // STRICT SET FILTER & DEDUPLICATION: strictly keep only cards for this set and deduplicate treatments by exact name!
+      const strictlyFiltered = deduplicateCards(rawCached.filter(c => c.set.toUpperCase() === upperCode));
       if (strictlyFiltered.length > 0) {
         cachedCards = strictlyFiltered;
         if (onCachedCards) {
@@ -308,9 +507,9 @@ export async function fetchCardsForSet(
   }
 
   const allCards: Card[] = [];
-  // Use unique=prints to include all card variants, showcase, and newly spoiled cards
+  // Use unique=cards to query canonical unique cards without duplicate treatments/variants
   const query = encodeURIComponent(`set:${upperCode.toLowerCase()} -layout:art_series -t:token`);
-  let nextUrl: string | null = `${SCRYFALL_API_BASE}/cards/search?q=${query}&unique=prints&order=set`;
+  let nextUrl: string | null = `${SCRYFALL_API_BASE}/cards/search?q=${query}&unique=cards&order=set`;
 
   try {
     let isFirstPage = true;
@@ -359,7 +558,6 @@ export async function fetchCardsForSet(
       // Check on EVERY load: Does cached cards count match or exceed the authoritative live Scryfall total?
       // If cachedCards already matches Scryfall's live total_cards count and set exceeds 1 page,
       // the cache is confirmed complete and we can return cachedCards without fetching subsequent pages.
-      // BUT if cachedCards has fewer cards than Scryfall reports (e.g. 141 < 265), the cache is STALE and we MUST download all remaining pages!
       if (isFirstPage && cachedCards && totalCount > 0 && cachedCards.length >= totalCount && totalCount > 175) {
         set(cacheKey, cachedCards).catch(() => {});
         return cachedCards;
@@ -378,25 +576,27 @@ export async function fetchCardsForSet(
       }
     }
 
-    if (allCards.length > 0) {
+    const dedupedCards = deduplicateCards(allCards);
+
+    if (dedupedCards.length > 0) {
       try {
-        await set(cacheKey, allCards);
+        await set(cacheKey, dedupedCards);
       } catch (e) {
         console.warn('Failed to cache cards in IndexedDB:', e);
       }
-      return allCards;
+      return dedupedCards;
     }
 
     // If zero cards returned from API, check cached cards or fallback
     if (cachedCards && cachedCards.length > 0) {
       return cachedCards;
     }
-    const sample = getFallbackCards(upperCode);
+    const sample = deduplicateCards(getFallbackCards(upperCode));
     if (sample.length > 0) {
       return sample;
     }
 
-    return allCards;
+    return dedupedCards;
   } catch (err) {
     console.error(`Failed to fetch cards for set ${upperCode}:`, err);
     // Return cached cards if available when network fails
@@ -404,7 +604,7 @@ export async function fetchCardsForSet(
       return cachedCards;
     }
     // Return sample offline cards if available strictly for this set
-    const sample = getFallbackCards(upperCode);
+    const sample = deduplicateCards(getFallbackCards(upperCode));
     if (sample.length > 0) {
       return sample;
     }
@@ -557,6 +757,114 @@ export function getFallbackCards(setCode: string): Card[] {
         is_creature: false,
         is_instant_speed: true,
         is_combat_trick: true,
+        is_removal: false,
+      },
+      {
+        id: 'blb-4',
+        name: 'Banishing Light',
+        set: 'BLB',
+        set_name: 'Bloomburrow',
+        collector_number: '1',
+        mana_cost: '{2}{W}',
+        cmc: 3,
+        type_line: 'Enchantment',
+        oracle_text: 'When Banishing Light enters, exile target nonland permanent an opponent controls until Banishing Light leaves the battlefield.',
+        colors: ['W'],
+        color_identity: ['W'],
+        rarity: 'uncommon',
+        keywords: [],
+        image_uris: {
+          small: 'https://cards.scryfall.io/small/front/e/e/ee335272-97fa-4252-a583-0ec3851bfa7a.jpg',
+          normal: 'https://cards.scryfall.io/normal/front/e/e/ee335272-97fa-4252-a583-0ec3851bfa7a.jpg',
+          large: 'https://cards.scryfall.io/large/front/e/e/ee335272-97fa-4252-a583-0ec3851bfa7a.jpg',
+          art_crop: 'https://cards.scryfall.io/art_crop/front/e/e/ee335272-97fa-4252-a583-0ec3851bfa7a.jpg',
+          png: 'https://cards.scryfall.io/png/front/e/e/ee335272-97fa-4252-a583-0ec3851bfa7a.png',
+        },
+        is_creature: false,
+        is_instant_speed: false,
+        is_combat_trick: false,
+        is_removal: true,
+      },
+      {
+        id: 'blb-5',
+        name: 'Seedgale Foster',
+        set: 'BLB',
+        set_name: 'Bloomburrow',
+        collector_number: '192',
+        mana_cost: '{4}{G}',
+        cmc: 5,
+        type_line: 'Creature — Fox Scout',
+        oracle_text: 'Vigilance\nWhenever Seedgale Foster attacks, target creature you control gets +1/+1 until end of turn.',
+        power: '4',
+        toughness: '4',
+        colors: ['G'],
+        color_identity: ['G'],
+        rarity: 'common',
+        keywords: ['Vigilance'],
+        image_uris: {
+          small: 'https://cards.scryfall.io/small/front/9/9/99a4c005-24c1-4b10-85f2-95fcae394336.jpg',
+          normal: 'https://cards.scryfall.io/normal/front/9/9/99a4c005-24c1-4b10-85f2-95fcae394336.jpg',
+          large: 'https://cards.scryfall.io/large/front/9/9/99a4c005-24c1-4b10-85f2-95fcae394336.jpg',
+          art_crop: 'https://cards.scryfall.io/art_crop/front/9/9/99a4c005-24c1-4b10-85f2-95fcae394336.jpg',
+          png: 'https://cards.scryfall.io/png/front/9/9/99a4c005-24c1-4b10-85f2-95fcae394336.png',
+        },
+        is_creature: true,
+        is_instant_speed: false,
+        is_combat_trick: false,
+        is_removal: false,
+      },
+      {
+        id: 'blb-6',
+        name: 'Valley Questcaller',
+        set: 'BLB',
+        set_name: 'Bloomburrow',
+        collector_number: '36',
+        mana_cost: '{1}{W}',
+        cmc: 2,
+        type_line: 'Creature — Rabbit Warrior',
+        oracle_text: 'Other Rabbits, Bats, Birds, and Mice you control get +1/+1.\nWhenever you cast a Rabbit, Bat, Bird, or Mouse spell, scry 1.',
+        power: '2',
+        toughness: '3',
+        colors: ['W'],
+        color_identity: ['W'],
+        rarity: 'rare',
+        keywords: [],
+        image_uris: {
+          small: 'https://cards.scryfall.io/small/front/b/a/ba629ca8-a368-4282-8a61-9bf6a5c217f0.jpg',
+          normal: 'https://cards.scryfall.io/normal/front/b/a/ba629ca8-a368-4282-8a61-9bf6a5c217f0.jpg',
+          large: 'https://cards.scryfall.io/large/front/b/a/ba629ca8-a368-4282-8a61-9bf6a5c217f0.jpg',
+          art_crop: 'https://cards.scryfall.io/art_crop/front/b/a/ba629ca8-a368-4282-8a61-9bf6a5c217f0.jpg',
+          png: 'https://cards.scryfall.io/png/front/b/a/ba629ca8-a368-4282-8a61-9bf6a5c217f0.png',
+        },
+        is_creature: true,
+        is_instant_speed: false,
+        is_combat_trick: false,
+        is_removal: false,
+      },
+      {
+        id: 'blb-7',
+        name: 'Cache Grab',
+        set: 'BLB',
+        set_name: 'Bloomburrow',
+        collector_number: '167',
+        mana_cost: '{1}{G}',
+        cmc: 2,
+        type_line: 'Instant',
+        oracle_text: 'Mill four cards. Then you may put a permanent card from among the milled cards into your hand. If you control a Squirrel, create a Food token.',
+        colors: ['G'],
+        color_identity: ['G'],
+        rarity: 'common',
+        keywords: ['Mill'],
+        image_uris: {
+          small: 'https://cards.scryfall.io/small/front/d/f/dfd977dc-a7c3-4d0a-aca7-b25bd154e963.jpg',
+          normal: 'https://cards.scryfall.io/normal/front/d/f/dfd977dc-a7c3-4d0a-aca7-b25bd154e963.jpg',
+          large: 'https://cards.scryfall.io/large/front/d/f/dfd977dc-a7c3-4d0a-aca7-b25bd154e963.jpg',
+          art_crop: 'https://cards.scryfall.io/art_crop/front/d/f/dfd977dc-a7c3-4d0a-aca7-b25bd154e963.jpg',
+          png: 'https://cards.scryfall.io/png/front/d/f/dfd977dc-a7c3-4d0a-aca7-b25bd154e963.png',
+        },
+        is_creature: false,
+        is_instant_speed: true,
+        is_combat_trick: false,
         is_removal: false,
       },
     ];

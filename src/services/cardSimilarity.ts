@@ -1,6 +1,7 @@
 import { Card, GradeTier, MTGColor, MTGRarity } from '../types/mtg';
 import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from './scryfall';
 import { fetch17LandsSetData, winRateToGradeTier, gradeTierToIndex, indexToGradeTier, GRADE_SCORES, scoreToGradeTier, getOrEstimate17LandsCardRating } from './seventeenLands';
+import { getLearnedBenchmarkCandidates, getLearnedQueryExpansions, getLearnedPrecedentBoost } from './precedentLearning';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
@@ -39,6 +40,21 @@ export interface CardSimilarityResult {
 
 // In-memory session cache to avoid repeating Scryfall calls for the same card
 const similarityCache = new Map<string, CardSimilarityResult>();
+
+/**
+ * Synchronous lookup in similarity cache to prevent flicker/flashing in UI
+ */
+export function getCachedSimilarCards(targetCard: Card | null | undefined): CardSimilarityResult | null {
+  if (!targetCard || !targetCard.name || !targetCard.set) return null;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v63`;
+  if (similarityCache.has(cacheKey)) {
+    const cached = similarityCache.get(cacheKey)!;
+    if (cached && cached.matches && cached.matches.length >= 2) {
+      return cached;
+    }
+  }
+  return null;
+}
 
 function createBenchmarkCard(
   name: string,
@@ -96,9 +112,19 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Head of the Homestead', 'BLB', '{3}{W}', 4, 'Creature — Rabbit Citizen', 'When Head of the Homestead enters the battlefield, create two 1/1 white Rabbit creature tokens.', ['W'], '2', '2'),
   createBenchmarkCard('Warren Warleader', 'BLB', '{2}{W}{W}', 4, 'Creature — Rabbit Knight', 'Offspring {2}. Whenever you attack, choose one — Create a 1/1 white Rabbit; or attacking creatures get +1/+1 until end of turn.', ['W'], '4', '4', 'rare'),
   createBenchmarkCard('Auspicious Arrival', 'MKM', '{1}{W}', 2, 'Instant', 'Target creature gets +2/+2 until end of turn. Investigate.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Hop to It', 'BLB', '{2}{W}', 3, 'Sorcery', 'Create three 1/1 white Rabbit creature tokens.', ['W'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Rally for the Throne', 'ELD', '{2}{W}', 3, 'Instant', 'Create two 1/1 white Human creature tokens. Adamant — If at least three white mana was spent to cast this spell, you gain 1 life for each creature you control.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Raise the Alarm', 'M20', '{1}{W}', 2, 'Instant', 'Create two 1/1 white Soldier creature tokens.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Call the Cavalry', 'DOM', '{3}{W}', 4, 'Sorcery', 'Create two 2/2 white Knight creature tokens with vigilance.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Join the Dance', 'MID', '{G}{W}', 2, 'Sorcery', 'Create two 1/1 white Human creature tokens. Flashback {3}{G}{W}', ['G', 'W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Griffin Aerie', 'M21', '{1}{W}', 2, 'Enchantment', 'At the beginning of your end step, if you gained 3 or more life this turn, create a 2/2 white Griffin creature token with flying.', ['W'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Depopulate', 'SNC', '{2}{W}{W}', 4, 'Sorcery', 'Each player who controls a multicolored creature draws a card. Destroy all creatures.', ['W'], undefined, undefined, 'rare'),
+  createBenchmarkCard('The Battle of Bywater', 'LTR', '{1}{W}{W}', 3, 'Sorcery', 'Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control.', ['W'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Sunfall', 'MOM', '{3}{W}{W}', 5, 'Sorcery', 'Exile all creatures. Incubate X, where X is the number of creatures exiled this way.', ['W'], undefined, undefined, 'rare'),
   createBenchmarkCard('Imperial Oath', 'NEO', '{5}{W}', 6, 'Sorcery', 'Create three 2/2 white Samurai creature tokens with vigilance. Scry 3.', ['W'], undefined, undefined, 'common'),
   createBenchmarkCard('Hero in Training', 'MSC', '{2}{W}', 3, 'Creature — Human Hero', 'When Hero in Training enters the battlefield, draw a card. If you control another Hero, you gain 2 life.', ['W'], '2', '2', 'common'),
   createBenchmarkCard('Stone Docent', 'SOS', '{1}{W}', 2, 'Creature — Spirit Chimera', '{W}, Exile this card from your graveyard: You gain 2 life. Surveil 1.', ['W'], '3', '1', 'common'),
+  createBenchmarkCard('Star Pupil', 'STX', '{W}', 1, 'Creature — Human Wizard', 'Star Pupil enters the battlefield with a +1/+1 counter on it. When Star Pupil dies, put its counters on target creature you control.', ['W'], '0', '0', 'common'),
 
   // Blue
   createBenchmarkCard('Consider', 'MID', '{U}', 1, 'Instant', 'Surveil 1. Draw a card.', ['U']),
@@ -153,6 +179,7 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Candy Trail', 'WOE', '{1}', 1, 'Artifact — Food Clue', 'When Candy Trail enters the battlefield, scry 2. {2}, {T}, Sacrifice Candy Trail: You gain 3 life and draw a card.', []),
   createBenchmarkCard('Witching Well', 'ELD', '{U}', 1, 'Artifact', 'When Witching Well enters the battlefield, scry 2. {3}{U}, Sacrifice Witching Well: Draw two cards.', ['U']),
   createBenchmarkCard('Clockwork Percussionist', 'DSK', '{1}', 1, 'Artifact Creature — Monkey', 'Haste. When Clockwork Percussionist dies, exile the top card of your library. You may play it until the end of your next turn.', [], '1', '1', 'common', ['Haste']),
+  createBenchmarkCard('Iron Apprentice', 'NEO', '{1}', 1, 'Artifact Creature — Homunculus', 'Iron Apprentice enters the battlefield with a +1/+1 counter on it. When Iron Apprentice dies, if it had counters on it, put those counters on target creature you control.', [], '0', '0', 'common'),
   createBenchmarkCard('Campus Guide', 'STX', '{2}', 2, 'Artifact Creature — Golem', 'When Campus Guide enters the battlefield, you may search your library for a basic land card, reveal it, then shuffle and put that card on top.', [], '2', '1'),
   createBenchmarkCard('Patchwork Banner', 'BLB', '{3}', 3, 'Artifact', 'As Patchwork Banner enters the battlefield, choose a creature type. Creatures you control of the chosen type get +1/+1. {T}: Add one mana of any color.', [], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Barrow-Blade', 'LTR', '{1}', 1, 'Artifact — Equipment', 'Equipped creature gets +1/+1. Whenever equipped creature blocks or becomes blocked by a creature, that creature loses all abilities until end of turn. Equip {1}.', []),
@@ -222,39 +249,50 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Starting Column', 'DFT', '{3}', 3, 'Artifact', '{T}: Add one mana of any color. {5}, {T}, Sacrifice Starting Column: Draw two cards.', []),
   createBenchmarkCard('Argothian Opportunist', 'BRO', '{2}{G}', 3, 'Creature — Human Artificer', 'When Argothian Opportunist enters the battlefield, create a tapped Powerstone token.', ['G'], '3', '2', 'common'),
   createBenchmarkCard('Zoetic Glyph', 'LCI', '{2}{U}', 3, 'Enchantment — Aura', 'Enchant artifact. Enchanted artifact is a Golem creature with base power and toughness 5/4 in addition to its other types. When Zoetic Glyph is put into a graveyard from the battlefield, discover 3.', ['U'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Puppet Crafting', 'FRA', '{1}{G}', 2, 'Enchantment — Aura', 'Enchant artifact or non-Aura enchantment. Enchanted permanent is a Construct creature with base power and toughness 5/5 in addition to its other types. {4}{G}: Return this card from your graveyard to your hand.', ['G'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Hungering Puppetbeast', 'FRA', '{3}{G}{G}', 5, 'Artifact Creature — Beast Construct', 'When this creature enters, create a Heartwood token. {1}, Sacrifice another artifact: Put a +1/+1 counter on this creature. It gains your choice of trample, hexproof, or haste until end of turn.', ['G'], '4', '4', 'common'),
-  createBenchmarkCard('Tenured Tethermage', 'FRA', '{1}{R}{G}', 3, 'Creature — Human Artificer', 'When this creature enters, you may sacrifice a land. If you do, create two tapped Heartwood tokens. Tap two untapped artifacts you control: Put two +1/+1 counters on this creature.', ['R', 'G'], '1', '1', 'uncommon'),
+  createBenchmarkCard('Ensoul Artifact', 'M15', '{1}{U}', 2, 'Enchantment — Aura', 'Enchant artifact. Enchanted artifact is a creature with base power and toughness 5/5 in addition to its other types.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Scrapwork Cohort', 'BRO', '{4}', 4, 'Artifact Creature — Soldier', 'When Scrapwork Cohort enters the battlefield, create a 1/1 colorless Soldier artifact creature token. Unearth {2}{W}', ['W'], '3', '1', 'common'),
+  createBenchmarkCard('Svella, Ice Shaper', 'KHM', '{1}{R}{G}', 3, 'Legendary Creature — Troll Shaman', '{3}, {T}: Create an Icy Manalith token. {6}{R}{G}, {T}: Look at the top four cards of your library. You may cast a spell from among them without paying its mana cost. Put the rest on the bottom of your library in a random order.', ['R', 'G'], '2', '4', 'uncommon'),
   createBenchmarkCard('Tinker\'s Tote', 'LCI', '{2}{W}', 3, 'Artifact', 'When Tinker\'s Tote enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens and you gain 2 life. {3}{W}, {T}, Sacrifice Tinker\'s Tote: Put a +1/+1 counter on each creature you control.', ['W'], undefined, undefined, 'common'),
   createBenchmarkCard('Gleaming Geardrake', 'MKM', '{U}{R}', 2, 'Artifact Creature — Drake', 'Flying. When Gleaming Geardrake enters the battlefield, investigate. Whenever you sacrifice an artifact, put a +1/+1 counter on Gleaming Geardrake.', ['U', 'R'], '1', '1', 'uncommon', ['Flying']),
   createBenchmarkCard('Oni-Cult Anvil', 'NEO', '{B}{R}', 2, 'Artifact', 'Whenever one or more artifacts you control leave the battlefield during your turn, create a 1/1 colorless Construct artifact creature token. {T}, Sacrifice an artifact: Oni-Cult Anvil deals 1 damage to each opponent. You gain 1 life.', ['B', 'R'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Unctus\'s Retrofitter', 'ONE', '{1}{U}', 2, 'Creature — Phyrexian Artificer', 'When Unctus\'s Retrofitter enters the battlefield, target noncreature artifact you control becomes an artifact creature with base power and toughness 4/4 for as long as Unctus\'s Retrofitter remains on the battlefield.', ['U'], '2', '3', 'uncommon'),
 ];
 
+export const HISTORICAL_BENCHMARK_NAMES = new Set(
+  HISTORICAL_BENCHMARK_CARDS.map(c => c.name.trim().toLowerCase())
+);
+
 // Known Limited functional effect clauses with category classification
 export interface EffectPattern {
   pattern: RegExp;
   label: string;
-  category: 'removal' | 'damage' | 'counter' | 'draw' | 'selection' | 'trick' | 'bounce' | 'pacifism' | 'token' | 'counters' | 'sweeper' | 'synergy' | 'graveyard' | 'equipment' | 'tutor';
+  category: 'removal' | 'damage' | 'counter' | 'draw' | 'selection' | 'trick' | 'bounce' | 'pacifism' | 'token' | 'counters' | 'sweeper' | 'synergy' | 'graveyard' | 'equipment' | 'tutor' | 'token_army' | 'token_creature' | 'token_resource' | 'lifegain_payoff';
 }
 
 const EFFECT_PATTERNS: EffectPattern[] = [
-  { pattern: /(destroy|exile) (up to one )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or )?creature/i, label: 'Creature Removal', category: 'removal' },
-  { pattern: /(destroy|exile) (up to one )?target creature/i, label: 'Creature Removal', category: 'removal' },
+  { pattern: /(destroy|exile) (up to \w+ )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or |artifact, enchantment, or tapped )?creature/i, label: 'Creature Removal', category: 'removal' },
+  { pattern: /(destroy|exile) (up to \w+ )?target creature/i, label: 'Creature Removal', category: 'removal' },
   { pattern: /destroy target \[(attacking|blocking|tapped)\] creature/i, label: 'Creature Removal', category: 'removal' },
-  { pattern: /(destroy|exile) target (permanent|nonland permanent|artifact, creature, or enchantment|artifact|enchantment)/i, label: 'Permanent Removal', category: 'removal' },
+  { pattern: /(destroy|exile) (up to \w+ )?target (permanent|nonland permanent|artifact, creature, or enchantment|artifact, enchantment, or tapped creature|artifact|enchantment)/i, label: 'Permanent Removal', category: 'removal' },
   { pattern: /search your library for .* card.*put that card on top|search your library for .* then shuffle and put that card on top/i, label: 'Top-of-Library Tutor', category: 'tutor' },
   { pattern: /search your library for .* into your hand/i, label: 'Library Tutor to Hand', category: 'tutor' },
   { pattern: /search your library for/i, label: 'Library Tutor / Search', category: 'tutor' },
   { pattern: /deals \d+ damage to (any target|target creature)/i, label: 'Burn / Direct Damage', category: 'damage' },
+  { pattern: /(destroy|exile) all (creatures|nonland permanents)/i, label: 'Board Wipe / Wrath', category: 'sweeper' },
+  { pattern: /destroy all creatures with power/i, label: 'Board Wipe / Conditional Wrath', category: 'sweeper' },
   { pattern: /deals \d+ damage to each creature/i, label: 'Board Wipe / Sweeper', category: 'sweeper' },
+  { pattern: /each creature gets [+-]?-\d+\/[+-]?-\d+/i, label: 'Board Wipe / Languish', category: 'sweeper' },
   { pattern: /destroy all creatures/i, label: 'Board Wipe / Wrath', category: 'sweeper' },
   { pattern: /counter target (spell|noncreature spell|creature spell)/i, label: 'Counterspell', category: 'counter' },
-  { pattern: /draw (a|\d+) cards?/i, label: 'Card Draw', category: 'draw' },
+  { pattern: /(draw|draws) (a|\d+|one|two|three|four|five|x|that many) cards?/i, label: 'Card Draw', category: 'draw' },
+  { pattern: /where x is the amount of life you gained|if you gained life|whenever you gain life|amount of life you gained|if you gained \d+ or more life/i, label: 'Lifegain Payoff', category: 'lifegain_payoff' },
   { pattern: /target creature gets [+-]\d+\/[+-]\d+/i, label: 'Stat Modifier', category: 'trick' },
   { pattern: /(creatures|attacking creatures|other creatures) you control get [+-]\d+\/[+-]\d+/i, label: 'Team Stat Buff / Anthem', category: 'trick' },
   { pattern: /\{[0-9WUBRG]+\}(, \{t\})?: (creatures|attacking creatures|other creatures) you control get/i, label: 'Activated Team Pump / Mana Sink', category: 'trick' },
-  { pattern: /create (a|\d+) .* token/i, label: 'Token Creation', category: 'token' },
+  { pattern: /create (a|\d+|one|two|three|four|five|x|that many) .* (creature|artifact creature) tokens?|amass/i, label: 'Creature Token Creation', category: 'token_creature' },
+  { pattern: /create (a|\d+|one|two|three|four|five|x|that many) .*(food|clue|blood|treasure|map|powerstone|heartwood|junk|incubator) tokens?|investigate/i, label: 'Resource Token Creation', category: 'token_resource' },
+  { pattern: /create (a|\d+|one|two|three|four|five|x) .* tokens?|amass|investigate/i, label: 'Token Creation', category: 'token' },
+  { pattern: /scry (\d+|x)|surveil (\d+|x)/i, label: 'Scry / Surveil', category: 'selection' },
   { pattern: /put (a|\d+) \+1\/\+1 counter/i, label: '+1/+1 Counter', category: 'counters' },
   { pattern: /return target .* to its owner's hand/i, label: 'Bounce Effect', category: 'bounce' },
   { pattern: /target creature can't (block|attack)/i, label: 'Pacifism / Lock', category: 'pacifism' },
@@ -262,7 +300,7 @@ const EFFECT_PATTERNS: EffectPattern[] = [
   { pattern: /enchanted (creature|permanent) loses all abilities|lose all abilities|has no abilities/i, label: 'Ability Loss Aura', category: 'pacifism' },
   { pattern: /base power and toughness/i, label: 'Stat Reduction / Transformation', category: 'pacifism' },
   { pattern: /doesn't untap during (its|their) controller's untap step|doesn't untap/i, label: 'Freeze Lockdown', category: 'pacifism' },
-  { pattern: /connive|recruit|draw a card, then discard/i, label: 'Looting / Card Selection', category: 'selection' },
+  { pattern: /connive|recruit|draw a card, then discard|then discard a card|discard a card, then draw|discard (a|\d+|one|two) cards?/i, label: 'Looting / Card Selection', category: 'selection' },
   { pattern: /look at the top \d+ cards/i, label: 'Card Selection / Impulse', category: 'selection' },
   { pattern: /when .* enters the battlefield|when .* enters/i, label: 'ETB Ability', category: 'synergy' },
   { pattern: /sacrifice/i, label: 'Sacrifice Synergy', category: 'synergy' },
@@ -360,7 +398,19 @@ export function extractCardFeatures(card: Card) {
 
   const isAuraRemoval = isAbilityLossAura || isFreezeAura || isLockdownAura || isExileAura;
 
-  const createsTokens = (oracle.includes('create') && oracle.includes('token')) || /amass/i.test(oracle) || /empower jace/i.test(rawOracle);
+  const createsCreatureTokens = (
+    /create (a|\d+|one|two|three|four|five|x|that many) .* (creature|artifact creature) tokens?/i.test(oracle) ||
+    /create x 2\/2/i.test(oracle) ||
+    /create (a|\d+|one|two|three|four|five|x) .* tokens? named/i.test(oracle) ||
+    /amass|living weapon|for mirrodin/i.test(oracle)
+  );
+
+  const createsResourceTokens = (
+    /create (a|\d+|one|two|three|four|five|x|that many) .*(food|clue|blood|treasure|map|powerstone|heartwood|junk|incubator) tokens?/i.test(oracle) ||
+    /investigate/i.test(oracle)
+  );
+
+  const createsTokens = createsCreatureTokens || createsResourceTokens || (oracle.includes('create') && oracle.includes('token')) || /amass|investigate/i.test(oracle) || /empower jace/i.test(rawOracle);
 
   // Equipment & Living Weapon Features
   const isEquipment = frontTypeLine.includes('equipment') || /equip \{/i.test(oracle);
@@ -439,23 +489,32 @@ export function extractCardFeatures(card: Card) {
     if (isAbilityLossAura) actionSubtypes.add('ability_loss_aura');
     if (isFreezeAura) actionSubtypes.add('freeze_aura');
     if (isLockdownAura) actionSubtypes.add('pacifism_aura');
-  } else if (/destroy all creatures|deals \d+ damage to each creature|exile all creatures/i.test(oracle)) {
+  } else if (
+    /(destroy|exile) all (creatures|nonland permanents)/i.test(oracle) ||
+    /destroy all creatures with power/i.test(oracle) ||
+    /deals \d+ damage to each creature/i.test(oracle) ||
+    /each creature gets [+-]?-\d+\/[+-]?-\d+/i.test(oracle)
+  ) {
     actionSubtypes.add('sweeper');
+    detectedCategories.add('sweeper');
   } else if (/deals \d+ damage to (any target|target creature)/i.test(oracle)) {
     actionSubtypes.add('burn_damage');
   } else if (/deals damage equal to (its|target creature's) power|fights target creature/i.test(oracle)) {
     actionSubtypes.add('bite_fight');
-  } else if (/(destroy|exile) target (permanent|nonland permanent|artifact, creature, or enchantment)/i.test(oracle)) {
+  } else if (/(destroy|exile) (up to \w+ )?target (permanent|nonland permanent|artifact, creature, or enchantment)/i.test(oracle)) {
     actionSubtypes.add('permanent_removal');
     actionSubtypes.add('unconditional_removal');
     detectedCategories.add('removal');
-  } else if (/(destroy|exile) target (artifact|enchantment)/i.test(oracle)) {
+  } else if (/(destroy|exile) (up to \w+ )?target (artifact or enchantment|artifact, enchantment, or tapped creature)/i.test(oracle)) {
+    actionSubtypes.add('conditional_removal');
+    detectedCategories.add('removal');
+  } else if (/(destroy|exile) (up to \w+ )?target (artifact|enchantment)/i.test(oracle) && !/(creature|permanent)/i.test(oracle)) {
     actionSubtypes.add('artifact_enchantment_removal');
     detectedCategories.add('removal');
   } else {
     const isCreatureDestructionOrExile = (
-      /(destroy|exile) (up to one )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or )?creature/i.test(oracle) ||
-      /(destroy|exile) (up to one )?target creature/i.test(oracle) ||
+      /(destroy|exile) (up to \w+ )?target (attacking |tapped |blocking |nontoken |nonartifact |non-outlaw |nonlegendary |nonblack |artifact or |enchantment or |artifact, enchantment, or tapped )?creature/i.test(oracle) ||
+      /(destroy|exile) (up to \w+ )?target creature/i.test(oracle) ||
       /destroy target \[(attacking|blocking|tapped)\] creature/i.test(rawOracle)
     );
     if (isCreatureDestructionOrExile) {
@@ -832,13 +891,74 @@ export function extractCardFeatures(card: Card) {
     }
   }
 
-  // ETB Counter Distribution & Growth Subtypes
-  if (/when .* enters/i.test(oracle) && /put (a|\d+) \+1\/\+1 counter on (target|another|a) creature/i.test(oracle)) {
+  // ETB Counter Distribution, Static Entry & Growth Subtypes
+  let entersWithCountersCount = 0;
+  const entersWithMatch = oracle.match(/enters(?:\s+the\s+battlefield)?\s+with\s+(a|an|\d+|one|two|three|four|five)\s+\+1\/\+1\s+counters?/i);
+  if (entersWithMatch) {
+    const rawNum = entersWithMatch[1].toLowerCase();
+    if (rawNum === 'a' || rawNum === 'an' || rawNum === 'one' || rawNum === '1') entersWithCountersCount = 1;
+    else if (rawNum === 'two' || rawNum === '2') entersWithCountersCount = 2;
+    else if (rawNum === 'three' || rawNum === '3') entersWithCountersCount = 3;
+    else if (rawNum === 'four' || rawNum === '4') entersWithCountersCount = 4;
+    else if (rawNum === 'five' || rawNum === '5') entersWithCountersCount = 5;
+    else {
+      const parsed = parseInt(rawNum, 10);
+      if (!isNaN(parsed)) entersWithCountersCount = parsed;
+    }
+  }
+
+  let etbSelfCounterCount = 0;
+  const etbSelfMatch = oracle.match(/when\s+(?:this\s+creature|this\s+permanent|it)\s+enters(?:\s+the\s+battlefield)?,?\s+put\s+(a|an|\d+|one|two|three)\s+\+1\/\+1\s+counter[s]?\s+on\s+(?:it|this)/i);
+  if (etbSelfMatch) {
+    const rawNum = etbSelfMatch[1].toLowerCase();
+    if (rawNum === 'a' || rawNum === 'an' || rawNum === 'one' || rawNum === '1') etbSelfCounterCount = 1;
+    else if (rawNum === 'two' || rawNum === '2') etbSelfCounterCount = 2;
+    else if (rawNum === 'three' || rawNum === '3') etbSelfCounterCount = 3;
+    else {
+      const parsed = parseInt(rawNum, 10);
+      if (!isNaN(parsed)) etbSelfCounterCount = parsed;
+    }
+  }
+
+  // 1. Static enters with counters (e.g. Graft Surgeon, Riot, Modular)
+  if (entersWithCountersCount > 0) {
+    actionSubtypes.add('enters_with_counters');
+    valueRiders.add('counters');
+    detectedCategories.add('counters');
+  }
+
+  // 2. ETB counter distributor (targets other/another creature)
+  if (/when\s+.*\s+enters/i.test(oracle) && /put (?:a|\d+|one|two)\s+\+1\/\+1 counter[s]?\s+on (?:target|another|a) creature/i.test(oracle)) {
     actionSubtypes.add('etb_counter_distributor');
     valueRiders.add('counters');
     detectedCategories.add('counters');
-  } else if (/when .* enters/i.test(oracle) && (/put (a|\d+) \+1\/\+1 counter on this/i.test(oracle) || /explores/i.test(oracle) || /enters.*with (a|\d+) \+1\/\+1 counter/i.test(oracle))) {
+  } else if (etbSelfCounterCount > 0 || (/when\s+(?:this\s+creature|this|it)\s+enters/i.test(oracle) && /explores/i.test(oracle))) {
     actionSubtypes.add('etb_counter_self');
+    valueRiders.add('counters');
+    detectedCategories.add('counters');
+  }
+
+  // 3. Alliance / Creature-fall / Entry-triggered growth (e.g. Avatar Enthusiasts)
+  // "Whenever another Ally you control enters, put a +1/+1 counter on this creature"
+  const isTriggeredGrowthOtherEnters = /(?:whenever|when)\s+(?:another|a)\s+[^,\.]*enters.*put\s+(?:a|\d+|one|two)\s+\+1\/\+1\s+counter[s]?\s+on\s+(?:this|it)/i.test(oracle);
+  if (isTriggeredGrowthOtherEnters) {
+    actionSubtypes.add('triggered_growth_other_enters');
+    valueRiders.add('counters');
+    detectedCategories.add('counters');
+  }
+
+  // 4. Death Counter Transfer / Modular / Bequeath
+  // "When this creature dies, put its counters on up to one target creature you control"
+  // "When Quirion Beastcaller dies, distribute its counters among creatures you control"
+  const isDeathCounterTransfer = (
+    (/when\s+.*\s+dies,?\s+(?:put|distribute|move)\s+(?:its|those|\+1\/\+1)\s+counters\s+on\s+(?:up\s+to\s+one\s+target|target|another|creatures)/i.test(oracle)) ||
+    (/when\s+.*\s+dies,?\s+distribute\s+its\s+counters/i.test(oracle)) ||
+    (/modular\s+\d+/i.test(oracle)) ||
+    (card.keywords || []).some(k => /modular/i.test(k))
+  );
+  if (isDeathCounterTransfer) {
+    actionSubtypes.add('death_counter_transfer');
+    actionSubtypes.add('death_trigger');
     valueRiders.add('counters');
     detectedCategories.add('counters');
   }
@@ -957,8 +1077,29 @@ export function extractCardFeatures(card: Card) {
   // Incidental Value Riders
   if (/proliferate/i.test(oracle)) valueRiders.add('proliferate');
   if (/surveil|scry/i.test(oracle)) valueRiders.add('surveil_scry');
+  if (/investigate/i.test(oracle)) {
+    valueRiders.add('token');
+    valueRiders.add('resource_token');
+    valueRiders.add('cantrip');
+    detectedCategories.add('token');
+    detectedCategories.add('token_resource');
+  }
   if (isConnive || /\+1\/\+1 counter/i.test(oracle)) valueRiders.add('counters');
-  if ((isRecruit || /create .* token|empower|amass/i.test(oracle)) && !/its controller (creates|draws)/i.test(oracle)) valueRiders.add('token');
+  if (createsCreatureTokens) {
+    valueRiders.add('token');
+    valueRiders.add('creature_token');
+    detectedCategories.add('token');
+    detectedCategories.add('token_creature');
+  }
+  if (createsResourceTokens) {
+    valueRiders.add('token');
+    valueRiders.add('resource_token');
+    detectedCategories.add('token');
+    detectedCategories.add('token_resource');
+  }
+  if ((isRecruit || /create .* token|empower|amass|investigate/i.test(oracle)) && !/its controller (creates|draws)/i.test(oracle)) {
+    valueRiders.add('token');
+  }
   if (/gain \d+ life|lifelink/i.test(oracle)) valueRiders.add('life_gain');
   if (/draw a card/i.test(oracle) && !/its controller draws a card/i.test(oracle)) {
     if (!isModalSpell) {
@@ -967,10 +1108,49 @@ export function extractCardFeatures(card: Card) {
   }
   if (isConnive || isRecruit || /if you discarded/i.test(oracle)) valueRiders.add('discard_payoff');
 
+  // Lifegain Payoff Action Subtype & Value Rider
+  if (/where x is the amount of life you gained|if you gained life|whenever you gain life|amount of life you gained|for each 1 life you gained|if you gained \d+ or more life/i.test(oracle)) {
+    actionSubtypes.add('lifegain_payoff');
+    valueRiders.add('lifegain_payoff');
+    detectedCategories.add('lifegain_payoff');
+  }
+
+  // Creature Token Army Action Subtype
+  // An instant or sorcery whose primary role is creating creature bodies
+  const isCreatureTokenArmy = (isInstant || isSorcery) &&
+    createsCreatureTokens &&
+    !isAuraRemoval &&
+    !detectedCategories.has('removal') &&
+    !actionSubtypes.has('sweeper') &&
+    !actionSubtypes.has('artifact_enchantment_removal') &&
+    !actionSubtypes.has('hard_counter') &&
+    !actionSubtypes.has('soft_tax_counter') &&
+    !actionSubtypes.has('restricted_counter') &&
+    !actionSubtypes.has('power_toughness_removal') &&
+    !actionSubtypes.has('toughness_4_plus_removal') &&
+    !actionSubtypes.has('unconditional_removal') &&
+    !actionSubtypes.has('conditional_removal') &&
+    !actionSubtypes.has('combat_removal') &&
+    !actionSubtypes.has('bite_fight') &&
+    !actionSubtypes.has('burn_damage') &&
+    !isCombatTrick;
+
+  if (isCreatureTokenArmy) {
+    actionSubtypes.add('creature_token_army');
+    detectedCategories.add('token_army');
+  }
+
   // Effective CMC accounting for the Instant Speed Tax (-0.75 for noncreature instant/flash)
   const effectiveCmc = ((isInstant || hasFlash) && !isCreature) ? Math.max(0.5, (card.cmc || 0) - 0.75) : (card.cmc || 0);
 
   const cardColors = (card.colors || []).filter(c => c !== 'C');
+
+  // Effective Power & Toughness accounting for static entry counters & immediate self-ETB counters
+  const basePower = card.power !== undefined ? parseInt(card.power, 10) : undefined;
+  const baseToughness = card.toughness !== undefined ? parseInt(card.toughness, 10) : undefined;
+  const counterBoost = entersWithCountersCount + etbSelfCounterCount;
+  const effectivePower = (basePower !== undefined && !isNaN(basePower)) ? basePower + counterBoost : basePower;
+  const effectiveToughness = (baseToughness !== undefined && !isNaN(baseToughness)) ? baseToughness + counterBoost : baseToughness;
 
   return {
     primaryType,
@@ -997,6 +1177,8 @@ export function extractCardFeatures(card: Card) {
     isLockdownAura,
     isAuraRemoval,
     createsTokens,
+    createsCreatureTokens,
+    createsResourceTokens,
     detectedClauses,
     detectedCategories,
     actionSubtypes,
@@ -1006,8 +1188,14 @@ export function extractCardFeatures(card: Card) {
     effectiveCmc,
     colors: cardColors,
     creatureSubtypes,
-    power: card.power !== undefined ? parseInt(card.power, 10) : undefined,
-    toughness: card.toughness !== undefined ? parseInt(card.toughness, 10) : undefined,
+    basePower,
+    baseToughness,
+    power: effectivePower,
+    toughness: effectiveToughness,
+    effectivePower,
+    effectiveToughness,
+    entersWithCountersCount,
+    etbSelfCounterCount,
     rarity: (card.rarity || 'common').toLowerCase(),
     cleanOracle: oracle,
     rawOracle,
@@ -1036,6 +1224,14 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
   const tFeatures = extractCardFeatures(target);
   const cFeatures = extractCardFeatures(candidate);
 
+  // 0. Sweepers / Board Wipes (Strict: Sweepers ONLY compare to Sweepers)
+  // In MTG Limited, board wipes serve a completely unique strategic role and cannot be compared to spot removal, tricks, or token armies.
+  const tIsSweeper = tFeatures.actionSubtypes.has('sweeper') || tFeatures.detectedCategories.has('sweeper');
+  const cIsSweeper = cFeatures.actionSubtypes.has('sweeper') || cFeatures.detectedCategories.has('sweeper');
+  if (tIsSweeper !== cIsSweeper) {
+    return false;
+  }
+
   // 1. Planeswalkers (Strict: Only planeswalker to planeswalker)
   if (tFeatures.isPlaneswalker || cFeatures.isPlaneswalker) {
     return tFeatures.isPlaneswalker && cFeatures.isPlaneswalker;
@@ -1058,17 +1254,24 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
 
   // 5. Creatures
   if (tFeatures.isCreature || cFeatures.isCreature) {
-    // A creature can compare to another creature, or to a spell that produces creature tokens
+    // A creature can compare to another creature, or to a spell that produces creature tokens (excluding removal/sweepers)
     return (tFeatures.isCreature && cFeatures.isCreature) ||
-           (tFeatures.isCreature && cFeatures.createsTokens) ||
-           (cFeatures.isCreature && tFeatures.createsTokens);
+           (tFeatures.isCreature && cFeatures.createsCreatureTokens && !cFeatures.isRemoval && !cIsSweeper) ||
+           (cFeatures.isCreature && tFeatures.createsCreatureTokens && !tFeatures.isRemoval && !tIsSweeper);
   }
 
-  // 5. Non-permanent spells (Instants & Sorceries)
+  // 6. Non-permanent spells (Instants & Sorceries)
   const tSpell = tFeatures.isInstant || tFeatures.isSorcery;
   const cSpell = cFeatures.isInstant || cFeatures.isSorcery;
 
   if (tSpell && cSpell) {
+    // Creature Token Army vs Removal gatekeeper:
+    // A spell whose primary function is creating creature bodies cannot compare to pure removal or sweepers!
+    const tIsTokenArmy = tFeatures.actionSubtypes.has('creature_token_army');
+    const cIsTokenArmy = cFeatures.actionSubtypes.has('creature_token_army');
+    if (tIsTokenArmy && (cFeatures.isRemoval || cIsSweeper)) return false;
+    if (cIsTokenArmy && (tFeatures.isRemoval || tIsSweeper)) return false;
+
     // Pure library tutor cannot compare to removal spells, combat tricks, sweepers, or counterspells!
     const isPureTutor = (f: ReturnType<typeof extractCardFeatures>) =>
       (f.actionSubtypes.has('library_tutor') || f.detectedCategories.has('tutor')) &&
@@ -1096,11 +1299,17 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
     return true;
   }
 
-  // 6. Aura Removal can compare to Sorcery/Instant removal
-  if (tFeatures.isAuraRemoval && (cSpell || cFeatures.isAuraRemoval)) return true;
-  if (cFeatures.isAuraRemoval && (tSpell || tFeatures.isAuraRemoval)) return true;
+  // 7. Aura Removal can compare to Sorcery/Instant removal
+  if (tFeatures.isAuraRemoval && (cSpell || cFeatures.isAuraRemoval)) {
+    if (cIsSweeper) return false;
+    return true;
+  }
+  if (cFeatures.isAuraRemoval && (tSpell || tFeatures.isAuraRemoval)) {
+    if (tIsSweeper) return false;
+    return true;
+  }
 
-  // 7. Artifacts and Enchantments
+  // 8. Artifacts and Enchantments
   if (tFeatures.isArtifact && cFeatures.isArtifact) return true;
   if (tFeatures.isEnchantment && cFeatures.isEnchantment) return true;
 
@@ -1157,6 +1366,16 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   const maxCmc = features.cmc + 1;
 
   const queries: string[] = [];
+
+  // Learned Mechanic Bridge Queries (Rosetta Stone):
+  // When a card features a mechanic with a learned bridge to historical terms, execute priority queries
+  const learnedExpansions = getLearnedQueryExpansions(card);
+  if (learnedExpansions.length > 0) {
+    learnedExpansions.forEach(exp => {
+      queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} ${exp}`);
+      queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} ${exp}`);
+    });
+  }
 
   // Planeswalkers & Battles
   if (features.isPlaneswalker) {
@@ -1238,6 +1457,25 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
         queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) (o:"create" o:"tokens" (o:scry or o:surveil or o:draw))`);
       }
     }
+  }
+
+  // Sweepers / Board Wipes
+  if (features.actionSubtypes.has('sweeper') || features.detectedCategories.has('sweeper')) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} (o:"destroy all creatures" or o:"damage to each creature" or o:"exile all creatures" or o:"each creature gets -")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) (o:"destroy all creatures" or o:"damage to each creature" or o:"exile all creatures")`);
+  }
+
+  // Creature Token Army Spells
+  if (features.actionSubtypes.has('creature_token_army')) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"create" (o:"creature token" or o:"creature tokens" or o:"tokens"))`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) ${exactColorQuery} (o:"create" (o:"creature token" or o:"creature tokens"))`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery) cmc>=${minCmc} cmc<=${maxCmc} (o:"create" (o:"creature token" or o:"creature tokens"))`);
+  }
+
+  // Lifegain Payoffs
+  if (features.actionSubtypes.has('lifegain_payoff')) {
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} (o:"life you gained" or o:"gained life" or o:"gain life")`);
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} (o:"life you gained" or o:"gained life")`);
   }
 
   if (features.actionSubtypes.has('second_card_drawn')) {
@@ -1418,7 +1656,23 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   }
 
 
-  if (features.actionSubtypes.has('etb_counter_distributor')) {
+  if (features.actionSubtypes.has('death_counter_transfer')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"dies" (o:"counters on" or o:"distribute its counters"))`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"dies" (o:"counters on" or o:"distribute its counters") or o:modular)`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"dies" or o:"+1/+1 counter")`);
+  }
+
+  if (features.actionSubtypes.has('enters_with_counters')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"enters with" o:"+1/+1 counter")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"enters with" o:"+1/+1 counter")`);
+  }
+
+  if (features.actionSubtypes.has('triggered_growth_other_enters')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"whenever another" o:"enters" o:"+1/+1 counter")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"whenever another" o:"enters" o:"+1/+1 counter")`);
+  }
+
+  if (features.actionSubtypes.has('etb_counter_distributor') || features.actionSubtypes.has('etb_counter_self')) {
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"when" o:"enters" o:"+1/+1 counter" or o:"explores")`);
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"when" o:"enters" o:"+1/+1 counter" or o:"explores")`);
   }
@@ -1454,6 +1708,10 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   // METHOD 1 LEXICAL QUERY TIERS (Clauses, Keywords, Statlines)
   if (features.detectedClauses.length > 0) {
     for (const clause of features.detectedClauses.slice(0, 2)) {
+      if (clause.category === 'token' || clause.category === 'token_creature' || clause.category === 'token_resource' || clause.category === 'token_army') {
+        // Skip quoting literal hyper-specific token clauses (e.g. "create x 2/2 colorless wizard soldier creature tokens")
+        continue;
+      }
       queries.push(
         `${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"${clause.raw}"`
       );
@@ -1628,8 +1886,18 @@ export function isFunctionalOrExactReprint(target: Card, candidate: Card): { isR
  * - Functional Discrepancy Deductions: Combat keywords (flying), value riders, card types
  * - Non-reprint ceiling: <= 95% (100% impossible unless actual reprint)
  */
-export function calculateCardSimilarity(target: Card, candidate: Card): { score: number; reasons: string[] } {
-  // 0. Compatibility Gatekeeper (Prerequisite — 0 points)
+export function calculateCardSimilarity(target: Card, candidate: Card, userId?: string): { score: number; reasons: string[] } {
+  // 0. Precedent Gatekeeper: Never compare a set to itself.
+  // Precedents must strictly originate from different/historical sets.
+  if (
+    target.set &&
+    candidate.set &&
+    target.set.trim().toUpperCase() === candidate.set.trim().toUpperCase()
+  ) {
+    return { score: 0, reasons: ['Cards from the same set cannot be compared as historical precedents'] };
+  }
+
+  // 0.1 Compatibility Gatekeeper (Prerequisite — 0 points)
   if (!areCardTypesCompatible(target, candidate)) {
     return { score: 0, reasons: [] };
   }
@@ -1755,7 +2023,16 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     bothShareArtifactTapPayoff ||
     bothShareTwoDropManaDork ||
     bothShareThreeDropManaDork ||
-    bothShareManaRock
+    bothShareManaRock ||
+    (tFeatures.actionSubtypes.has('death_counter_transfer') && cFeatures.actionSubtypes.has('death_counter_transfer'))
+  );
+  const bothShareDeathCounterTransfer = (
+    tFeatures.actionSubtypes.has('death_counter_transfer') && cFeatures.actionSubtypes.has('death_counter_transfer')
+  );
+  const bothShareEntersWithCountersAndDeathTransfer = (
+    bothShareDeathCounterTransfer &&
+    (tFeatures.actionSubtypes.has('enters_with_counters') || tFeatures.actionSubtypes.has('etb_counter_self')) &&
+    (cFeatures.actionSubtypes.has('enters_with_counters') || cFeatures.actionSubtypes.has('etb_counter_self'))
   );
   const bothShareLivingWeapon = (
     tFeatures.isLivingWeapon && cFeatures.isLivingWeapon
@@ -1836,6 +2113,67 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     (tFeatures.actionSubtypes.has('planeswalker_tutor') || tFeatures.actionSubtypes.has('legendary_tutor')) &&
     (cFeatures.actionSubtypes.has('planeswalker_tutor') || cFeatures.actionSubtypes.has('legendary_tutor'))
   );
+  const bothShareEmpowerJace = (
+    tFeatures.hasEmpowerJace && cFeatures.hasEmpowerJace
+  );
+
+  // Cross-Mechanic Bridges for Empower Jace (Rectangle Theory, Surveil, Cantrip, Amass):
+  // 1. Empower Jace <= 2 <-> Surveil / Scry
+  const isTargetEmpowerSurveil = tFeatures.hasEmpowerJace && tFeatures.empowerJaceCount <= 2;
+  const isCandSurveilOrScry = cFeatures.valueRiders.has('surveil_scry') || /surveil|scry/i.test(candidate.oracle_text || '');
+  const isCandEmpowerSurveil = cFeatures.hasEmpowerJace && cFeatures.empowerJaceCount <= 2;
+  const isTargetSurveilOrScry = tFeatures.valueRiders.has('surveil_scry') || /surveil|scry/i.test(target.oracle_text || '');
+
+  const isEmpowerSurveilBridge = (isTargetEmpowerSurveil && isCandSurveilOrScry) || (isCandEmpowerSurveil && isTargetSurveilOrScry);
+
+  // 2. Empower Jace >= 3 <-> ETB Draw / Cantrip
+  const isTargetEmpowerDraw = tFeatures.hasEmpowerJace && tFeatures.empowerJaceCount >= 3;
+  const isCandCantripOrDraw = cFeatures.actionSubtypes.has('cantrip') || cFeatures.actionSubtypes.has('raw_draw') || /draw a card|draws a card/i.test(candidate.oracle_text || '');
+  const isCandEmpowerDraw = cFeatures.hasEmpowerJace && cFeatures.empowerJaceCount >= 3;
+  const isTargetCantripOrDraw = tFeatures.actionSubtypes.has('cantrip') || tFeatures.actionSubtypes.has('raw_draw') || /draw a card|draws a card/i.test(target.oracle_text || '');
+
+  const isEmpowerDrawBridge = (isTargetEmpowerDraw && isCandCantripOrDraw) || (isCandEmpowerDraw && isTargetCantripOrDraw);
+
+  // 3. Counterspell + Empower Jace <-> Counterspell + Amass / Token (Rectangle Theory)
+  const isTargetCounterEmpower = tFeatures.hasEmpowerJace && (tFeatures.actionSubtypes.has('hard_counter') || tFeatures.detectedCategories.has('counter'));
+  const isCandCounterToken = (cFeatures.actionSubtypes.has('hard_counter') || cFeatures.detectedCategories.has('counter')) && (cFeatures.actionSubtypes.has('death_amass_token') || /amass|token/i.test(candidate.oracle_text || ''));
+  const isCandCounterEmpower = cFeatures.hasEmpowerJace && (cFeatures.actionSubtypes.has('hard_counter') || cFeatures.detectedCategories.has('counter'));
+  const isTargetCounterToken = (tFeatures.actionSubtypes.has('hard_counter') || tFeatures.detectedCategories.has('counter')) && (tFeatures.actionSubtypes.has('death_amass_token') || /amass|token/i.test(target.oracle_text || ''));
+
+  const isCounterAmassBridge = (isTargetCounterEmpower && isCandCounterToken) || (isCandCounterEmpower && isTargetCounterToken);
+
+  // 4. Combat Trick + Empower Jace <-> Combat Trick + Investigate / Token / Draw
+  const isTargetTrickEmpower = tFeatures.hasEmpowerJace && tFeatures.isCombatTrick;
+  const isCandTrickToken = cFeatures.isCombatTrick && /investigate|clue|draw a card|amass|token/i.test(candidate.oracle_text || '');
+  const isCandTrickEmpower = cFeatures.hasEmpowerJace && cFeatures.isCombatTrick;
+  const isTargetTrickToken = tFeatures.isCombatTrick && /investigate|clue|draw a card|amass|token/i.test(target.oracle_text || '');
+
+  const isTrickTokenBridge = (isTargetTrickEmpower && isCandTrickToken) || (isCandTrickEmpower && isTargetTrickToken);
+
+  // 5. Multi-Token Spell + Empower Jace <-> Multi-Token Spell + Scry / Filtering
+  const isTargetMultiTokenEmpower = tFeatures.hasEmpowerJace && tFeatures.createsTokens;
+  const isCandMultiTokenFilter = cFeatures.createsTokens && /scry|surveil|draw/i.test(candidate.oracle_text || '');
+  const isCandMultiTokenEmpower = cFeatures.hasEmpowerJace && cFeatures.createsTokens;
+  const isTargetMultiTokenFilter = tFeatures.createsTokens && /scry|surveil|draw/i.test(target.oracle_text || '');
+
+  const isMultiTokenFilterBridge = (isTargetMultiTokenEmpower && isCandMultiTokenFilter) || (isCandMultiTokenEmpower && isTargetMultiTokenFilter);
+
+  // 6. Big Draw Sorcery + Empower Jace 6 <-> Draw 3 Sorcery
+  const isTargetDraw6Empower = tFeatures.hasEmpowerJace && tFeatures.empowerJaceCount >= 6 && tFeatures.isSorcery;
+  const isCandDraw3 = cFeatures.isSorcery && /draw three cards|draw 3 cards/i.test(candidate.oracle_text || '');
+  const isCandDraw6Empower = cFeatures.hasEmpowerJace && cFeatures.empowerJaceCount >= 6 && cFeatures.isSorcery;
+  const isTargetDraw3 = tFeatures.isSorcery && /draw three cards|draw 3 cards/i.test(target.oracle_text || '');
+
+  const isDraw3Bridge = (isTargetDraw6Empower && isCandDraw3) || (isCandDraw6Empower && isTargetDraw3);
+
+  const isEmpowerCrossMechanicBridge = (
+    isEmpowerSurveilBridge ||
+    isEmpowerDrawBridge ||
+    isCounterAmassBridge ||
+    isTrickTokenBridge ||
+    isMultiTokenFilterBridge ||
+    isDraw3Bridge
+  );
 
   if (isExactColorMatch) {
     colorScore = 20;
@@ -1850,7 +2188,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     colorScore = (tFeatures.isEquipment || cFeatures.isEquipment) ? 16 : ((tColors.size > 0) ? 10 : 14);
     baselineReasons.push((tFeatures.isEquipment || cFeatures.isEquipment) ? 'Colorless equipment (playable in any deck)' : 'Colorless baseline comparison');
   } else if (tColors.size === 0 && cColors.size === 1) {
-    colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach || bothShareLandTutorTop || bothShareFlyingLifegain)
+    colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach || bothShareLandTutorTop || bothShareFlyingLifegain || bothShareEmpowerJace || isEmpowerCrossMechanicBridge)
       ? 16
       : ((tFeatures.isEquipment || cFeatures.isEquipment) ? 14 : 10);
     baselineReasons.push(bothShareFlyingLifegain
@@ -1863,7 +2201,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
             ? 'Colorless parallel to colored Flash & Reach blocker'
             : (bothShareEtbScry2
               ? `Cross-color artifact cycle peer (${[...cColors][0]})`
-              : (bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : `Mono-color archetype comp (${[...cColors][0]})`))))));
+              : (bothShareEmpowerJace || isEmpowerCrossMechanicBridge
+                ? 'Colorless parallel to colored Empower Jace precedent'
+                : (bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : `Mono-color archetype comp (${[...cColors][0]})`)))))));
   } else if (tFeatures.isHybrid && cColors.size === 1 && tColors.has([...cColors][0])) {
     colorScore = 18;
     baselineReasons.push(`Component hybrid color (${[...cColors][0]})`);
@@ -1910,6 +2250,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   } else if (bothShareLivingWeapon) {
     colorScore = 14;
     baselineReasons.push('Cross-color engine mechanic peer (Living Weapon / Token Equipment)');
+  } else if (bothShareEmpowerJace || isEmpowerCrossMechanicBridge) {
+    colorScore = 14;
+    baselineReasons.push(bothShareEmpowerJace
+      ? 'Cross-color Empower Jace engine peer'
+      : 'Cross-color mechanic peer (Empower Jace / Cantrip / Token parallel)');
   } else if (tColors.size === 1 && cColors.size > 1 && cColors.has([...tColors][0])) {
     colorScore = -20;
   } else {
@@ -1939,7 +2284,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     if (tFeatures.isCreature && cFeatures.isCreature && cFeatures.cmc < tFeatures.cmc) {
       if (bothShareSignatureEngine || bothShareEtbTreasure || bothShareActivatedTeamPump) {
         cmcScore = 17;
-        baselineReasons.push(bothShareActivatedTeamPump ? 'Curve-adjacent activated team pump peer' : `Adjacent curve slot (${candidate.cmc}M vs ${target.cmc}M)`);
+        baselineReasons.push(
+          bothShareActivatedTeamPump
+            ? 'Curve-adjacent activated team pump peer'
+            : (bothShareDeathCounterTransfer
+              ? `Adjacent curve slot (${candidate.cmc}M vs ${target.cmc}M counter bequeath)`
+              : `Adjacent curve slot (${candidate.cmc}M vs ${target.cmc}M)`)
+        );
       } else {
         cmcScore = 11;
         baselineReasons.push(`Lower curve tier (${candidate.cmc}M vs ${target.cmc}M)`);
@@ -1972,7 +2323,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   // =========================================================================
   const CATEGORY_SCORES: Record<string, { pts: number; label: string }> = {
     removal: { pts: 12, label: 'Matching creature removal effect' },
-    sweeper: { pts: 12, label: 'Matching board wipe effect' },
+    sweeper: { pts: 14, label: 'Matching board wipe effect' },
     damage: { pts: 11, label: 'Matching direct damage / burn' },
     counter: { pts: 11, label: 'Matching counterspell effect' },
     draw: { pts: 10, label: 'Matching card advantage effect' },
@@ -1981,7 +2332,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     pacifism: { pts: 10, label: 'Matching pacifism / lockdown' },
     bounce: { pts: 9, label: 'Matching bounce tempo effect' },
     selection: { pts: 9, label: 'Matching card selection effect' },
+    token_army: { pts: 14, label: 'Matching creature token army effect' },
+    token_creature: { pts: 10, label: 'Matching creature token creation' },
+    token_resource: { pts: 8, label: 'Matching resource token creation' },
     token: { pts: 8, label: 'Matching token creation' },
+    lifegain_payoff: { pts: 12, label: 'Matching lifegain payoff synergy' },
     counters: { pts: 8, label: 'Matching counter synergy' },
     synergy: { pts: 7, label: 'Matching ETB / synergy trigger' },
     equipment: { pts: 11, label: 'Matching equipment subtype' },
@@ -1993,6 +2348,16 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
 
   tFeatures.detectedCategories.forEach((cat) => {
     if (cFeatures.detectedCategories.has(cat)) {
+      if (cat === 'token') {
+        const tCreature = tFeatures.createsCreatureTokens;
+        const cCreature = cFeatures.createsCreatureTokens;
+        const tResource = tFeatures.createsResourceTokens;
+        const cResource = cFeatures.createsResourceTokens;
+        if ((tCreature && !tResource && !cCreature && cResource) ||
+            (cCreature && !cResource && !tCreature && tResource)) {
+          return;
+        }
+      }
       const cfg = CATEGORY_SCORES[cat];
       if (cfg && cfg.pts > bestCategoryMatch) {
         bestCategoryMatch = cfg.pts;
@@ -2064,8 +2429,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   }
 
   // Token / Jaccard Semantic Overlap (up to 7 pts)
-  const targetTokens = tokenizeOracleText(target.oracle_text || '', target.name);
-  const candTokens = tokenizeOracleText(candidate.oracle_text || '', candidate.name);
+  const targetTokens = tokenizeOracleText(tFeatures.cleanOracle, target.name);
+  const candTokens = tokenizeOracleText(cFeatures.cleanOracle, candidate.name);
   if (targetTokens.size > 0 && candTokens.size > 0) {
     let intersection = 0;
     targetTokens.forEach(t => { if (candTokens.has(t)) intersection++; });
@@ -2187,6 +2552,37 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     lexicalReasons.push('Shared planeswalker / legendary tutor target');
   }
 
+  if (bothShareEntersWithCountersAndDeathTransfer) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 16);
+    lexicalReasons.push('Shared modular counter bequeath engine (enters with +1/+1 counters, transfers upon death)');
+  } else if (bothShareDeathCounterTransfer) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared death counter transfer trigger');
+  }
+
+  if (bothShareEmpowerJace) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 14);
+    lexicalReasons.push('Both feature Empower Jace planeswalker engine');
+  } else if (isDraw3Bridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 15);
+    lexicalReasons.push('Both 4-mana blue draw spells (delayed 3-card advantage)');
+  } else if (isCounterAmassBridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 15);
+    lexicalReasons.push('Both counterspells generating permanent token presence (Rectangle Theory / Amass)');
+  } else if (isTrickTokenBridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 14);
+    lexicalReasons.push('Both combat tricks providing permanent card advantage / token');
+  } else if (isMultiTokenFilterBridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 15);
+    lexicalReasons.push('Both multi-token creators with card selection');
+  } else if (isEmpowerDrawBridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Empower Jace 3+ acts as card draw engine');
+  } else if (isEmpowerSurveilBridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Matching card selection effect (Surveil / Empower Jace)');
+  }
+
   method1LexicalScore = Math.min(25, method1LexicalScore);
 
   // =========================================================================
@@ -2234,8 +2630,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     mana_dork: { pts: 15, label: 'Both mana ramp / dork creatures' },
     evasion_threat: { pts: 13, label: 'Both evasive draft threats' },
     defensive_wall: { pts: 12, label: 'Both defensive board stabilizers' },
+    death_counter_transfer: { pts: 22, label: 'Both transfer +1/+1 counters upon death (Modular / counter bequeath)' },
+    enters_with_counters: { pts: 18, label: 'Both enter the battlefield with +1/+1 counters' },
+    triggered_growth_other_enters: { pts: 20, label: 'Both triggered growth when other creatures enter (Alliance / creature-fall)' },
     etb_counter_distributor: { pts: 16, label: 'Both distribute +1/+1 counters on enters' },
-    etb_counter_self: { pts: 14, label: 'Both enter with / grow with +1/+1 counters' },
+    etb_counter_self: { pts: 16, label: 'Both enter with / ETB self +1/+1 counters' },
     attack_keyword_granter: { pts: 17, label: 'Both attack-triggered keyword mentors' },
     etb_treasure: { pts: 20, label: 'Both ETB Treasure ramp / fixing creatures' },
     flash_reach_ambush: { pts: 20, label: 'Both Flash & Reach ambush creatures' },
@@ -2268,6 +2667,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     artifact_animator_aura: { pts: 22, label: 'Both artifact-animating Auras (turning artifacts into big creatures)' },
     artifact_sacrifice_payoff: { pts: 20, label: 'Both sacrifice artifact for counters / combat abilities' },
     artifact_tap_payoff: { pts: 20, label: 'Both tap untapped artifacts for counters / value' },
+    empower_jace: { pts: 18, label: 'Both feature Empower Jace planeswalker engine' },
+    empower_jace_surveil: { pts: 16, label: 'Both provide repeatable card selection / surveil' },
+    empower_jace_draw: { pts: 18, label: 'Both provide card draw advantage' },
+    amass_parallel: { pts: 16, label: 'Both provide spell interaction with permanent token presence (Rectangle Theory)' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
 
@@ -2283,14 +2686,23 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     }
   });
 
-  // Cross-counter synergy matching (one distributes counters, one enters with/grows with counters)
+  // Cross-counter synergy matching (enters with counters or self ETB counters)
+  const bothEnterWithOrSelfCounters = (
+    (tFeatures.actionSubtypes.has('enters_with_counters') || tFeatures.actionSubtypes.has('etb_counter_self')) &&
+    (cFeatures.actionSubtypes.has('enters_with_counters') || cFeatures.actionSubtypes.has('etb_counter_self'))
+  );
+  if (bothEnterWithOrSelfCounters && structuralActionPoints < 17) {
+    structuralActionPoints = 17;
+    structuralReasons.push('Both enter with self +1/+1 counters');
+  }
+
   const bothEtbCounter = (
-    (tFeatures.actionSubtypes.has('etb_counter_distributor') || tFeatures.actionSubtypes.has('etb_counter_self')) &&
-    (cFeatures.actionSubtypes.has('etb_counter_distributor') || cFeatures.actionSubtypes.has('etb_counter_self'))
+    (tFeatures.actionSubtypes.has('etb_counter_distributor') || tFeatures.actionSubtypes.has('etb_counter_self') || tFeatures.actionSubtypes.has('enters_with_counters')) &&
+    (cFeatures.actionSubtypes.has('etb_counter_distributor') || cFeatures.actionSubtypes.has('etb_counter_self') || cFeatures.actionSubtypes.has('enters_with_counters'))
   );
   if (bothEtbCounter && structuralActionPoints < 15) {
     structuralActionPoints = 15;
-    structuralReasons.push('Both ETB creature with +1/+1 counter value');
+    structuralReasons.push('Both creature with +1/+1 counter entry value');
   }
 
   // Cross-removal matching: Both are targeted creature removal spells
@@ -2337,6 +2749,17 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     tFeatures.actionSubtypes.has('etb_value') && cFeatures.actionSubtypes.has('etb_value');
   if (isBothEtbCantrip) {
     structuralReasons.unshift('Both ETB cantrips (draws card on enters)');
+  }
+
+  if (bothShareEntersWithCountersAndDeathTransfer) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    structuralReasons.unshift('Both modular counter bequeath creatures (enters with +1/+1 counters, transfers upon death)');
+  } else if (tFeatures.actionSubtypes.has('death_counter_transfer') && cFeatures.actionSubtypes.has('death_counter_transfer')) {
+    structuralReasons.unshift('Both transfer +1/+1 counters upon death (Modular / counter bequeath)');
+  }
+
+  if (tFeatures.actionSubtypes.has('triggered_growth_other_enters') && cFeatures.actionSubtypes.has('triggered_growth_other_enters')) {
+    structuralReasons.unshift('Both triggered growth when other creatures enter (Alliance / creature-fall)');
   }
 
   if (tFeatures.actionSubtypes.has('etb_counter_distributor') && cFeatures.actionSubtypes.has('etb_counter_distributor')) {
@@ -2527,6 +2950,78 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     }
   }
 
+  if (bothShareEmpowerJace) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    if (tFeatures.empowerJaceCount === cFeatures.empowerJaceCount) {
+      structuralReasons.unshift(`Identical Empower Jace ${tFeatures.empowerJaceCount}`);
+    } else {
+      structuralReasons.unshift('Both feature Empower Jace mechanic');
+    }
+  } else if (isDraw3Bridge) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    structuralReasons.unshift('Both 4-mana blue draw spells (delayed 3-card advantage)');
+  } else if (isCounterAmassBridge) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    structuralReasons.unshift('Counterspell with incidental token creation (Amass parallel)');
+  } else if (isTrickTokenBridge) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    structuralReasons.unshift('Combat trick with incidental card advantage (Investigate / Empower)');
+  } else if (isMultiTokenFilterBridge) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    structuralReasons.unshift('Multi-token creation with card filtering');
+  } else if (isEmpowerDrawBridge) {
+    const empowerCard = tFeatures.hasEmpowerJace ? tFeatures : cFeatures;
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    structuralReasons.unshift(`Empower Jace ${empowerCard.empowerJaceCount} enables immediate card draw [-3] (functional cantrip)`);
+  } else if (isEmpowerSurveilBridge) {
+    const empowerCard = tFeatures.hasEmpowerJace ? tFeatures : cFeatures;
+    const otherCardObj = tFeatures.hasEmpowerJace ? candidate : target;
+    const hasSurveil2 = /surveil 2|scry 2/i.test(otherCardObj.oracle_text || '');
+
+    if (empowerCard.empowerJaceCount === 2 && hasSurveil2) {
+      structuralActionPoints = Math.max(structuralActionPoints, 18);
+      structuralReasons.unshift('Empower Jace 2 yields 2 surveils across consecutive turns (near-equivalent to Surveil 2, though slower upfront)');
+      cmcScore = Math.max(0, cmcScore - 2);
+    } else if (empowerCard.empowerJaceCount === 1) {
+      structuralActionPoints = Math.max(structuralActionPoints, 16);
+      structuralReasons.unshift('Empower Jace 1 yields 1 surveil via Jace loyalty');
+    } else {
+      structuralActionPoints = Math.max(structuralActionPoints, 16);
+      structuralReasons.unshift('Empower Jace card selection parallel (surveil/scry engine)');
+    }
+  }
+
+  const bothShareSweeper = (
+    (tFeatures.actionSubtypes.has('sweeper') || tFeatures.detectedCategories.has('sweeper')) &&
+    (cFeatures.actionSubtypes.has('sweeper') || cFeatures.detectedCategories.has('sweeper'))
+  );
+  if (bothShareSweeper) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both board wipe / sweeper spells')) {
+      structuralReasons.unshift('Both board wipe / sweeper spells');
+    }
+  }
+
+  const bothShareCreatureTokenArmy = (
+    tFeatures.actionSubtypes.has('creature_token_army') && cFeatures.actionSubtypes.has('creature_token_army')
+  );
+  if (bothShareCreatureTokenArmy) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both creature token army spells')) {
+      structuralReasons.unshift('Both creature token army spells');
+    }
+  }
+
+  const bothShareLifegainPayoff = (
+    tFeatures.actionSubtypes.has('lifegain_payoff') && cFeatures.actionSubtypes.has('lifegain_payoff')
+  );
+  if (bothShareLifegainPayoff) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    if (!structuralReasons.includes('Both life gain payoff spells')) {
+      structuralReasons.unshift('Both life gain payoff spells');
+    }
+  }
+
   // Action Subtype Mismatch Penalties
   let actionMismatchPenalty = 0;
 
@@ -2537,13 +3032,32 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 25);
   }
 
-  // Target is creature removal, but candidate is NOT creature removal
+  // Target is creature removal, but candidate is NOT creature removal (or vice-versa)
   const tIsCreatureRemoval = tFeatures.isRemoval || tFeatures.actionSubtypes.has('power_toughness_removal') || tFeatures.actionSubtypes.has('conditional_removal') || tFeatures.actionSubtypes.has('unconditional_removal');
   const cIsCreatureRemoval = cFeatures.isRemoval || cFeatures.actionSubtypes.has('power_toughness_removal') || cFeatures.actionSubtypes.has('conditional_removal') || cFeatures.actionSubtypes.has('unconditional_removal') || cFeatures.actionSubtypes.has('damage_removal') || cFeatures.isAuraRemoval;
 
   if (tIsCreatureRemoval && !cIsCreatureRemoval) {
     actionMismatchPenalty = Math.max(actionMismatchPenalty, isExactColorMatch ? 10 : 18);
+  } else if (!tIsCreatureRemoval && cIsCreatureRemoval) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, isExactColorMatch ? 10 : 18);
   }
+
+  // Pure combat trick mismatch penalty (combat trick vs non-combat trick)
+  if (tFeatures.isCombatTrick && !cFeatures.isCombatTrick) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 15);
+  } else if (!tFeatures.isCombatTrick && cFeatures.isCombatTrick) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 15);
+  }
+
+  // Counterspell mismatch penalty (counterspell vs non-counterspell)
+  const tIsCounter = tFeatures.detectedCategories.has('counter') || /counter target/i.test(target.oracle_text || '');
+  const cIsCounter = cFeatures.detectedCategories.has('counter') || /counter target/i.test(candidate.oracle_text || '');
+  if (tIsCounter && !cIsCounter) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
+  } else if (!tIsCounter && cIsCounter) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
+  }
+
   if (tFeatures.actionSubtypes.has('hard_counter') && cFeatures.actionSubtypes.has('soft_tax_counter')) {
     actionMismatchPenalty = 10;
   } else if (tFeatures.actionSubtypes.has('soft_tax_counter') && cFeatures.actionSubtypes.has('hard_counter')) {
@@ -2562,6 +3076,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
 
   if (tFeatures.actionSubtypes.has('activated_team_pump') && !cFeatures.actionSubtypes.has('activated_team_pump')) {
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 10);
+  }
+
+  // Alliance / Creature-fall Triggered Growth Mismatch Penalty:
+  // A conditional triggered-growth creature (undersized body requiring other creatures to enter to grow)
+  // must never be scored as equivalent to a static enters-with / modular creature or baseline body!
+  if (tFeatures.actionSubtypes.has('triggered_growth_other_enters') !== cFeatures.actionSubtypes.has('triggered_growth_other_enters')) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
   }
 
   // Modal / Conditional treasure penalty: target has unconditional ETB treasure, but candidate is conditional or modal
@@ -2603,17 +3124,30 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   let sharedRidersCount = 0;
   const VALUE_RIDER_VALUES: Record<string, { pts: number; label: string }> = {
     proliferate: { pts: 5, label: 'Shared mechanic: Proliferate' },
-    token: { pts: 4, label: 'Shared rider: Token generation' },
-    surveil_scry: { pts: 3, label: 'Shared rider: Scry / Surveil' },
-    counters: { pts: 3, label: 'Shared rider: +1/+1 counters' },
-    discard_payoff: { pts: 4, label: 'Shared rider: Discard payoff' },
-    life_gain: { pts: 3, label: 'Shared rider: Life gain' },
-    cantrip: { pts: 3, label: 'Shared rider: Cantrip replacement' },
-    ramp: { pts: 3, label: 'Shared rider: Mana ramp / land fetch' },
+    creature_token: { pts: 5, label: 'Creature token generation' },
+    resource_token: { pts: 4, label: 'Resource token generation' },
+    token: { pts: 4, label: 'Token generation' },
+    surveil_scry: { pts: 3, label: 'Scry / Surveil' },
+    counters: { pts: 3, label: '+1/+1 counters' },
+    discard_payoff: { pts: 4, label: 'Discard payoff' },
+    lifegain_payoff: { pts: 5, label: 'Life gain payoff' },
+    life_gain: { pts: 3, label: 'Life gain' },
+    cantrip: { pts: 3, label: 'Cantrip replacement' },
+    ramp: { pts: 3, label: 'Mana ramp / land fetch' },
   };
 
   tFeatures.valueRiders.forEach((vr) => {
     if (cFeatures.valueRiders.has(vr)) {
+      if (vr === 'token') {
+        const tCreature = tFeatures.createsCreatureTokens;
+        const cCreature = cFeatures.createsCreatureTokens;
+        const tResource = tFeatures.createsResourceTokens;
+        const cResource = cFeatures.createsResourceTokens;
+        if ((tCreature && !tResource && !cCreature && cResource) ||
+            (cCreature && !cResource && !tCreature && tResource)) {
+          return;
+        }
+      }
       sharedRidersCount++;
       const cfg = VALUE_RIDER_VALUES[vr];
       if (cfg && cfg.pts > valueRiderPoints) {
@@ -2628,7 +3162,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   }
 
   const flashReachBonus = bothShareFlashReach ? 4 : 0;
-  method2StructuralScore = Math.max(0, Math.min(25, structuralActionPoints + costStructurePoints + valueRiderPoints + flashReachBonus) - actionMismatchPenalty);
+  const structuralGross = structuralActionPoints + costStructurePoints + valueRiderPoints + flashReachBonus;
+  method2StructuralScore = Math.max(0, Math.min(25, structuralGross - actionMismatchPenalty));
+  const excessActionMismatch = Math.max(0, actionMismatchPenalty - structuralGross);
 
   // =========================================================================
   // PILLAR 5: Statline & Output Scale (up to 10 pts)
@@ -2642,13 +3178,21 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
 
     if (pDiff === 0 && tDiff === 0) {
       statlineScore = 10;
-      baselineReasons.push(`Exact P/T (${target.power}/${target.toughness})`);
+      const isTargetBoosted = (tFeatures.entersWithCountersCount ?? 0) > 0 || (tFeatures.etbSelfCounterCount ?? 0) > 0;
+      const isCandBoosted = (cFeatures.entersWithCountersCount ?? 0) > 0 || (cFeatures.etbSelfCounterCount ?? 0) > 0;
+      if (isTargetBoosted && isCandBoosted) {
+        baselineReasons.push(`Exact effective P/T (${tFeatures.power}/${tFeatures.toughness} via counters)`);
+      } else if (isTargetBoosted || isCandBoosted) {
+        baselineReasons.push(`Exact effective P/T (${tFeatures.power}/${tFeatures.toughness})`);
+      } else {
+        baselineReasons.push(`Exact P/T (${target.power}/${target.toughness})`);
+      }
     } else if (pDiff === 0) {
       statlineScore = 8;
-      baselineReasons.push(`Matching power (${target.power} power)`);
+      baselineReasons.push(`Matching effective power (${tFeatures.power} power)`);
     } else if (tDiff === 0) {
       statlineScore = 8;
-      baselineReasons.push(`Matching toughness (${target.toughness} toughness)`);
+      baselineReasons.push(`Matching effective toughness (${tFeatures.toughness} toughness)`);
     } else if (totalStatDiff === 0) {
       if (pDiff > 0 && tDiff > 0) {
         statlineScore = 4;
@@ -2660,7 +3204,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     } else if (totalStatDiff <= 1) {
       statlineScore = 6;
     } else if (totalStatDiff <= 3) {
-      if (cFeatures.cmc === tFeatures.cmc + 1 && (cFeatures.power ?? 0) > (tFeatures.power ?? 0) && (cFeatures.toughness ?? 0) > (tFeatures.toughness ?? 0)) {
+      if (Math.abs(cFeatures.cmc - tFeatures.cmc) === 1 && (
+        (cFeatures.cmc > tFeatures.cmc && (cFeatures.power ?? 0) > (tFeatures.power ?? 0) && (cFeatures.toughness ?? 0) > (tFeatures.toughness ?? 0)) ||
+        (cFeatures.cmc < tFeatures.cmc && (cFeatures.power ?? 0) < (tFeatures.power ?? 0) && (cFeatures.toughness ?? 0) < (tFeatures.toughness ?? 0))
+      )) {
         statlineScore = 8;
         baselineReasons.push(`Curve-scaled stats (${cFeatures.power}/${cFeatures.toughness} for ${candidate.cmc}M)`);
       } else {
@@ -2800,12 +3347,17 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     const cHasKw = (candidate.keywords || []).some(k => k.toLowerCase() === kw) || new RegExp(`\\b${kw}\\b`, 'i').test(candidate.oracle_text || '');
 
     if (tHasKw !== cHasKw) {
-      if (kw === 'flying') {
-        keywordMismatchPenalty += 12;
-      } else if (kw === 'reach' || kw === 'defender') {
-        keywordMismatchPenalty += 8;
-      } else {
-        keywordMismatchPenalty += 5;
+      if (tFeatures.isCreature && cFeatures.isCreature) {
+        if (kw === 'flying') {
+          keywordMismatchPenalty += 12;
+        } else if (kw === 'reach' || kw === 'defender') {
+          keywordMismatchPenalty += 8;
+        } else {
+          keywordMismatchPenalty += 5;
+        }
+      } else if (!isEmpowerCrossMechanicBridge) {
+        // Non-creature combat tricks / spells granting keywords
+        keywordMismatchPenalty += 2;
       }
     }
   }
@@ -2818,6 +3370,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
   let riderMismatchPenalty = 0;
   for (const vr of ALL_VALUE_RIDERS) {
     if (tFeatures.valueRiders.has(vr) !== cFeatures.valueRiders.has(vr)) {
+      if ((isEmpowerCrossMechanicBridge || bothShareEmpowerJace) && ['token', 'surveil_scry', 'cantrip', 'life_gain'].includes(vr)) {
+        // Empower Jace functionally bridges tokens, surveil, cantrip, and soft lifegain (damage diversion)
+        continue;
+      }
       if (bothShareToughness4PlusRemoval || bothSharePowerToughnessRemoval || bothShareModalRemoval) {
         riderMismatchPenalty += 1;
       } else {
@@ -2831,7 +3387,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
 
   let cardTypeMismatchPenalty = 0;
   if (tFeatures.isCreature && cFeatures.isCreature) {
-    if (tFeatures.isArtifact !== cFeatures.isArtifact) {
+    if (tFeatures.isArtifact !== cFeatures.isArtifact && !bothShareDeathCounterTransfer) {
       cardTypeMismatchPenalty += 4;
     }
     if (tFeatures.isEnchantment !== cFeatures.isEnchantment) {
@@ -2839,8 +3395,17 @@ export function calculateCardSimilarity(target: Card, candidate: Card): { score:
     }
   }
 
-  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty;
-  const rawScore = colorScore + cmcScore + method1LexicalScore + method2StructuralScore + statlineScore - discrepancyPenalty;
+  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty + excessActionMismatch;
+  let rawScore = colorScore + cmcScore + method1LexicalScore + method2StructuralScore + statlineScore - discrepancyPenalty;
+
+  // Learned Precedent Boost & Attribution (Touchstone benchmarks & bridged mechanics)
+  const learnedBoost = getLearnedPrecedentBoost(target, candidate, userId);
+  if (learnedBoost.boostScore > 0) {
+    rawScore += learnedBoost.boostScore;
+    if (learnedBoost.reason) {
+      structuralReasons.unshift(learnedBoost.reason);
+    }
+  }
 
   // Non-reprint ceiling: 100% is strictly reserved for true reprints / functional reprints
   const MAX_NON_REPRINT_SCORE = 95;
@@ -2862,9 +3427,17 @@ export function getCuratedBenchmarkCandidates(
   fallbackPool: Card[] = []
 ): Card[] {
   const normTargetName = (targetCard.name || '').trim().toLowerCase();
+  const targetSet = (targetCard.set || '').trim().toUpperCase();
+  const isDifferentSetAndName = (c: Card) => {
+    if (!c) return false;
+    const name = (c.name || '').trim().toLowerCase();
+    if (!name || name === normTargetName) return false;
+    if (targetSet && c.set && c.set.trim().toUpperCase() === targetSet) return false;
+    return true;
+  };
   const pool = [
-    ...fallbackPool.filter(c => c && (c.name || '').trim().toLowerCase() !== normTargetName),
-    ...HISTORICAL_BENCHMARK_CARDS.filter(c => (c.name || '').trim().toLowerCase() !== normTargetName),
+    ...fallbackPool.filter(isDifferentSetAndName),
+    ...HISTORICAL_BENCHMARK_CARDS.filter(isDifferentSetAndName),
   ];
 
   const seenNames = new Set<string>();
@@ -2933,11 +3506,48 @@ export function getCuratedBenchmarkCandidates(
       relevance -= 50;
     }
 
+    // Empower Jace Priority: Benchmark cards with matching functional roles
+    const targetHasEmpower = /empower jace/i.test(targetCard.oracle_text || '');
+    if (targetHasEmpower) {
+      const match = (targetCard.oracle_text || '').match(/empower jace\s*(\d+)?/i);
+      const count = match ? (match[1] ? parseInt(match[1], 10) : 1) : 1;
+      const cOracle = (c.oracle_text || '').toLowerCase();
+      const cName = (c.name || '').toLowerCase();
+
+      if (count <= 2 && /surveil|scry/i.test(cOracle)) {
+        relevance += 40;
+      }
+      if (count >= 3 && /draw a card/i.test(cOracle)) {
+        relevance += 40;
+      }
+      if (/amass|investigate|clue token/i.test(cOracle)) {
+        relevance += 35;
+      }
+      if (targetIsCreature && cName === 'sterling hound') {
+        relevance += 60;
+      }
+      if (targetIsInstant && /counter target/i.test(targetCard.oracle_text || '') && cName === "saruman's trickery") {
+        relevance += 60;
+      }
+      if (targetIsInstant && /target creature gets/i.test(targetCard.oracle_text || '') && cName === 'auspicious arrival') {
+        relevance += 60;
+      }
+      if (targetIsSorcery && /create .* token/i.test(targetCard.oracle_text || '') && cName === 'imperial oath') {
+        relevance += 60;
+      }
+      if (targetIsSorcery && count >= 6 && cName === 'ancestral reminiscence') {
+        relevance += 60;
+      }
+    }
+
     return { card: c, relevance };
   });
 
   scored.sort((a, b) => b.relevance - a.relevance);
-  return scored.slice(0, 24).map(s => s.card);
+  return scored
+    .slice(0, 24)
+    .map(s => s.card)
+    .filter(c => !targetSet || !c.set || c.set.trim().toUpperCase() !== targetSet);
 }
 
 /**
@@ -2949,7 +3559,9 @@ export function generateGuaranteedFallbackResult(
   targetCard: Card,
   fallbackPool: Card[] = []
 ): CardSimilarityResult {
-  const candidates = getCuratedBenchmarkCandidates(targetCard, fallbackPool);
+  const targetSet = (targetCard.set || '').trim().toUpperCase();
+  const candidates = getCuratedBenchmarkCandidates(targetCard, fallbackPool)
+    .filter(cand => !targetSet || !cand.set || cand.set.trim().toUpperCase() !== targetSet);
   const scored = candidates.map(cand => {
     const { score, reasons } = calculateCardSimilarity(targetCard, cand);
     const boostedScore = Math.max(38, Math.min(95, score));
@@ -2961,7 +3573,9 @@ export function generateGuaranteedFallbackResult(
   });
 
   scored.sort((a, b) => b.score - a.score);
-  const top4 = scored.slice(0, 4);
+  const top4 = scored
+    .filter(s => !targetSet || !s.card.set || s.card.set.trim().toUpperCase() !== targetSet)
+    .slice(0, 4);
 
   const matches: SimilarCardMatch[] = top4.map(({ card, score, reasons }) => {
     const r = getOrEstimate17LandsCardRating(card, null);
@@ -2993,9 +3607,10 @@ export function generateGuaranteedFallbackResult(
  */
 export async function findSimilarCards(
   targetCard: Card,
-  fallbackPool: Card[] = []
+  fallbackPool: Card[] = [],
+  userId?: string
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v53`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v63`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -3006,6 +3621,14 @@ export async function findSimilarCards(
   try {
     const features = extractCardFeatures(targetCard);
     const queries = buildScryfallQueries(targetCard, features);
+
+    const targetSet = (targetCard.set || '').trim().toUpperCase();
+    const isExcluded = (c: Card) => {
+      if (!c || !c.name) return true;
+      if (c.name.toLowerCase() === targetCard.name.toLowerCase()) return true;
+      if (targetSet && c.set && c.set.trim().toUpperCase() === targetSet) return true;
+      return false;
+    };
 
     let candidateCards: Card[] = [];
 
@@ -3026,10 +3649,10 @@ export async function findSimilarCards(
             const rawCards = data.data
               .filter((rc: any) => !rc.name.startsWith('A-') && !rc.digital && !rc.promo_types?.includes('rebalanced'))
               .map((rc: any) => normalizeScryfallCard(rc));
-            // Filter duplicates by card name
+            // Filter duplicates and same-set cards
             rawCards.forEach((c: Card) => {
               if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
-                  c.name.toLowerCase() !== targetCard.name.toLowerCase()) {
+                  !isExcluded(c)) {
                 candidateCards.push(c);
               }
             });
@@ -3056,7 +3679,12 @@ export async function findSimilarCards(
           ? 't:creature'
           : (features.isInstant ? 't:instant' : (features.isSorcery ? 't:sorcery' : (features.isAura ? 't:aura' : (features.isEnchantment ? 't:enchantment' : (features.isArtifact ? 't:artifact' : (features.isPlaneswalker ? 't:planeswalker' : (features.isLand ? 't:land' : '')))))));
         const cmcTerm = `m>=${Math.max(0, targetCard.cmc - 1)} m<=${targetCard.cmc + 1}`;
-        const fallbackQuery = `(${COMPARABLE_PREMIER_SETS.slice(0, 16).map(s => `s:${s.toLowerCase()}`).join(' or ')}) ${typeTerm} ${mainColor} ${cmcTerm} is:booster`;
+        const setTerms = COMPARABLE_PREMIER_SETS
+          .filter(s => !targetSet || s.toUpperCase() !== targetSet)
+          .slice(0, 16)
+          .map(s => `s:${s.toLowerCase()}`)
+          .join(' or ');
+        const fallbackQuery = `(${setTerms}) ${typeTerm} ${mainColor} ${cmcTerm} is:booster${targetCard.set ? ` -s:${targetCard.set.toLowerCase()}` : ''}`;
 
         const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
         const res = await fetch(url, {
@@ -3074,7 +3702,7 @@ export async function findSimilarCards(
               .map((rc: any) => normalizeScryfallCard(rc));
             rawCards.forEach((c: Card) => {
               if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
-                  c.name.toLowerCase() !== targetCard.name.toLowerCase()) {
+                  !isExcluded(c)) {
                 candidateCards.push(c);
               }
             });
@@ -3089,7 +3717,16 @@ export async function findSimilarCards(
     const benchmarkCandidates = getCuratedBenchmarkCandidates(targetCard, fallbackPool);
     benchmarkCandidates.slice(0, 10).forEach((c) => {
       if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
-          c.name.toLowerCase() !== targetCard.name.toLowerCase()) {
+          !isExcluded(c)) {
+        candidateCards.push(c);
+      }
+    });
+
+    // Learned Precedent Touchstones & Benchmarks (dynamically learned from user tuning)
+    const learnedCandidates = getLearnedBenchmarkCandidates(targetCard, userId);
+    learnedCandidates.forEach(({ card: c }) => {
+      if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
+          !isExcluded(c)) {
         candidateCards.push(c);
       }
     });
@@ -3097,7 +3734,7 @@ export async function findSimilarCards(
     if (candidateCards.length < 12) {
       benchmarkCandidates.forEach((c) => {
         if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
-            c.name.toLowerCase() !== targetCard.name.toLowerCase()) {
+            !isExcluded(c)) {
           candidateCards.push(c);
         }
       });
@@ -3106,7 +3743,8 @@ export async function findSimilarCards(
     // Score candidates against target card
     let scoredCandidates: { card: Card; score: number; reasons: string[] }[] = [];
     for (const cand of candidateCards) {
-      const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+      if (isExcluded(cand)) continue;
+      const { score, reasons } = calculateCardSimilarity(targetCard, cand, userId);
       if (score >= 58) {
         scoredCandidates.push({ card: cand, score, reasons });
       }
@@ -3114,8 +3752,9 @@ export async function findSimilarCards(
 
     if (scoredCandidates.length < 4) {
       for (const cand of candidateCards) {
+        if (isExcluded(cand)) continue;
         if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
-          const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+          const { score, reasons } = calculateCardSimilarity(targetCard, cand, userId);
           if (score >= 45) {
             scoredCandidates.push({ card: cand, score, reasons });
           }
@@ -3125,8 +3764,9 @@ export async function findSimilarCards(
 
     if (scoredCandidates.length < 4) {
       for (const cand of candidateCards) {
+        if (isExcluded(cand)) continue;
         if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
-          const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+          const { score, reasons } = calculateCardSimilarity(targetCard, cand, userId);
           if (score >= 35) {
             scoredCandidates.push({ card: cand, score, reasons });
           }
@@ -3136,8 +3776,9 @@ export async function findSimilarCards(
 
     if (scoredCandidates.length < 4) {
       for (const cand of candidateCards) {
+        if (isExcluded(cand)) continue;
         if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
-          const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+          const { score, reasons } = calculateCardSimilarity(targetCard, cand, userId);
           if (score >= 20) {
             scoredCandidates.push({ card: cand, score, reasons });
           }
@@ -3148,9 +3789,9 @@ export async function findSimilarCards(
     // Absolute Guarantee: If STILL fewer than 4 candidates, score remaining candidates with baseline clamp
     if (scoredCandidates.length < 4) {
       for (const cand of candidateCards) {
-        if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase()) &&
-            cand.name.toLowerCase() !== targetCard.name.toLowerCase()) {
-          const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+        if (isExcluded(cand)) continue;
+        if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
+          const { score, reasons } = calculateCardSimilarity(targetCard, cand, userId);
           const boostedScore = Math.max(35, score);
           const fallbackReasons = reasons.length > 0 ? reasons : [
             `Similar ${targetCard.cmc}-mana ${targetCard.colors?.join('/') || 'colorless'} curve role`,
@@ -3161,22 +3802,108 @@ export async function findSimilarCards(
       }
     }
 
+    // Ensure all scored candidates strictly exclude target set
+    scoredCandidates = scoredCandidates.filter(sc => !isExcluded(sc.card));
+
+    if (scoredCandidates.length < 4) {
+      const extraFallbacks = getCuratedBenchmarkCandidates(targetCard, fallbackPool)
+        .filter(c => !isExcluded(c));
+      for (const cand of extraFallbacks) {
+        if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
+          const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+          scoredCandidates.push({
+            card: cand,
+            score: Math.max(35, score),
+            reasons: reasons.length > 0 ? reasons : [`Comparable premier draft archetype benchmark`],
+          });
+        }
+        if (scoredCandidates.length >= 4) break;
+      }
+    }
+
     // Sort by highest similarity
-    scoredCandidates.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+    function compareSimilarMatches(
+      a: { card: Card; score?: number; similarityScore?: number },
+      b: { card: Card; score?: number; similarityScore?: number }
+    ): number {
+      const scoreA = a.score ?? a.similarityScore ?? 0;
+      const scoreB = b.score ?? b.similarityScore ?? 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
       if (features.isModalSpell) {
         const aModal = /choose (one|two|three)\b/i.test(a.card.oracle_text || '') ? 1 : 0;
         const bModal = /choose (one|two|three)\b/i.test(b.card.oracle_text || '') ? 1 : 0;
         if (aModal !== bModal) return bModal - aModal;
       }
+      if (features.hasEmpowerJace) {
+        // 1. Exact mechanic affinity
+        // For count <= 2, prioritize surveil over scry (Jace loyalty ability is [-1]: Surveil 1)
+        const aIsSurveil = /surveil/i.test(a.card.oracle_text || '') ? 1 : 0;
+        const bIsSurveil = /surveil/i.test(b.card.oracle_text || '') ? 1 : 0;
+        if (features.empowerJaceCount <= 2 && aIsSurveil !== bIsSurveil) return bIsSurveil - aIsSurveil;
+
+        // For count 2 creatures / non-token cards, prioritize Surveil 2 / Scry 2 over Surveil 1 / Scry 1
+        if (features.empowerJaceCount === 2 && !features.createsTokens) {
+          const aCount2 = /surveil 2|scry 2/i.test(a.card.oracle_text || '') ? 1 : 0;
+          const bCount2 = /surveil 2|scry 2/i.test(b.card.oracle_text || '') ? 1 : 0;
+          if (aCount2 !== bCount2) return bCount2 - aCount2;
+        }
+
+        // For multi-token spells, prioritize 2/2 tokens (Imperial Oath parallel)
+        if (features.createsTokens && features.isSorcery) {
+          const aTokens22 = /2\/2/i.test(a.card.oracle_text || '') ? 1 : 0;
+          const bTokens22 = /2\/2/i.test(b.card.oracle_text || '') ? 1 : 0;
+          if (aTokens22 !== bTokens22) return bTokens22 - aTokens22;
+        }
+
+        // For counterspells, prioritize amass (Saruman's Trickery parallel)
+        if (features.actionSubtypes.has('hard_counter') || features.detectedCategories.has('counter')) {
+          const aAmass = /amass/i.test(a.card.oracle_text || '') ? 1 : 0;
+          const bAmass = /amass/i.test(b.card.oracle_text || '') ? 1 : 0;
+          if (aAmass !== bAmass) return bAmass - aAmass;
+        }
+
+        // For combat tricks, prioritize investigate (Auspicious Arrival parallel)
+        if (features.isCombatTrick) {
+          const aInvestigate = /investigate/i.test(a.card.oracle_text || '') ? 1 : 0;
+          const bInvestigate = /investigate/i.test(b.card.oracle_text || '') ? 1 : 0;
+          if (aInvestigate !== bInvestigate) return bInvestigate - aInvestigate;
+        }
+
+        // For big draw sorceries (Empower Jace >= 6), prioritize 3-card draw (Ancestral Reminiscence parallel)
+        if (features.empowerJaceCount >= 6 && features.isSorcery) {
+          const aDraw3 = /draw (three|3) cards/i.test(a.card.oracle_text || '') ? 1 : 0;
+          const bDraw3 = /draw (three|3) cards/i.test(b.card.oracle_text || '') ? 1 : 0;
+          if (aDraw3 !== bDraw3) return bDraw3 - aDraw3;
+        }
+
+        // Curated benchmark precedence when scores tie
+        const aIsBench = (a.card.id.startsWith('bench_') || HISTORICAL_BENCHMARK_NAMES.has(a.card.name.trim().toLowerCase())) ? 1 : 0;
+        const bIsBench = (b.card.id.startsWith('bench_') || HISTORICAL_BENCHMARK_NAMES.has(b.card.name.trim().toLowerCase())) ? 1 : 0;
+        if (aIsBench !== bIsBench) return bIsBench - aIsBench;
+
+        const aRoleMatch = (features.empowerJaceCount <= 2 && /surveil|scry/i.test(a.card.oracle_text || '')) ||
+                           (features.empowerJaceCount >= 3 && /draw a card/i.test(a.card.oracle_text || '')) ||
+                           /amass/i.test(a.card.oracle_text || '');
+        const bRoleMatch = (features.empowerJaceCount <= 2 && /surveil|scry/i.test(b.card.oracle_text || '')) ||
+                           (features.empowerJaceCount >= 3 && /draw a card/i.test(b.card.oracle_text || '')) ||
+                           /amass/i.test(b.card.oracle_text || '');
+        if (aRoleMatch !== bRoleMatch) return (bRoleMatch ? 1 : 0) - (aRoleMatch ? 1 : 0);
+      }
+      const targetIsColorless = (!targetCard.colors || targetCard.colors.filter(c => c !== 'C').length === 0);
       const aIsColorless = (!a.card.colors || a.card.colors.filter(c => c !== 'C').length === 0) ? 1 : 0;
       const bIsColorless = (!b.card.colors || b.card.colors.filter(c => c !== 'C').length === 0) ? 1 : 0;
-      if (aIsColorless !== bIsColorless) return aIsColorless - bIsColorless;
+      if (targetIsColorless) {
+        if (aIsColorless !== bIsColorless) return bIsColorless - aIsColorless;
+      } else {
+        if (aIsColorless !== bIsColorless) return aIsColorless - bIsColorless;
+      }
       const aCmcDiff = Math.abs(a.card.cmc - targetCard.cmc);
       const bCmcDiff = Math.abs(b.card.cmc - targetCard.cmc);
       if (aCmcDiff !== bCmcDiff) return aCmcDiff - bCmcDiff;
       return (a.card.oracle_text || '').length - (b.card.oracle_text || '').length;
-    });
+    }
+
+    scoredCandidates.sort(compareSimilarMatches);
 
     const topCandidates = scoredCandidates.slice(0, 24);
 
@@ -3234,15 +3961,7 @@ export async function findSimilarCards(
       if (Math.abs(scoreDiff) >= 6) {
         return scoreDiff;
       }
-      if (features.isModalSpell) {
-        const aModal = /choose (one|two|three)\b/i.test(a.card.oracle_text || '') ? 1 : 0;
-        const bModal = /choose (one|two|three)\b/i.test(b.card.oracle_text || '') ? 1 : 0;
-        if (aModal !== bModal) return bModal - aModal;
-      }
-      const aOnCurve = a.card.cmc === targetCard.cmc ? 1 : 0;
-      const bOnCurve = b.card.cmc === targetCard.cmc ? 1 : 0;
-      if (aOnCurve !== bOnCurve) return bOnCurve - aOnCurve;
-      return scoreDiff;
+      return compareSimilarMatches(a, b);
     });
 
     for (const match of sortedForPresentation) {
@@ -3321,16 +4040,8 @@ export async function findSimilarCards(
       }
     }
 
-    // Sort presented matches by similarity score
-    presentedMatches.sort((a, b) => {
-      if (b.similarityScore !== a.similarityScore) return b.similarityScore - a.similarityScore;
-      if (features.isModalSpell) {
-        const aModal = /choose (one|two|three)\b/i.test(a.card.oracle_text || '') ? 1 : 0;
-        const bModal = /choose (one|two|three)\b/i.test(b.card.oracle_text || '') ? 1 : 0;
-        if (aModal !== bModal) return bModal - aModal;
-      }
-      return (a.card.oracle_text || '').length - (b.card.oracle_text || '').length;
-    });
+    // Sort presented matches by similarity score and specific archetype tie-breakers
+    presentedMatches.sort(compareSimilarMatches);
 
     const reorderedMatches = [
       ...presentedMatches,

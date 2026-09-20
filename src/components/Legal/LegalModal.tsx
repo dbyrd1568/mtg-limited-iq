@@ -132,7 +132,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                 <ul className="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-300">
                   <li>Authenticate your account securely and synchronize your evaluations across devices.</li>
                   <li>Calculate your format calibration curve and quiz mastery scores.</li>
-                  <li>Maintain platform security via PostgreSQL Row-Level Security (RLS).</li>
+                  <li>Maintain platform security and access control.</li>
                 </ul>
                 <p className="font-semibold text-slate-900 dark:text-white">
                   We do not sell, rent, monetize, or share your personal information with third-party advertisers or data brokers.
@@ -145,7 +145,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                 </h3>
                 <p>MTG Limited IQ utilizes reputable infrastructure partners to deliver the service:</p>
                 <ul className="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-300">
-                  <li><strong>Supabase:</strong> Encrypted authentication and PostgreSQL database hosting.</li>
+                  <li><strong>Cloud Infrastructure:</strong> Encrypted authentication and secure database hosting.</li>
                   <li><strong>Cloudflare:</strong> Edge network hosting and SSL encryption.</li>
                   <li><strong>Scryfall API:</strong> Public Magic: The Gathering card imagery and rules text.</li>
                   <li><strong>17Lands:</strong> Public aggregate Limited card win rates.</li>

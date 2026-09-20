@@ -72,7 +72,7 @@ export const AdminAccessDenied: React.FC<AdminAccessDeniedProps> = ({
 
         {/* Security Notice */}
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-          Secured via Supabase Row-Level Security & Role Verification
+          Secured via Role-Based Access Control & Verification
         </div>
       </div>
     </div>

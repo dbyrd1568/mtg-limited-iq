@@ -201,7 +201,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       isCloud ? 'bg-emerald-500' : 'bg-amber-500'
                     }`}
                   />
-                  {isCloud ? 'Cloud RLS Secured' : 'Local Dev Mode'}
+                  {isCloud ? 'Cloud Active' : 'Local Dev Mode'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">

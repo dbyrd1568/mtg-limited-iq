@@ -84,12 +84,14 @@ export function getCardImageCandidateUrls(card: Partial<Card>, customSrc?: strin
     }
   }
 
-  // 2. Primary Scryfall URIs (normal -> large -> small)
+  // 2. Primary Scryfall URIs (png [transparent rounded corners] -> normal -> large -> small)
   if (!cdnOffline) {
+    const pngUrl = card.image_uris?.png || card.card_faces?.[0]?.image_uris?.png;
     const normalUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
     const largeUrl = card.image_uris?.large || card.card_faces?.[0]?.image_uris?.large;
     const smallUrl = card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small;
 
+    if (pngUrl && !urls.includes(pngUrl)) urls.push(pngUrl);
     if (normalUrl && !urls.includes(normalUrl)) urls.push(normalUrl);
     if (largeUrl && !urls.includes(largeUrl)) urls.push(largeUrl);
     if (smallUrl && !urls.includes(smallUrl)) urls.push(smallUrl);
@@ -455,10 +457,10 @@ export const CardImage: React.FC<CardImageProps> = ({
   }
 
   return (
-    <div className={`relative w-full h-full overflow-hidden ${className}`}>
+    <div className={`relative w-full h-full overflow-hidden rounded-[4.75%/3.4%] ${className}`}>
       {/* Loading Skeleton */}
       {!isLoaded && (
-        <div className="absolute inset-0 bg-[#050818] flex items-center justify-center z-10 pointer-events-none">
+        <div className="absolute inset-0 bg-[#050818] flex items-center justify-center z-10 pointer-events-none rounded-[4.75%/3.4%]">
           <Loader2 className="w-5 h-5 text-violet-500 dark:text-cyan-400 animate-spin opacity-70" />
         </div>
       )}
@@ -467,7 +469,7 @@ export const CardImage: React.FC<CardImageProps> = ({
         ref={setImgRef}
         src={currentUrl}
         alt={alt || card.name}
-        className={`${imageClassName} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`${imageClassName} rounded-[4.75%/3.4%] transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
         loading={loading}
         onLoad={handleImageLoad}
         onError={handleImageError}

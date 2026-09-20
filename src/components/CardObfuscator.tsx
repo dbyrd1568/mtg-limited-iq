@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Card, CardObfuscationConfig } from '../types/mtg';
 import { RotateCw, Sparkles, EyeOff } from 'lucide-react';
-import { ManaCostRenderer } from './UI/ManaSymbol';
 import { CardImage } from './UI/CardImage';
+import { ManaCostRenderer } from './UI/ManaSymbol';
 
 interface CardObfuscatorProps {
   card: Card;
@@ -14,12 +14,12 @@ interface CardObfuscatorProps {
   showSublabel?: boolean;
 }
 
-const SIZE_CLASSES = {
-  sm: 'w-[185px] h-[258px]',
-  md: 'w-[245px] h-[342px]',
-  lg: 'w-[305px] h-[426px]',
-  xl: 'w-[345px] h-[482px]',
-  '2xl': 'w-[340px] h-[474px] sm:w-[410px] sm:h-[572px]',
+const SIZE_CONFIGS = {
+  sm: { maxW: 185, maxH: 258 },
+  md: { maxW: 245, maxH: 342 },
+  lg: { maxW: 305, maxH: 426 },
+  xl: { maxW: 345, maxH: 482 },
+  '2xl': { maxW: 410, maxH: 572 },
 };
 
 export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
@@ -50,6 +50,7 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
 
   const isArtOnly = obfuscation.target === 'art_only';
   const isMasked = obfuscation.target !== 'none' && !obfuscation.isRevealed;
+  const isManaCostMasked = (obfuscation.target === 'mana_cost' || obfuscation.target === 'name_and_cost') && !obfuscation.isRevealed;
 
   const getRarityGlow = (rarity: string) => {
     switch (rarity) {
@@ -121,11 +122,19 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
     );
   };
 
+  const sizeConfig = SIZE_CONFIGS[size] || SIZE_CONFIGS.md;
+
   return (
-    <div className={`relative flex flex-col items-center select-none ${className}`}>
+    <div className={`relative flex flex-col items-center justify-center select-none max-w-full max-h-full min-h-0 ${className}`}>
       {/* Card Outer Container */}
       <div
-        className={`relative rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-[#070a1c] card-foil-sheen ${SIZE_CLASSES[size]} ${getRarityGlow(card.rarity)}`}
+        style={{
+          width: `min(${sizeConfig.maxW}px, 100%, 100cqw, calc(100cqh * 63 / 88))`,
+          aspectRatio: '63 / 88',
+          maxHeight: '100%',
+          maxWidth: '100%',
+        }}
+        className={`relative rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-[#070a1c] card-foil-sheen shrink-0 ${getRarityGlow(card.rarity)}`}
       >
         {/* Art Only Mask Mode */}
         {isArtOnly && !obfuscation.isRevealed ? (
@@ -149,13 +158,13 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
           </div>
         ) : (
           /* Full Card Art with Mask Overlays */
-          <div className="relative w-full h-full">
+          <div className="relative w-full h-full rounded-[4.75%/3.4%] overflow-hidden">
             <CardImage
               card={activeCardData}
-              src={currentFace?.image_uris?.normal || card?.image_uris?.normal}
+              src={currentFace?.image_uris?.png || card?.image_uris?.png || currentFace?.image_uris?.normal || card?.image_uris?.normal}
               alt={card.name}
               className="w-full h-full"
-              imageClassName="w-full h-full object-cover"
+              imageClassName="w-full h-full object-contain rounded-[4.75%/3.4%]"
               loading="eager"
             />
 
@@ -182,16 +191,21 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
 
       {/* Rarity & Collector Info Sub-label */}
       {showSublabel && (
-        <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400 font-mono shrink-0 flex-wrap">
+          {card.collector_number && (
+            <span className="font-bold text-slate-400 dark:text-slate-400">
+              #{card.collector_number}
+            </span>
+          )}
           <span className="uppercase font-bold text-cyan-300 bg-[#06091d] px-1.5 py-0.2 rounded border border-violet-500/30">
             {card.set}
           </span>
           <span>•</span>
           <span className="capitalize text-slate-300">{card.rarity}</span>
-          {obfuscation.isRevealed && card.mana_cost && (
+          {!isManaCostMasked && (activeCardData.mana_cost || card.mana_cost) && (
             <>
               <span>•</span>
-              <ManaCostRenderer manaCost={card.mana_cost} size="xs" />
+              <ManaCostRenderer manaCost={activeCardData.mana_cost || card.mana_cost} size="xs" />
             </>
           )}
         </div>

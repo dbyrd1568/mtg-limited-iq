@@ -45,15 +45,24 @@ export interface Card {
   card_faces?: CardFace[];
   layout?: string;
   scryfall_uri?: string;
+  booster?: boolean;
+  promo?: boolean;
+  finishes?: string[];
+  frame_effects?: string[];
 
   // Derived Limited-focused tags
   is_instant_speed?: boolean;
   is_combat_trick?: boolean;
   is_removal?: boolean;
+  is_interaction?: boolean;
+  is_counterspell?: boolean;
+  is_card_draw?: boolean;
   is_creature?: boolean;
   is_land?: boolean;
   archetype_tag?: string;
 }
+
+export type SetDraftStatus = 'active' | 'flashback' | 'historical' | 'upcoming';
 
 export interface SetInfo {
   code: string;
@@ -63,6 +72,8 @@ export interface SetInfo {
   icon_svg_uri?: string;
   set_type?: string;
   has_17lands_data?: boolean;
+  is_active_draft?: boolean; // Currently running as active primary draft or ongoing format (e.g. HOB, MBC)
+  is_flashback?: boolean;    // Currently running on Arena for a Flashback draft
 }
 
 // 17Lands dataset structure
@@ -103,6 +114,34 @@ export interface UserCardEvaluation {
   userScore: number; // 0.0 to 5.0
   pickPriority: '1st Pick Bomb' | 'Early Pick' | 'Mid Pick' | 'Late Filler' | 'Sideboard / Unplayable';
   archetypeRole?: string;
+  notes?: string;
+  updatedAt: string;
+}
+
+export type ArchetypeMetagameRole =
+  | 'Premier Deck'
+  | 'Solid Contender'
+  | 'Synergy Dependent'
+  | 'Trap / Underpowered'
+  | 'Niche Buildaround';
+
+export interface UserArchetypeEvaluation {
+  setCode: string;
+  archetypeCode: string; // 'WU', 'UB', etc.
+  userGrade: GradeTier;
+  userScore: number; // 0.0 to 5.0
+  tier?: 'S' | 'A' | 'B' | 'C' | 'D';
+  roleInMetagame?: ArchetypeMetagameRole;
+  notes?: string;
+  updatedAt: string;
+}
+
+export interface UserColorEvaluation {
+  setCode: string;
+  color: MTGColor | 'C';
+  userGrade: GradeTier;
+  userScore: number; // 0.0 to 5.0
+  rank?: number; // 1 to 5 (or 6 for C)
   notes?: string;
   updatedAt: string;
 }

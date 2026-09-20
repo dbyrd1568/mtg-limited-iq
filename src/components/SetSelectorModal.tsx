@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { SetInfo } from '../types/mtg';
 import { POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS } from '../services/scryfall';
 import { Search, X, Calendar, Check, Wand2, ShieldCheck, BarChart2 } from 'lucide-react';
-import { get17LandsSetUrl } from '../services/seventeenLands';
+import { get17LandsSetUrl, getSetDraftStatus } from '../services/seventeenLands';
 import { SetSymbol, SetBadge } from './UI/SetSymbol';
 
 interface SetSelectorModalProps {
@@ -191,6 +191,22 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                           <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors">
                             {set.name}
                           </h3>
+                          {getSetDraftStatus(set.code) === 'active' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600/50 shadow-xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              Active Draft
+                            </span>
+                          )}
+                          {getSetDraftStatus(set.code) === 'flashback' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-600/50 shadow-xs">
+                              ⚡ Flashback Draft
+                            </span>
+                          )}
+                          {getSetDraftStatus(set.code) === 'upcoming' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-600/50 shadow-xs">
+                              Upcoming
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">

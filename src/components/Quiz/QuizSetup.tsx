@@ -3,6 +3,7 @@ import { QuestionCategory, QuizMode, QuizSettings, SetInfo, MTGRarity, Seventeen
 import { Swords, Zap, Hash, Shield, BookOpen, Sparkles, Trophy, Clock, CheckSquare, Square, Layers, Flame, Wand2, ShieldCheck, Target, AlertTriangle, Scale, GitCompare, ArrowRight, Lock } from 'lucide-react';
 import { SetBadge, SetSymbol } from '../UI/SetSymbol';
 import { isSetUnderTwoWeeksOld, isAuthentic17LandsDataSet } from '../../services/seventeenLands';
+import { useContextualTour } from '../../context/ContextualTourContext';
 
 interface QuizSetupProps {
   currentSet: SetInfo;
@@ -107,6 +108,12 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({
   }, [is17LandsEligible]);
 
   const [selectedCategories, setSelectedCategories] = useState<QuestionCategory[]>(eligibleCategoryIds);
+
+  const { registerTrigger } = useContextualTour();
+
+  useEffect(() => {
+    registerTrigger('quiz_overview');
+  }, [registerTrigger]);
   const [questionCount, setQuestionCount] = useState<number>(15);
   const [selectedRarities, setSelectedRarities] = useState<MTGRarity[]>(['common', 'uncommon', 'rare', 'mythic']);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
@@ -168,7 +175,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({
   return (
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* Compact Set Header */}
-      <div className="rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 p-3 sm:p-4 shadow-xs flex items-center justify-between gap-3">
+      <div id="quiz-setup-header" className="rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 p-3 sm:p-4 shadow-xs flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <SetBadge setCode={currentSet.code} iconSvgUri={currentSet.icon_svg_uri} />
           <div>

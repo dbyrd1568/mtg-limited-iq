@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, X, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Sparkles, BookOpen } from 'lucide-react';
 import { AdvancedSearchModal } from './AdvancedSearchModal';
 import { SearchSyntaxCheatSheetModal } from './SearchSyntaxCheatSheetModal';
 
@@ -54,8 +54,8 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
   const isQueryActive = Boolean(query.trim());
 
   return (
-    <>
-      <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 ${className}`}>
+    <div className={`space-y-1.5 ${className}`}>
+      <div className="flex items-center gap-2">
         {/* Main Search Input */}
         <div className="relative flex-1 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-violet-600 dark:group-focus-within:text-cyan-400 transition-colors" />
@@ -66,7 +66,7 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
             placeholder={placeholder || defaultPlaceholder}
             value={query}
             onChange={(e) => onChangeQuery(e.target.value)}
-            className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-mono transition-all shadow-xs"
+            className="w-full h-9 pl-9 pr-8 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-mono transition-all shadow-xs"
           />
 
           {/* Right Action: Clear (x) button */}
@@ -87,7 +87,7 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
           <button
             type="button"
             onClick={() => setIsAdvancedOpen(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-[#050818] hover:bg-violet-50 dark:hover:bg-violet-950/40 border border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700/60 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 transition-all cursor-pointer shadow-xs whitespace-nowrap"
+            className="h-9 flex items-center justify-center gap-1.5 px-3 rounded-xl bg-slate-100 dark:bg-[#050818] hover:bg-violet-50 dark:hover:bg-violet-950/40 border border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700/60 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 transition-all cursor-pointer shadow-xs whitespace-nowrap"
             title="Open Scryfall-style visual advanced search filters"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
@@ -96,77 +96,49 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
         </div>
       </div>
 
-      {/* Quick Search Syntax Tip Bar */}
+      {/* Subtext under Search Bar: Search Guide Link */}
       {!isQueryActive && (
-        <div className="flex items-center gap-1.5 px-1 pt-0.5 text-[11px] font-mono text-slate-500 dark:text-slate-400 flex-wrap">
-          <span className="text-violet-600 dark:text-cyan-400 font-bold">Search tip:</span>
-          <span>Try</span>
-          <button
-            type="button"
-            onClick={() => onChangeQuery('draw a card')}
-            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-            title="Search for cards that draw a card in rules text"
-          >
-            draw a card
-          </button>
-          <span>for rules text,</span>
-          <button
-            type="button"
-            onClick={() => onChangeQuery('2/3')}
-            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-            title="Search for creatures with 2/3 power and toughness"
-          >
-            2/3
-          </button>
-          <span>for stats,</span>
-          <button
-            type="button"
-            onClick={() => onChangeQuery('{2}{W}')}
-            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-            title="Search for cards with mana cost {2}{W}"
-          >
-            {'{2}{W}'}
-          </button>
-          <span>for mana,</span>
-          <button
-            type="button"
-            onClick={() => onChangeQuery('flying 2/3 {2}{W}')}
-            className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-            title="Search for flying creatures with 2/3 stats costing {2}{W}"
-          >
-            flying 2/3 {'{2}{W}'}
-          </button>
-          <span>or</span>
+        <div className="flex items-center px-1">
           <button
             type="button"
             onClick={() => setIsCheatSheetOpen(true)}
-            className="text-violet-600 dark:text-cyan-400 hover:underline font-bold cursor-pointer"
+            className="text-[11px] font-mono text-violet-600 dark:text-cyan-400 hover:underline font-semibold cursor-pointer inline-flex items-center gap-1 transition-colors"
           >
-            syntax guide →
+            <BookOpen className="w-3 h-3" />
+            <span>Search guide →</span>
           </button>
         </div>
       )}
 
       {/* Active Filter Summary Pill (when query is non-empty) */}
       {isQueryActive && matchCount !== undefined && totalCount !== undefined && (
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-violet-50/80 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50 text-xs text-violet-900 dark:text-cyan-200">
+        <div className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-xl bg-violet-50/80 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50 text-[11px] text-violet-900 dark:text-cyan-200">
           <div className="flex items-center gap-1.5 font-mono truncate">
             <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
             <span className="font-bold">
               Showing {matchCount} of {totalCount} cards
             </span>
             <span className="text-slate-400 truncate hidden md:inline">
-              matching query <code className="text-violet-700 dark:text-cyan-300 font-bold">"{query}"</code>
+              for <code className="text-violet-700 dark:text-cyan-300 font-bold">"{query}"</code>
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleClear}
-            className="text-[11px] font-bold font-mono text-violet-700 dark:text-cyan-400 hover:underline cursor-pointer shrink-0 ml-2"
-          >
-            Clear Search
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsCheatSheetOpen(true)}
+              className="text-[10px] font-mono text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-cyan-300 hover:underline cursor-pointer"
+            >
+              guide →
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="text-[10px] font-bold font-mono text-violet-700 dark:text-cyan-400 hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       )}
 
@@ -190,6 +162,6 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
         onClose={() => setIsCheatSheetOpen(false)}
         onSelectQuery={(exampleQuery) => onChangeQuery(exampleQuery)}
       />
-    </>
+    </div>
   );
 };

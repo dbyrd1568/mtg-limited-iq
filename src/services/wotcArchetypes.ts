@@ -1,4 +1,5 @@
 import { Card, MTGColor } from '../types/mtg';
+import { EXPANDED_SET_WOTC_ARCHETYPES } from './wotcArchetypeData';
 
 export interface WOTCArchetype {
   code: string; // 'WU', 'UB', etc.
@@ -2242,7 +2243,8 @@ const SET_WOTC_ARCHETYPES: Record<string, Record<string, WOTCArchetypeInfo>> = {
         "Exponential Ramp"
       ]
     }
-  }
+  },
+  ...EXPANDED_SET_WOTC_ARCHETYPES,
 };
 
 const DEFAULT_GUILD_WOTC_ARCHETYPES: Record<string, WOTCArchetypeInfo> = {

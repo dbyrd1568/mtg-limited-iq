@@ -1,4 +1,5 @@
-import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS } from '../services/scryfall';
+import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS, deduplicateCards, normalizeScryfallCard, isRemovalSpell, isCounterspell, isCardDrawSpell, isInteractionSpell } from '../services/scryfall';
+import { cardMatchesRoleFilter } from '../components/UI/ManaColorFilterBar';
 import { generateQuiz } from '../services/quizGenerator';
 import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl } from '../services/seventeenLands';
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
@@ -8,6 +9,16 @@ import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactRep
 import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes } from '../services/wotcArchetypes';
 import { cardMatchesQuery } from '../services/cardSearchParser';
 import { buildScryfallPrecedentQuery } from '../components/Evaluation/PrecedentCardSearch';
+import {
+  ALL_CONTEXTUAL_TOUR_STEPS,
+  ContextualTourStepId,
+  getCompletedTourSteps,
+  markTourStepCompleted,
+  isTourStepCompleted,
+  resetTourSteps,
+  skipAllTourSteps,
+} from '../services/storage';
+import { TOUR_STEP_DEFINITIONS } from '../context/ContextualTourContext';
 
 console.log('=== MTG Limited IQ Verification Tests ===\n');
 
@@ -25,6 +36,47 @@ console.log(`[PASS] Combat trick detection verified: ${combatTrick?.name} -> is_
 const removalSpell = blbCards.find(c => c.name === 'Fell');
 console.assert(removalSpell?.is_removal === true, 'Fell should be flagged as removal');
 console.log(`[PASS] Removal detection verified: ${removalSpell?.name} -> is_removal=${removalSpell?.is_removal}`);
+
+// Verify Precise Redaction (Stack interaction / Counterspell != Board Removal)
+const preciseRedaction = normalizeScryfallCard({
+  id: 'fra-precise-redaction',
+  name: 'Precise Redaction',
+  set: 'FRA',
+  type_line: 'Instant',
+  oracle_text: 'Counter target white or black spell.',
+  mana_cost: '{1}{U}',
+  cmc: 2,
+  colors: ['U'],
+  rarity: 'uncommon',
+});
+console.assert(preciseRedaction.is_removal === false, 'Precise Redaction must NOT be flagged as removal');
+console.assert(preciseRedaction.is_counterspell === true, 'Precise Redaction must be flagged as counterspell');
+console.assert(preciseRedaction.is_interaction === true, 'Precise Redaction must be flagged as interaction');
+console.assert(preciseRedaction.is_card_draw === false, 'Precise Redaction must NOT be card draw');
+console.assert(cardMatchesRoleFilter(preciseRedaction, ['REMOVAL']) === false, 'Precise Redaction must not match REMOVAL filter');
+console.assert(cardMatchesRoleFilter(preciseRedaction, ['COUNTER']) === true, 'Precise Redaction must match COUNTER filter');
+console.assert(cardMatchesRoleFilter(preciseRedaction, ['INTERACTION']) === true, 'Precise Redaction must match INTERACTION filter');
+console.log(`[PASS] Counterspell vs Removal verified: Precise Redaction -> is_removal=${preciseRedaction.is_removal}, is_counterspell=${preciseRedaction.is_counterspell}, is_interaction=${preciseRedaction.is_interaction}`);
+
+// Verify Sphinx's Approach (Card Draw / Selection != Board Removal)
+const sphinxsApproach = normalizeScryfallCard({
+  id: 'fra-sphinxs-approach',
+  name: "Sphinx's Approach",
+  set: 'FRA',
+  type_line: 'Instant',
+  oracle_text: 'Draw two cards. Then you may exile this spell and four cards named Sphinx\'s Approach from your graveyard. If you do, search your library for a Sphinx card, put it onto the battlefield, then shuffle.',
+  mana_cost: '{1}{U}{U}',
+  cmc: 3,
+  colors: ['U'],
+  rarity: 'common',
+});
+console.assert(sphinxsApproach.is_removal === false, "Sphinx's Approach must NOT be flagged as removal");
+console.assert(sphinxsApproach.is_counterspell === false, "Sphinx's Approach must NOT be counterspell");
+console.assert(sphinxsApproach.is_interaction === false, "Sphinx's Approach must NOT be interaction");
+console.assert(sphinxsApproach.is_card_draw === true, "Sphinx's Approach must be flagged as card draw");
+console.assert(cardMatchesRoleFilter(sphinxsApproach, ['REMOVAL']) === false, "Sphinx's Approach must not match REMOVAL filter");
+console.assert(cardMatchesRoleFilter(sphinxsApproach, ['DRAW']) === true, "Sphinx's Approach must match DRAW filter");
+console.log(`[PASS] Card Draw vs Removal verified: Sphinx's Approach -> is_removal=${sphinxsApproach.is_removal}, is_card_draw=${sphinxsApproach.is_card_draw}, is_interaction=${sphinxsApproach.is_interaction}`);
 
 // Test 2: Quiz Generation
 const quizSettings: QuizSettings = {
@@ -416,6 +468,18 @@ const incompatibleResult = calculateCardSimilarity(murderInstant, vanillaCreatur
 console.assert(incompatibleResult.score === 0, 'Incompatible card types must receive 0% similarity score');
 console.log('   ✓ Incompatible types successfully receive 0% score and disqualification.');
 
+// 3.1 Same-Set Disqualification Gatekeeper (Never compare a set to itself)
+const sameSetCard: Card = {
+  ...murderInstant,
+  id: 'dmu-choking-miasma',
+  name: 'Choking Miasma',
+  set: 'DMU',
+  set_name: 'Dominaria United',
+};
+const sameSetSim = calculateCardSimilarity(murderInstant, sameSetCard);
+console.assert(sameSetSim.score === 0, 'Cards from the same set must receive 0% similarity score');
+console.log('   ✓ Same-set cards strictly disqualified (Never compare a set to itself).');
+
 // 4. Exact Reprint & Functional Reprint 100% Match Gatekeeper
 const murderM20: Card = {
   ...murderInstant,
@@ -774,5 +838,185 @@ console.log('   ✓ DFC card face text matching verified.');
 console.log('   ✓ Keyword-only matching without oracle text verified.');
 console.log('   ✓ Scryfall precedent search query generation verified.');
 
+// Test 14: Card Deduplication by Exact Name and Base Treatment Preservation
+console.log('\n[TEST 14] Card Deduplication by Exact Name & Base Treatment Resolution:');
+
+const rawTestCards: Card[] = [
+  // Heartfire Hero: regular vs showcase vs raised foil
+  {
+    id: 'blb-138',
+    name: 'Heartfire Hero',
+    set: 'BLB',
+    set_name: 'Bloomburrow',
+    collector_number: '138',
+    cmc: 1,
+    type_line: 'Creature — Mouse Soldier',
+    colors: ['R'],
+    color_identity: ['R'],
+    rarity: 'uncommon',
+    keywords: ['Valiant'],
+    booster: true,
+    promo: false,
+  },
+  {
+    id: 'blb-272',
+    name: 'Heartfire Hero',
+    set: 'BLB',
+    set_name: 'Bloomburrow',
+    collector_number: '272',
+    cmc: 1,
+    type_line: 'Creature — Mouse Soldier',
+    colors: ['R'],
+    color_identity: ['R'],
+    rarity: 'uncommon',
+    keywords: ['Valiant'],
+    booster: false,
+    promo: false,
+  },
+  {
+    id: 'blb-354',
+    name: 'Heartfire Hero',
+    set: 'BLB',
+    set_name: 'Bloomburrow',
+    collector_number: '354',
+    cmc: 1,
+    type_line: 'Creature — Mouse Soldier',
+    colors: ['R'],
+    color_identity: ['R'],
+    rarity: 'uncommon',
+    keywords: ['Valiant'],
+    booster: false,
+    promo: true,
+  },
+  // Basic Lands: Plains #262, #263, #264
+  {
+    id: 'blb-262',
+    name: 'Plains',
+    set: 'BLB',
+    set_name: 'Bloomburrow',
+    collector_number: '262',
+    cmc: 0,
+    type_line: 'Basic Land — Plains',
+    colors: ['C'],
+    color_identity: ['W'],
+    rarity: 'common',
+    keywords: [],
+    booster: true,
+  },
+  {
+    id: 'blb-263',
+    name: 'Plains',
+    set: 'BLB',
+    set_name: 'Bloomburrow',
+    collector_number: '263',
+    cmc: 0,
+    type_line: 'Basic Land — Plains',
+    colors: ['C'],
+    color_identity: ['W'],
+    rarity: 'common',
+    keywords: [],
+    booster: true,
+  },
+  // Distinct other card
+  {
+    id: 'blb-95',
+    name: 'Fell',
+    set: 'BLB',
+    set_name: 'Bloomburrow',
+    collector_number: '95',
+    cmc: 2,
+    type_line: 'Sorcery',
+    colors: ['B'],
+    color_identity: ['B'],
+    rarity: 'uncommon',
+    keywords: [],
+    booster: true,
+  },
+];
+
+const deduped = deduplicateCards(rawTestCards);
+console.assert(deduped.length === 3, `Expected exactly 3 unique cards, got ${deduped.length}`);
+
+const hero = deduped.find(c => c.name === 'Heartfire Hero');
+console.assert(hero !== undefined, 'Heartfire Hero must be present in deduped cards');
+console.assert(hero?.collector_number === '138', `Heartfire Hero must resolve to base booster #138, got #${hero?.collector_number}`);
+console.assert(hero?.booster === true, 'Heartfire Hero must have booster=true');
+
+const plains = deduped.filter(c => c.name === 'Plains');
+console.assert(plains.length === 1, `Expected exactly 1 Plains, got ${plains.length}`);
+console.assert(plains[0].collector_number === '262', `Plains must resolve to lowest collector number 262, got #${plains[0].collector_number}`);
+
+// Order Inversion Test: Even if showcase #272 appears FIRST in array, #138 must be selected
+const invertedCards: Card[] = [rawTestCards[1], rawTestCards[0]];
+const invertedDeduped = deduplicateCards(invertedCards);
+console.assert(invertedDeduped.length === 1, 'Inverted cards must deduplicate to 1');
+console.assert(invertedDeduped[0].collector_number === '138', 'Inverted list must still resolve to base booster #138');
+
+console.log('   ✓ Exact name deduplication verified.');
+console.log('   ✓ Preferred base booster printing over showcase/promo treatments verified.');
+console.log('   ✓ Redundant basic land variant deduplication verified.');
+console.log('   ✓ Order-independent canonical selection verified.');
+
+// Test 15: Contextual First-Time Onboarding Tour Verification
+console.log('\n--- Test 15: Contextual First-Time Onboarding Tour Verification ---');
+
+if (typeof globalThis.localStorage === 'undefined') {
+  const store = new Map<string, string>();
+  (globalThis as any).localStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, String(value)),
+    removeItem: (key: string) => store.delete(key),
+    clear: () => store.clear(),
+  };
+}
+
+// 1. Verify all 7 milestone steps are present and defined
+console.assert(ALL_CONTEXTUAL_TOUR_STEPS.length === 7, `Expected exactly 7 tour steps, got ${ALL_CONTEXTUAL_TOUR_STEPS.length}`);
+
+const requiredSteps = [
+  'set_selector',
+  'grading_mode',
+  'enter_grade',
+  'view_comps',
+  'replace_comp',
+  'export_grades',
+  'quiz_overview',
+];
+
+for (const step of requiredSteps) {
+  const stepId = step as ContextualTourStepId;
+  console.assert(ALL_CONTEXTUAL_TOUR_STEPS.includes(stepId), `Missing tour step: ${step}`);
+  const def = TOUR_STEP_DEFINITIONS[stepId];
+  console.assert(def !== undefined, `Missing step definition for ${step}`);
+  console.assert(Boolean(def.targetSelector), `Step ${step} must have a targetSelector`);
+  console.assert(Boolean(def.title), `Step ${step} must have a title`);
+  console.assert(Boolean(def.description), `Step ${step} must have a description`);
+}
+
+// 2. Verify storage operations
+resetTourSteps();
+console.assert(getCompletedTourSteps().length === 0, 'Completed steps must be empty after resetTourSteps()');
+console.assert(isTourStepCompleted('set_selector') === false, 'set_selector should not be completed initially');
+
+markTourStepCompleted('set_selector');
+console.assert(isTourStepCompleted('set_selector') === true, 'set_selector must be marked completed');
+console.assert(getCompletedTourSteps().length === 1, 'Completed steps must have length 1');
+console.assert(isTourStepCompleted('grading_mode') === false, 'grading_mode should not be completed yet');
+
+markTourStepCompleted('grading_mode');
+console.assert(getCompletedTourSteps().length === 2, 'Completed steps must have length 2');
+
+skipAllTourSteps();
+console.assert(getCompletedTourSteps().length === 7, 'skipAllTourSteps must mark all 7 steps completed');
+console.assert(isTourStepCompleted('quiz_overview') === true, 'quiz_overview must be completed after skipAll');
+
+resetTourSteps();
+console.assert(getCompletedTourSteps().length === 0, 'Completed steps must be empty after second reset');
+
+console.log('   ✓ All 7 contextual tour steps verified with valid DOM selectors.');
+console.log('   ✓ Contextual tour step definitions and step sequencing verified.');
+console.log('   ✓ Storage lifecycle (mark completed, skip all, reset) verified.');
+
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
+
 

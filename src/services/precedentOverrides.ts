@@ -1,6 +1,7 @@
 import { Card } from '../types/mtg';
 import { SimilarCardMatch } from './cardSimilarity';
 import { getActiveUser } from './storage';
+import { recordPrecedentLearning, LearnedPreferenceDelta } from './precedentLearning';
 
 export interface PrecedentSlotOverride {
   slotIndex: number; // 0, 1, 2, 3
@@ -8,6 +9,7 @@ export interface PrecedentSlotOverride {
   originalCardId?: string;
   replacementMatch: SimilarCardMatch;
   replacedAt: string;
+  learningInsights?: string[];
 }
 
 export interface CardPrecedentOverrides {
@@ -56,7 +58,8 @@ export function getTargetCardOverrides(
 }
 
 /**
- * Saves a user-defined replacement card for a specific slot on a target card.
+ * Saves a user-defined replacement card for a specific slot on a target card
+ * and records learned knowledge (touchstones, mechanic bridges, and rate deltas).
  */
 export function savePrecedentOverride(
   targetCard: Card,
@@ -64,11 +67,14 @@ export function savePrecedentOverride(
   originalMatch: SimilarCardMatch | null,
   replacementMatch: SimilarCardMatch,
   userId?: string
-): void {
+): LearnedPreferenceDelta | null {
   try {
     const key = getPrecedentStorageKey(userId);
     const all = getAllPrecedentOverrides(userId);
     const targetKey = getTargetCardKey(targetCard);
+
+    // Extract durable learning across the engine
+    const delta = recordPrecedentLearning(targetCard, originalMatch, replacementMatch, userId);
 
     if (!all[targetKey]) {
       all[targetKey] = {
@@ -89,11 +95,14 @@ export function savePrecedentOverride(
       originalCardId: originalMatch?.card.id,
       replacementMatch: enrichedMatch,
       replacedAt: new Date().toISOString(),
+      learningInsights: delta?.inferredInsights,
     };
 
     localStorage.setItem(key, JSON.stringify(all));
+    return delta;
   } catch (err) {
     console.error('Failed to save precedent override:', err);
+    return null;
   }
 }
 

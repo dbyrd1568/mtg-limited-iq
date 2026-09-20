@@ -796,9 +796,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           <span className="text-xs font-bold font-heading text-slate-900 dark:text-white">
                             Search & Substitute Precedent Card
                           </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 font-bold border border-violet-200 dark:border-violet-800/60">
-                            Dedicated Visual Studio
-                          </span>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                           Search any card across Magic history with visual card grid and side-by-side slot comparison
@@ -824,9 +821,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     <div className="grid grid-cols-1 gap-6">
                       {presentedMatches.map((match, matchIdx) => {
                       const comp = match.card;
-                      const imageUri = comp.image_uris?.normal ||
+                      const imageUri = comp.image_uris?.png ||
+                        comp.image_uris?.normal ||
                         comp.image_uris?.large ||
-                        (comp.card_faces && comp.card_faces[0]?.image_uris?.normal) ||
+                        (comp.card_faces && (comp.card_faces[0]?.image_uris?.png || comp.card_faces[0]?.image_uris?.normal)) ||
                         'https://cards.scryfall.io/back.jpg';
 
                       return (

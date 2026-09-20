@@ -1,4 +1,4 @@
-import { UserProfileStats, QuizResult, UserCardEvaluation, QuestionCategory, SetMasteryStat, UserAccount } from '../types/mtg';
+import { UserProfileStats, QuizResult, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, QuestionCategory, SetMasteryStat, UserAccount } from '../types/mtg';
 import { queueStatsSync, queueEvaluationSync, queueEvaluationClearForSet } from './cloudSync';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { isProdEnvironment, isCloudUUID } from './environment';
@@ -44,6 +44,7 @@ export const defaultStats: UserProfileStats = {
 
 export function getAllUsers(): UserAccount[] {
   try {
+    if (typeof localStorage === 'undefined') return [];
     const raw = localStorage.getItem(USERS_LIST_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as UserAccount[];
@@ -60,6 +61,22 @@ export function getAllUsers(): UserAccount[] {
 
 export function getActiveUser(): UserAccount | null {
   try {
+    if (typeof localStorage === 'undefined') {
+      if (!isSupabaseConfigured()) {
+        const devUser: UserAccount = {
+          id: 'admin_owner_01',
+          name: 'Format Admin',
+          email: 'admin@mtglimitediq.local',
+          avatarColor: 'from-violet-500 to-cyan-500',
+          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
+          createdAt: '2025-01-01T00:00:00.000Z',
+          lastLoginAt: new Date().toISOString(),
+          provider: 'local',
+        };
+        return devUser;
+      }
+      return null;
+    }
     const users = getAllUsers();
     const activeId = localStorage.getItem(ACTIVE_USER_ID_KEY);
     const found = users.find((u) => u.id === activeId);
@@ -204,6 +221,8 @@ export function deleteUserAccount(userId: string): void {
     // Clean up user specific data
     localStorage.removeItem(`mtg_stats_${userId}`);
     localStorage.removeItem(`mtg_evaluations_${userId}`);
+    localStorage.removeItem(`mtg_archetype_evaluations_${userId}`);
+    localStorage.removeItem(`mtg_color_evaluations_${userId}`);
     localStorage.removeItem(`mtg_last_set_${userId}`);
   } catch (e) {
     console.error('Failed to delete user account:', e);
@@ -427,6 +446,104 @@ export function clearUserEvaluationsForSet(setCode: string, userId?: string): Re
   }
 }
 
+// ==================== USER-SCOPED ARCHETYPE EVALUATIONS ====================
+
+export function loadUserArchetypeEvaluations(userId?: string): Record<string, UserArchetypeEvaluation> {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const raw = localStorage.getItem(`mtg_archetype_evaluations_${activeId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('Failed to load user archetype evaluations:', e);
+    return {};
+  }
+}
+
+export function saveUserArchetypeEvaluation(evaluation: UserArchetypeEvaluation, userId?: string): void {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const current = loadUserArchetypeEvaluations(activeId);
+    const key = `${evaluation.setCode.toLowerCase()}_${evaluation.archetypeCode.toUpperCase()}`;
+    current[key] = {
+      ...evaluation,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(`mtg_archetype_evaluations_${activeId}`, JSON.stringify(current));
+  } catch (e) {
+    console.error('Failed to save archetype evaluation:', e);
+  }
+}
+
+export function clearUserArchetypeEvaluationsForSet(setCode: string, userId?: string): Record<string, UserArchetypeEvaluation> {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const current = loadUserArchetypeEvaluations(activeId);
+    const prefix = `${setCode.toLowerCase()}_`;
+    const updated: Record<string, UserArchetypeEvaluation> = {};
+
+    for (const [key, val] of Object.entries(current)) {
+      if (!key.startsWith(prefix) && val.setCode?.toLowerCase() !== setCode.toLowerCase()) {
+        updated[key] = val;
+      }
+    }
+
+    localStorage.setItem(`mtg_archetype_evaluations_${activeId}`, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.error('Failed to clear archetype evaluations for set:', e);
+    return {};
+  }
+}
+
+// ==================== USER-SCOPED COLOR EVALUATIONS ====================
+
+export function loadUserColorEvaluations(userId?: string): Record<string, UserColorEvaluation> {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const raw = localStorage.getItem(`mtg_color_evaluations_${activeId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('Failed to load user color evaluations:', e);
+    return {};
+  }
+}
+
+export function saveUserColorEvaluation(evaluation: UserColorEvaluation, userId?: string): void {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const current = loadUserColorEvaluations(activeId);
+    const key = `${evaluation.setCode.toLowerCase()}_${evaluation.color.toUpperCase()}`;
+    current[key] = {
+      ...evaluation,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(`mtg_color_evaluations_${activeId}`, JSON.stringify(current));
+  } catch (e) {
+    console.error('Failed to save color evaluation:', e);
+  }
+}
+
+export function clearUserColorEvaluationsForSet(setCode: string, userId?: string): Record<string, UserColorEvaluation> {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const current = loadUserColorEvaluations(activeId);
+    const prefix = `${setCode.toLowerCase()}_`;
+    const updated: Record<string, UserColorEvaluation> = {};
+
+    for (const [key, val] of Object.entries(current)) {
+      if (!key.startsWith(prefix) && val.setCode?.toLowerCase() !== setCode.toLowerCase()) {
+        updated[key] = val;
+      }
+    }
+
+    localStorage.setItem(`mtg_color_evaluations_${activeId}`, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.error('Failed to clear color evaluations for set:', e);
+    return {};
+  }
+}
+
 // ==================== USER-SCOPED SET PREFERENCES ====================
 
 export function isSetFullyGraded(setCode: string, totalCardsCount?: number, userId?: string): boolean {
@@ -519,6 +636,77 @@ export function setHasSeenWelcomeTour(hasSeen: boolean): void {
   }
 }
 
+// ==================== CONTEXTUAL ONBOARDING TOUR ====================
+
+export type ContextualTourStepId = 
+  | 'set_selector'
+  | 'grading_mode'
+  | 'enter_grade'
+  | 'view_comps'
+  | 'replace_comp'
+  | 'export_grades'
+  | 'quiz_overview';
+
+export const ALL_CONTEXTUAL_TOUR_STEPS: ContextualTourStepId[] = [
+  'set_selector',
+  'grading_mode',
+  'enter_grade',
+  'view_comps',
+  'replace_comp',
+  'export_grades',
+  'quiz_overview',
+];
+
+const TOUR_STEPS_STORAGE_KEY = 'mtg_contextual_tour_completed_steps_v1';
+
+export function getCompletedTourSteps(): ContextualTourStepId[] {
+  try {
+    const raw = localStorage.getItem(TOUR_STEPS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed as ContextualTourStepId[];
+    }
+    return [];
+  } catch (e) {
+    console.warn('Failed to load completed tour steps:', e);
+    return [];
+  }
+}
+
+export function isTourStepCompleted(stepId: ContextualTourStepId): boolean {
+  return getCompletedTourSteps().includes(stepId);
+}
+
+export function markTourStepCompleted(stepId: ContextualTourStepId): void {
+  try {
+    const current = getCompletedTourSteps();
+    if (!current.includes(stepId)) {
+      const updated = [...current, stepId];
+      localStorage.setItem(TOUR_STEPS_STORAGE_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.error('Failed to mark tour step completed:', e);
+  }
+}
+
+export function resetTourSteps(): void {
+  try {
+    localStorage.removeItem(TOUR_STEPS_STORAGE_KEY);
+  } catch (e) {
+    console.error('Failed to reset tour steps:', e);
+  }
+}
+
+export function skipAllTourSteps(): void {
+  try {
+    localStorage.setItem(TOUR_STEPS_STORAGE_KEY, JSON.stringify(ALL_CONTEXTUAL_TOUR_STEPS));
+  } catch (e) {
+    console.error('Failed to skip all tour steps:', e);
+  }
+}
+
+
 // ==================== 17LANDS TIER LIST SHARING ====================
 
 export function get17LandsTierListUrl(setCode: string, userId?: string): string | null {
@@ -553,12 +741,16 @@ export function exportUserDataAsJSON(userId?: string): string {
   const user = getActiveUser();
   const stats = loadUserStats(activeId);
   const evaluations = loadUserEvaluations(activeId);
+  const archetypeEvaluations = loadUserArchetypeEvaluations(activeId);
+  const colorEvaluations = loadUserColorEvaluations(activeId);
   return JSON.stringify({
     exportedAt: new Date().toISOString(),
-    version: '2.0',
+    version: '2.1',
     user,
     stats,
     evaluations,
+    archetypeEvaluations,
+    colorEvaluations,
   }, null, 2);
 }
 
@@ -571,6 +763,12 @@ export function importUserDataFromJSON(jsonString: string, userId?: string): boo
     }
     if (data.evaluations) {
       localStorage.setItem(`mtg_evaluations_${activeId}`, JSON.stringify(data.evaluations));
+    }
+    if (data.archetypeEvaluations) {
+      localStorage.setItem(`mtg_archetype_evaluations_${activeId}`, JSON.stringify(data.archetypeEvaluations));
+    }
+    if (data.colorEvaluations) {
+      localStorage.setItem(`mtg_color_evaluations_${activeId}`, JSON.stringify(data.colorEvaluations));
     }
     return true;
   } catch (e) {

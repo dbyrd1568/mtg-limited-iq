@@ -1,4 +1,4 @@
-import { Card, GradeTier, MTGColor, SeventeenLandsSetData, UserCardEvaluation } from '../types/mtg';
+import { Card, GradeTier, MTGColor, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation } from '../types/mtg';
 import {
   GRADE_SCORES,
   scoreToGradeTier,
@@ -25,6 +25,7 @@ export interface ColorStrength {
   topCommons: { card: Card; eval: UserCardEvaluation }[];
   topUncommons: { card: Card; eval: UserCardEvaluation }[];
   gradeDistribution: Record<GradeTier, number>;
+  userEvaluation?: UserColorEvaluation;
   // 17Lands Data (when data is released)
   seventeenLandsAvgWinRate?: number;
   seventeenLandsRank?: number;
@@ -52,6 +53,7 @@ export interface ArchetypeStrength {
   keyPicks: { card: Card; eval: UserCardEvaluation }[];
   totalSupportCards: number;
   isDevelopedForSet: boolean;
+  userEvaluation?: UserArchetypeEvaluation;
   // 17Lands Data (when data is released)
   seventeenLandsWinRate?: number;
   seventeenLandsTier?: 'S' | 'A' | 'B' | 'C' | 'D';
@@ -125,13 +127,16 @@ export function calculateColorRankings(
   cards: Card[],
   userEvaluations: Record<string, UserCardEvaluation>,
   seventeenLandsData?: SeventeenLandsSetData | null,
-  setCode?: string
+  setCode?: string,
+  userColorEvaluations?: Record<string, UserColorEvaluation>
 ): ColorStrength[] {
   const has17Lands = isAuthentic17LandsDataSet(seventeenLandsData, setCode, cards);
 
   const colors: (MTGColor | 'C')[] = ['W', 'U', 'B', 'R', 'G', 'C'];
   const results: ColorStrength[] = colors.map((col) => {
     const meta = COLOR_METADATA[col];
+    const userEvalKey = `${(setCode || '').toLowerCase()}_${col.toUpperCase()}`;
+    const userEvaluation = userColorEvaluations ? userColorEvaluations[userEvalKey] : undefined;
 
     // Filter cards strictly monocolored in this color (or strictly colorless)
     const colorCards = cards.filter((c) => {
@@ -207,6 +212,7 @@ export function calculateColorRankings(
       topCommons: topCommons.slice(0, 5),
       topUncommons: topUncommons.slice(0, 5),
       gradeDistribution: gradeDist,
+      userEvaluation,
       seventeenLandsAvgWinRate,
       seventeenLandsGrade,
     };
@@ -245,7 +251,8 @@ export function calculateArchetypeRankings(
   userEvaluations: Record<string, UserCardEvaluation>,
   colorRankings: ColorStrength[],
   seventeenLandsData?: SeventeenLandsSetData | null,
-  setCode?: string
+  setCode?: string,
+  userArchetypeEvaluations?: Record<string, UserArchetypeEvaluation>
 ): ArchetypeStrength[] {
   const developedCodes = getDevelopedArchetypeCodes(setCode || '', cards);
   const has17Lands = isAuthentic17LandsDataSet(seventeenLandsData, setCode, cards);
@@ -261,6 +268,8 @@ export function calculateArchetypeRankings(
 
   const results: ArchetypeStrength[] = GUILD_ARCHETYPES.map((guild) => {
     const [c1, c2] = guild.colors;
+    const userEvalKey = `${(setCode || '').toLowerCase()}_${guild.code.toUpperCase()}`;
+    const userEvaluation = userArchetypeEvaluations ? userArchetypeEvaluations[userEvalKey] : undefined;
     const c1Score = colorScoreMap.get(c1) || 2.5;
     const c2Score = colorScoreMap.get(c2) || 2.5;
     const c1Wr = color17WrMap.get(c1);
@@ -362,6 +371,7 @@ export function calculateArchetypeRankings(
       keyPicks: keyPicks.slice(0, 6),
       totalSupportCards: goldCards.length,
       isDevelopedForSet: developedCodes.has(guild.code),
+      userEvaluation,
       seventeenLandsWinRate,
       seventeenLandsTier,
     };
@@ -397,7 +407,9 @@ export function generateSetSynthesisReport(
   userEvaluations: Record<string, UserCardEvaluation>,
   setCode: string,
   setName: string,
-  seventeenLandsData?: SeventeenLandsSetData | null
+  seventeenLandsData?: SeventeenLandsSetData | null,
+  userArchetypeEvaluations?: Record<string, UserArchetypeEvaluation>,
+  userColorEvaluations?: Record<string, UserColorEvaluation>
 ): SetSynthesisReport {
   let ratedCount = 0;
   cards.forEach((c) => {
@@ -411,8 +423,8 @@ export function generateSetSynthesisReport(
   const completionPercent = totalCards > 0 ? Math.round((ratedCount / totalCards) * 100) : 0;
   const isFullyGraded = totalCards > 0 && ratedCount >= totalCards;
 
-  const colorRankings = calculateColorRankings(cards, userEvaluations, seventeenLandsData, setCode);
-  const archetypeRankings = calculateArchetypeRankings(cards, userEvaluations, colorRankings, seventeenLandsData, setCode);
+  const colorRankings = calculateColorRankings(cards, userEvaluations, seventeenLandsData, setCode, userColorEvaluations);
+  const archetypeRankings = calculateArchetypeRankings(cards, userEvaluations, colorRankings, seventeenLandsData, setCode, userArchetypeEvaluations);
 
   // Partition archetypes into Developed for Set vs Other Pairs
   const developedArchetypes = archetypeRankings.filter((a) => a.isDevelopedForSet);

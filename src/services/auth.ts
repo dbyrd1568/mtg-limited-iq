@@ -55,7 +55,7 @@ export function supabaseUserToUserAccount(user: User): UserAccount {
   };
 }
 
-export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?: UserAccount; error: Error | null }> {
+export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?: UserAccount; url?: string; error: Error | null }> {
   if (!isSupabaseConfigured()) {
     // Offline development fallback: simulated 1-click login without Supabase credentials
     const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
@@ -74,17 +74,47 @@ export async function signInWithOAuth(provider: OAuthProvider): Promise<{ user?:
   }
 
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const redirectOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectOrigin,
       },
     });
-    return { error: error ? new Error(error.message) : null };
+
+    if (error) {
+      return { error: new Error(error.message) };
+    }
+
+    if (data?.url && typeof window !== 'undefined') {
+      window.location.href = data.url;
+      return { url: data.url, error: null };
+    }
+
+    return { error: null };
   } catch (err: any) {
-    return { error: err };
+    return { error: err instanceof Error ? err : new Error(String(err)) };
   }
 }
+
+/**
+ * 1-click instant login helper for local development environments.
+ * Sets the active user to Devon Byrd (admin) without requiring external OAuth roundtrips.
+ */
+export function devQuickLogin(): UserAccount {
+  const localAdmin: UserAccount = {
+    id: 'admin_owner_01',
+    name: 'Devon Byrd (Local Admin)',
+    email: 'dbyrd1568@gmail.com',
+    avatarColor: '#3b82f6',
+    provider: 'google',
+    createdAt: new Date().toISOString(),
+    lastLoginAt: new Date().toISOString(),
+  };
+  setActiveUser(localAdmin);
+  return localAdmin;
+}
+
 
 export async function signInWithMagicLink(email: string): Promise<{ user?: UserAccount; error: Error | null }> {
   if (!isSupabaseConfigured()) {

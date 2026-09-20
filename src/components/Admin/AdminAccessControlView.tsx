@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Key,
-  ShieldAlert,
   ShieldOff,
 } from 'lucide-react';
 import { AdminAccessRecord } from '../../types/admin';
@@ -32,8 +31,17 @@ export const AdminAccessControlView: React.FC<AdminAccessControlViewProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanInput = adminInput.trim();
+    const cleanInput = adminInput.trim().toLowerCase();
     if (!cleanInput) return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanInput)) {
+      setFeedback({
+        type: 'error',
+        message: 'Please enter a valid email address (e.g. drafter@gmail.com).',
+      });
+      return;
+    }
 
     if (actionType === 'revoke') {
       if (isPermanentSuperAdmin(cleanInput)) {
@@ -135,8 +143,8 @@ export const AdminAccessControlView: React.FC<AdminAccessControlViewProps> = ({
           </h2>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-          Manage authorized administrator accounts. Only verified administrators can view system analytics,
-          cross-user evaluations, and manage access permissions. All requests are verified against PostgreSQL Row-Level Security.
+          Manage authorized administrator accounts. Only verified administrator emails can access management tools,
+          system analytics, and community evaluations.
         </p>
       </div>
 
@@ -192,8 +200,8 @@ export const AdminAccessControlView: React.FC<AdminAccessControlViewProps> = ({
               type="text"
               placeholder={
                 actionType === 'grant'
-                  ? 'Enter user email (e.g. drafter@gmail.com) or Supabase UUID...'
-                  : 'Enter admin email or UUID to revoke...'
+                  ? 'Enter user email (e.g. drafter@gmail.com)...'
+                  : 'Enter admin email to revoke...'
               }
               value={adminInput}
               onChange={(e) => setAdminInput(e.target.value)}
@@ -253,9 +261,8 @@ export const AdminAccessControlView: React.FC<AdminAccessControlViewProps> = ({
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  <th className="py-3 px-4 sm:px-6">Admin Contact</th>
+                  <th className="py-3 px-4 sm:px-6">Admin Email</th>
                   <th className="py-3 px-4">Role</th>
-                  <th className="py-3 px-4">User ID</th>
                   <th className="py-3 px-4">Date Granted</th>
                   <th className="py-3 px-4 sm:px-6 text-right">Action</th>
                 </tr>
@@ -281,10 +288,6 @@ export const AdminAccessControlView: React.FC<AdminAccessControlViewProps> = ({
                         >
                           {admin.role}
                         </span>
-                      </td>
-
-                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
-                        {admin.userId ? `${admin.userId.slice(0, 8)}...` : 'Pre-provisioned'}
                       </td>
 
                       <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">
@@ -318,17 +321,14 @@ export const AdminAccessControlView: React.FC<AdminAccessControlViewProps> = ({
         </div>
       </div>
 
-      {/* Security Architecture Reference Note */}
+      {/* Security & Access Policy Reference Note */}
       <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
         <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200">
-          <ShieldAlert className="w-4 h-4 text-violet-600 dark:text-cyan-300" />
-          <span>Security Architecture & RLS Enforcement</span>
+          <ShieldCheck className="w-4 h-4 text-violet-600 dark:text-cyan-300" />
+          <span>Access Control & Security</span>
         </div>
         <p>
-          MTG Limited IQ enforces security at the PostgreSQL database level using Supabase Row-Level Security (RLS).
-          The <code className="font-mono text-slate-800 dark:text-slate-200 bg-slate-200/60 dark:bg-slate-900 px-1 py-0.5 rounded">is_admin()</code> function
-          evaluates whether the client caller belongs to <code className="font-mono text-slate-800 dark:text-slate-200 bg-slate-200/60 dark:bg-slate-900 px-1 py-0.5 rounded">app_admins</code>.
-          Non-admins are strictly forbidden from querying cross-user evaluations, activity logs, or quiz statistics.
+          MTG Limited IQ enforces strict role-based access control. Only authorized administrator email accounts can view management tools, system analytics, and community grading insights.
         </p>
       </div>
     </div>

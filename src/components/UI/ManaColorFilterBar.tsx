@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react';
 import { Card, MTGColor } from '../../types/mtg';
+import {
+  isRemovalSpell,
+  isInteractionSpell,
+  isCounterspell,
+  isCombatTrick,
+  isCardDrawSpell,
+} from '../../services/scryfall';
 
 export type ManaFilterColor = 'ALL' | 'W' | 'U' | 'B' | 'R' | 'G' | 'COLORLESS' | 'GOLD' | 'LANDS';
 
@@ -299,45 +306,54 @@ export function cardMatchesColorFilter(c: Card, selectedColors: string[] | strin
   return false;
 }
 
+export interface RoleFilterOption {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export const DEFAULT_ROLE_FILTERS: RoleFilterOption[] = [
+  { id: 'ALL', label: 'All', description: 'All cards in the set' },
+  { id: 'CREATURE', label: 'Creatures', description: 'Creatures and threats on board' },
+  { id: 'REMOVAL', label: 'Removal', description: 'On-board removal: destroy, exile, burn, -N/-N, auras, fight/bite' },
+  { id: 'INTERACTION', label: 'Interaction', description: 'All disruption: Removal + Counters + Discard + Combat Tricks' },
+  { id: 'COUNTER', label: 'Counters', description: 'Stack interaction: counterspells' },
+  { id: 'TRICK', label: 'Tricks', description: 'Combat tricks: instant buffs, pumps, protection' },
+  { id: 'DRAW', label: 'Card Draw', description: 'Card advantage, draw spells, selection, and impulse draw' },
+  { id: 'INSTANT', label: 'Instants', description: 'Instant-speed spells and flash' },
+];
+
 /**
  * Checks if a card matches a single role or card type.
  */
 export function cardMatchesRole(c: Card, roleId: string): boolean {
   if (roleId === 'ALL') return true;
   const typeLine = (c.type_line || '').toLowerCase();
-  const oracleText = (c.oracle_text || '').toLowerCase();
 
   switch (roleId) {
     case 'CREATURE':
       return Boolean(typeLine.includes('creature') || c.is_creature);
+    case 'REMOVAL':
+      return Boolean(c.is_removal ?? isRemovalSpell(c));
+    case 'INTERACTION':
+      return Boolean(c.is_interaction ?? isInteractionSpell(c));
+    case 'COUNTER':
+    case 'COUNTERSPELL':
+      return Boolean(c.is_counterspell ?? isCounterspell(c));
+    case 'TRICK':
+    case 'COMBAT_TRICK':
+      return Boolean(c.is_combat_trick ?? isCombatTrick(c));
+    case 'DRAW':
+    case 'CARD_DRAW':
+      return Boolean(c.is_card_draw ?? isCardDrawSpell(c));
     case 'INSTANT':
-      return Boolean(typeLine.includes('instant') || oracleText.includes('flash') || c.is_instant_speed);
+      return Boolean(typeLine.includes('instant') || c.is_instant_speed);
     case 'SORCERY':
       return Boolean(typeLine.includes('sorcery'));
     case 'ARTIFACT':
       return Boolean(typeLine.includes('artifact'));
     case 'ENCHANTMENT':
       return Boolean(typeLine.includes('enchantment'));
-    case 'TRICK':
-      return Boolean(
-        c.is_combat_trick ||
-          (typeLine.includes('instant') &&
-            !c.is_removal &&
-            (oracleText.includes('+') ||
-              oracleText.includes('target creature gets') ||
-              oracleText.includes('hexproof') ||
-              oracleText.includes('indestructible')))
-      );
-    case 'REMOVAL':
-      return Boolean(
-        c.is_removal ||
-          oracleText.includes('destroy') ||
-          oracleText.includes('exile') ||
-          oracleText.includes('deal') ||
-          oracleText.includes('damage') ||
-          oracleText.includes('-x/-x') ||
-          oracleText.includes('counter target')
-      );
     case 'LAND':
       return Boolean(typeLine.includes('land') || c.is_land);
     default:

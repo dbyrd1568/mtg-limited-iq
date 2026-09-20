@@ -76,9 +76,9 @@ export async function checkIsAdmin(user: UserAccount | null): Promise<boolean> {
     }
   }
 
-  // Fallback for local offline mock testing ONLY when user is simulated dev user
+  // Fallback for local offline mock testing when user is simulated dev user or permanent super admin
   if (isDevEnvironment() && !isCloudUUID(user.id)) {
-    if (user.id === 'user_default') {
+    if (user.id === 'user_default' || isPermanentSuperAdmin(user.email) || isPermanentSuperAdmin(user.id)) {
       return true;
     }
   }
@@ -176,17 +176,20 @@ export async function fetchAdminList(): Promise<AdminAccessRecord[]> {
 }
 
 export async function grantAdminAccess(
-  emailOrUserId: string,
+  emailAddress: string,
   grantedByUserId?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const clean = emailOrUserId.trim().toLowerCase();
-  if (!clean) return { success: false, error: 'Email or User ID cannot be empty.' };
+  const clean = emailAddress.trim().toLowerCase();
+  if (!clean) return { success: false, error: 'Email address cannot be empty.' };
 
-  const isEmail = clean.includes('@');
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(clean)) {
+    return { success: false, error: 'Please enter a valid email address (e.g. drafter@gmail.com).' };
+  }
+
   const record: AdminAccessRecord = {
     id: `adm_${Date.now()}`,
-    userId: isEmail ? undefined : clean,
-    email: isEmail ? clean : `${clean}@admin.local`,
+    email: clean,
     role: 'admin',
     grantedBy: grantedByUserId,
     createdAt: new Date().toISOString(),
@@ -199,19 +202,18 @@ export async function grantAdminAccess(
   }
   localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify([...current, record]));
 
-  // 2. Insert to Supabase if connected and active session
+  // 2. Insert to database if connected and active session
   if (isSupabaseConfigured()) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { error } = await supabase.from('app_admins').insert({
-          user_id: isEmail ? null : clean,
           email: clean,
           role: 'admin',
           granted_by: grantedByUserId || null,
         });
         if (error) {
-          console.warn('Could not sync admin grant to Supabase:', error.message);
+          console.warn('Could not sync admin grant:', error.message);
         }
       }
     } catch (err: any) {
@@ -226,7 +228,7 @@ export async function revokeAdminAccess(
   emailOrAdminId: string
 ): Promise<{ success: boolean; error?: string }> {
   const clean = emailOrAdminId.trim().toLowerCase();
-  if (!clean) return { success: false, error: 'Email or User ID cannot be empty.' };
+  if (!clean) return { success: false, error: 'Email cannot be empty.' };
 
   // Permanent super admins cannot be revoked
   if (isPermanentSuperAdmin(clean)) {

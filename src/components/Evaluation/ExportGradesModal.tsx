@@ -802,7 +802,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                     Your Data Stays With You
                   </div>
                   <p>
-                    MTG Limited IQ is built offline-first. Your ratings, notes, quiz streaks, and tier rankings are stored locally in your browser and synced securely to Supabase when logged in. You can download and keep this complete JSON archive at any time.
+                    MTG Limited IQ is built offline-first. Your ratings, notes, quiz streaks, and tier rankings are stored locally in your browser and synced securely to your cloud account when logged in. You can download and keep this complete JSON archive at any time.
                   </p>
                 </div>
               </div>

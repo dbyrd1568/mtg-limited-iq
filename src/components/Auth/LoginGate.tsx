@@ -5,8 +5,10 @@ import {
   signInWithMagicLink,
   signInWithPassword,
   signUpWithPassword,
+  devQuickLogin,
   OAuthProvider,
 } from '../../services/auth';
+import { isLocalhost } from '../../services/environment';
 import { UserAccount } from '../../types/mtg';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../../services/theme';
 import { LegalModal, LegalDocType } from '../Legal/LegalModal';
@@ -49,7 +51,22 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
     } else if (path === '/terms' || path.startsWith('/terms')) {
       setLegalDoc('terms');
     }
+
+    // Detect OAuth error query parameters from Supabase or Google redirect
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get('error_description') || params.get('error');
+      if (err) {
+        setStatusMessage({ type: 'error', text: decodeURIComponent(err.replace(/\+/g, ' ')) });
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('error');
+        clean.searchParams.delete('error_description');
+        clean.searchParams.delete('error_code');
+        window.history.replaceState(null, '', clean.toString());
+      }
+    }
   }, []);
+
 
   const handleOpenLegal = (doc: LegalDocType) => {
     setLegalDoc(doc);
@@ -82,12 +99,17 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
       }
       if (user) {
         onAuthenticated(user);
+        setIsLoading(false);
+      } else {
+        // Redirect is occurring; reset loading if browser hasn't navigated after 5s
+        setTimeout(() => setIsLoading(false), 5000);
       }
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err?.message || 'Authentication failed' });
       setIsLoading(false);
     }
   };
+
 
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -360,8 +382,33 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                     </svg>
                     <span>Continue with Apple</span>
                   </button>
+
+                  {isLocalhost() && (
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                      <div className="text-[11px] font-bold text-violet-600 dark:text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Localhost Developer Access</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const adminUser = devQuickLogin();
+                          setStatusMessage({ type: 'success', text: `Signed in as ${adminUser.name}!` });
+                          onAuthenticated(adminUser);
+                        }}
+                        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer border border-violet-400/30"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>⚡ Dev Quick Login (Devon Byrd)</span>
+                      </button>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+                        Bypasses external OAuth redirects on localhost with full admin rights.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
+
 
               {/* TAB 2: Magic Link */}
               {activeTab === 'magic_link' && (

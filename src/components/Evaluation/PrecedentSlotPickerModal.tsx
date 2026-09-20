@@ -61,10 +61,11 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
   };
 
   const repImageUri =
+    activeCandidate.image_uris?.png ||
     activeCandidate.image_uris?.normal ||
     activeCandidate.image_uris?.large ||
     activeCandidate.image_uris?.small ||
-    (activeCandidate.card_faces && activeCandidate.card_faces[0]?.image_uris?.normal) ||
+    (activeCandidate.card_faces && (activeCandidate.card_faces[0]?.image_uris?.png || activeCandidate.card_faces[0]?.image_uris?.normal)) ||
     (activeCandidate.card_faces && activeCandidate.card_faces[0]?.image_uris?.small);
 
   return (
@@ -166,7 +167,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                   src={repImageUri}
                   alt={activeCandidate.name}
                   className="w-full h-full"
-                  imageClassName="w-full h-full object-cover"
+                  imageClassName="w-full h-full object-contain"
                   loading="eager"
                 />
               </div>
@@ -253,10 +254,11 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                 const isSelected = selectedSlot === slotIdx;
                 const comp = existingMatch?.card;
                 const compImageUri =
+                  comp?.image_uris?.png ||
                   comp?.image_uris?.normal ||
                   comp?.image_uris?.large ||
                   comp?.image_uris?.small ||
-                  (comp?.card_faces && comp?.card_faces[0]?.image_uris?.normal) ||
+                  (comp?.card_faces && (comp?.card_faces[0]?.image_uris?.png || comp?.card_faces[0]?.image_uris?.normal)) ||
                   (comp?.card_faces && comp?.card_faces[0]?.image_uris?.small);
 
                 return (
@@ -303,7 +305,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                             src={compImageUri}
                             alt={comp.name}
                             className="w-full h-full"
-                            imageClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none"
+                            imageClassName="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200 pointer-events-none"
                             loading="eager"
                           />
 

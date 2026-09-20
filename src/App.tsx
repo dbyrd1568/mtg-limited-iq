@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserProfileStats, UserAccount } from './types/mtg';
-import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS } from './services/scryfall';
+import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, UserProfileStats, UserAccount } from './types/mtg';
+import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS, deduplicateCards } from './services/scryfall';
 import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData } from './services/seventeenLands';
-import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
+import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
 
 import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
@@ -33,8 +33,10 @@ import { Brain, Flame } from 'lucide-react';
 import { PlaneswalkerSymbol } from './components/UI/PlaneswalkerSymbol';
 import { SetBadge, SetSymbol } from './components/UI/SetSymbol';
 import { LegalModal, LegalDocType } from './components/Legal/LegalModal';
+import { ContextualTourProvider } from './context/ContextualTourContext';
+import { ContextualTourTooltip } from './components/UI/ContextualTourTooltip';
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
   // Navigation & Modal State (Parsed from URL query parameters)
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
     const params = parseAppUrlParams();
@@ -47,10 +49,10 @@ export const App: React.FC = () => {
   const [isSetSelectorOpen, setIsSetSelectorOpen] = useState<boolean>(() => {
     const params = parseAppUrlParams();
     const savedCode = getLastSelectedSetCode();
-    return !params.set && !savedCode && hasSeenWelcomeTour();
+    return !params.set && !savedCode;
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(() => !hasSeenWelcomeTour());
+  const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(false);
   const [isGlobalExportModalOpen, setIsGlobalExportModalOpen] = useState<boolean>(false);
   const [legalDoc, setLegalDoc] = useState<LegalDocType | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -115,6 +117,8 @@ export const App: React.FC = () => {
   // User Stats & Evaluations State (Scoped to currentUser)
   const [userStats, setUserStats] = useState<UserProfileStats>(() => loadUserStats(currentUser?.id || 'guest'));
   const [userEvaluations, setUserEvaluations] = useState<Record<string, UserCardEvaluation>>(() => loadUserEvaluations(currentUser?.id || 'guest'));
+  const [userArchetypeEvaluations, setUserArchetypeEvaluations] = useState<Record<string, UserArchetypeEvaluation>>(() => loadUserArchetypeEvaluations(currentUser?.id || 'guest'));
+  const [userColorEvaluations, setUserColorEvaluations] = useState<Record<string, UserColorEvaluation>>(() => loadUserColorEvaluations(currentUser?.id || 'guest'));
 
   // Blind Grading Preference (Shared between Grading Hub and Cards Explorer)
   const [isBlindGrading, setIsBlindGrading] = useState<boolean>(() => {
@@ -216,38 +220,48 @@ export const App: React.FC = () => {
       }
     };
 
+    const isOAuthRedirectCallback =
+      typeof window !== 'undefined' &&
+      (window.location.search.includes('code=') ||
+        window.location.hash.includes('access_token=') ||
+        window.location.search.includes('error='));
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         handleUserSession(session.user);
+      } else if (isOAuthRedirectCallback && !window.location.search.includes('error=')) {
+        // Supabase PKCE exchange is in flight; wait for onAuthStateChange('SIGNED_IN')
+        // Safety timeout in case exchange fails so the app does not remain in loading indefinitely
+        setTimeout(() => {
+          setIsAuthInitializing(false);
+        }, 4000);
       } else {
-        if (!isSupabaseConfigured()) {
-          const devUser = getActiveUser();
-          if (devUser) {
-            setCurrentUser(devUser);
-            setIsAuthInitializing(false);
-            return;
-          }
+        const storedUser = getActiveUser();
+        if (storedUser) {
+          setCurrentUser(storedUser);
+          setIsAuthInitializing(false);
+          return;
         }
         clearActiveUser();
         setCurrentUser(null);
         setIsAuthInitializing(false);
       }
     }).catch(() => {
-      if (!isSupabaseConfigured()) {
-        const devUser = getActiveUser();
-        if (devUser) setCurrentUser(devUser);
-      }
+      const storedUser = getActiveUser();
+      if (storedUser) setCurrentUser(storedUser);
       setIsAuthInitializing(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         await handleUserSession(session.user);
       } else if (event === 'SIGNED_OUT') {
         clearActiveUser();
         setCurrentUser(null);
         setUserStats(defaultStats);
         setUserEvaluations({});
+        setUserArchetypeEvaluations({});
+        setUserColorEvaluations({});
       }
     });
 
@@ -255,6 +269,7 @@ export const App: React.FC = () => {
       subscription.unsubscribe();
     };
   }, []);
+
 
   // Initial Data Load (Stats, Evaluations, Sets)
   useEffect(() => {
@@ -264,6 +279,12 @@ export const App: React.FC = () => {
 
     const loadedEvals = loadUserEvaluations(currentUser.id);
     setUserEvaluations(loadedEvals);
+
+    const loadedArchEvals = loadUserArchetypeEvaluations(currentUser.id);
+    setUserArchetypeEvaluations(loadedArchEvals);
+
+    const loadedColorEvals = loadUserColorEvaluations(currentUser.id);
+    setUserColorEvaluations(loadedColorEvals);
 
     fetchAllSets()
       .then((sets) => {
@@ -289,6 +310,8 @@ export const App: React.FC = () => {
     if (newUser) {
       setUserStats(loadUserStats(newUser.id));
       setUserEvaluations(loadUserEvaluations(newUser.id));
+      setUserArchetypeEvaluations(loadUserArchetypeEvaluations(newUser.id));
+      setUserColorEvaluations(loadUserColorEvaluations(newUser.id));
     }
   };
 
@@ -321,9 +344,10 @@ export const App: React.FC = () => {
       },
       (cachedCards) => {
         // Immediately populate cached cards to eliminate blank screen while checking Scryfall
-        setCards(cachedCards);
+        const dedupedCached = deduplicateCards(cachedCards);
+        setCards(dedupedCached);
         // Only dismiss loading state early if the cached cards count already matches or exceeds expected set count
-        if (cachedCards.length >= (set.card_count || 200)) {
+        if (dedupedCached.length >= (set.card_count || 200)) {
           setIsLoadingCards(false);
         }
       }
@@ -335,12 +359,13 @@ export const App: React.FC = () => {
 
     try {
       const [fetchedCards, landsData] = await Promise.all([cardsPromise, landsPromise]);
-      setCards(fetchedCards);
+      const dedupedFetched = deduplicateCards(fetchedCards);
+      setCards(dedupedFetched);
 
-      // Keep currentSet and allSets card_count updated if fresh card catalog count is higher
-      if (fetchedCards && fetchedCards.length > 0 && (set.card_count || 0) < fetchedCards.length) {
-        setCurrentSet((prev) => (prev && prev.code.toUpperCase() === set.code.toUpperCase() ? { ...prev, card_count: fetchedCards.length } : prev));
-        setAllSets((prev) => prev.map((s) => s.code.toUpperCase() === set.code.toUpperCase() ? { ...s, card_count: fetchedCards.length } : s));
+      // Keep currentSet and allSets card_count aligned with the deduplicated card catalog count
+      if (dedupedFetched && dedupedFetched.length > 0) {
+        setCurrentSet((prev) => (prev && prev.code.toUpperCase() === set.code.toUpperCase() ? { ...prev, card_count: dedupedFetched.length } : prev));
+        setAllSets((prev) => prev.map((s) => s.code.toUpperCase() === set.code.toUpperCase() ? { ...s, card_count: dedupedFetched.length } : s));
       }
 
       if (
@@ -492,9 +517,44 @@ export const App: React.FC = () => {
     }, currentUser);
   };
 
+  const handleSaveArchetypeEvaluation = (evaluation: UserArchetypeEvaluation) => {
+    saveUserArchetypeEvaluation(evaluation, currentUser?.id || 'guest');
+    const key = `${evaluation.setCode.toLowerCase()}_${evaluation.archetypeCode.toUpperCase()}`;
+    setUserArchetypeEvaluations((prev) => ({
+      ...prev,
+      [key]: evaluation,
+    }));
+    trackFeature('archetype_grading', {
+      set: evaluation.setCode,
+      archetype: evaluation.archetypeCode,
+      grade: evaluation.userGrade,
+      score: evaluation.userScore,
+      role: evaluation.roleInMetagame,
+    }, currentUser);
+  };
+
+  const handleSaveColorEvaluation = (evaluation: UserColorEvaluation) => {
+    saveUserColorEvaluation(evaluation, currentUser?.id || 'guest');
+    const key = `${evaluation.setCode.toLowerCase()}_${evaluation.color.toUpperCase()}`;
+    setUserColorEvaluations((prev) => ({
+      ...prev,
+      [key]: evaluation,
+    }));
+    trackFeature('color_grading', {
+      set: evaluation.setCode,
+      color: evaluation.color,
+      grade: evaluation.userGrade,
+      score: evaluation.userScore,
+    }, currentUser);
+  };
+
   const handleClearEvaluationsForSet = (setCode: string) => {
     const updated = clearUserEvaluationsForSet(setCode, currentUser?.id || 'guest');
     setUserEvaluations(updated);
+    const updatedArch = clearUserArchetypeEvaluationsForSet(setCode, currentUser?.id || 'guest');
+    setUserArchetypeEvaluations(updatedArch);
+    const updatedCol = clearUserColorEvaluationsForSet(setCode, currentUser?.id || 'guest');
+    setUserColorEvaluations(updatedCol);
   };
 
   const missedCountForCurrentSet = currentSet
@@ -527,6 +587,8 @@ export const App: React.FC = () => {
           setCurrentUser(user);
           setUserStats(loadUserStats(user.id));
           setUserEvaluations(loadUserEvaluations(user.id));
+          setUserArchetypeEvaluations(loadUserArchetypeEvaluations(user.id));
+          setUserColorEvaluations(loadUserColorEvaluations(user.id));
         }}
       />
     );
@@ -742,6 +804,10 @@ export const App: React.FC = () => {
                 currentSet={currentSet}
                 currentUser={currentUser}
                 userEvaluations={userEvaluations}
+                userArchetypeEvaluations={userArchetypeEvaluations}
+                userColorEvaluations={userColorEvaluations}
+                onSaveArchetypeEvaluation={handleSaveArchetypeEvaluation}
+                onSaveColorEvaluation={handleSaveColorEvaluation}
                 seventeenLandsData={seventeenLandsData}
                 isBlindGrading={isBlindGrading}
                 onToggleBlindGrading={handleToggleBlindGrading}
@@ -864,8 +930,20 @@ export const App: React.FC = () => {
           }
         }}
       />
+
+      {/* Contextual Onboarding Tour Tooltip Popover */}
+      <ContextualTourTooltip />
     </div>
   );
 };
 
+export const App: React.FC = () => {
+  return (
+    <ContextualTourProvider>
+      <AppContent />
+    </ContextualTourProvider>
+  );
+};
+
 export default App;
+

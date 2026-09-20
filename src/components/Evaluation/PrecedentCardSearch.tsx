@@ -112,48 +112,68 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const targetCardRef = useRef(targetCard);
+  useEffect(() => {
+    targetCardRef.current = targetCard;
+  }, [targetCard]);
+
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeSearchIdRef = useRef<number>(0);
+
   // Search execution with debouncing
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2) {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
       setResults([]);
       setIsOpen(false);
       setLoading(false);
       return;
     }
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
 
-    setLoading(true);
-    const timer = setTimeout(async () => {
+    debounceTimerRef.current = setTimeout(async () => {
+      const currentSearchId = ++activeSearchIdRef.current;
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      setLoading(true);
+
       try {
-        const scryfallQuery = buildScryfallPrecedentQuery(trimmed, targetCard.set);
+        const currentTarget = targetCardRef.current;
+        const scryfallQuery = buildScryfallPrecedentQuery(trimmed, currentTarget.set);
         const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(scryfallQuery)}&order=released&dir=desc`;
 
         let res = await fetch(url, {
           signal: controller.signal,
           headers: {
-            'User-Agent': 'MTGLimitedIQ/2.0',
             Accept: 'application/json',
           },
         });
 
-        // Fallback: If expanded query didn't match, attempt literal query
-        if (!res.ok && res.status === 404) {
-          const excludeSet = targetCard.set ? ` -s:${targetCard.set.toLowerCase()}` : '';
+        // Fallback: If expanded query didn't match, attempt literal booster query
+        if (!res.ok) {
+          const excludeSet = currentTarget.set ? ` -s:${currentTarget.set.toLowerCase()}` : '';
           const fallbackQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token${excludeSet}`;
           const fallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
           res = await fetch(fallbackUrl, {
             signal: controller.signal,
             headers: {
-              'User-Agent': 'MTGLimitedIQ/2.0',
               Accept: 'application/json',
             },
           });
+        }
+
+        if (currentSearchId !== activeSearchIdRef.current || controller.signal.aborted) {
+          return;
         }
 
         if (res.ok) {
@@ -165,8 +185,8 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
               // Exclude target card itself and NEVER compare a set to itself
               .filter(
                 (c: Card) =>
-                  c.name.toLowerCase() !== targetCard.name.toLowerCase() &&
-                  (!targetCard.set || !c.set || c.set.toLowerCase() !== targetCard.set.toLowerCase())
+                  c.name.toLowerCase() !== currentTarget.name.toLowerCase() &&
+                  (!currentTarget.set || !c.set || c.set.toLowerCase() !== currentTarget.set.toLowerCase())
               );
 
             // Prioritize cards with 17lands data and unique card names
@@ -215,19 +235,27 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           console.warn('Scryfall card search failed:', err);
-          setResults([]);
-          setIsOpen(false);
+          if (currentSearchId === activeSearchIdRef.current) {
+            setResults([]);
+            setIsOpen(false);
+          }
         }
       } finally {
-        setLoading(false);
+        if (currentSearchId === activeSearchIdRef.current) {
+          setLoading(false);
+        }
       }
     }, 280);
 
     return () => {
-      clearTimeout(timer);
-      controller.abort();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-  }, [query, targetCard]);
+  }, [query, targetCard?.id, targetCard?.name, targetCard?.set]);
 
   const handleSelect = useCallback(
     (card: Card) => {
@@ -395,7 +423,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
                     <img
                       src={imgUri}
                       alt={card.name}
-                      className="w-8 h-11 rounded object-cover shadow-2xs shrink-0 border border-slate-200 dark:border-slate-700"
+                      className="w-8 h-11 rounded object-contain shadow-2xs shrink-0 border border-slate-200 dark:border-slate-700 bg-slate-900"
                       loading="lazy"
                       onError={(e) => {
                         const target = e.currentTarget;

@@ -64,7 +64,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12 animate-in fade-in duration-200">
+    <div className="space-y-6 w-full pb-12 animate-in fade-in duration-200">
       {/* 1. Header Banner */}
       <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -82,7 +82,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
               How Card Evaluation & 17Lands Analytics Work
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed">
-              Every formula, metric translation, and statistical model used in this application—from the 3-Source Triangulation Framework (Me vs LSV vs 17L) to 17Lands Game-In-Hand Win Rates and 2-color archetype power rankings.
+              Every formula, metric translation, and statistical model used in this application—from the 3-Source Triangulation Framework (Me vs LSV vs 17L) to 17Lands Game-In-Hand Win Rates and personal calibration accuracy scores.
             </p>
           </div>
         </div>
@@ -819,38 +819,6 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
                 29% – 38%: Baseline / Developing
               </div>
             </div>
-          </div>
-
-          {/* Formula: Archetype Power Score */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
-            <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm font-heading">
-              2-Color Archetype Power Score (0.0 to 5.0)
-            </h4>
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#090e24] font-mono text-[11px] text-slate-900 dark:text-white text-center font-bold border border-slate-200 dark:border-slate-800">
-              Power Score = 30% &times; (Gold Signposts) + 35% &times; (Color 1 Depth) + 35% &times; (Color 2 Depth)
-            </div>
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Synthesizes your individual card ratings into a predicted metagame tier list:
-            </p>
-            <div className="space-y-1 font-mono text-[11px] text-slate-600 dark:text-slate-300">
-              • <strong>Tier S:</strong> Score &ge; 4.0 (Dominant color pair)<br />
-              • <strong>Tier A:</strong> 3.6 &le; Score &lt; 4.0 (Top tier archetype)<br />
-              • <strong>Tier B:</strong> 3.2 &le; Score &lt; 3.6 (Solid playable pair)<br />
-              • <strong>Tier C / D:</strong> Score &lt; 3.2 (Struggling synergy pair)
-            </div>
-          </div>
-
-          {/* Formula: Meta Calibration Alignment Score */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
-            <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm font-heading">
-              Meta Calibration Alignment Score (%)
-            </h4>
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#090e24] font-mono text-[11px] text-slate-900 dark:text-white text-center font-bold border border-slate-200 dark:border-slate-800">
-              Alignment = max(0, 100 - &sum; |Predicted Rank - 17Lands Rank| &times; 3.5)
-            </div>
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-              Measures how accurately your predicted top color pairs and 10 guild rankings matched 17Lands Arena win rates.
-            </p>
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ import {
   fetch17LandsSetData,
   getPreloaded17LandsData,
 } from '../../services/seventeenLands';
-import { fetchCardsForSet, POPULAR_LIMITED_SETS } from '../../services/scryfall';
+import { fetchCardsForSet, POPULAR_LIMITED_SETS, deduplicateCards } from '../../services/scryfall';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetBadge } from '../UI/SetSymbol';
 import {
@@ -218,7 +218,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
     setSelectedSetCode(newSetCode);
     setHoveredPoint(null);
     if (newSetCode.toUpperCase() === currentSetCode.toUpperCase()) {
-      setActiveCards(propCards);
+      setActiveCards(deduplicateCards(propCards));
       setActive17LData(propSeventeenLandsData || null);
       return;
     }
@@ -229,7 +229,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
         fetchCardsForSet(newSetCode),
         fetch17LandsSetData(newSetCode),
       ]);
-      setActiveCards(fetchedCards);
+      setActiveCards(deduplicateCards(fetchedCards));
       setActive17LData(landsData || getPreloaded17LandsData(newSetCode));
     } catch (e) {
       console.error(`Failed to load data for set ${newSetCode}:`, e);

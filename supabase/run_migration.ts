@@ -6,7 +6,17 @@ import pg from 'pg';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const sqlFilePath = path.join(__dirname, 'admin_schema.sql');
+const targetArg = process.argv[2];
+const sqlFilePath = targetArg 
+  ? (path.isAbsolute(targetArg) ? targetArg : path.join(process.cwd(), targetArg))
+  : path.join(__dirname, 'migrations', '20260918000000_create_17lands_cache.sql');
+
+if (!fs.existsSync(sqlFilePath)) {
+  console.error(`Migration file not found at: ${sqlFilePath}`);
+  process.exit(1);
+}
+
+console.log(`Loading migration SQL from: ${sqlFilePath}`);
 const sql = fs.readFileSync(sqlFilePath, 'utf8');
 
 const PROJECT_REF = 'irxgoelllogcyoiumxup';
@@ -27,11 +37,12 @@ async function runWithPg(connectionString: string) {
     await client.query(sql);
     console.log('Migration executed successfully!');
 
-    const res = await client.query(`
-      SELECT user_id, email, role, granted_by, created_at 
-      FROM public.app_admins;
-    `);
-    console.log('Current app_admins:', res.rows);
+    try {
+      const res = await client.query(`
+        SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+      `);
+      console.log('Public tables:', res.rows.map(r => r.table_name).join(', '));
+    } catch {}
   } finally {
     await client.end();
   }

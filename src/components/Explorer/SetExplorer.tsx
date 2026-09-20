@@ -12,13 +12,14 @@ import { getLsvRatingForCard } from '../../services/lsvRatings';
 import { GradeComparisonCard } from '../UI/GradeComparisonCard';
 import { PlaneswalkerSymbol } from '../UI/PlaneswalkerSymbol';
 import { SetBadge, SetSymbol } from '../UI/SetSymbol';
-import { ManaColorFilterBar, cardMatchesColorFilter, cardMatchesRoleFilter } from '../UI/ManaColorFilterBar';
+import { ManaColorFilterBar, cardMatchesColorFilter, cardMatchesRoleFilter, DEFAULT_ROLE_FILTERS } from '../UI/ManaColorFilterBar';
 import { CardSearchBar } from '../Search/CardSearchBar';
 import { cardMatchesQuery } from '../../services/cardSearchParser';
 import { getWOTCArchetypesForSet, getSignpostsForArchetype, WOTCArchetype } from '../../services/wotcArchetypes';
 import { getBlindGradingForSet, setBlindGradingForSet } from '../../services/storage';
 import { SetInfo, UserAccount } from '../../types/mtg';
 import { trackFeature, KNOWN_FEATURES } from '../../services/telemetry';
+import { deduplicateCards } from '../../services/scryfall';
 
 interface SetExplorerProps {
   cards: Card[];
@@ -46,7 +47,7 @@ interface SetExplorerProps {
 }
 
 export const SetExplorer: React.FC<SetExplorerProps> = ({
-  cards,
+  cards: rawCards,
   currentSetCode,
   currentSetName,
   currentSet,
@@ -68,6 +69,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   onSelectedRaritiesChange,
   onSelectedRolesChange,
 }) => {
+  const cards = useMemo(() => deduplicateCards(rawCards), [rawCards]);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [activeExplorerTab, setActiveExplorerTab] = useState<'cards' | 'archetypes'>('cards');
   const [searchQuery, setSearchQuery] = useState<string>(propSearchQuery ?? '');
@@ -346,6 +348,22 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
     return 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/40 hover:bg-rose-200 dark:hover:bg-rose-500/30 font-bold';
   };
 
+  const isFilteredActive = Boolean(
+    (!selectedColors.includes('ALL') && selectedColors.length > 0) ||
+    (!selectedRarities.includes('ALL') && selectedRarities.length > 0) ||
+    (!selectedRoles.includes('ALL') && selectedRoles.length > 0) ||
+    filterRatedStatus !== 'ALL' ||
+    searchQuery.trim() !== ''
+  );
+
+  const handleResetFilters = () => {
+    handleSelectedColors(['ALL']);
+    handleSelectedRarities(['ALL']);
+    handleSelectedRoles(['ALL']);
+    setFilterRatedStatus('ALL');
+    handleSearchQuery('');
+  };
+
   return (
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-6 animate-in fade-in duration-200">
       {/* Header Banner with Sub-Tabs & Set Overview */}
@@ -373,6 +391,18 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
         {/* Sub-Tabs & Export */}
         <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+          {onClearEvaluationsForSet && ratedCountInSet > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsClearModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title={`Clear all your grades for ${currentSetCode.toUpperCase()}`}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+              <span>Clear ({ratedCountInSet})</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
@@ -410,292 +440,241 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
       {activeExplorerTab === 'cards' ? (
         <>
-          {/* Filter & Search Bar */}
-      <div className="p-3 sm:p-3.5 bg-white dark:bg-[#090e24] rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-2.5">
-        <div className="flex flex-col md:flex-row md:items-center gap-2.5">
-          {/* Card Search Bar (Scryfall & Arena-style) */}
-          <div className="flex-1">
-            <CardSearchBar
-              query={searchQuery}
-              onChangeQuery={handleSearchQuery}
-              currentSetCode={currentSetCode}
-              currentSetName={currentSetName}
-              matchCount={filteredAndSortedCards.length}
-              totalCount={cards.length}
-            />
-          </div>
+          {/* Streamlined 2-Row Filter Toolbar */}
+          <div className="p-3 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
+            {/* Row 1: Search, Sort, Status, Benchmarks, Blind Toggle */}
+            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-2.5">
+              {/* Card Search Bar */}
+              <div className="flex-1 max-w-xl">
+                <CardSearchBar
+                  query={searchQuery}
+                  onChangeQuery={handleSearchQuery}
+                  currentSetCode={currentSetCode}
+                  currentSetName={currentSetName}
+                  matchCount={filteredAndSortedCards.length}
+                  totalCount={cards.length}
+                  placeholder="Search cards (e.g. flying, t:creature, c<=rg)..."
+                />
+              </div>
 
-          {/* Sort By Dropdown */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-              Sort:
-            </span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-mono cursor-pointer"
-            >
-              <option value="number">Collector # (001 → 300)</option>
-              <option value="name">Card Name (A → Z)</option>
-              <option value="cmc">Mana Value (0 → 10+)</option>
-              {seventeenLandsData && <option value="winrate">17Lands Win Rate (High → Low)</option>}
-            </select>
-          </div>
-        </div>
+              {/* Right Controls: Sort, Status, Benchmarks, Mode Toggle */}
+              <div className="flex items-center flex-wrap gap-2.5 shrink-0">
+                {/* Sort By Dropdown */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                    Sort:
+                  </span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="h-9 px-2.5 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
+                  >
+                    <option value="number">Collector # (001 → 300)</option>
+                    <option value="name">Card Name (A → Z)</option>
+                    <option value="cmc">Mana Value (0 → 10+)</option>
+                    {seventeenLandsData && <option value="winrate">17Lands Win Rate (High → Low)</option>}
+                  </select>
+                </div>
 
-        {/* Filters: Colors, Rarities, Status & Roles */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {/* Mana Color Filter Bar with Official Arena Glow */}
-          <ManaColorFilterBar selectedColors={selectedColors} onSelectColors={handleSelectedColors} />
+                {/* Status Filter Pills */}
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                  {[
+                    { id: 'ALL', label: 'All' },
+                    { id: 'UNRATED', label: 'Ungraded' },
+                    { id: 'RATED', label: 'Graded' },
+                  ].map((st) => (
+                    <button
+                      key={st.id}
+                      onClick={() => setFilterRatedStatus(st.id as any)}
+                      className={`h-7 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center ${
+                        filterRatedStatus === st.id
+                          ? 'bg-violet-600 text-white shadow-xs font-bold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
 
-          {/* Active Archetype Filter Pill */}
-          {(() => {
-            const isArchetype =
-              selectedColors.some((s) => s.startsWith('GOLD_')) ||
-              (selectedColors.length === 2 && selectedColors.every((c) => ['W', 'U', 'B', 'R', 'G'].includes(c)));
-            if (!isArchetype) return null;
-            const label = selectedColors.some((s) => s.startsWith('GOLD_'))
-              ? `Gold ${selectedColors.find((s) => s.startsWith('GOLD_'))!.replace('GOLD_', '')}`
-              : selectedColors.join('');
-            return (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-violet-100 dark:bg-violet-950/70 border border-violet-300 dark:border-violet-700/60 text-violet-800 dark:text-violet-200 shadow-xs">
-                <span>Archetype: {label}</span>
+                {/* Rating Source Toggle Controls (LSV, 17L) */}
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden lg:inline">
+                    Benchmarks:
+                  </span>
+
+                  {/* LSV (Togglable) */}
+                  <button
+                    type="button"
+                    onClick={handleToggleLsv}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      showLsv
+                        ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-400/50 shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
+                    }`}
+                    title="Toggle LSV (Limited Resources / Expert Pre-release) rating"
+                  >
+                    {showLsv && <Check className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
+                    <span>LSV</span>
+                  </button>
+
+                  {/* 17L (Togglable) */}
+                  <button
+                    type="button"
+                    onClick={handleToggle17L}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      show17L
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-400/50 shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
+                    }`}
+                    title="Toggle 17Lands draft telemetry"
+                  >
+                    {show17L && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+                    <span>17Lands</span>
+                  </button>
+                </div>
+
+                {/* Grading Mode / Compare Mode Toggle */}
+                {seventeenLandsData && (
+                  <button
+                    type="button"
+                    onClick={handleToggleBlindGrading}
+                    className={`h-9 px-2.5 rounded-xl text-xs font-semibold transition-all border flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
+                      effectiveIsBlind
+                        ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40'
+                        : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60'
+                    }`}
+                    title={
+                      effectiveIsBlind
+                        ? 'Grading Mode: Benchmarks hidden. Click to switch to Compare Mode'
+                        : 'Compare Mode: 17Lands data visible. Click to switch to Grading Mode'
+                    }
+                  >
+                    {effectiveIsBlind ? (
+                      <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    )}
+                    <span>{effectiveIsBlind ? 'Blind' : 'Compare'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: Colors, Rarities, Tactical Roles, and Inline Reset */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+              {/* Mana Color Filter Bar */}
+              <ManaColorFilterBar selectedColors={selectedColors} onSelectColors={handleSelectedColors} />
+
+              {/* Active Archetype Filter Pill */}
+              {(() => {
+                const isArchetype =
+                  selectedColors.some((s) => s.startsWith('GOLD_')) ||
+                  (selectedColors.length === 2 && selectedColors.every((c) => ['W', 'U', 'B', 'R', 'G'].includes(c)));
+                if (!isArchetype) return null;
+                const label = selectedColors.some((s) => s.startsWith('GOLD_'))
+                  ? `Gold ${selectedColors.find((s) => s.startsWith('GOLD_'))!.replace('GOLD_', '')}`
+                  : selectedColors.join('');
+                return (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-violet-100 dark:bg-violet-950/70 border border-violet-300 dark:border-violet-700/60 text-violet-800 dark:text-violet-200 shadow-xs">
+                    <span>Archetype: {label}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectedColors(["ALL"])}
+                      className="p-0.5 rounded-md hover:bg-violet-200 dark:hover:bg-violet-800 text-violet-600 dark:text-violet-300 cursor-pointer"
+                      title="Clear Archetype Filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Rarity Filter Pills */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                {['ALL', 'common', 'uncommon', 'rare', 'mythic'].map((rarity) => {
+                  const isSelected = (rarity === 'ALL' && (selectedRarities.includes('ALL') || selectedRarities.length === 0)) ||
+                    (rarity !== 'ALL' && selectedRarities.includes(rarity));
+                  return (
+                    <button
+                      key={rarity}
+                      onClick={() => {
+                        if (rarity === 'ALL') {
+                          handleSelectedRarities(['ALL']);
+                          return;
+                        }
+                        const current = selectedRarities.filter((r) => r !== 'ALL');
+                        if (current.includes(rarity)) {
+                          const next = current.filter((r) => r !== rarity);
+                          handleSelectedRarities(next.length === 0 ? ['ALL'] : next);
+                        } else {
+                          handleSelectedRarities([...current, rarity]);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-violet-600 text-white shadow-xs font-bold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      {rarity === 'ALL' ? 'All' : rarity}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tactical Roles */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
+                {DEFAULT_ROLE_FILTERS.map((role) => {
+                  const isSelected = (role.id === 'ALL' && (selectedRoles.includes('ALL') || selectedRoles.length === 0)) ||
+                    (role.id !== 'ALL' && selectedRoles.includes(role.id));
+                  return (
+                    <button
+                      key={role.id}
+                      onClick={() => {
+                        if (role.id === 'ALL') { handleSelectedRoles(['ALL']); return; }
+                        const current = selectedRoles.filter(r => r !== 'ALL');
+                        if (current.includes(role.id)) {
+                          const next = current.filter(r => r !== role.id);
+                          handleSelectedRoles(next.length === 0 ? ['ALL'] : next);
+                        } else {
+                          handleSelectedRoles([...current, role.id]);
+                        }
+                      }}
+                      title={role.description}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      {role.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Inline Reset Button */}
+              {isFilteredActive && (
                 <button
                   type="button"
-                  onClick={() => handleSelectedColors(["ALL"])}
-                  className="p-0.5 rounded-md hover:bg-violet-200 dark:hover:bg-violet-800 text-violet-600 dark:text-violet-300 cursor-pointer"
-                  title="Clear Archetype Filter"
+                  onClick={handleResetFilters}
+                  className="px-2.5 py-1 text-xs font-mono text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors flex items-center gap-1 cursor-pointer font-semibold border border-transparent hover:border-rose-200 dark:hover:border-rose-900/50"
+                  title="Clear all search and category filters"
                 >
                   <X className="w-3.5 h-3.5" />
+                  <span>Reset</span>
                 </button>
-              </div>
-            );
-          })()}
-
-          {/* Rarity Pills (Multi-Select) */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
-            {['ALL', 'common', 'uncommon', 'rare', 'mythic'].map((rarity) => {
-              const isSelected = (rarity === 'ALL' && (selectedRarities.includes('ALL') || selectedRarities.length === 0)) ||
-                (rarity !== 'ALL' && selectedRarities.includes(rarity));
-              return (
-                <button
-                  key={rarity}
-                  onClick={() => {
-                    if (rarity === 'ALL') {
-                      handleSelectedRarities(['ALL']);
-                      return;
-                    }
-                    const current = selectedRarities.filter((r) => r !== 'ALL');
-                    if (current.includes(rarity)) {
-                      const next = current.filter((r) => r !== rarity);
-                      handleSelectedRarities(next.length === 0 ? ['ALL'] : next);
-                    } else {
-                      handleSelectedRarities([...current, rarity]);
-                    }
-                  }}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold capitalize transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-violet-600 text-white shadow-xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  {rarity === 'ALL' ? 'All' : rarity}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Status Filter Pills */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
-            {[
-              { id: 'ALL', label: 'All' },
-              { id: 'UNRATED', label: 'Ungraded' },
-              { id: 'RATED', label: 'Graded' },
-            ].map((st) => (
-              <button
-                key={st.id}
-                onClick={() => setFilterRatedStatus(st.id as any)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  filterRatedStatus === st.id
-                    ? 'bg-violet-600 text-white shadow-xs font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                {st.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Rating Source Toggle Controls (Me, LSV, 17L) */}
-          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
-            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1 hidden md:inline">
-              Sources:
-            </span>
-
-            {/* 1. Me (Always Active / Locked) */}
-            <button
-              type="button"
-              disabled
-              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-600 text-white shadow-xs border border-violet-400/40 flex items-center gap-1 cursor-default"
-              title="Your personal grade (Always active)"
-            >
-              <Check className="w-3 h-3 text-white" />
-              <span>Me</span>
-            </button>
-
-            {/* 2. LSV (Togglable) */}
-            <button
-              type="button"
-              onClick={handleToggleLsv}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                showLsv
-                  ? 'bg-amber-500 text-slate-950 shadow-xs border border-amber-400'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
-              }`}
-              title="Toggle LSV (Limited Resources / Expert Pre-release) rating"
-            >
-              {showLsv && <Check className="w-3 h-3 text-slate-950" />}
-              <span>LSV</span>
-            </button>
-
-            {/* 3. 17L (Togglable) */}
-            <button
-              type="button"
-              onClick={handleToggle17L}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                show17L
-                  ? 'bg-emerald-600 text-white shadow-xs border border-emerald-400'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
-              }`}
-              title="Toggle 17Lands draft data"
-            >
-              {show17L && <Check className="w-3 h-3 text-white" />}
-              <span>17L</span>
-            </button>
-          </div>
-
-          {/* Grading Mode / Compare Mode Toggle (mimics state of Grade tab) */}
-          {seventeenLandsData ? (
-            <button
-              type="button"
-              onClick={handleToggleBlindGrading}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center justify-center gap-1.5 cursor-pointer min-w-[112px] shrink-0 whitespace-nowrap ${
-                effectiveIsBlind
-                  ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60'
-              }`}
-              title={
-                effectiveIsBlind
-                  ? 'Grading Mode: Benchmarks hidden. Click to switch to Compare Mode'
-                  : 'Compare Mode: 17Lands data visible. Click to switch to Grading Mode'
-              }
-            >
-              {effectiveIsBlind ? (
-                <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              ) : (
-                <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               )}
-              <span>{effectiveIsBlind ? 'Grading Mode' : 'Compare Mode'}</span>
-            </button>
-          ) : (
-            <div
-              className="px-2.5 py-1 rounded-xl text-[11px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-800/80 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 shrink-0 flex items-center gap-1"
-              title="17Lands benchmarks are available ~2 weeks after release"
-            >
-              <EyeOff className="w-3 h-3 text-amber-500 shrink-0" />
-              <span>Grading Mode</span>
+
+              {/* Card Count Display */}
+              <div className="px-2 py-1 text-xs font-mono text-slate-500 dark:text-slate-400 flex items-center whitespace-nowrap">
+                <span className="font-bold text-slate-800 dark:text-slate-200">{filteredAndSortedCards.length}</span>
+                <span className="text-slate-400 dark:text-slate-500 font-normal">/{cards.length}</span>
+                <span className="ml-1 text-slate-500 dark:text-slate-400">cards</span>
+              </div>
             </div>
-          )}
-
-          {/* Export & Share Grades Button */}
-          <button
-            type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-violet-700 dark:text-cyan-300 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
-            title="Export full comparison spreadsheet or send grades to 17Lands"
-          >
-            <Share2 className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
-            <span>Export & Share</span>
-          </button>
-
-          {/* Clear Grades Button (if rated cards exist in this set) */}
-          {onClearEvaluationsForSet && ratedCountInSet > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsClearModalOpen(true)}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-              title={`Clear all your grades for ${currentSetCode.toUpperCase()}`}
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-              <span>Clear Grades ({ratedCountInSet})</span>
-            </button>
-          )}
-
-          {/* Tactical Role Filters */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-2xl border border-slate-200 dark:border-slate-800 flex-wrap">
-            {[
-              { id: 'ALL', label: 'All' },
-              { id: 'CREATURE', label: 'Creatures' },
-              { id: 'INSTANT', label: 'Instants' },
-              { id: 'TRICK', label: 'Tricks' },
-              { id: 'REMOVAL', label: 'Removal' },
-            ].map((role) => (
-              <button
-                key={role.id}
-                onClick={() => {
-                  if (role.id === 'ALL') { handleSelectedRoles(['ALL']); return; }
-                  const current = selectedRoles.filter(r => r !== 'ALL');
-                  if (current.includes(role.id)) {
-                    const next = current.filter(r => r !== role.id);
-                    handleSelectedRoles(next.length === 0 ? ['ALL'] : next);
-                  } else {
-                    handleSelectedRoles([...current, role.id]);
-                  }
-                }}
-                className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  (role.id === 'ALL' && (selectedRoles.includes('ALL') || selectedRoles.length === 0)) ||
-                  (role.id !== 'ALL' && selectedRoles.includes(role.id))
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                {role.label}
-              </button>
-            ))}
           </div>
-        </div>
-
-        {/* Persistent Filter Display Counter */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-800/80 text-xs font-mono">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-slate-800 dark:text-slate-200">
-              Displaying <strong className="text-violet-700 dark:text-cyan-300 font-black">{filteredAndSortedCards.length}</strong> of <strong>{cards.length}</strong> cards
-            </span>
-            {(!selectedColors.includes('ALL') || !selectedRarities.includes('ALL') || !selectedRoles.includes('ALL') || filterRatedStatus !== 'ALL' || searchQuery.trim() !== '') && (
-              <span className="text-violet-600 dark:text-cyan-400 font-semibold">
-                (filtered)
-              </span>
-            )}
-          </div>
-
-          {(!selectedColors.includes('ALL') || !selectedRarities.includes('ALL') || !selectedRoles.includes('ALL') || filterRatedStatus !== 'ALL' || searchQuery.trim() !== '') && (
-            <button
-              type="button"
-              onClick={() => {
-                handleSelectedColors(['ALL']);
-                handleSelectedRarities(['ALL']);
-                handleSelectedRoles(['ALL']);
-                setFilterRatedStatus('ALL');
-                handleSearchQuery('');
-              }}
-              className="text-[11px] font-mono text-violet-700 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer font-bold"
-            >
-              <X className="w-3 h-3" />
-              <span>Reset Filters</span>
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Cards Visual Grid */}
       {filteredAndSortedCards.length === 0 ? (
@@ -791,17 +770,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                   </div>
 
                   <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-1.5">
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors truncate">{card.name}</h3>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 font-bold">
-                          #{card.collector_number}
-                        </span>
-                        {card.mana_cost && (
-                          <ManaCostRenderer manaCost={card.mana_cost} size="xs" />
-                        )}
-                      </div>
-                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors truncate">{card.name}</h3>
                     <p className="text-[11px] text-violet-700 dark:text-cyan-300 font-mono">{card.type_line}</p>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
                       {card.oracle_text || 'No oracle text.'}
@@ -894,31 +863,29 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                   </div>
                 </div>
 
-                {/* Find Similar Cards Icon Button */}
-                <div className="flex justify-end -mb-2 z-10">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSimilarCardsModalCard(card);
-                    }}
-                    className="p-1 rounded-md text-slate-400 hover:text-violet-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
-                    title="Find similar cards (Precedent Engine)"
-                  >
-                    <PlayingCardsFan className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
                 {/* Quick Grade Selector Bar */}
                 <div
                   onClick={(e) => e.stopPropagation()}
                   className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5"
                 >
                   <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold">
-                    <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold" title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
+                    <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
-                      <span>Rate Card:</span>
+                      <span>Rate Card</span>
                     </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSimilarCardsModalCard(card);
+                      }}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-[10px] font-mono font-medium"
+                      title="Find similar cards & historical comps (Precedent Engine)"
+                    >
+                      <PlayingCardsFan className="w-3 h-3" />
+                      <span>Comps</span>
+                    </button>
                   </div>
 
                   <div
@@ -927,13 +894,6 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                   >
                     {GRADE_TIERS.map((tier) => {
                       const isSelected = userEval?.userGrade === tier;
-                      let color = 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-[#050818] dark:text-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
-                      if (tier.startsWith('A')) color = 'bg-amber-100 text-amber-950 border-amber-300 font-bold dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30 hover:bg-amber-500 hover:text-white';
-                      if (tier.startsWith('B')) color = 'bg-cyan-100 text-cyan-950 border-cyan-300 font-bold dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-500/30 hover:bg-cyan-500 hover:text-white';
-                      if (tier.startsWith('C')) color = 'bg-slate-100 text-slate-900 border-slate-300 font-bold dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700/50 hover:bg-slate-600 hover:text-white';
-                      if (tier === 'D') color = 'bg-orange-100 text-orange-950 border-orange-300 font-bold dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30 hover:bg-orange-500 hover:text-white';
-                      if (tier === 'F') color = 'bg-rose-100 text-rose-950 border-rose-300 font-bold dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30 hover:bg-rose-500 hover:text-white';
-
                       return (
                         <button
                           key={tier}
@@ -942,10 +902,10 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                             e.stopPropagation();
                             handleQuickGradeInModal(card, tier);
                           }}
-                          className={`py-1 rounded-md text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                          className={`py-1 rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer border ${
                             isSelected
-                              ? 'bg-violet-600 text-white border-violet-400 font-black shadow-xs'
-                              : color
+                              ? 'bg-violet-600 text-white border-violet-500 shadow-xs font-black ring-1 ring-violet-400'
+                              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700'
                           }`}
                         >
                           {tier}
@@ -1200,8 +1160,8 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
       {/* Card Detail Modal (Large, Immersive Card Inspection with Direct Top Grade Action & 17Lands Comparison) */}
       {selectedCardForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-[96vw] max-w-5xl h-[88vh] min-h-[580px] max-h-[860px] bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="relative w-[96vw] max-w-5xl h-[88vh] max-h-[860px] my-auto bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
             {/* Modal Header (With Option to Grade Card Up Top) */}
             <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] shrink-0">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -1290,13 +1250,14 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
             )}
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-hidden p-5 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
               {/* Left Column: Large Visual Card Artwork */}
               <div className="md:col-span-5 flex flex-col items-center justify-center shrink-0">
                 <CardObfuscator
                   card={selectedCardForModal}
                   obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
                   size="lg"
+                  showSublabel={false}
                 />
 
                 {/* Under Card Pic: Set abbr / rarity / cost & Tactical Tags */}
@@ -1308,18 +1269,30 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                     <span>CMC {selectedCardForModal.cmc}</span>
                   </div>
 
-                  {/* Tactical Tags: Removal Spell, Combat Trick, Instant Speed */}
+                  {/* Tactical Tags: Removal, Counterspell, Combat Trick, Card Draw, Instant Speed */}
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {selectedCardForModal.is_removal && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-rose-100 text-rose-800 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-500/40 font-bold flex items-center gap-1">
+                        <Zap className="w-3 h-3" />
+                        Removal
+                      </span>
+                    )}
+                    {selectedCardForModal.is_counterspell && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-sky-100 text-sky-800 dark:bg-sky-950/60 border border-sky-300 dark:border-sky-500/40 font-bold flex items-center gap-1">
+                        <Shield className="w-3 h-3" />
+                        Counterspell
+                      </span>
+                    )}
                     {selectedCardForModal.is_combat_trick && (
                       <span className="text-[11px] px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 font-bold flex items-center gap-1">
                         <Swords className="w-3 h-3" />
                         Combat Trick
                       </span>
                     )}
-                    {selectedCardForModal.is_removal && (
-                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-rose-100 text-rose-800 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-500/40 font-bold flex items-center gap-1">
-                        <Zap className="w-3 h-3" />
-                        Removal Spell
+                    {selectedCardForModal.is_card_draw && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-500/40 font-bold flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        Card Draw
                       </span>
                     )}
                     {selectedCardForModal.is_instant_speed && (

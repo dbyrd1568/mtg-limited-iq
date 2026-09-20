@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { supabaseUserToUserAccount } from './auth';
+import { supabaseUserToUserAccount, signInWithOAuth } from './auth';
 import { setActiveUser } from './storage';
 import { UserAccount } from '../types/mtg';
 
@@ -49,7 +49,8 @@ export function ensureGoogleScriptLoaded(): Promise<void> {
 
 /**
  * Exchanges a Google ID Token (JWT) with Supabase for a verified session.
- * Eliminates the irxgoelllogcyoiumxup.supabase.co redirect prompt.
+ * If Supabase lacks Authorized Client IDs for native token verification,
+ * seamlessly falls back to standard Supabase OAuth redirect.
  */
 export async function authenticateWithGoogleIdToken(idToken: string): Promise<{ user: UserAccount | null; error: Error | null }> {
   try {
@@ -59,7 +60,12 @@ export async function authenticateWithGoogleIdToken(idToken: string): Promise<{ 
     });
 
     if (error) {
-      return { user: null, error: new Error(error.message) };
+      console.warn('Google ID token verification failed with Supabase, falling back to OAuth redirect:', error.message);
+      const oauthResult = await signInWithOAuth('google');
+      if (oauthResult.error) {
+        return { user: null, error: new Error(error.message) };
+      }
+      return { user: oauthResult.user || null, error: null };
     }
     if (!data.user) {
       return { user: null, error: new Error('No user returned from Google sign-in.') };
@@ -69,13 +75,12 @@ export async function authenticateWithGoogleIdToken(idToken: string): Promise<{ 
     setActiveUser(account);
     return { user: account, error: null };
   } catch (err: any) {
-    return { user: null, error: err };
+    return { user: null, error: err instanceof Error ? err : new Error(String(err)) };
   }
 }
 
 /**
  * Renders the official native Google Sign-In button into a DOM element.
- * The resulting popup is hosted directly on mtg-limited-iq.com.
  */
 export async function renderGoogleButton(
   element: HTMLElement,
@@ -112,6 +117,7 @@ export async function renderGoogleButton(
     // Clear element before rendering
     element.innerHTML = '';
 
+    const parentWidth = element.clientWidth || element.parentElement?.clientWidth || 320;
     window.google.accounts.id.renderButton(element, {
       type: 'standard',
       shape: 'pill',
@@ -119,9 +125,10 @@ export async function renderGoogleButton(
       text: 'continue_with',
       size: 'large',
       logo_alignment: 'left',
-      width: element.clientWidth || 320,
+      width: Math.max(240, Math.min(400, parentWidth)),
     });
   } catch (err: any) {
-    onError(err);
+    onError(err instanceof Error ? err : new Error(String(err)));
   }
 }
+

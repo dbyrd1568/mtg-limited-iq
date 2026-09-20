@@ -25,16 +25,27 @@
 - **Filtered Subset Notice**: Keep context while inspecting cards, with instant "Clear Filter" navigation.
 
 ### 3. Evaluation Hub & Metagame Synthesis
-- **Personal Card Grading**: Assign letter tiers (`S, A+, A, A-, B+, B, B-, C+, C, C-, D+, D, D-, F`) with notes.
-- **Rapid Grader**: Fast keyboard-driven grading flow (`A-F` keys) with smooth transition animations.
+- **Personal Card Grading**: Assign letter tiers (`S, A+, A, A-, B+, B, B-, C+, C, C-, D+, D, D-, F`) with custom strategic notes.
+- **Precedent Slot Picker**: Substitute comparable benchmark cards with full-text rules search and historical win rate anchors.
 - **17Lands Data Comparison**: Direct integration with empirical 17Lands Game-in-Hand (GIH) win rates and pick priority.
 - **Side-by-Side Mode**: Compare personal intuition against empirical win rates to discover personal traps and sleeper cards.
 - **Archetype Forecast**: Monocolor and 2-color archetype rankings, speed indicators, and draft reads with creator-style synthesis reports.
 - **Unreleased Set Guardrails**: Automatic TBD indicators for unreleased sets awaiting initial 17Lands match telemetry.
 
-### 4. Cloud Sync & Offline-First Architecture
-- **Supabase Integration**: Cloud sync across devices for evaluations and study progress.
-- **Offline Storage**: Built with IndexedDB (`idb-keyval`) and localStorage fallbacks for offline practice.
+### 4. Universal 17Lands Data Caching & Auto-Sync
+- **3-Tier Caching Architecture**:
+  1. *In-Memory Preloaded Bundle*: Instant frame-0 rendering for core sets without waiting for network roundtrips.
+  2. *Cloudflare Worker Edge Cache (`caches.default`)*: Global edge proxy with stampede deduplication and stale-if-error protection against 17Lands rate limits.
+  3. *Supabase Database Fallback*: Centralized `seventeenlands_cache` table shared across all active users.
+- **Automated Sync Pipeline**: Daily GitHub Actions cron workflow (`.github/workflows/sync-17lands.yml`) running `scripts/sync-17lands.ts`.
+- **Active Set Recalibration**:
+  - *Active Formats* (`HOB`, `MBC`, upcoming `FRA`): Revalidated every 24 hours while on Magic Arena.
+  - *Historical Formats* (`DFT`, etc.): Revalidated every 7 days to detect Flashback draft runs after completing their primary season.
+
+### 5. Authentication & Local Development
+- **Multi-Provider Social SSO**: Google, Discord, Apple, Magic Link, and Password authentication powered by Supabase.
+- **Google Identity Services (GSI) & Resilient OAuth**: Native Google ID token exchange with automatic fallback to OAuth PKCE redirect.
+- **1-Click Localhost Developer Access**: When running locally on `http://localhost:5173`, the Login Gate presents a dedicated `⚡ Dev Quick Login` button to immediately authenticate as Devon Byrd (`dbyrd1568@gmail.com`) with permanent super-admin privileges.
 
 ---
 
@@ -43,6 +54,8 @@
 - **Framework**: React 19 + TypeScript
 - **Styling**: Tailwind CSS v4 + Lucide Icons
 - **Tooling**: Vite 6
+- **Backend / Auth / DB**: Supabase (PostgreSQL + RLS + GoTrue)
+- **Edge Proxy**: Cloudflare Workers (`caches.default`)
 - **Data Providers**: Scryfall REST API + 17Lands Public Telemetry
 
 ---
@@ -57,10 +70,14 @@
 
 ```bash
 # Clone or navigate to the repository
-cd "MTG Limited IQ"
+git clone https://github.com/dbyrd1568/mtg-limited-iq.git
+cd mtg-limited-iq
 
 # Install dependencies
 npm install
+
+# Copy environment variables
+cp .env.example .env
 
 # Start development server
 npm run dev
@@ -69,7 +86,10 @@ npm run dev
 npm run build
 ```
 
+See [`supabase/SETUP_GUIDE.md`](./supabase/SETUP_GUIDE.md) for full Supabase, Google OAuth, and database migration instructions.
+
 ---
 
 ## License
 MIT
+

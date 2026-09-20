@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { renderGoogleButton, GOOGLE_CLIENT_ID } from '../../services/googleAuth';
+import { renderGoogleButton } from '../../services/googleAuth';
 import { UserAccount } from '../../types/mtg';
 import { getStoredTheme } from '../../services/theme';
 
@@ -17,7 +17,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   isLoading = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isRendered, setIsRendered] = useState(false);
+  const [hasGsiButton, setHasGsiButton] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -30,17 +30,25 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
           if (isMounted) onSuccess(user);
         },
         (err) => {
-          if (isMounted) onError(err);
+          if (isMounted) {
+            console.warn('Google Identity button render error:', err);
+            onError(err);
+          }
         },
         theme
       )
         .then(() => {
-          if (isMounted) setIsRendered(true);
+          // Check if Google GSI actually populated any child element (e.g. iframe)
+          setTimeout(() => {
+            if (isMounted && containerRef.current && containerRef.current.children.length > 0) {
+              setHasGsiButton(true);
+            }
+          }, 150);
         })
         .catch((err) => {
           if (isMounted) {
-            console.warn('Google Identity button render fallback:', err);
-            onError(err);
+            console.warn('Google Identity button initialization fallback:', err);
+            setHasGsiButton(false);
           }
         });
     }
@@ -51,22 +59,22 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   }, [onSuccess, onError]);
 
   return (
-    <div className="w-full flex flex-col items-center justify-center">
-      {/* Container where official Google Identity button is rendered */}
+    <div className="w-full flex flex-col items-center justify-center relative min-h-[42px]">
+      {/* Container where official Google Identity GSI button is rendered */}
       <div
         ref={containerRef}
-        className={`w-full flex justify-center transition-opacity duration-200 ${
-          isRendered ? 'opacity-100 min-h-[44px]' : 'opacity-0 h-0 overflow-hidden'
+        className={`w-full flex justify-center items-center ${
+          hasGsiButton ? 'block' : 'hidden'
         }`}
       />
 
-      {/* Fallback button while Google SDK initializes or if fallback needed */}
-      {!isRendered && (
+      {/* Fallback & primary interactive Google sign-in button */}
+      {!hasGsiButton && (
         <button
           type="button"
           onClick={onFallbackOAuth}
           disabled={isLoading}
-          className="w-full py-2.5 px-4 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs flex items-center justify-center gap-3 transition-all border border-slate-700 shadow-xs cursor-pointer min-h-[44px]"
+          className="w-full py-2.5 px-4 rounded-xl bg-white dark:bg-[#0c1236] hover:bg-slate-50 dark:hover:bg-[#121a4a] border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer disabled:opacity-60 min-h-[42px]"
         >
           <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
             <path
@@ -86,9 +94,10 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          <span>Continue with Google</span>
+          <span>{isLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
         </button>
       )}
     </div>
   );
 };
+

@@ -1,7 +1,8 @@
 import { get, set } from 'idb-keyval';
-import { Card, GradeTier, SeventeenLandsCardRating, SeventeenLandsSetData, UserCardEvaluation, CardEvaluationComparison, SetCalibrationSummary } from '../types/mtg';
+import { Card, GradeTier, SetDraftStatus, SeventeenLandsCardRating, SeventeenLandsSetData, UserCardEvaluation, CardEvaluationComparison, SetCalibrationSummary } from '../types/mtg';
 import { HOB_17LANDS_DATA } from './hob17LandsData';
 import { POPULAR_LIMITED_SETS } from './scryfall';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 export const GRADE_TIERS: GradeTier[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
 
@@ -128,6 +129,73 @@ export function isSetUnderTwoWeeksOld(releasedAt?: string): boolean {
   // If release date is in the future, (now - releaseTime) < 0 <= twoWeeksMs (returns true)
   // If release date is within the last 14 days, (now - releaseTime) < 14 days (returns true)
   return (now - releaseTime) < twoWeeksMs;
+}
+
+/**
+ * Resolves the draft status for a given MTG Limited set:
+ * - 'active': Currently running as primary draft format or ongoing format on Arena (e.g. HOB, MBC; and FRA once released).
+ * - 'flashback': A historical set currently returning to Arena for a Flashback draft event.
+ * - 'upcoming': An unreleased set whose release date is in the future (e.g. FRA prior to Oct 2, 2026; TRK).
+ * - 'historical': A set whose initial Arena draft season has concluded and is off Arena from its first run.
+ */
+export function getSetDraftStatus(setCode: string): SetDraftStatus {
+  const upper = (setCode || '').toUpperCase().trim();
+  const setInfo = POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
+  if (!setInfo) return 'historical';
+
+  // Explicit overrides
+  if (setInfo.is_flashback) return 'flashback';
+  if (setInfo.is_active_draft) return 'active';
+
+  // Check release date
+  if (!setInfo.released_at) return 'historical';
+  const isoStr = setInfo.released_at.includes('T') ? setInfo.released_at : `${setInfo.released_at}T00:00:00Z`;
+  const releaseTime = new Date(isoStr).getTime();
+  if (isNaN(releaseTime)) return 'historical';
+
+  const now = Date.now();
+
+  // If release date is in the future, it is upcoming (not yet draftable on Arena)
+  if (releaseTime > now) {
+    return 'upcoming';
+  }
+
+  // Active premier draft formats
+  if (upper === 'HOB' || upper === 'MBC') {
+    return 'active';
+  }
+
+  // When FRA releases (on or after 2026-10-02), FRA becomes active
+  if (upper === 'FRA' && now >= releaseTime) {
+    return 'active';
+  }
+
+  // Historical set (e.g. DFT, BLB, OTJ, etc.)
+  return 'historical';
+}
+
+export function isSetActiveDraft(setCode: string): boolean {
+  const status = getSetDraftStatus(setCode);
+  return status === 'active' || status === 'flashback';
+}
+
+export function isSetFlashback(setCode: string): boolean {
+  return getSetDraftStatus(setCode) === 'flashback';
+}
+
+export function isSetHistorical(setCode: string): boolean {
+  return getSetDraftStatus(setCode) === 'historical';
+}
+
+export function isSetUpcoming(setCode: string): boolean {
+  return getSetDraftStatus(setCode) === 'upcoming';
+}
+
+/**
+ * Backwards-compatible alias for isSetActiveDraft
+ */
+export function isSetRecentOrActive(setCode: string): boolean {
+  return isSetActiveDraft(setCode);
 }
 
 /**
@@ -663,12 +731,33 @@ export async function fetch17LandsSetData(
   }
 
   // 5. Check IndexedDB Persistent Cache before touching the network
-  const cacheKey = `17lands_data_${upperCode}_v15`;
+  const cacheKey = `17lands_data_${upperCode}_v16`;
   if (!options.forceRefresh && typeof indexedDB !== 'undefined') {
     try {
       const cached = await get<SeventeenLandsSetData>(cacheKey);
       if (cached && (cached.sampleSize || 0) > 500 && Object.keys(cached.cards || {}).length >= 5) {
         sessionSetDataCache.set(upperCode, cached);
+
+        // Stale-While-Revalidate:
+        // - Active & Flashback sets: revalidate if cached data is older than 24 hours
+        // - Historical sets: revalidate periodically (every 7 days) in the background
+        //   to detect new draft games if the set returns to Arena for Flashback drafts
+        const draftStatus = getSetDraftStatus(upperCode);
+        const ageMs = cached.updatedAt ? Date.now() - new Date(cached.updatedAt).getTime() : Infinity;
+        const revalidationInterval = (draftStatus === 'active' || draftStatus === 'flashback')
+          ? 24 * 60 * 60 * 1000       // 24 hours for active / flashback sets
+          : 7 * 24 * 60 * 60 * 1000;  // 7 days for historical sets (flashback draft check)
+
+        if (ageMs > revalidationInterval && !inFlightSetRequests.has(upperCode)) {
+          executeFetch17LandsSetData(upperCode, cacheKey)
+            .then((fresh) => {
+              if (fresh) {
+                sessionSetDataCache.set(upperCode, fresh);
+              }
+            })
+            .catch(() => {});
+        }
+
         return cached;
       }
     } catch (e) {
@@ -709,18 +798,16 @@ async function executeFetch17LandsSetData(
 ): Promise<SeventeenLandsSetData | null> {
   const expansion = get17LandsExpansionCode(upperCode);
 
-  // Active 17Lands endpoints: local proxy first, direct 17lands, then alternative formats and CORS proxy
+  // Active 17Lands endpoints: Cloudflare Edge Cached proxy only
+  // Direct browser queries to 17lands.com or 3rd-party proxies are strictly prohibited to prevent client IP bans
   const candidateUrls = [
     `/api/17lands/api/card_data?expansion=${encodeURIComponent(expansion)}&event_type=PremierDraft`,
-    `https://www.17lands.com/api/card_data?expansion=${encodeURIComponent(expansion)}&event_type=PremierDraft`,
     `/api/17lands/api/card_data?expansion=${encodeURIComponent(expansion)}&event_type=TradDraft`,
-    `https://www.17lands.com/api/card_data?expansion=${encodeURIComponent(expansion)}&event_type=TradDraft`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.17lands.com/api/card_data?expansion=' + expansion + '&event_type=PremierDraft')}`,
   ];
 
   for (const url of candidateUrls) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     try {
       const response = await fetch(url, {
@@ -735,7 +822,7 @@ async function executeFetch17LandsSetData(
         console.warn(
           `[17Lands] Received HTTP ${response.status} from ${url}. Activated 15-minute rate limit cooldown to protect IP.`
         );
-        break; // Stop immediately; do not spam remaining candidate URLs!
+        break; // Stop immediately; do not spam remaining candidate URLs
       }
 
       if (response.ok) {
@@ -818,7 +905,32 @@ async function executeFetch17LandsSetData(
     }
   }
 
-  // Check preloaded benchmark data before giving up
+  // Level 4: Check Central Supabase Telemetry Cache before falling back to bundled benchmarks
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: dbRow, error } = await supabase
+        .from('seventeen_lands_cache')
+        .select('dataset')
+        .eq('set_code', upperCode)
+        .maybeSingle();
+
+      if (!error && dbRow?.dataset && typeof dbRow.dataset === 'object') {
+        const dbData = dbRow.dataset as SeventeenLandsSetData;
+        if (dbData.cards && Object.keys(dbData.cards).length >= 5) {
+          if (typeof indexedDB !== 'undefined') {
+            try {
+              await set(cacheKey, dbData);
+            } catch (e) {}
+          }
+          return dbData;
+        }
+      }
+    } catch (dbErr) {
+      console.warn(`[17Lands] Supabase cache lookup failed for ${upperCode}:`, dbErr);
+    }
+  }
+
+  // Level 5: Check preloaded benchmark data before giving up
   const preloaded = getPreloaded17LandsData(upperCode);
   if (preloaded) {
     if (typeof indexedDB !== 'undefined') {

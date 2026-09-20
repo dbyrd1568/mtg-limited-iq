@@ -1,0 +1,66 @@
+name: 📊 Sync 17Lands Telemetry & Flashback Drafts
+
+on:
+  # Daily active sync: 4:00 AM Central Time (09:00 UTC)
+  schedule:
+    - cron: '0 9 * * *'
+
+  # Manual dispatch for on-demand sync, flashback drafts, or historical audit
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Sync Mode'
+        required: true
+        type: choice
+        default: 'active'
+        options:
+          - 'active'
+          - 'flashback'
+          - 'audit-historical'
+      sets:
+        description: 'Custom set code(s) (e.g. "HOB" or "BLB,OTJ" for flashback)'
+        required: false
+        default: ''
+
+jobs:
+  sync:
+    name: Sync 17Lands Telemetry to Supabase & Warm Edge Cache
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔄 Execute 17Lands Telemetry Ingestion
+        run: |
+          MODE="${{ github.event.inputs.mode || 'active' }}"
+          CUSTOM_SETS="${{ github.event.inputs.sets || '' }}"
+
+          if [ "$MODE" = "audit-historical" ]; then
+            echo "Running historical flashback audit..."
+            npx tsx scripts/sync-17lands.ts --audit-historical
+          elif [ "$MODE" = "flashback" ] && [ -n "$CUSTOM_SETS" ]; then
+            echo "Running flashback draft ingestion for: $CUSTOM_SETS"
+            npx tsx scripts/sync-17lands.ts --flashback "$CUSTOM_SETS"
+          elif [ -n "$CUSTOM_SETS" ]; then
+            echo "Running custom sync for: $CUSTOM_SETS"
+            npx tsx scripts/sync-17lands.ts $CUSTOM_SETS
+          else
+            echo "Running daily active sets sync (HOB, MBC)..."
+            npx tsx scripts/sync-17lands.ts
+          fi
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://irxgoelllogcyoiumxup.supabase.co' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_QNDNrOPhb_X_29OfIg_-_Q_OB7QJuhI' }}
+          CLOUDFLARE_WORKER_URL: ${{ secrets.PRODUCTION_URL || 'https://mtg-limited-iq.byrd.workers.dev' }}
+          FLASHBACK_SETS: ${{ vars.FLASHBACK_SETS || '' }}

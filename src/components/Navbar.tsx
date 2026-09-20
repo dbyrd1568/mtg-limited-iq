@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, Check, Link2, Sun, Moon, HelpCircle, Shield, Download, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Check, Link2, Sun, Moon, HelpCircle, Shield, Download, RefreshCw, Sparkles, BookOpen, RotateCcw } from 'lucide-react';
 import { SetInfo, UserProfileStats, UserAccount } from '../types/mtg';
 import { getSyncStatus, subscribeSyncStatus, SyncStatus } from '../services/cloudSync';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../services/theme';
 import { isProdEnvironment } from '../services/environment';
 import { PlaneswalkerSymbol } from './UI/PlaneswalkerSymbol';
 import { SetSymbol } from './UI/SetSymbol';
+import { useContextualTour } from '../context/ContextualTourContext';
+
 
 export type ActiveTab = 'quiz' | 'evaluation' | 'stats' | 'explorer' | 'admin';
 
@@ -38,6 +40,31 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeMode>(getStoredTheme());
   const [avatarError, setAvatarError] = useState<boolean>(false);
+  const [isHelpMenuOpen, setIsHelpMenuOpen] = useState<boolean>(false);
+  const helpMenuRef = useRef<HTMLDivElement>(null);
+
+  const { registerTrigger, resetTour } = useContextualTour();
+
+  useEffect(() => {
+    // Only automatically suggest set selector if the user has no active set chosen yet
+    if (!currentSet) {
+      registerTrigger('set_selector');
+    }
+  }, [currentSet, registerTrigger]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (helpMenuRef.current && !helpMenuRef.current.contains(event.target as Node)) {
+        setIsHelpMenuOpen(false);
+      }
+    };
+    if (isHelpMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isHelpMenuOpen]);
 
   useEffect(() => {
     setAvatarError(false);
@@ -174,20 +201,55 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* Quick Tour / Help Button */}
-            {onOpenWelcomeTour && (
+            {/* Quick Tour / Help Dropdown Button */}
+            <div className="relative" ref={helpMenuRef}>
               <button
-                onClick={onOpenWelcomeTour}
-                className="p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer shrink-0 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-cyan-300 flex items-center justify-center"
-                title="Getting Started Guide"
-                aria-label="Getting Started Guide"
+                onClick={() => setIsHelpMenuOpen(!isHelpMenuOpen)}
+                className={`p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border rounded-xl transition-all shadow-xs cursor-pointer shrink-0 flex items-center justify-center ${
+                  isHelpMenuOpen
+                    ? 'border-violet-400 text-violet-600 dark:text-cyan-300 ring-2 ring-violet-500/20'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-violet-600 dark:hover:text-cyan-300'
+                }`}
+                title="Help & Guided Tour"
+                aria-label="Help & Guided Tour"
               >
                 <HelpCircle className="w-4 h-4" />
               </button>
-            )}
+
+              {isHelpMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0b102b] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  {onOpenWelcomeTour && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsHelpMenuOpen(false);
+                        onOpenWelcomeTour();
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-violet-50 dark:hover:bg-violet-950/40 hover:text-violet-700 dark:hover:text-cyan-300 flex items-center gap-2.5 cursor-pointer transition-colors"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
+                      <span>Getting Started Guide</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHelpMenuOpen(false);
+                      resetTour();
+                      registerTrigger('set_selector');
+                    }}
+                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-violet-50 dark:hover:bg-violet-950/40 hover:text-violet-700 dark:hover:text-cyan-300 flex items-center gap-2.5 cursor-pointer transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>Restart Feature Tour Tips</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Set Switcher Trigger */}
             <button
+              id="nav-set-selector"
               onClick={onOpenSetSelector}
               className={`flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-xs group cursor-pointer shrink-0 whitespace-nowrap border ${
                 currentSet
@@ -220,7 +282,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onOpenAuthModal}
                 className="flex items-center gap-2 pl-1.5 pr-3 py-1 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer group shrink-0 whitespace-nowrap"
-                title={`Account: ${currentUser.name} • Cloud Sync: ${syncStatus}`}
+                title={`Account: ${currentUser.name} • Cloud Sync: ${syncStatus} • v${__APP_VERSION__}`}
               >
                 <div className="relative shrink-0">
                   {currentUser.avatarUrl && !avatarError ? (
@@ -269,6 +331,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Sign In</span>
               </button>
             )}
+
+            {/* App Version Badge beside User Profile Chip */}
+            <span
+              className="hidden sm:inline text-[10px] font-mono text-slate-400 dark:text-slate-500 shrink-0 select-none pl-0.5"
+              title={`MTG Limited IQ v${__APP_VERSION__}`}
+            >
+              v{__APP_VERSION__}
+            </span>
           </div>
         </div>
       </div>

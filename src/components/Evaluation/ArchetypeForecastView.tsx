@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Card, SeventeenLandsSetData, UserCardEvaluation } from '../../types/mtg';
+import { Card, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, GradeTier, ArchetypeMetagameRole } from '../../types/mtg';
 import { generateSetSynthesisReport, generateSetMetaSummaryMarkdown, SetSynthesisReport, ArchetypeStrength, ColorStrength } from '../../services/archetypeEvaluator';
-import { Trophy, Sparkles, Copy, Check, Crown, Flame, Shield, Layers, Swords, ChevronDown, ChevronUp, Share2, Award, Zap, Activity, Info, BarChart2, CheckCircle2, TrendingUp, TrendingDown, Target, Scale, Eye, EyeOff, Clock, BookOpen } from 'lucide-react';
+import { GRADE_TIERS, GRADE_SCORES } from '../../services/seventeenLands';
+import { Trophy, Sparkles, Copy, Check, Crown, Flame, Shield, Layers, Swords, ChevronDown, ChevronUp, Share2, Award, Zap, Activity, Info, BarChart2, CheckCircle2, TrendingUp, TrendingDown, Target, Scale, Eye, EyeOff, Clock, BookOpen, Star, Edit3, X, FileText, MessageSquare, AlertTriangle } from 'lucide-react';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaSymbol, ManaCostRenderer } from '../UI/ManaSymbol';
 import confetti from 'canvas-confetti';
@@ -50,6 +51,10 @@ const MONOCOLOR_THEMES: Record<string, { colorHex: string; pip: string; name: st
 interface ArchetypeForecastViewProps {
   cards: Card[];
   userEvaluations: Record<string, UserCardEvaluation>;
+  userArchetypeEvaluations?: Record<string, UserArchetypeEvaluation>;
+  userColorEvaluations?: Record<string, UserColorEvaluation>;
+  onSaveArchetypeEvaluation?: (evaluation: UserArchetypeEvaluation) => void;
+  onSaveColorEvaluation?: (evaluation: UserColorEvaluation) => void;
   seventeenLandsData?: SeventeenLandsSetData | null;
   isBlindGrading?: boolean;
   setCode: string;
@@ -61,6 +66,10 @@ interface ArchetypeForecastViewProps {
 export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
   cards,
   userEvaluations,
+  userArchetypeEvaluations,
+  userColorEvaluations,
+  onSaveArchetypeEvaluation,
+  onSaveColorEvaluation,
   seventeenLandsData,
   isBlindGrading = false,
   setCode,
@@ -72,7 +81,25 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
   const [expandedArchetype, setExpandedArchetype] = useState<string | null>(null);
   const [showOtherArchetypes, setShowOtherArchetypes] = useState(true);
 
-  const report: SetSynthesisReport = generateSetSynthesisReport(cards, userEvaluations, setCode, setName, seventeenLandsData);
+  // Strategy Dossier & Notes Modal State
+  const [activeDossierArchetype, setActiveDossierArchetype] = useState<ArchetypeStrength | null>(null);
+  const [dossierNotesDraft, setDossierNotesDraft] = useState<string>('');
+  const [dossierRoleDraft, setDossierRoleDraft] = useState<ArchetypeMetagameRole | undefined>(undefined);
+  const [dossierSaved, setDossierSaved] = useState(false);
+
+  // Color Notes Modal State
+  const [activeColorNotesColor, setActiveColorNotesColor] = useState<ColorStrength | null>(null);
+  const [colorNotesDraft, setColorNotesDraft] = useState<string>('');
+
+  const report: SetSynthesisReport = generateSetSynthesisReport(
+    cards,
+    userEvaluations,
+    setCode,
+    setName,
+    seventeenLandsData,
+    userArchetypeEvaluations,
+    userColorEvaluations
+  );
 
   const monoColors = report.colorRankings.filter((c) => c.color !== 'C');
   const colorless = report.colorRankings.find((c) => c.color === 'C');
@@ -101,6 +128,100 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         colors: ['#8b5cf6', '#06b6d4', '#fbbf24', '#ff4d2e', '#10b981'],
       });
     } catch (e) {}
+  };
+
+  // Counts and top ratings
+  const ratedArchetypeCount = report.archetypeRankings.filter((a) => Boolean(a.userEvaluation?.userGrade)).length;
+  const ratedColorCount = report.colorRankings.filter((c) => c.color !== 'C' && Boolean(c.userEvaluation?.userGrade)).length;
+  const userTopArchetype = [...report.archetypeRankings]
+    .filter((a) => Boolean(a.userEvaluation?.userGrade))
+    .sort((a, b) => (b.userEvaluation?.userScore || 0) - (a.userEvaluation?.userScore || 0))[0];
+  const userTopColor = [...report.colorRankings]
+    .filter((c) => c.color !== 'C' && Boolean(c.userEvaluation?.userGrade))
+    .sort((a, b) => (b.userEvaluation?.userScore || 0) - (a.userEvaluation?.userScore || 0))[0];
+
+  const handleRateArchetype = (arch: ArchetypeStrength, grade: GradeTier) => {
+    const score = GRADE_SCORES[grade] || 2.5;
+    const tier: 'S' | 'A' | 'B' | 'C' | 'D' =
+      grade === 'A+' || grade === 'A' ? 'S' :
+      grade === 'A-' || grade === 'B+' ? 'A' :
+      grade === 'B' || grade === 'B-' ? 'B' :
+      grade === 'C+' || grade === 'C' || grade === 'C-' ? 'C' : 'D';
+
+    const currentEval = arch.userEvaluation;
+    onSaveArchetypeEvaluation?.({
+      setCode,
+      archetypeCode: arch.code,
+      userGrade: grade,
+      userScore: score,
+      tier,
+      roleInMetagame: currentEval?.roleInMetagame,
+      notes: currentEval?.notes,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const handleRateColor = (col: ColorStrength, grade: GradeTier) => {
+    const score = GRADE_SCORES[grade] || 2.5;
+    const currentEval = col.userEvaluation;
+    onSaveColorEvaluation?.({
+      setCode,
+      color: col.color,
+      userGrade: grade,
+      userScore: score,
+      notes: currentEval?.notes,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const openDossier = (arch: ArchetypeStrength) => {
+    setActiveDossierArchetype(arch);
+    setDossierNotesDraft(arch.userEvaluation?.notes || '');
+    setDossierRoleDraft(arch.userEvaluation?.roleInMetagame);
+    setDossierSaved(false);
+  };
+
+  const handleSaveDossier = () => {
+    if (!activeDossierArchetype) return;
+    const currentEval = activeDossierArchetype.userEvaluation;
+    const userGrade = currentEval?.userGrade || activeDossierArchetype.letterGrade;
+    const userScore = currentEval?.userScore || activeDossierArchetype.powerScore;
+    const tier = currentEval?.tier || activeDossierArchetype.tier;
+
+    onSaveArchetypeEvaluation?.({
+      setCode,
+      archetypeCode: activeDossierArchetype.code,
+      userGrade,
+      userScore,
+      tier,
+      roleInMetagame: dossierRoleDraft,
+      notes: dossierNotesDraft.trim() || undefined,
+      updatedAt: new Date().toISOString(),
+    });
+    setDossierSaved(true);
+    setTimeout(() => setDossierSaved(false), 2000);
+  };
+
+  const openColorNotes = (col: ColorStrength) => {
+    setActiveColorNotesColor(col);
+    setColorNotesDraft(col.userEvaluation?.notes || '');
+  };
+
+  const handleSaveColorNotes = () => {
+    if (!activeColorNotesColor) return;
+    const currentEval = activeColorNotesColor.userEvaluation;
+    const userGrade = currentEval?.userGrade || activeColorNotesColor.letterGrade;
+    const userScore = currentEval?.userScore || activeColorNotesColor.averageScore;
+
+    onSaveColorEvaluation?.({
+      setCode,
+      color: activeColorNotesColor.color,
+      userGrade,
+      userScore,
+      notes: colorNotesDraft.trim() || undefined,
+      updatedAt: new Date().toISOString(),
+    });
+    setActiveColorNotesColor(null);
   };
 
   const getTierHeaderStyle = (tier: 'S' | 'A' | 'B' | 'C' | 'D') => {
@@ -154,6 +275,24 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                   100% Set Graded 🎉
                 </span>
               )}
+
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border ${
+                ratedArchetypeCount === 10
+                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
+                  : 'bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 border-violet-300 dark:border-cyan-500/30'
+              }`}>
+                <Swords className="w-3.5 h-3.5 text-amber-500" />
+                Archetypes Graded: {ratedArchetypeCount}/10
+              </span>
+
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border ${
+                ratedColorCount === 5
+                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40'
+                  : 'bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 border-violet-300 dark:border-cyan-500/30'
+              }`}>
+                <Layers className="w-3.5 h-3.5 text-cyan-500" />
+                Colors Graded: {ratedColorCount}/5
+              </span>
             </div>
 
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-heading">
@@ -347,17 +486,23 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
           <div className="flex items-baseline gap-2 pt-0.5">
             <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-heading">
-              {report.bestArchetype?.name || 'N/A'}
+              {userTopArchetype ? userTopArchetype.name : (report.bestArchetype?.name || 'N/A')}
             </span>
-            {report.bestArchetype && (
+            {userTopArchetype?.userEvaluation?.userGrade ? (
+              <span className="text-xs font-mono font-bold px-2 py-0.2 rounded bg-violet-600 text-white shadow-xs border border-violet-400 dark:border-cyan-400">
+                Grade {userTopArchetype.userEvaluation.userGrade}
+              </span>
+            ) : report.bestArchetype ? (
               <span className="text-xs font-mono font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40">
                 Tier {report.bestArchetype.tier}
               </span>
-            )}
+            ) : null}
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-            {report.bestArchetype?.code} ({report.bestArchetype?.theme})
+            {userTopArchetype
+              ? `${userTopArchetype.code} (${userTopArchetype.headline || userTopArchetype.theme})`
+              : `${report.bestArchetype?.code || ''} (${report.bestArchetype?.theme || ''})`}
           </p>
 
           {/* 17Lands Comparison Row */}
@@ -664,11 +809,22 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   </div>
 
                   <div className="text-right">
-                    <span className={`px-2 py-0.5 rounded text-xs font-black font-mono border ${col.ratedCards > 0 ? col.badgeClass : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'}`}>
-                      {col.ratedCards > 0 ? `Grade ${col.letterGrade}` : 'Unrated'}
-                    </span>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {col.userEvaluation?.userGrade && (
+                        <span
+                          className="px-2 py-0.5 rounded text-xs font-black font-mono bg-violet-600 text-white border border-violet-400 dark:border-cyan-400 shadow-xs flex items-center gap-1"
+                          title={`Your Direct Assigned Grade for ${col.name}`}
+                        >
+                          <Star className="w-3 h-3 text-amber-300" />
+                          {col.userEvaluation.userGrade}
+                        </span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded text-xs font-black font-mono border ${col.ratedCards > 0 ? col.badgeClass : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'}`}>
+                        {col.ratedCards > 0 ? `Avg ${col.letterGrade}` : 'Unrated'}
+                      </span>
+                    </div>
                     <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                      {col.ratedCards > 0 ? `Your Score: ${col.averageScore.toFixed(2)}` : 'No cards rated'}
+                      {col.ratedCards > 0 ? `Score: ${col.averageScore.toFixed(2)}` : 'No cards rated'}
                     </div>
                   </div>
                 </div>
@@ -770,6 +926,56 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                     </div>
                   )}
                 </div>
+
+                {/* Monocolor Quick-Grade Strip & Notes */}
+                {col.color !== 'C' && (
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Star className="w-3 h-3 text-amber-500" />
+                        <span>Direct Grade</span>
+                      </span>
+                      {col.userEvaluation?.userGrade && (
+                        <span className="text-[10px] font-mono font-bold text-violet-700 dark:text-cyan-300">
+                          Assigned: {col.userEvaluation.userGrade}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin">
+                      {GRADE_TIERS.map((tier) => {
+                        const isSelected = col.userEvaluation?.userGrade === tier;
+                        return (
+                          <button
+                            key={tier}
+                            type="button"
+                            onClick={() => handleRateColor(col, tier)}
+                            className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-violet-600 text-white shadow-xs scale-105 ring-2 ring-violet-400 dark:ring-cyan-300 font-black'
+                                : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-[#131d42] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                            }`}
+                            title={`Assign grade ${tier} to ${col.name}`}
+                          >
+                            {tier}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openColorNotes(col)}
+                      className="w-full py-1.5 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#0f1738] border border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="w-3 h-3 text-violet-500 dark:text-cyan-400" />
+                      <span>{col.userEvaluation?.notes ? 'Edit Color Notes' : 'Add Color Strategy Notes'}</span>
+                      {Boolean(col.userEvaluation?.notes) && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -829,8 +1035,22 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   <p className="text-xs text-violet-600 dark:text-cyan-400 font-semibold">{arch.headline || arch.theme}</p>
                 </div>
 
-                {/* Distinctive Grade Badges (17Lands Prominent vs User Theorycraft) */}
+                {/* Distinctive Grade Badges (User Direct Grade, 17Lands Telemetry, Bottom-Up Power) */}
                 <div className="flex flex-col items-end gap-1 shrink-0">
+                  {arch.userEvaluation?.userGrade && (
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {arch.userEvaluation.roleInMetagame && (
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-800 dark:bg-cyan-950/80 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700/50">
+                          {arch.userEvaluation.roleInMetagame}
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 rounded-lg bg-violet-600 text-white font-mono font-black text-xs shadow-xs border border-violet-400 dark:border-cyan-400 flex items-center gap-1">
+                        <Star className="w-3 h-3 text-amber-300" />
+                        Grade {arch.userEvaluation.userGrade}
+                      </span>
+                    </div>
+                  )}
+
                   {!isBlindGrading && report.has17LandsData && arch.seventeenLandsWinRate !== undefined ? (
                     <>
                       {/* 17Lands Win Rate Badge */}
@@ -854,7 +1074,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         className="text-[10px] font-mono text-slate-600 dark:text-slate-400 text-right bg-slate-100/90 dark:bg-[#050818]/90 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800"
                         title={`Archetype Power Score Formula:\n30% Gold Signpost Avg (${arch.signpostAvgScore.toFixed(2)}) + 35% ${arch.color1Name} Depth (${arch.color1AvgScore.toFixed(2)}) + 35% ${arch.color2Name} Depth (${arch.color2AvgScore.toFixed(2)}) = ${arch.powerScore.toFixed(2)} / 5.0 (Predicted Grade: ${arch.letterGrade})`}
                       >
-                        <span>Your Read: <strong className="text-violet-700 dark:text-violet-300 font-bold">{arch.letterGrade}</strong> (Power {arch.powerScore.toFixed(2)})</span>
+                        <span>Bottom-Up: <strong className="text-violet-700 dark:text-violet-300 font-bold">{arch.letterGrade}</strong> (Power {arch.powerScore.toFixed(2)})</span>
                       </div>
                     </>
                   ) : (
@@ -866,7 +1086,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         className="text-[9px] uppercase font-mono font-bold text-violet-700 dark:text-cyan-300 tracking-wider text-right"
                         title={`Archetype Power Score Formula:\n30% Signpost Avg (${arch.signpostAvgScore.toFixed(2)}) + 35% ${arch.color1Name} Depth (${arch.color1AvgScore.toFixed(2)}) + 35% ${arch.color2Name} Depth (${arch.color2AvgScore.toFixed(2)}) = ${arch.powerScore.toFixed(2)} / 5.0`}
                       >
-                        Draft Power Read
+                        Bottom-Up Read
                       </div>
                       <div className="text-sm font-black font-mono text-slate-900 dark:text-white">
                         Tier {arch.tier} ({arch.letterGrade})
@@ -1039,6 +1259,61 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   )}
                 </div>
               )}
+
+              {/* User Archetype Direct Rating & Strategy Dossier Row */}
+              <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <Star className="w-3 h-3 text-amber-500" />
+                    <span>Your Direct Grade:</span>
+                    <strong className="text-violet-700 dark:text-cyan-300 font-bold ml-1">
+                      {arch.userEvaluation?.userGrade || 'Unassigned'}
+                    </strong>
+                  </span>
+                  {arch.userEvaluation?.roleInMetagame && (
+                    <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                      Role: <span className="font-bold text-violet-600 dark:text-cyan-300">{arch.userEvaluation.roleInMetagame}</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Quick Grade Strip */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin">
+                  {GRADE_TIERS.map((tier) => {
+                    const isSelected = arch.userEvaluation?.userGrade === tier;
+                    return (
+                      <button
+                        key={tier}
+                        type="button"
+                        onClick={() => handleRateArchetype(arch, tier)}
+                        className={`px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-violet-600 text-white shadow-md scale-105 ring-2 ring-violet-400 dark:ring-cyan-300 font-black'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-[#131d42] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                        }`}
+                        title={`Directly rate ${arch.name} as ${tier}`}
+                      >
+                        {tier}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Strategy Dossier Button */}
+                <button
+                  type="button"
+                  onClick={() => openDossier(arch)}
+                  className="w-full py-1.5 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/40 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-700/50 text-xs font-bold text-violet-700 dark:text-cyan-300 flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Strategy Dossier & Notes</span>
+                  {Boolean(arch.userEvaluation?.notes || arch.userEvaluation?.roleInMetagame) && (
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40 font-bold">
+                      {arch.userEvaluation?.notes ? 'Has Notes' : 'Role Set'}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           );
         };
@@ -1138,6 +1413,341 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
           </div>
         );
       })()}
+
+      {/* 6. Strategy Dossier & Detailed Notes Modal */}
+      {activeDossierArchetype && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 dark:bg-[#030614]/85 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto">
+          <div className="bg-white dark:bg-[#090d20] border border-slate-200 dark:border-violet-500/35 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-[#050818] p-1.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                  {activeDossierArchetype.colors.map((c) => (
+                    <ManaSymbol key={c} symbol={c} size="md" />
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white font-heading">
+                      {activeDossierArchetype.name} Strategy Dossier
+                    </h3>
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-cyan-300 border border-violet-200 dark:border-violet-700/50">
+                      {setCode}
+                    </span>
+                  </div>
+                  <p className="text-xs text-violet-600 dark:text-cyan-400 font-semibold">
+                    {activeDossierArchetype.headline || activeDossierArchetype.theme}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveDossierArchetype(null)}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
+              {/* 1. Grade Strip & Metagame Role Picker */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <Star className="w-4 h-4 text-amber-500" />
+                    <span>Assigned Grade & Tier</span>
+                  </span>
+                  <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300">
+                    {activeDossierArchetype.userEvaluation?.userGrade ? `Graded: ${activeDossierArchetype.userEvaluation.userGrade}` : 'Not yet graded'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                  {GRADE_TIERS.map((tier) => {
+                    const isSelected = (activeDossierArchetype.userEvaluation?.userGrade || activeDossierArchetype.letterGrade) === tier;
+                    return (
+                      <button
+                        key={tier}
+                        type="button"
+                        onClick={() => {
+                          handleRateArchetype(activeDossierArchetype, tier);
+                          setActiveDossierArchetype((prev) => prev ? {
+                            ...prev,
+                            userEvaluation: {
+                              ...(prev.userEvaluation || {
+                                setCode,
+                                archetypeCode: prev.code,
+                                updatedAt: new Date().toISOString(),
+                              }),
+                              userGrade: tier,
+                              userScore: GRADE_SCORES[tier] || 2.5,
+                              tier: tier === 'A+' || tier === 'A' ? 'S' : tier === 'A-' || tier === 'B+' ? 'A' : tier === 'B' || tier === 'B-' ? 'B' : tier === 'C+' || tier === 'C' || tier === 'C-' ? 'C' : 'D',
+                            }
+                          } : null);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-mono font-black transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-violet-600 text-white shadow-md scale-105 ring-2 ring-violet-400 dark:ring-cyan-300'
+                            : 'bg-white hover:bg-slate-100 dark:bg-[#090d20] dark:hover:bg-[#121b44] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                        }`}
+                      >
+                        {tier}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Metagame Role Picker */}
+                <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Metagame Role
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(['Premier Deck', 'Solid Contender', 'Synergy Dependent', 'Niche Buildaround', 'Trap / Underpowered'] as ArchetypeMetagameRole[]).map((role) => {
+                      const isSelected = dossierRoleDraft === role;
+                      return (
+                        <button
+                          key={role}
+                          type="button"
+                          onClick={() => setDossierRoleDraft(role)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer border flex items-center gap-1.5 ${
+                            isSelected
+                              ? 'bg-violet-600 text-white border-violet-500 shadow-sm'
+                              : 'bg-white hover:bg-slate-100 dark:bg-[#090d20] dark:hover:bg-[#121b44] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                          }`}
+                        >
+                          {role === 'Premier Deck' && <Crown className="w-3 h-3 text-amber-300 shrink-0" />}
+                          {role === 'Solid Contender' && <Shield className="w-3 h-3 text-blue-300 shrink-0" />}
+                          {role === 'Synergy Dependent' && <Zap className="w-3 h-3 text-cyan-300 shrink-0" />}
+                          {role === 'Niche Buildaround' && <Target className="w-3 h-3 text-violet-300 shrink-0" />}
+                          {role === 'Trap / Underpowered' && <AlertTriangle className="w-3 h-3 text-rose-300 shrink-0" />}
+                          <span className="truncate">{role}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Official WOTC Strategy Description */}
+              {activeDossierArchetype.description && (
+                <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                    <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span>Official WOTC Archetype Strategy</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed italic">
+                    "{activeDossierArchetype.description}"
+                  </p>
+                  {activeDossierArchetype.mechanics && activeDossierArchetype.mechanics.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {activeDossierArchetype.mechanics.map((mech) => (
+                        <span
+                          key={mech}
+                          className="px-2.5 py-0.5 rounded-md text-xs font-mono font-bold bg-white dark:bg-[#090d20] text-slate-800 dark:text-slate-200 border border-amber-200 dark:border-amber-500/40 shadow-xs"
+                        >
+                          #{mech}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. Strategic Notes & Draft Game Plan */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
+                    <span>Your Draft Game Plan & Notes</span>
+                  </label>
+                  {dossierSaved && (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Saved!
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  value={dossierNotesDraft}
+                  onChange={(e) => setDossierNotesDraft(e.target.value)}
+                  placeholder={`Jot down draft priorities, key commons, splash requirements, curve targets, or traps to avoid in ${activeDossierArchetype.name}...`}
+                  className="w-full h-28 p-3 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-cyan-400 resize-none font-sans leading-relaxed"
+                />
+              </div>
+
+              {/* 4. Signpost Uncommons & Rares */}
+              {activeDossierArchetype.signposts.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Gold Signpost Cards ({activeDossierArchetype.signposts.length})
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {activeDossierArchetype.signposts.map((sp) => (
+                      <button
+                        key={sp.card.id}
+                        type="button"
+                        onClick={() => onSelectCard?.(sp.card)}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#10193d] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="truncate mr-2">
+                          <span className="text-xs font-bold text-slate-800 dark:text-white block truncate group-hover:text-violet-600 dark:group-hover:text-cyan-300">{sp.card.name}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">{sp.card.type_line}</span>
+                        </div>
+                        <span className="text-xs font-mono font-black text-violet-700 dark:text-cyan-300 px-2 py-0.5 rounded bg-violet-100 dark:bg-violet-950/80 border border-violet-200 dark:border-violet-800">
+                          {sp.eval?.userGrade || 'Unrated'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Key Common Picks */}
+              {activeDossierArchetype.keyPicks.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Top Rated Core Commons & Uncommons ({activeDossierArchetype.keyPicks.length})
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {activeDossierArchetype.keyPicks.slice(0, 6).map((pick) => (
+                      <button
+                        key={pick.card.id}
+                        type="button"
+                        onClick={() => onSelectCard?.(pick.card)}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#10193d] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="truncate mr-2">
+                          <span className="text-xs font-medium text-slate-800 dark:text-white block truncate group-hover:text-violet-600 dark:group-hover:text-cyan-300">{pick.card.name}</span>
+                          <span className="text-[10px] text-slate-500 font-mono capitalize">{pick.card.rarity}</span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                          {pick.eval.userGrade}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#060a1c] flex items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveDossierArchetype(null)}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDossier}
+                className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              >
+                {dossierSaved ? <Check className="w-4 h-4 text-white" /> : <CheckCircle2 className="w-4 h-4 text-white" />}
+                <span>{dossierSaved ? 'Saved to Dossier!' : 'Save Strategy Dossier'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Monocolor Notes Modal */}
+      {activeColorNotesColor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 dark:bg-[#030614]/85 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#090d20] border border-slate-200 dark:border-violet-500/35 rounded-3xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <ManaSymbol symbol={activeColorNotesColor.symbol} size="lg" />
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white font-heading">
+                    {activeColorNotesColor.name} Strategy & Notes
+                  </h3>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    {activeColorNotesColor.ratedCards} / {activeColorNotesColor.totalCards} cards rated in {setCode}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveColorNotesColor(null)}
+                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-slate-800 text-slate-500 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 space-y-4">
+              <div className="space-y-1.5">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Color Grade
+                </span>
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin">
+                  {GRADE_TIERS.map((tier) => {
+                    const isSelected = (activeColorNotesColor.userEvaluation?.userGrade || activeColorNotesColor.letterGrade) === tier;
+                    return (
+                      <button
+                        key={tier}
+                        type="button"
+                        onClick={() => {
+                          handleRateColor(activeColorNotesColor, tier);
+                          setActiveColorNotesColor((prev) => prev ? {
+                            ...prev,
+                            userEvaluation: {
+                              ...(prev.userEvaluation || {
+                                setCode,
+                                color: prev.color,
+                                updatedAt: new Date().toISOString(),
+                              }),
+                              userGrade: tier,
+                              userScore: GRADE_SCORES[tier] || 2.5,
+                            }
+                          } : null);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-violet-600 text-white shadow-sm ring-2 ring-violet-400 dark:ring-cyan-300'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                        }`}
+                      >
+                        {tier}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Notes & Draft Observations
+                </label>
+                <textarea
+                  value={colorNotesDraft}
+                  onChange={(e) => setColorNotesDraft(e.target.value)}
+                  placeholder={`Notes on ${activeColorNotesColor.name} in ${setCode}: depth, key commons, splash viability, removal speed...`}
+                  className="w-full h-32 p-3 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-cyan-400 resize-none font-sans"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#060a1c] flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setActiveColorNotesColor(null)}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveColorNotes}
+                className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+              >
+                Save Notes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

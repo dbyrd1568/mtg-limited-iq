@@ -499,6 +499,9 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
       else if (lowerVal === 'sorcery') matched = Boolean(card.type_line?.toLowerCase().includes('sorcery'));
       else if (lowerVal === 'land') matched = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
       else if (lowerVal === 'removal') matched = Boolean(card.is_removal);
+      else if (lowerVal === 'interaction') matched = Boolean(card.is_interaction);
+      else if (lowerVal === 'counter' || lowerVal === 'counterspell') matched = Boolean(card.is_counterspell);
+      else if (lowerVal === 'draw' || lowerVal === 'card_draw' || lowerVal === 'advantage') matched = Boolean(card.is_card_draw);
       else if (lowerVal === 'trick' || lowerVal === 'combat_trick') matched = Boolean(card.is_combat_trick);
       else if (lowerVal === 'flash' || lowerVal === 'instant_speed') matched = Boolean(card.is_instant_speed);
       else if (lowerVal === 'legendary') matched = Boolean(card.type_line?.toLowerCase().includes('legendary'));
