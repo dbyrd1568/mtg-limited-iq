@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, GradeTier } from '../../types/mtg';
-import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch, generateGuaranteedFallbackResult } from '../../services/cardSimilarity';
+import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch, generateGuaranteedFallbackResult, getCachedSimilarCards } from '../../services/cardSimilarity';
 import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { getTargetCardOverrides, savePrecedentOverride, removePrecedentOverride, clearTargetCardOverrides, PrecedentSlotOverride } from '../../services/precedentOverrides';
-import { PrecedentCardSearch } from './PrecedentCardSearch';
-import { PrecedentSlotPickerModal } from './PrecedentSlotPickerModal';
+import { PrecedentSwapSearchModal } from './PrecedentSwapSearchModal';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
 import { CardImage } from '../UI/CardImage';
-import { X, Scale, Check, PlayingCardsFan, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, Sparkles } from 'lucide-react';
+import { X, Scale, Check, PlayingCardsFan, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, ArrowRight, Sparkles, Search } from 'lucide-react';
+import { useContextualTour } from '../../context/ContextualTourContext';
 
 export interface CardPerformanceMetrics {
   winRate?: number;
@@ -47,17 +47,67 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   hasPrev,
   hasNext,
 }) => {
-  const [data, setData] = useState<CardSimilarityResult | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const targetCardKey = targetCard ? `${(targetCard.set || '').toUpperCase()}_${targetCard.name.toUpperCase()}` : '';
+
+  const [data, setData] = useState<CardSimilarityResult | null>(() => {
+    return targetCard ? getCachedSimilarCards(targetCard) : null;
+  });
+  const [loadedCardKey, setLoadedCardKey] = useState<string | null>(() => {
+    const cached = targetCard ? getCachedSimilarCards(targetCard) : null;
+    return cached && targetCard ? `${(targetCard.set || '').toUpperCase()}_${targetCard.name.toUpperCase()}` : null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    const cached = targetCard ? getCachedSimilarCards(targetCard) : null;
+    return !cached;
+  });
   const [adoptedSourceId, setAdoptedSourceId] = useState<string | null>(null);
   const [inspectCardMatch, setInspectCardMatch] = useState<SimilarCardMatch | null>(null);
 
+  // Keep a stable ref of allCards so effect does not re-trigger on parent array mutations
+  const allCardsRef = useRef(allCards);
+  useEffect(() => {
+    allCardsRef.current = allCards;
+  }, [allCards]);
+
+  // Synchronous cache lookup for current targetCard
+  const cachedForCurrent = useMemo(() => {
+    return targetCard ? getCachedSimilarCards(targetCard) : null;
+  }, [targetCardKey]);
+
+  // Current active data: state data if matching target card, or immediate synchronous cache hit
+  const activeData = useMemo(() => {
+    if (targetCardKey && loadedCardKey === targetCardKey && data && data.matches && data.matches.length > 0) {
+      return data;
+    }
+    if (cachedForCurrent && cachedForCurrent.matches && cachedForCurrent.matches.length > 0) {
+      return cachedForCurrent;
+    }
+    return null;
+  }, [targetCardKey, loadedCardKey, data, cachedForCurrent]);
+
+  const isEffectiveLoading = (loadedCardKey !== targetCardKey && !cachedForCurrent) || (loading && !cachedForCurrent);
+
+  const isReady = Boolean(
+    targetCardKey &&
+    activeData &&
+    activeData.matches &&
+    activeData.matches.length > 0 &&
+    !isEffectiveLoading
+  );
+
   // User-customized precedent overrides state
   const [customOverrides, setCustomOverrides] = useState<Record<number, PrecedentSlotOverride>>({});
-  const [slotPickerCard, setSlotPickerCard] = useState<Card | null>(null);
-  const [preselectedSlotIndex, setPreselectedSlotIndex] = useState<number | null>(null);
   const [isReplacingSlot, setIsReplacingSlot] = useState<boolean>(false);
-  const [directSwapSlotIndex, setDirectSwapSlotIndex] = useState<number | null>(null);
+  const [swapSearchSlotIndex, setSwapSearchSlotIndex] = useState<number | null>(null);
+  const [learningNotice, setLearningNotice] = useState<string | null>(null);
+
+  const { registerTrigger } = useContextualTour();
+
+  useEffect(() => {
+    if (isOpen) {
+      registerTrigger('replace_comp');
+    }
+  }, [isOpen, registerTrigger]);
 
   // Guarantee target card 17lands data is resolved even if caller didn't pass it
   const effectiveTarget17L = useMemo<CardPerformanceMetrics | undefined>(() => {
@@ -190,39 +240,71 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
   // Fetch comps on open or target change
   useEffect(() => {
-    if (isOpen && targetCard) {
-      setCustomOverrides(getTargetCardOverrides(targetCard));
-      setSlotPickerCard(null);
-      setPreselectedSlotIndex(null);
-      setDirectSwapSlotIndex(null);
-      // Immediately populate with instant guaranteed comps so data is NEVER null or empty
-      setData(generateGuaranteedFallbackResult(targetCard, allCards));
-      setLoading(true);
-      setInspectCardMatch(null);
-      setAdoptedSourceId(null);
-      findSimilarCards(targetCard, allCards)
-        .then((result) => {
-          if (result && result.matches && result.matches.length > 0) {
-            setData(result);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to find similar cards:', err);
-          setData((prev) => prev || generateGuaranteedFallbackResult(targetCard, allCards));
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
+    if (!isOpen || !targetCard) {
       setData(null);
+      setLoadedCardKey(null);
+      setLoading(false);
       setInspectCardMatch(null);
       setAdoptedSourceId(null);
       setCustomOverrides({});
-      setSlotPickerCard(null);
-      setPreselectedSlotIndex(null);
-      setDirectSwapSlotIndex(null);
+      setSwapSearchSlotIndex(null);
+      return;
     }
-  }, [isOpen, targetCard, allCards]);
+
+    const currentKey = `${(targetCard.set || '').toUpperCase()}_${targetCard.name.toUpperCase()}`;
+
+    // If already loaded for this exact card, don't refetch or trigger loading state!
+    if (loadedCardKey === currentKey && data && data.matches && data.matches.length > 0) {
+      return;
+    }
+
+    // Check synchronous cache first
+    const cached = getCachedSimilarCards(targetCard);
+    if (cached) {
+      setData(cached);
+      setLoadedCardKey(currentKey);
+      setLoading(false);
+      setCustomOverrides(getTargetCardOverrides(targetCard));
+      return;
+    }
+
+    // Otherwise fetch asynchronously
+    setCustomOverrides(getTargetCardOverrides(targetCard));
+    setSwapSearchSlotIndex(null);
+    setData(null);
+    setLoadedCardKey(null);
+    setLoading(true);
+    setInspectCardMatch(null);
+    setAdoptedSourceId(null);
+
+    let cancelled = false;
+
+    findSimilarCards(targetCard, allCardsRef.current)
+      .then((result) => {
+        if (cancelled) return;
+        if (result && result.matches && result.matches.length > 0) {
+          setData(result);
+        } else {
+          setData(generateGuaranteedFallbackResult(targetCard, allCardsRef.current));
+        }
+        setLoadedCardKey(currentKey);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to find similar cards:', err);
+        setData(generateGuaranteedFallbackResult(targetCard, allCardsRef.current));
+        setLoadedCardKey(currentKey);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, targetCard?.id, targetCard?.name, targetCard?.set, targetCard?.collector_number]);
 
   // Keyboard navigation (Esc to close, ArrowLeft / ArrowRight to step through cards)
   useEffect(() => {
@@ -230,11 +312,8 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (directSwapSlotIndex !== null) {
-          setDirectSwapSlotIndex(null);
-        } else if (slotPickerCard) {
-          setSlotPickerCard(null);
-          setPreselectedSlotIndex(null);
+        if (swapSearchSlotIndex !== null) {
+          setSwapSearchSlotIndex(null);
         } else if (inspectCardMatch) {
           setInspectCardMatch(null);
         } else {
@@ -245,7 +324,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
       // Do not navigate cards if typing in an input/textarea or currently inspecting a comp detail submodal
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
-      if (activeTag === 'input' || activeTag === 'textarea' || inspectCardMatch || slotPickerCard || directSwapSlotIndex !== null) return;
+      if (activeTag === 'input' || activeTag === 'textarea' || inspectCardMatch || swapSearchSlotIndex !== null) return;
 
       if ((e.key === 'ArrowLeft' || e.key === '[') && canNavigatePrev) {
         e.preventDefault();
@@ -258,7 +337,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, inspectCardMatch, slotPickerCard, directSwapSlotIndex, onClose, canNavigatePrev, canNavigateNext, handlePrevCard, handleNextCard]);
+  }, [isOpen, inspectCardMatch, swapSearchSlotIndex, onClose, canNavigatePrev, canNavigateNext, handlePrevCard, handleNextCard]);
 
   if (!isOpen || !targetCard) return null;
 
@@ -269,16 +348,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     }
   };
 
-  // Guarantee active data is always populated from guaranteed fallback if data is null or empty
-  const activeData = useMemo(() => {
-    if (data && data.matches && data.matches.length > 0) {
-      return data;
-    }
-    if (targetCard) {
-      return generateGuaranteedFallbackResult(targetCard, allCards);
-    }
-    return null;
-  }, [data, targetCard, allCards]);
 
   // Overlay user-customized slot overrides onto algorithmic matches
   const presentedMatches = useMemo(() => {
@@ -298,42 +367,25 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     return Object.keys(customOverrides).length > 0;
   }, [customOverrides]);
 
-  const handleConfirmSlotReplacement = async (slotIndex: number, chosenReplacement?: Card) => {
-    const cardToUse = chosenReplacement || slotPickerCard;
-    if (!targetCard || !cardToUse) return;
+  const handleConfirmSlotReplacement = async (slotIndex: number, chosenReplacement: Card) => {
+    if (!targetCard || !chosenReplacement) return;
 
     setIsReplacingSlot(true);
     try {
-      const repMatch = await buildCustomPrecedentMatch(targetCard, cardToUse);
+      const repMatch = await buildCustomPrecedentMatch(targetCard, chosenReplacement);
       const rawMatches = activeData?.matches?.slice(0, 4) || [];
       const origMatch = rawMatches[slotIndex] || null;
 
-      savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
+      const delta = savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
       setCustomOverrides(getTargetCardOverrides(targetCard));
+      if (delta && delta.inferredInsights && delta.inferredInsights.length > 0) {
+        setLearningNotice(delta.inferredInsights[0]);
+      }
     } catch (err) {
       console.error('Failed to substitute precedent card:', err);
     } finally {
       setIsReplacingSlot(false);
-      setSlotPickerCard(null);
-      setPreselectedSlotIndex(null);
-    }
-  };
-
-  const handleDirectSwapSelect = async (replacementCard: Card, slotIndex: number) => {
-    if (!targetCard) return;
-    setIsReplacingSlot(true);
-    try {
-      const repMatch = await buildCustomPrecedentMatch(targetCard, replacementCard);
-      const rawMatches = activeData?.matches?.slice(0, 4) || [];
-      const origMatch = rawMatches[slotIndex] || null;
-
-      savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
-      setCustomOverrides(getTargetCardOverrides(targetCard));
-    } catch (err) {
-      console.error('Failed to directly swap precedent card:', err);
-    } finally {
-      setIsReplacingSlot(false);
-      setDirectSwapSlotIndex(null);
+      setSwapSearchSlotIndex(null);
     }
   };
 
@@ -426,10 +478,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="w-[96vw] max-w-[1600px] max-h-[94vh] flex flex-col bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+        className="w-[96vw] max-w-[1600px] max-h-[94vh] my-auto flex flex-col bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
       >
         {/* Modal Header */}
         <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/80 dark:bg-[#050818]/90">
@@ -445,16 +497,9 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
                   Precedent Engine
                 </span>
-                {loading ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-violet-600 dark:text-cyan-400 font-medium">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span className="hidden sm:inline">Refreshing 17Lands data...</span>
-                  </span>
-                ) : (
-                  <span className="hidden md:inline text-xs text-slate-500 dark:text-slate-400">
-                    • 17Lands Premier Draft comps
-                  </span>
-                )}
+                <span className="hidden md:inline text-xs text-slate-500 dark:text-slate-400">
+                  • 17Lands Premier Draft comps
+                </span>
               </div>
             </div>
           </div>
@@ -471,16 +516,17 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 custom-scrollbar">
-
-          {loading && !activeData ? (
-            <div className="py-24 flex flex-col items-center justify-center gap-3 text-center">
-              <Loader2 className="w-9 h-9 text-violet-600 dark:text-cyan-400 animate-spin" />
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">
-                  Searching historical sets & fetching 17Lands data...
+          {!isReady ? (
+            <div className="py-28 px-4 flex flex-col items-center justify-center gap-4 text-center select-none animate-in fade-in duration-150">
+              <div className="w-14 h-14 rounded-2xl bg-violet-100/80 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800/60 flex items-center justify-center shadow-xs">
+                <Loader2 className="w-7 h-7 text-violet-600 dark:text-cyan-400 animate-spin" />
+              </div>
+              <div className="space-y-1.5 max-w-md">
+                <p className="text-base font-bold text-slate-900 dark:text-white font-heading">
+                  Searching Historical Precedents for {targetCard.name}...
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                  Querying premier draft statistics across WOE, BLB, OTJ, MKM, LCI, DMU, and more
+                  Querying premier draft statistics across Magic sets (BLB, OTJ, MKM, LCI, WOE, DMU, and more)
                 </p>
               </div>
             </div>
@@ -549,6 +595,24 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                 </span>
               </div>
 
+              {/* Engine Learning Notification Banner */}
+              {learningNotice && (
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-600/50 text-emerald-900 dark:text-emerald-200 text-xs font-mono flex items-center justify-between gap-3 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span><strong className="font-bold">✨ Engine Learned:</strong> {learningNotice}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLearningNotice(null)}
+                    className="p-1 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 rounded text-emerald-700 dark:text-emerald-300 cursor-pointer"
+                    title="Dismiss"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Target Card vs Similar Comps Flex Container */}
               <div className="flex flex-col lg:flex-row gap-5 items-start">
                 {/* Target Card Column (Desktop left side, 340px width) */}
@@ -589,7 +653,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     </div>
 
                     {/* Quick Adopt Grade Average & Median Buttons for Target Card */}
-                    {onAdoptGrade && (presentedGradeStats?.averageGrade || activeData?.consensus?.projectedTier) && (
+                    {onAdoptGrade && !loading && (presentedGradeStats?.averageGrade || activeData?.consensus?.projectedTier) && (
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
@@ -696,8 +760,8 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
               {/* Similar Cards Matches List (Desktop right side) - 2 Columns of spacious cards */}
                 <div className="flex-1 min-w-0 space-y-4">
                   <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
-                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-emerald-200 dark:border-emerald-800/60">
-                      Comparable Historical Cards ({presentedMatches.length})
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1.5">
+                      <span>Comparable Historical Cards ({presentedMatches.length})</span>
                     </span>
                     <div className="flex items-center gap-3">
                       {hasCustomOverrides && (
@@ -717,29 +781,48 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Precedent Search & Substitute Input */}
-                  <div className="p-3 rounded-2xl bg-slate-50/80 dark:bg-[#050818]/90 border border-slate-200 dark:border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
-                        <span>Search & Substitute Precedent Card</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400">
-                        Search any card across Magic history
-                      </span>
+                  {/* Precedent Search & Substitute Action Banner */}
+                  <div
+                    id="comp-search-bar"
+                    onClick={() => setSwapSearchSlotIndex(0)}
+                    className="p-3.5 rounded-2xl bg-gradient-to-r from-violet-600/10 via-indigo-600/5 to-cyan-500/10 border border-violet-300/70 dark:border-cyan-500/40 hover:border-violet-500 dark:hover:border-cyan-400 shadow-2xs hover:shadow-md transition-all cursor-pointer group flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                        <Search className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold font-heading text-slate-900 dark:text-white">
+                            Search & Substitute Precedent Card
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 font-bold border border-violet-200 dark:border-violet-800/60">
+                            Dedicated Visual Studio
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                          Search any card across Magic history with visual card grid and side-by-side slot comparison
+                        </p>
+                      </div>
                     </div>
-                    <PrecedentCardSearch
-                      targetCard={targetCard}
-                      onSelectCard={(selectedCard) => {
-                        setSlotPickerCard(selectedCard);
-                        setPreselectedSlotIndex(null);
-                      }}
-                      placeholder="Search by card name, oracle text (e.g. 'destroy target', 'draw card'), or mana..."
-                    />
+
+                    <button
+                      type="button"
+                      className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-violet-600 group-hover:bg-violet-700 text-white shadow-xs transition-all flex items-center gap-1.5 shrink-0 pointer-events-none"
+                    >
+                      <span>Open Search</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-6">
-                    {presentedMatches.map((match, matchIdx) => {
+                  {presentedMatches.length === 0 ? (
+                    <div className="py-16 px-6 rounded-3xl bg-slate-50/70 dark:bg-[#070b1e]/70 border border-slate-200 dark:border-slate-800 text-center">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">No comparable cards found</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">Use the search bar above to manually select a comparable card.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-6">
+                      {presentedMatches.map((match, matchIdx) => {
                       const comp = match.card;
                       const imageUri = comp.image_uris?.normal ||
                         comp.image_uris?.large ||
@@ -769,7 +852,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                   src={imageUri}
                                   alt={comp.name}
                                   className="w-full h-full"
-                                  imageClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 pointer-events-none"
+                                  imageClassName="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200 pointer-events-none"
                                   loading="eager"
                                 />
                               </button>
@@ -856,6 +939,12 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                         Custom Comp
                                       </span>
                                     )}
+                                    {match.matchReasons.some(r => r.toLowerCase().startsWith('learned')) && (
+                                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-mono text-[10px] font-bold border border-emerald-300/60 dark:border-emerald-700/60 flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                        Learned Comp
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 pt-0.5 flex-wrap">
                                     <SetSymbol setCode={comp.set} size="xs" />
@@ -882,7 +971,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setDirectSwapSlotIndex(matchIdx);
+                                      setSwapSearchSlotIndex(matchIdx);
                                     }}
                                     className="px-2.5 py-1 rounded-xl text-slate-600 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono font-bold shadow-2xs"
                                     title={`Replace ${comp.name} in slot ${matchIdx + 1}`}
@@ -916,11 +1005,21 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-500/20 dark:text-cyan-300 font-mono text-xs font-bold border border-cyan-200 dark:border-cyan-500/40">
                                   {match.similarityScore === 100 ? '100% (Reprint)' : `${match.similarityScore}% Match`}
                                 </span>
-                                {match.matchReasons.map((r, i) => (
-                                  <span key={i} className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-mono text-xs border border-slate-200/60 dark:border-slate-700/60">
-                                    {r}
-                                  </span>
-                                ))}
+                                {match.matchReasons.map((r, i) => {
+                                  const isLearnedReason = r.toLowerCase().startsWith('learned');
+                                  return (
+                                    <span
+                                      key={i}
+                                      className={`px-2.5 py-0.5 rounded-full font-mono text-xs border ${
+                                        isLearnedReason
+                                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300/80 dark:border-emerald-700/80 font-semibold'
+                                          : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-slate-700/60'
+                                      }`}
+                                    >
+                                      {r}
+                                    </span>
+                                  );
+                                })}
                               </div>
 
                               {/* Wide, Roomy Oracle Rules Text Box: No narrow column, completely readable */}
@@ -992,6 +1091,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       );
                     })}
                   </div>
+                  )}
                 </div>
               </div>
             </>
@@ -1462,111 +1562,17 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         </div>
       )}
 
-      {/* Precedent Slot Picker Modal (Workflow: Search first -> Pick slot) */}
-      {slotPickerCard && (
-        <PrecedentSlotPickerModal
-          isOpen={Boolean(slotPickerCard)}
-          onClose={() => {
-            setSlotPickerCard(null);
-            setPreselectedSlotIndex(null);
-          }}
+      {/* Dedicated Precedent Swap & Search Modal */}
+      {swapSearchSlotIndex !== null && targetCard && (
+        <PrecedentSwapSearchModal
+          isOpen={swapSearchSlotIndex !== null}
+          onClose={() => setSwapSearchSlotIndex(null)}
           targetCard={targetCard}
-          replacementCard={slotPickerCard}
           currentMatches={presentedMatches}
-          preselectedSlotIndex={preselectedSlotIndex}
+          initialSlotIndex={swapSearchSlotIndex}
           onConfirmSlotReplacement={handleConfirmSlotReplacement}
+          onRevertSlot={handleRevertSlot}
         />
-      )}
-
-      {/* Direct Slot Swap Search Modal (Workflow: Click Swap on slot -> Search replacement) */}
-      {directSwapSlotIndex !== null && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 flex items-center justify-center text-violet-700 dark:text-cyan-400">
-                  <ArrowLeftRight className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white font-heading">
-                    Replace Precedent Slot {directSwapSlotIndex + 1}
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    Currently: {presentedMatches[directSwapSlotIndex]?.card.name}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDirectSwapSlotIndex(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {presentedMatches[directSwapSlotIndex]?.card && (
-              <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
-                <div className="w-12 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 bg-[#050818]">
-                  <CardImage
-                    card={presentedMatches[directSwapSlotIndex].card}
-                    src={
-                      presentedMatches[directSwapSlotIndex].card.image_uris?.small ||
-                      presentedMatches[directSwapSlotIndex].card.image_uris?.normal ||
-                      (presentedMatches[directSwapSlotIndex].card.card_faces &&
-                        presentedMatches[directSwapSlotIndex].card.card_faces[0]?.image_uris?.small)
-                    }
-                    alt={presentedMatches[directSwapSlotIndex].card.name}
-                    className="w-full h-full"
-                    imageClassName="w-full h-full object-cover"
-                    loading="eager"
-                  />
-                </div>
-                <div className="flex-1 min-w-0 space-y-0.5">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span className="font-bold text-xs text-slate-900 dark:text-white truncate font-heading">
-                      {presentedMatches[directSwapSlotIndex].card.name}
-                    </span>
-                    {presentedMatches[directSwapSlotIndex].card.mana_cost && (
-                      <div className="scale-75 origin-right shrink-0">
-                        <ManaCostRenderer manaCost={presentedMatches[directSwapSlotIndex].card.mana_cost} size="xs" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
-                    {presentedMatches[directSwapSlotIndex].card.type_line}
-                  </div>
-                  <div className="text-[10px] font-mono text-violet-600 dark:text-cyan-400 font-bold">
-                    Currently in Slot {directSwapSlotIndex + 1}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <PrecedentCardSearch
-              targetCard={targetCard}
-              onSelectCard={(selectedCard) => {
-                setSlotPickerCard(selectedCard);
-                setPreselectedSlotIndex(directSwapSlotIndex);
-                setDirectSwapSlotIndex(null);
-              }}
-              placeholder="Search by card name, oracle text (e.g. 'destroy target', 'draw card'), or mana..."
-            />
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setDirectSwapSlotIndex(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold font-mono text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
