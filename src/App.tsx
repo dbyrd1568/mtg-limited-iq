@@ -35,6 +35,7 @@ import { SetBadge, SetSymbol } from './components/UI/SetSymbol';
 import { LegalModal, LegalDocType } from './components/Legal/LegalModal';
 import { ContextualTourProvider } from './context/ContextualTourContext';
 import { ContextualTourTooltip } from './components/UI/ContextualTourTooltip';
+import { MobileBottomNav } from './components/UI/MobileBottomNav';
 import { ErrorBoundary } from './components/UI/ErrorBoundary';
 
 const AppContent: React.FC = () => {
@@ -693,7 +694,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-16">
+      <main className="flex-1 pb-24 md:pb-16">
         {activeTab === 'admin' ? (
           isAdmin ? (
             <AdminDashboard
@@ -934,6 +935,16 @@ const AppContent: React.FC = () => {
           </>
         )}
       </main>
+ 
+      {/* Mobile Bottom Navigation Bar (Fixed thumb-friendly bottom drawer) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          updateAppUrlParams({ tab });
+        }}
+        isAdmin={isAdmin}
+      />
 
       {/* Set Selector Modal */}
       <SetSelectorModal

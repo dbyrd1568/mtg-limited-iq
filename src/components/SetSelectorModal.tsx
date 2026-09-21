@@ -81,33 +81,33 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-[96vw] max-w-5xl bg-white dark:bg-[#090e28] border border-slate-200 dark:border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl bg-white dark:bg-[#090e28] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d]">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-violet-100 dark:bg-violet-600/30 border border-violet-300 dark:border-violet-400/40 text-violet-700 dark:text-cyan-300 shadow-xs">
-              <Wand2 className="w-6 h-6" />
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-violet-100 dark:bg-violet-600/30 border border-violet-300 dark:border-violet-400/40 text-violet-700 dark:text-cyan-300 shadow-xs shrink-0">
+              <Wand2 className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white font-heading tracking-wide">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white font-heading tracking-wide truncate">
                 Select MTG Limited Set
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-300">
+              <p className="text-xs text-slate-500 dark:text-slate-300 truncate">
                 Choose a booster set to drill combat cards & test 17Lands evaluations
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Controls, Filters & Search */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-[#070b22] space-y-4">
+        <div className="p-3 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-[#070b22] space-y-3 sm:space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
             {/* Search Input */}
             <div className="relative md:col-span-8">
@@ -150,7 +150,7 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
         </div>
 
         {/* Set List Grid (Expansive 2-Column Full Width) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 pb-safe">
           {filteredSets.length === 0 ? (
             <div className="py-16 text-center text-slate-500 space-y-2">
               <p className="text-sm font-semibold">No sets found matching "{searchQuery}"</p>

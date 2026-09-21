@@ -471,24 +471,24 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
   const formatTierGapVerdict = (gap: number) => {
     if (gap === 0) {
-      return { text: '🎯 Exact Match vs 17Lands', color: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 font-bold', isCorrect: true };
+      return { text: 'Exact Match (Correct)', color: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 font-bold', isCorrect: true };
     }
     if (gap === 1) {
-      return { text: '✓ +1 Step Over 17Lands (Within Tolerance)', color: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 font-semibold', isCorrect: true };
+      return { text: '+1 Tier (Correct)', color: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 font-semibold', isCorrect: true };
     }
     if (gap === -1) {
-      return { text: '✓ -1 Step Under 17Lands (Within Tolerance)', color: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 font-semibold', isCorrect: true };
+      return { text: '-1 Tier (Correct)', color: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 font-semibold', isCorrect: true };
     }
     if (gap === 2) {
-      return { text: '+2 Over 17Lands (Minor Trap)', color: 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/40 font-semibold', isCorrect: false };
+      return { text: '+2 Tiers (Trap)', color: 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/40 font-semibold', isCorrect: false };
     }
     if (gap === -2) {
-      return { text: '-2 Under 17Lands (Minor Sleeper)', color: 'bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/40 font-semibold', isCorrect: false };
+      return { text: '-2 Tiers (Sleeper)', color: 'bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/40 font-semibold', isCorrect: false };
     }
     if (gap >= 3) {
-      return { text: `+${gap} Over 17Lands (Major Trap 🔥)`, color: 'bg-rose-100 dark:bg-rose-500/25 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-500/50 font-bold', isCorrect: false };
+      return { text: `+${gap} Tiers (Trap)`, color: 'bg-rose-100 dark:bg-rose-500/25 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-500/50 font-bold', isCorrect: false };
     }
-    return { text: `${gap} Under 17Lands (Major Sleeper 🧊)`, color: 'bg-blue-100 dark:bg-blue-500/25 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-500/50 font-bold', isCorrect: false };
+    return { text: `${gap} Tiers (Sleeper)`, color: 'bg-blue-100 dark:bg-blue-500/25 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-500/50 font-bold', isCorrect: false };
   };
 
   const getTierBadgeColor = (tier: GradeTier) => {
@@ -502,9 +502,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   return (
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, zero scrollbar) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs no-scrollbar">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         {/* Left: Sub-tabs */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
           <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
             <button
               onClick={() => setActiveSubTab('grade')}
@@ -564,7 +564,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         </div>
 
         {/* Right: Export, Clear, Blind Mode Toggle */}
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+        <div className="flex items-center justify-end gap-1.5 shrink-0 flex-wrap">
           <button
             id="export-grades-btn"
             type="button"
@@ -820,10 +820,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   onClick={() => handleSelectCardForModal(card)}
                   className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="shrink-0 flex flex-col items-start w-[185px]">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
+                    <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[185px]">
                       {/* Top Bar above card: Grade badge(s) in a single horizontal non-wrapping row */}
-                      <div className="w-full flex items-center gap-1 mb-1.5 min-h-[22px] overflow-hidden">
+                      <div className="w-full flex items-center justify-center sm:justify-start gap-1 mb-1.5 min-h-[22px] overflow-hidden">
                         <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
                           {(() => {
                             const actualTier: GradeTier | null = landData
@@ -883,7 +883,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       />
                     </div>
 
-                    <div className="space-y-1 flex-1 min-w-0">
+                    <div className="space-y-1 w-full sm:flex-1 min-w-0">
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors truncate">{card.name}</h3>
                       <p className="text-[11px] text-violet-700 dark:text-cyan-300 font-mono">{card.type_line}</p>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
@@ -1005,7 +1005,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     </div>
 
                     <div
-                      className="grid grid-cols-11 gap-0.5"
+                      className="grid grid-cols-6 sm:grid-cols-11 gap-1 sm:gap-0.5"
                       title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
                     >
                       {GRADE_TIERS.map((tier) => {
@@ -1018,7 +1018,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                               e.stopPropagation();
                               handleQuickGrade(card, tier);
                             }}
-                            className={`py-1 rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer border ${
+                            className={`py-1.5 sm:py-1 rounded-md text-xs sm:text-[10px] font-mono font-bold transition-all cursor-pointer border min-h-[36px] sm:min-h-0 ${
+                              tier === 'F' ? 'col-span-2 sm:col-span-1' : ''
+                            } ${
                               isSelected
                                 ? 'bg-violet-600 text-white border-violet-500 shadow-xs font-black ring-1 ring-violet-400'
                                 : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700'
@@ -1264,7 +1266,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                           <strong>50% Partial Credit</strong>
                         </div>
                         <div className="flex justify-between text-rose-600 dark:text-rose-400">
-                          <span>|Δ| ≥ 3 (Major Trap / Sleeper):</span>
+                          <span>|Δ| ≥ 3 (Trap / Sleeper):</span>
                           <strong>0% Credit</strong>
                         </div>
                       </div>
