@@ -121,8 +121,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs in Unified Pill Aesthetic */}
-          <nav className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar shrink-0">
+          {/* Navigation Tabs in Unified Pill Aesthetic (Desktop only; Mobile uses MobileBottomNav) */}
+          <nav className="hidden md:flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar shrink-0">
             <button
               onClick={() => onTabChange('evaluation')}
               className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
@@ -187,10 +187,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* Share / Troubleshoot Link Button (Icon Only) */}
+            {/* Share / Troubleshoot Link Button (Desktop/Tablet only to save space on mobile) */}
             <button
               onClick={handleCopyTroubleshootLink}
-              className="p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer shrink-0 text-slate-700 dark:text-slate-300 flex items-center justify-center"
+              className="hidden sm:flex p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer shrink-0 text-slate-700 dark:text-slate-300 items-center justify-center"
               title="Copy shareable link to clipboard"
               aria-label="Share Link"
             >
@@ -201,8 +201,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* Quick Tour / Help Dropdown Button */}
-            <div className="relative" ref={helpMenuRef}>
+            {/* Quick Tour / Help Dropdown Button (Desktop/Tablet only) */}
+            <div className="relative hidden sm:block" ref={helpMenuRef}>
               <button
                 onClick={() => setIsHelpMenuOpen(!isHelpMenuOpen)}
                 className={`p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border rounded-xl transition-all shadow-xs cursor-pointer shrink-0 flex items-center justify-center ${

@@ -143,12 +143,12 @@ export const ManaColorFilterBar: React.FC<ManaColorFilterBarProps> = ({
   ];
 
   return (
-    <div className={`flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0 ${className}`}>
+    <div className={`flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0 overflow-x-auto no-scrollbar max-w-full ${className}`}>
       {showAllButton && (
         <button
           type="button"
           onClick={() => handleClick('ALL')}
-          className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
+          className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer shrink-0 ${
             isAllActive
               ? 'bg-violet-600 text-white shadow-xs font-black'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -159,7 +159,7 @@ export const ManaColorFilterBar: React.FC<ManaColorFilterBarProps> = ({
         </button>
       )}
 
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {COLOR_BUTTONS.map((item) => {
           const isSelected =
             !isAllActive &&
@@ -171,7 +171,7 @@ export const ManaColorFilterBar: React.FC<ManaColorFilterBarProps> = ({
               key={item.id}
               type="button"
               onClick={() => handleClick(item.id)}
-              className={`${buttonSize} rounded-full flex items-center justify-center transition-all cursor-pointer relative select-none ${
+              className={`${buttonSize} rounded-full flex items-center justify-center transition-all cursor-pointer relative select-none shrink-0 ${
                 isSelected
                   ? 'ring-2 ring-amber-400 dark:ring-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.85)] scale-110 z-10 opacity-100'
                   : 'opacity-50 hover:opacity-90 hover:scale-105 grayscale-[20%] hover:grayscale-0'

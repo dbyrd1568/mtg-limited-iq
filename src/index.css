@@ -146,3 +146,20 @@ html.light ::-webkit-scrollbar-thumb:hover {
 .card-glow-common {
   box-shadow: 0 0 15px -4px rgba(99, 102, 241, 0.2);
 }
+
+/* Mobile Safe Area & Touch UX Utilities */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
+}
+
+.mb-safe {
+  margin-bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}

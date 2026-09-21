@@ -390,24 +390,35 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   if (!isOpen || !currentCard) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-      {/* Fixed Dimension Modal Container (Constant size across all cards) */}
-      <div className="relative w-[96vw] max-w-5xl h-[88vh] max-h-[840px] my-auto bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-5 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      {/* Dimension Modal Container (Full-screen mobile, bounded dialog desktop) */}
+      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl sm:h-[88vh] sm:max-h-[840px] my-auto bg-white dark:bg-[#090e24] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Fixed Header */}
-        <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-3.5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d]">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-cyan-300 shrink-0">
-              <Zap className="w-4 h-4" />
+        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d]">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-1.5 sm:p-2 rounded-xl bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-cyan-300 shrink-0">
+                <Zap className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading truncate">Card Evaluation</h2>
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
+                  Card {currentIndex + 1} of {orderedCards.length} • {ratedCountInSet} rated • {navMode === 'ungraded' ? 'Ungraded' : 'All'}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading truncate">Card Evaluation</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                Card {currentIndex + 1} of {orderedCards.length} {orderedCards.length < 100 ? '(Preview / Spoiled Cards)' : 'in set'} • {ratedCountInSet} of {orderedCards.length} rated in {currentCard.set?.toUpperCase()} • {navMode === 'ungraded' ? 'Ungraded Only' : 'All Cards'}
-              </p>
-            </div>
+
+            {/* Mobile Close Button */}
+            <button
+              onClick={onClose}
+              className="sm:hidden p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shrink-0"
+              title="Close card evaluator"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <div className="flex items-center gap-2 shrink-0 sm:ml-auto overflow-x-auto no-scrollbar pb-0.5 sm:pb-0">
             {/* Sequence Order Dropdown */}
             <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-xl text-xs shrink-0">
               <ArrowUpDown className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
@@ -416,12 +427,12 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                 onChange={(e) => setSortOrder(e.target.value as GradingSortOrder)}
                 className="bg-transparent text-slate-800 dark:text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer"
               >
-                <option value="number">🔢 Card Number (#001 → #300)</option>
-                <option value="color">🎨 By Color (WUBRG Order)</option>
-                <option value="rarity_asc">💎 Commons First → Mythics</option>
-                <option value="rarity_desc">👑 Mythics First → Commons</option>
-                <option value="unrated_first">⏳ Ungraded Cards First</option>
-                <option value="alpha">🔤 Alphabetical (A → Z)</option>
+                <option value="number">🔢 Number</option>
+                <option value="color">🎨 Color</option>
+                <option value="rarity_asc">💎 Commons First</option>
+                <option value="rarity_desc">👑 Mythics First</option>
+                <option value="unrated_first">⏳ Ungraded First</option>
+                <option value="alpha">🔤 Alphabetical</option>
               </select>
             </div>
 
@@ -471,7 +482,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
               <button
                 type="button"
                 onClick={onToggleBlindGrading}
-                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                className={`px-2.5 sm:px-3 py-1 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 cursor-pointer shrink-0 ${
                   isBlindGrading
                     ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40'
                     : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60'
@@ -479,16 +490,15 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                 title={isBlindGrading ? 'Grading Mode: Benchmarks hidden. Click to switch to Compare Mode' : 'Compare Mode: 17Lands data visible. Click to switch to Grading Mode'}
               >
                 {isBlindGrading ? <EyeOff className="w-3.5 h-3.5 text-amber-500" /> : <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                <span>{isBlindGrading ? 'Grading Mode' : 'Compare Mode'}</span>
+                <span className="hidden sm:inline">{isBlindGrading ? 'Grading Mode' : 'Compare Mode'}</span>
+                <span className="sm:hidden">{isBlindGrading ? 'Blind' : 'Compare'}</span>
               </button>
             )}
 
-
-
-            {/* Pinned Close Button: Never wraps, always floated right */}
+            {/* Desktop Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shrink-0"
+              className="hidden sm:block p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shrink-0"
               title="Close card evaluator"
             >
               <X className="w-5 h-5" />
@@ -518,9 +528,9 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
         )}
 
         {/* Fixed Content Layout (Grid split: Left Card Art, Right Grading Controls) */}
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 lg:gap-5 p-4 sm:p-5 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 lg:gap-5 p-3 sm:p-5 overflow-y-auto md:overflow-hidden">
           {/* Left: Card Visual (Fixed width column) */}
-          <div className="w-full md:w-[280px] lg:w-[305px] shrink-0 flex flex-col items-center justify-between min-h-0">
+          <div className="w-full md:w-[280px] lg:w-[305px] shrink-0 flex flex-col items-center justify-start md:justify-between min-h-0">
             <div className="w-full flex items-center justify-between gap-2 px-1 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1 shrink-0">
               <span className="font-semibold text-slate-700 dark:text-slate-300">
                 #{currentCard.collector_number} • <span className="capitalize font-normal text-slate-500 dark:text-slate-400">{currentCard.rarity}</span>
@@ -550,7 +560,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
           </div>
 
           {/* Right: Full Rules Text, 17Lands Comparison & Notes Field (Constant layout) */}
-          <div className="space-y-2.5 flex-1 min-w-0 w-full flex flex-col justify-between min-h-0 overflow-y-auto pr-1">
+          <div className="space-y-2.5 flex-1 min-w-0 w-full flex flex-col md:justify-between min-h-0 md:overflow-y-auto pr-1">
             {/* Title & Mana */}
             <div className="space-y-0.5 shrink-0">
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -604,13 +614,13 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
           </div>
         </div>
 
-        {/* Grade Tier Buttons & Navigation (Pinned at constant position at bottom) */}
-        <div className="shrink-0 px-4 py-3 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d] space-y-2">
+        {/* Grade Tier Buttons & Navigation (Pinned at bottom with safe area padding) */}
+        <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d] space-y-2 pb-safe">
           <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center flex items-center justify-center gap-1" title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
             <span>Assign Limited Grade</span>
           </div>
           <div
-            className="grid grid-cols-11 gap-1 max-w-4xl mx-auto"
+            className="grid grid-cols-6 sm:grid-cols-11 gap-1 sm:gap-1 max-w-4xl mx-auto"
             title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
           >
             {GRADE_TIERS.map((tier) => {
@@ -627,7 +637,9 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                   key={tier}
                   type="button"
                   onClick={() => handleRate(tier)}
-                  className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer ${
+                  className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer min-h-[38px] sm:min-h-0 ${
+                    tier === 'F' ? 'col-span-2 sm:col-span-1' : ''
+                  } ${
                     isSelected ? 'ring-2 ring-violet-400 bg-violet-600 text-white font-black shadow-xs' : color
                   }`}
                 >

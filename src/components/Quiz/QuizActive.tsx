@@ -270,11 +270,11 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">Click card to pick • Click Zoom to inspect</span>
               </div>
 
-              <div className="flex flex-row items-center justify-center gap-2 sm:gap-4 overflow-hidden">
+              <div className="flex flex-row items-center justify-center gap-1.5 sm:gap-4 overflow-hidden w-full">
                 {/* Option A Card */}
                 <div
                   onClick={() => !isAnswerSubmitted && handleSelectOption(currentQuestion.card.id)}
-                  className={`flex flex-col items-center cursor-pointer transition-all p-2 rounded-2xl relative group select-none ${
+                  className={`flex flex-col items-center cursor-pointer transition-all p-1.5 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-[170px] sm:max-w-[210px] ${
                     selectedOptionId === currentQuestion.card.id
                       ? 'bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500 dark:ring-cyan-400'
                       : 'hover:bg-slate-100 dark:hover:bg-[#0c1236]'
@@ -282,7 +282,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                   title="Click card to choose Option A"
                 >
                   <div className="flex items-center justify-between w-full mb-1.5 px-0.5">
-                    <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] sm:text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-1.5 sm:px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                       Option A (1)
                     </span>
                     <button
@@ -291,7 +291,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                         e.stopPropagation();
                         setZoomedCard({ card: currentQuestion.card, label: 'Option A', optionId: currentQuestion.card.id });
                       }}
-                      className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
                       title="Enlarge Option A (without choosing answer)"
                     >
                       <ZoomIn className="w-3 h-3 text-violet-600 dark:text-cyan-400" />
@@ -299,7 +299,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                     </button>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative w-full flex justify-center">
                     <CardObfuscator
                       card={currentQuestion.card}
                       obfuscation={{ target: 'none', style: 'blur', isRevealed: isAnswerSubmitted }}
@@ -321,8 +321,8 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 </div>
 
                 {/* VS Badge */}
-                <div className="shrink-0 flex flex-col items-center justify-center">
-                  <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-[#0e1438] border border-slate-300 dark:border-cyan-400/50 text-slate-800 dark:text-cyan-200 font-bold text-xs flex items-center justify-center font-mono shadow-xs">
+                <div className="shrink-0 flex flex-col items-center justify-center px-0.5">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-100 dark:bg-[#0e1438] border border-slate-300 dark:border-cyan-400/50 text-slate-800 dark:text-cyan-200 font-bold text-[10px] sm:text-xs flex items-center justify-center font-mono shadow-xs">
                     VS
                   </div>
                 </div>
@@ -330,7 +330,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 {/* Option B Card */}
                 <div
                   onClick={() => !isAnswerSubmitted && handleSelectOption(currentQuestion.comparisonCard!.id)}
-                  className={`flex flex-col items-center cursor-pointer transition-all p-2 rounded-2xl relative group select-none ${
+                  className={`flex flex-col items-center cursor-pointer transition-all p-1.5 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-[170px] sm:max-w-[210px] ${
                     selectedOptionId === currentQuestion.comparisonCard.id
                       ? 'bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500 dark:ring-cyan-400'
                       : 'hover:bg-slate-100 dark:hover:bg-[#0c1236]'
@@ -338,7 +338,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                   title="Click card to choose Option B"
                 >
                   <div className="flex items-center justify-between w-full mb-1.5 px-0.5">
-                    <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] sm:text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-1.5 sm:px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                       Option B (2)
                     </span>
                     <button
@@ -347,7 +347,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                         e.stopPropagation();
                         setZoomedCard({ card: currentQuestion.comparisonCard!, label: 'Option B', optionId: currentQuestion.comparisonCard!.id });
                       }}
-                      className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
                       title="Enlarge Option B (without choosing answer)"
                     >
                       <ZoomIn className="w-3 h-3 text-violet-600 dark:text-cyan-400" />
@@ -355,7 +355,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                     </button>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative w-full flex justify-center">
                     <CardObfuscator
                       card={currentQuestion.comparisonCard}
                       obfuscation={{ target: 'none', style: 'blur', isRevealed: isAnswerSubmitted }}
