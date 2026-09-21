@@ -46,7 +46,7 @@ const similarityCache = new Map<string, CardSimilarityResult>();
  */
 export function getCachedSimilarCards(targetCard: Card | null | undefined): CardSimilarityResult | null {
   if (!targetCard || !targetCard.name || !targetCard.set) return null;
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v63`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v65`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -125,6 +125,10 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Hero in Training', 'MSC', '{2}{W}', 3, 'Creature — Human Hero', 'When Hero in Training enters the battlefield, draw a card. If you control another Hero, you gain 2 life.', ['W'], '2', '2', 'common'),
   createBenchmarkCard('Stone Docent', 'SOS', '{1}{W}', 2, 'Creature — Spirit Chimera', '{W}, Exile this card from your graveyard: You gain 2 life. Surveil 1.', ['W'], '3', '1', 'common'),
   createBenchmarkCard('Star Pupil', 'STX', '{W}', 1, 'Creature — Human Wizard', 'Star Pupil enters the battlefield with a +1/+1 counter on it. When Star Pupil dies, put its counters on target creature you control.', ['W'], '0', '0', 'common'),
+  createBenchmarkCard('Mikaeus, the Lunarch', 'ISD', '{X}{W}', 1, 'Legendary Creature — Human Cleric', 'Mikaeus, the Lunarch enters the battlefield with X +1/+1 counters on it.\n{T}: Put a +1/+1 counter on Mikaeus.\n{T}, Remove a +1/+1 counter from Mikaeus: Put a +1/+1 counter on each other creature you control.', ['W'], '0', '0', 'mythic'),
+  createBenchmarkCard('Luminarch Aspirant', 'ZNR', '{1}{W}', 2, 'Creature — Human Cleric', 'At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.', ['W'], '1', '1', 'rare'),
+  createBenchmarkCard('Siege Veteran', 'BRO', '{2}{W}', 3, 'Creature — Human Soldier', 'At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.\nWhenever another nontoken Soldier you control dies, create a 1/1 colorless Soldier artifact creature token.', ['W'], '2', '2', 'rare'),
+  createBenchmarkCard('Shalai, Voice of Plenty', 'DOM', '{3}{W}', 4, 'Legendary Creature — Angel', 'Flying\nYou, planeswalkers you control, and other creatures you control have hexproof.\n{4}{G}{G}: Put a +1/+1 counter on each creature you control.', ['W'], '3', '4', 'rare', ['Flying']),
 
   // Blue
   createBenchmarkCard('Consider', 'MID', '{U}', 1, 'Instant', 'Surveil 1. Draw a card.', ['U']),
@@ -174,8 +178,15 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Polliwallop', 'BLB', '{3}{G}', 4, 'Instant', "This spell costs {2} less to cast if it targets a Frog you control. Target creature you control fights target creature you don't control.", ['G']),
   createBenchmarkCard("Baker's Bane Beastie", 'BLB', '{4}{G}', 5, 'Creature — Beast', 'Vigilance. When Baker\'s Bane Beastie enters the battlefield, create a Food token.', ['G'], '5', '4', 'common', ['Vigilance']),
   createBenchmarkCard('Writhing Chrysalis', 'MH3', '{2}{R}{G}', 4, 'Creature — Eldrazi Drone', 'Reach. When you cast this spell, create two 0/1 colorless Eldrazi Spawn creature tokens. Whenever you sacrifice another Eldrazi, put a +1/+1 counter on Writhing Chrysalis.', ['R', 'G'], '2', '3', 'common', ['Reach']),
+  createBenchmarkCard('Goldvein Hydra', 'OTJ', '{X}{G}', 1, 'Creature — Plant Hydra', 'Vigilance, trample, haste\nGoldvein Hydra enters the battlefield with X +1/+1 counters on it.\nWhen Goldvein Hydra dies, create X tapped Treasure tokens, where X is its power.', ['G'], '0', '0', 'mythic', ['Vigilance', 'Trample', 'Haste']),
+  createBenchmarkCard('Wildwood Scourge', 'M21', '{X}{G}', 1, 'Creature — Hydra', 'Wildwood Scourge enters the battlefield with X +1/+1 counters on it.\nWhenever one or more +1/+1 counters are put on another non-Hydra creature you control, put a +1/+1 counter on Wildwood Scourge.', ['G'], '0', '0', 'rare'),
+  createBenchmarkCard('Voracious Hydra', 'M20', '{X}{G}{G}', 2, 'Creature — Hydra', 'Trample\nVoracious Hydra enters the battlefield with X +1/+1 counters on it.\nWhen Voracious Hydra enters the battlefield, choose one —\n• Double the number of +1/+1 counters on Voracious Hydra.\n• Voracious Hydra fights target creature you don\'t control.', ['G'], '0', '1', 'rare', ['Trample']),
 
   // Colorless & Artifacts
+  createBenchmarkCard('Skyreach Manta', 'MMA', '{5}', 5, 'Artifact Creature — Spire Owl', 'Flying\nSunburst (This enters the battlefield with a +1/+1 counter on it for each color of mana spent to cast it.)', [], '0', '0', 'common', ['Flying', 'Sunburst']),
+  createBenchmarkCard('Etched Oracle', 'MMA', '{4}', 4, 'Artifact Creature — Wizard', 'Sunburst\n{1}, Remove four +1/+1 counters from Etched Oracle: Target player draws three cards.', [], '0', '0', 'uncommon', ['Sunburst']),
+  createBenchmarkCard('Stonecoil Serpent', 'ELD', '{X}', 0, 'Artifact Creature — Snake', 'Reach, trample, protection from multicolored\nStonecoil Serpent enters the battlefield with X +1/+1 counters on it.', [], '0', '0', 'rare', ['Reach', 'Trample']),
+  createBenchmarkCard('Endless One', 'BFZ', '{X}', 0, 'Creature — Eldrazi', 'Endless One enters the battlefield with X +1/+1 counters on it.', [], '0', '0', 'rare'),
   createBenchmarkCard('Candy Trail', 'WOE', '{1}', 1, 'Artifact — Food Clue', 'When Candy Trail enters the battlefield, scry 2. {2}, {T}, Sacrifice Candy Trail: You gain 3 life and draw a card.', []),
   createBenchmarkCard('Witching Well', 'ELD', '{U}', 1, 'Artifact', 'When Witching Well enters the battlefield, scry 2. {3}{U}, Sacrifice Witching Well: Draw two cards.', ['U']),
   createBenchmarkCard('Clockwork Percussionist', 'DSK', '{1}', 1, 'Artifact Creature — Monkey', 'Haste. When Clockwork Percussionist dies, exile the top card of your library. You may play it until the end of your next turn.', [], '1', '1', 'common', ['Haste']),
@@ -209,6 +220,10 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Yavimaya Iconoclast', 'DMU', '{1}{G}', 2, 'Creature — Elf Warrior', 'Trample. Kicker {R}. When Yavimaya Iconoclast enters the battlefield, if it was kicked, it gets +1/+1 and gains haste until end of turn.', ['G'], '3', '2', 'uncommon', ['Trample']),
   createBenchmarkCard('Belligerent Yearling', 'LCI', '{1}{R}', 2, 'Creature — Dinosaur', 'Trample. Whenever another Dinosaur you control enters the battlefield, you may have Belligerent Yearling\'s base power become equal to that creature\'s power until end of turn.', ['R'], '3', '2', 'uncommon', ['Trample']),
   createBenchmarkCard('Elfsworn Giant', 'FDN', '{3}{G}{G}', 5, 'Creature — Giant Warrior', 'Reach. Landfall — Whenever a land you control enters the battlefield, create a 1/1 green Elf creature token.', ['G'], '5', '3', 'uncommon', ['Reach']),
+  createBenchmarkCard('Wildvine Pummeler', 'ECL', '{6}{G}', 7, 'Creature — Elemental Giant', 'Vivid — This spell costs {1} less to cast for each color among permanents you control.\nReach, trample', ['G'], '6', '5', 'common', ['Reach', 'Trample', 'Vivid']),
+  createBenchmarkCard('Woodland Wanderer', 'BFZ', '{3}{G}', 4, 'Creature — Elemental', 'Vigilance, trample\nConverge — This creature enters the battlefield with a +1/+1 counter on it for each color of mana spent to cast it.', ['G'], '2', '2', 'rare', ['Vigilance', 'Trample', 'Converge']),
+  createBenchmarkCard('Tajuru Stalwart', 'BFZ', '{2}{G}', 3, 'Creature — Elf Scout Ally', 'Converge — Tajuru Stalwart enters the battlefield with a +1/+1 counter on it for each color of mana spent to cast it.', ['G'], '0', '0', 'common', ['Converge']),
+  createBenchmarkCard('Nishoba Brawler', 'DMU', '{1}{G}', 2, 'Creature — Cat Warrior', 'Trample\nDomain — Nishoba Brawler\'s power is equal to the number of basic land types among lands you control.', ['G'], '*', '3', 'common', ['Trample', 'Domain']),
   createBenchmarkCard('Steelclaw Lance', 'ELD', '{B}{R}', 2, 'Artifact — Equipment', 'Equipped creature gets +2/+2. Equip Knight {1}. Equip {3}.', ['B', 'R'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Cultivate', 'M11', '{2}{G}', 3, 'Sorcery', 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', ['G'], undefined, undefined, 'common'),
 
@@ -351,6 +366,10 @@ export function extractCardFeatures(card: Card) {
   const isSorcery = frontTypeLine.includes('sorcery');
   const isEnchantment = frontTypeLine.includes('enchantment');
   const isArtifact = frontTypeLine.includes('artifact');
+  const isHydra = frontTypeLine.includes('hydra');
+  const hasXCost = /\{X\}/i.test(card.mana_cost || '') ||
+                   /\{X\}/i.test(card.card_faces?.[0]?.mana_cost || '') ||
+                   /\{X\}/i.test(card.card_faces?.[1]?.mana_cost || '');
 
   const creatureSubtypes = isCreature && frontTypeLine.includes('—')
     ? frontTypeLine.split('—')[1].trim().toLowerCase().split(/\s+/)
@@ -963,6 +982,82 @@ export function extractCardFeatures(card: Card) {
     detectedCategories.add('counters');
   }
 
+  // 5. Scalable X-Spells & Enters with X counters (e.g. Guiding Hydra, Stonecoil Serpent, Mikaeus)
+  const entersWithXCounters = /enters(?:\s+the\s+battlefield)?\s+with\s+x\s+\+1\/\+1\s+counters?/i.test(oracle) ||
+    (hasXCost && /enters(?:\s+the\s+battlefield)?\s+with\s+x/i.test(oracle));
+  if (entersWithXCounters) {
+    actionSubtypes.add('enters_with_x_counters');
+    actionSubtypes.add('scalable_x_spell');
+    valueRiders.add('counters');
+    detectedCategories.add('counters');
+  } else if (hasXCost) {
+    actionSubtypes.add('scalable_x_spell');
+  }
+
+  if (isHydra) {
+    actionSubtypes.add('hydra');
+  }
+
+  // 6. Team Counter Distribution (e.g. Guiding Hydra, Mikaeus, Shalai, Inspiring Call)
+  // "put a +1/+1 counter on each other creature you control" / "put a +1/+1 counter on each creature you control"
+  const isTeamCounterDistributor = /put\s+(?:a|an|\d+|one|two)?\s*(?:\+1\/\+1)?\s+counters?\s+on\s+each\s+(?:other\s+)?creature\s+you\s+control/i.test(oracle) ||
+    /distribute\s+.*\s+counters?\s+among\s+each\s+creature\s+you\s+control/i.test(oracle);
+  if (isTeamCounterDistributor) {
+    actionSubtypes.add('team_counter_distributor');
+    valueRiders.add('counters');
+    detectedCategories.add('counters');
+    detectedCategories.add('trick');
+  }
+
+  // 7. Combat Counter Distribution (e.g. Guiding Hydra, Luminarch Aspirant, Siege Veteran)
+  const isCombatCounterDistributor = /at\s+the\s+beginning\s+of\s+combat\s+on\s+your\s+turn.*put\s+(?:a|an|\d+|one|two)?\s*(?:\+1\/\+1)?\s+counter/i.test(oracle) ||
+    /at\s+the\s+beginning\s+of\s+combat\s+on\s+your\s+turn.*remove\s+a\s+\+1\/\+1\s+counter/i.test(oracle);
+  if (isCombatCounterDistributor) {
+    actionSubtypes.add('combat_counter_distributor');
+    valueRiders.add('counters');
+    detectedCategories.add('counters');
+  }
+
+  // 8. Counter Transfer Distributor (converting own counters into team-wide board growth)
+  const isCounterTransferDistributor = /remove\s+(?:a|an|\d+|one)?\s*(?:\+1\/\+1)?\s+counter.*from\s+(?:this\s+creature|it|this).*put\s+.*counter.*on\s+each/i.test(oracle);
+  if (isCounterTransferDistributor) {
+    actionSubtypes.add('counter_transfer_distributor');
+    valueRiders.add('counters');
+    detectedCategories.add('counters');
+  }
+
+  // 9. Multicolor Scaling & "Colors of Mana Spent" Mechanics (Converge, Sunburst, Vivid, Domain)
+  const isConverge = /converge\b|each color of mana spent to cast/i.test(oracle) ||
+    (card.keywords || []).some(k => /converge/i.test(k));
+  const isSunburst = /sunburst\b|each color of mana spent to pay/i.test(oracle) ||
+    (card.keywords || []).some(k => /sunburst/i.test(k));
+  const isVivid = /vivid\b|number of colors among permanents you control|each color among permanents you control|permanents of three or more colors/i.test(oracle) ||
+    (card.keywords || []).some(k => /vivid/i.test(k));
+  const isDomain = /domain\b|number of basic land types/i.test(oracle);
+  const isColorsSpentMechanic = isConverge || isSunburst ||
+    /for each color of mana spent/i.test(oracle) ||
+    /if at least .* mana was spent/i.test(oracle) ||
+    /colors of mana spent/i.test(oracle);
+  const isMultiColorScaling = isConverge || isSunburst || isVivid || isDomain || isColorsSpentMechanic;
+
+  if (isConverge || isSunburst) {
+    actionSubtypes.add('converge_sunburst');
+    actionSubtypes.add('color_scaling_payoff');
+    detectedCategories.add('synergy');
+    valueRiders.add('counters');
+  }
+
+  if (isVivid || isDomain) {
+    actionSubtypes.add('domain_vivid_scaling');
+    actionSubtypes.add('color_scaling_payoff');
+    detectedCategories.add('synergy');
+  }
+
+  if (isColorsSpentMechanic) {
+    actionSubtypes.add('colors_spent_mechanic');
+    detectedCategories.add('synergy');
+  }
+
   // 7. Equipment Subtypes
   if (isEquipment) {
     actionSubtypes.add('equipment');
@@ -1067,11 +1162,13 @@ export function extractCardFeatures(card: Card) {
   }
 
   // Cost Structure
-  let costProfile: 'additional_cost' | 'cost_reduction' | 'standard_cost' = 'standard_cost';
-  if (/as an additional cost|kicker|spree|gift|bargain|casualty|sacrifice (a|another) (creature|artifact)|tap an untapped|behold/i.test(oracle)) {
-    costProfile = 'additional_cost';
-  } else if (/this spell costs \{\d+\} less|affinity|convoke|delve|improvise/i.test(oracle)) {
-    costProfile = 'cost_reduction';
+  let costProfile: 'x_cost' | 'additional_cost' | 'cost_reduction' | 'standard_cost' = hasXCost ? 'x_cost' : 'standard_cost';
+  if (!hasXCost) {
+    if (/as an additional cost|kicker|spree|gift|bargain|casualty|sacrifice (a|another) (creature|artifact)|tap an untapped|behold/i.test(oracle)) {
+      costProfile = 'additional_cost';
+    } else if (/this spell costs \{\d+\} less|affinity|convoke|delve|improvise/i.test(oracle)) {
+      costProfile = 'cost_reduction';
+    }
   }
 
   // Incidental Value Riders
@@ -1140,15 +1237,29 @@ export function extractCardFeatures(card: Card) {
     detectedCategories.add('token_army');
   }
 
-  // Effective CMC accounting for the Instant Speed Tax (-0.75 for noncreature instant/flash)
-  const effectiveCmc = ((isInstant || hasFlash) && !isCreature) ? Math.max(0.5, (card.cmc || 0) - 0.75) : (card.cmc || 0);
+  // Effective CMC: Scalable X spells typically cast for X=2, 3, or 4 in Limited
+  // Vivid spells typically cast with 2-3 colors among permanents (-2.5 cost reduction)
+  // Accounting for the Instant Speed Tax (-0.75 for noncreature instant/flash)
+  const effectiveCmc = hasXCost
+    ? Math.max(3.5, (card.cmc || 0) + 2.5)
+    : ((isVivid && /costs \{\d+\} less.*for each color/i.test(oracle))
+      ? Math.max(2, (card.cmc || 0) - 2.5)
+      : (((isInstant || hasFlash) && !isCreature) ? Math.max(0.5, (card.cmc || 0) - 0.75) : (card.cmc || 0)));
 
   const cardColors = (card.colors || []).filter(c => c !== 'C');
 
   // Effective Power & Toughness accounting for static entry counters & immediate self-ETB counters
+  // For Converge and Sunburst creatures, Limited decks average 3 colors of mana spent (+3/+3 in counters)
+  const isConvergeOrSunburstCreature = isCreature && (
+    isSunburst ||
+    /enters(?:\s+the\s+battlefield)?\s+with\s+(?:a\s+)?\+1\/\+1\s+counters?.*(?:for each color of mana spent|converge)/i.test(oracle) ||
+    (isConverge && /enters(?:\s+the\s+battlefield)?\s+with.*counter/i.test(oracle))
+  );
   const basePower = card.power !== undefined ? parseInt(card.power, 10) : undefined;
   const baseToughness = card.toughness !== undefined ? parseInt(card.toughness, 10) : undefined;
-  const counterBoost = entersWithCountersCount + etbSelfCounterCount;
+  const counterBoost = isConvergeOrSunburstCreature
+    ? (3 + etbSelfCounterCount)
+    : (entersWithCountersCount + etbSelfCounterCount);
   const effectivePower = (basePower !== undefined && !isNaN(basePower)) ? basePower + counterBoost : basePower;
   const effectiveToughness = (baseToughness !== undefined && !isNaN(baseToughness)) ? baseToughness + counterBoost : baseToughness;
 
@@ -1186,6 +1297,18 @@ export function extractCardFeatures(card: Card) {
     valueRiders,
     cmc: card.cmc || 0,
     effectiveCmc,
+    hasXCost,
+    isHydra,
+    entersWithXCounters,
+    isTeamCounterDistributor,
+    isCombatCounterDistributor,
+    isCounterTransferDistributor,
+    isConverge,
+    isSunburst,
+    isVivid,
+    isDomain,
+    isColorsSpentMechanic,
+    isMultiColorScaling,
     colors: cardColors,
     creatureSubtypes,
     basePower,
@@ -1662,7 +1785,19 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"dies" or o:"+1/+1 counter")`);
   }
 
-  if (features.actionSubtypes.has('enters_with_counters')) {
+  if (features.hasXCost || features.actionSubtypes.has('enters_with_x_counters')) {
+    queries.push(`${baseFilter} ${excludeSelf} m:{X} t:creature ${exactColorQuery}`);
+    queries.push(`${baseFilter} ${excludeSelf} m:{X} t:creature (o:"enters with" o:"counter")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"put a +1/+1 counter on each other creature you control" or o:"put a +1/+1 counter on each creature you control")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"at the beginning of combat on your turn" o:"counter")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:hydra or o:"enters with x +1/+1 counters")`);
+    queries.push(`${baseFilter} ${excludeSelf} m:{X} t:creature`);
+    queries.push(`${baseFilter} ${excludeSelf} m:{X} ${exactColorQuery}`);
+  } else if (features.actionSubtypes.has('team_counter_distributor')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"put a +1/+1 counter on each other creature you control" or o:"put a +1/+1 counter on each creature you control")`);
+  }
+
+  if (features.actionSubtypes.has('enters_with_counters') && !features.hasXCost) {
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"enters with" o:"+1/+1 counter")`);
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:"enters with" o:"+1/+1 counter")`);
   }
@@ -1675,6 +1810,21 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   if (features.actionSubtypes.has('etb_counter_distributor') || features.actionSubtypes.has('etb_counter_self')) {
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"when" o:"enters" o:"+1/+1 counter" or o:"explores")`);
     queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"when" o:"enters" o:"+1/+1 counter" or o:"explores")`);
+  }
+
+  // Multicolor Scaling & Domain / Converge / Sunburst / Vivid Queries
+  if (features.isMultiColorScaling || features.actionSubtypes.has('converge_sunburst') || features.actionSubtypes.has('domain_vivid_scaling')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:converge or o:sunburst or kw:vivid or o:domain)`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"color of mana spent" or o:"colors of mana spent" or o:"colors among permanents" or o:"number of colors")`);
+    if (features.colors.length === 0) {
+      queries.push(`${baseFilter} ${excludeSelf} t:creature (o:converge or o:sunburst or o:counter)`);
+      queries.push(`${baseFilter} ${excludeSelf} t:creature c=c (o:reach or o:trample or o:counter)`);
+    }
+    const hasReach = (card.keywords || []).some(k => /reach/i.test(k)) || /reach/i.test(card.oracle_text || '');
+    const hasTrample = (card.keywords || []).some(k => /trample/i.test(k)) || /trample/i.test(card.oracle_text || '');
+    if (hasReach || hasTrample) {
+      queries.push(`${baseFilter} ${excludeSelf} t:creature (o:reach or o:trample) (o:converge or o:sunburst or kw:vivid or o:domain)`);
+    }
   }
 
   if (features.actionSubtypes.has('activated_team_pump')) {
@@ -1728,8 +1878,8 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     );
   }
 
-  // Matching Statline for creatures
-  if (features.isCreature && features.power !== undefined && features.toughness !== undefined) {
+  // Matching Statline for creatures (only for fixed-stat/fixed-cost creatures)
+  if (!features.hasXCost && features.isCreature && features.power !== undefined && features.toughness !== undefined) {
     queries.push(
       `${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} cmc=${features.cmc} pow=${features.power} tou=${features.toughness}`
     );
@@ -1738,15 +1888,15 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     );
   }
 
-  // Exact CMC
-  queries.push(
-    `${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} cmc=${features.cmc}`
-  );
-
-  // CMC ±1
-  queries.push(
-    `${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc}`
-  );
+  // Exact CMC & CMC ±1 (only for fixed-cost cards)
+  if (!features.hasXCost) {
+    queries.push(
+      `${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} cmc=${features.cmc}`
+    );
+    queries.push(
+      `${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc}`
+    );
+  }
 
   // Relaxed Color fallback for rare mechanics
   if (features.detectedClauses.length > 0) {
@@ -2005,6 +2155,43 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   const bothShareManaRock = (
     tFeatures.actionSubtypes.has('mana_rock') && cFeatures.actionSubtypes.has('mana_rock')
   );
+  const bothShareEntersWithXCounters = (
+    tFeatures.actionSubtypes.has('enters_with_x_counters') && cFeatures.actionSubtypes.has('enters_with_x_counters')
+  );
+  const bothShareTeamCounterDistributor = (
+    tFeatures.actionSubtypes.has('team_counter_distributor') && cFeatures.actionSubtypes.has('team_counter_distributor')
+  );
+  const bothShareCombatCounterDistributor = (
+    tFeatures.actionSubtypes.has('combat_counter_distributor') && cFeatures.actionSubtypes.has('combat_counter_distributor')
+  );
+  const bothShareCounterTransferDistributor = (
+    tFeatures.actionSubtypes.has('counter_transfer_distributor') && cFeatures.actionSubtypes.has('counter_transfer_distributor')
+  );
+  const bothShareScalableX = (
+    tFeatures.hasXCost && cFeatures.hasXCost
+  );
+  const bothShareHydra = (
+    tFeatures.isHydra && cFeatures.isHydra
+  );
+  const bothShareExactConverge = (
+    tFeatures.isConverge && cFeatures.isConverge
+  );
+  const bothShareExactSunburst = (
+    tFeatures.isSunburst && cFeatures.isSunburst
+  );
+  const bothShareConvergeSunburst = (
+    tFeatures.actionSubtypes.has('converge_sunburst') && cFeatures.actionSubtypes.has('converge_sunburst')
+  );
+  const bothShareDomainVivid = (
+    tFeatures.actionSubtypes.has('domain_vivid_scaling') && cFeatures.actionSubtypes.has('domain_vivid_scaling')
+  );
+  const bothShareMultiColorScaling = (
+    (tFeatures.isMultiColorScaling || tFeatures.actionSubtypes.has('color_scaling_payoff')) &&
+    (cFeatures.isMultiColorScaling || cFeatures.actionSubtypes.has('color_scaling_payoff'))
+  );
+  const bothShareColorsSpent = (
+    tFeatures.actionSubtypes.has('colors_spent_mechanic') && cFeatures.actionSubtypes.has('colors_spent_mechanic')
+  );
   const bothShareSignatureEngine = (
     (tFeatures.actionSubtypes.has('connive_recruit') && cFeatures.actionSubtypes.has('connive_recruit')) ||
     bothShareAttackGranter ||
@@ -2024,6 +2211,16 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     bothShareTwoDropManaDork ||
     bothShareThreeDropManaDork ||
     bothShareManaRock ||
+    bothShareEntersWithXCounters ||
+    bothShareTeamCounterDistributor ||
+    bothShareCombatCounterDistributor ||
+    bothShareCounterTransferDistributor ||
+    bothShareScalableX ||
+    bothShareHydra ||
+    bothShareConvergeSunburst ||
+    bothShareDomainVivid ||
+    bothShareMultiColorScaling ||
+    bothShareColorsSpent ||
     (tFeatures.actionSubtypes.has('death_counter_transfer') && cFeatures.actionSubtypes.has('death_counter_transfer'))
   );
   const bothShareDeathCounterTransfer = (
@@ -2185,25 +2382,44 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       baselineReasons.push('Colorless artifact precedent');
     }
   } else if (isCandidateColorless) {
-    colorScore = (tFeatures.isEquipment || cFeatures.isEquipment) ? 16 : ((tColors.size > 0) ? 10 : 14);
-    baselineReasons.push((tFeatures.isEquipment || cFeatures.isEquipment) ? 'Colorless equipment (playable in any deck)' : 'Colorless baseline comparison');
-  } else if (tColors.size === 0 && cColors.size === 1) {
-    colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach || bothShareLandTutorTop || bothShareFlyingLifegain || bothShareEmpowerJace || isEmpowerCrossMechanicBridge)
-      ? 16
-      : ((tFeatures.isEquipment || cFeatures.isEquipment) ? 14 : 10);
-    baselineReasons.push(bothShareFlyingLifegain
-      ? 'Colorless parallel to colored evasive lifegain synergy'
-      : (bothShareLandTutorTop
-        ? 'Colorless parallel to colored land tutor'
-        : (bothShareEtbTreasure
-          ? 'Colorless parallel to colored Treasure producer'
-          : (bothShareFlashReach
-            ? 'Colorless parallel to colored Flash & Reach blocker'
-            : (bothShareEtbScry2
-              ? `Cross-color artifact cycle peer (${[...cColors][0]})`
-              : (bothShareEmpowerJace || isEmpowerCrossMechanicBridge
-                ? 'Colorless parallel to colored Empower Jace precedent'
-                : (bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : `Mono-color archetype comp (${[...cColors][0]})`)))))));
+    if (bothShareExactConverge || bothShareExactSunburst) {
+      colorScore = 18;
+      baselineReasons.push('Exact Converge mechanic peer across mana configurations');
+    } else if (bothShareConvergeSunburst || bothShareMultiColorScaling) {
+      colorScore = (tColors.size === 0) ? 20 : 18;
+      baselineReasons.push((tColors.size === 0) ? 'Both colorless multicolor-scaling archetype payoffs' : 'Colorless multicolor-scaling archetype payoff');
+    } else {
+      colorScore = (tFeatures.isEquipment || cFeatures.isEquipment) ? 16 : ((tColors.size > 0) ? 10 : 14);
+      baselineReasons.push((tFeatures.isEquipment || cFeatures.isEquipment) ? 'Colorless equipment (playable in any deck)' : 'Colorless baseline comparison');
+    }
+  } else if (tColors.size === 0 && (cColors.size >= 1)) {
+    if (bothShareExactConverge || bothShareExactSunburst) {
+      colorScore = 18;
+      baselineReasons.push('Exact Converge mechanic peer across mana configurations');
+    } else if (bothShareConvergeSunburst || bothShareMultiColorScaling) {
+      colorScore = 16;
+      baselineReasons.push('Colorless parallel to colored multicolor-scaling archetype payoff (Converge, Sunburst, Vivid, Domain)');
+    } else if (cColors.size === 1) {
+      colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach || bothShareLandTutorTop || bothShareFlyingLifegain || bothShareEmpowerJace || isEmpowerCrossMechanicBridge)
+        ? 16
+        : ((tFeatures.isEquipment || cFeatures.isEquipment) ? 14 : 10);
+      baselineReasons.push(bothShareFlyingLifegain
+        ? 'Colorless parallel to colored evasive lifegain synergy'
+        : (bothShareLandTutorTop
+          ? 'Colorless parallel to colored land tutor'
+          : (bothShareEtbTreasure
+            ? 'Colorless parallel to colored Treasure producer'
+            : (bothShareFlashReach
+              ? 'Colorless parallel to colored Flash & Reach blocker'
+              : (bothShareEtbScry2
+                ? `Cross-color artifact cycle peer (${[...cColors][0]})`
+                : (bothShareEmpowerJace || isEmpowerCrossMechanicBridge
+                  ? 'Colorless parallel to colored Empower Jace precedent'
+                  : (bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : `Mono-color archetype comp (${[...cColors][0]})`)))))));
+    } else {
+      colorScore = bothShareSignatureEngine ? 14 : 8;
+      baselineReasons.push(bothShareSignatureEngine ? 'Cross-color engine mechanic peer' : 'Multicolor card comparison');
+    }
   } else if (tFeatures.isHybrid && cColors.size === 1 && tColors.has([...cColors][0])) {
     colorScore = 18;
     baselineReasons.push(`Component hybrid color (${[...cColors][0]})`);
@@ -2211,42 +2427,29 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     colorScore = 14;
     baselineReasons.push(`Component color (${[...cColors][0]})`);
   } else if (bothShareSignatureEngine) {
-    colorScore = 14;
-    baselineReasons.push(
-      bothShareRampArtifactToken
-        ? 'Cross-color engine mechanic peer (Ramp token generator: Heartwood/Powerstone)'
-        : (bothShareArtifactAnimatorAura
-          ? 'Cross-color archetype peer (Artifact-animating Aura)'
-          : (bothShareArtifactSacPayoff
-            ? 'Cross-color engine peer (Artifact sacrifice payoff)'
-            : (bothShareArtifactTapPayoff
-              ? 'Cross-color engine peer (Artifact tap payoff)'
-              : (bothShareTwoDropManaDork
-                ? 'Cross-color 2-drop mana ramp peer'
-                : (bothShareThreeDropManaDork
-                  ? 'Cross-color 3-drop mana ramp peer'
-                  : (bothShareManaRock
-                    ? 'Cross-color mana rock / fixing artifact peer'
-                    : (bothShareSecondCardDrawn
-                      ? 'Cross-color engine mechanic peer (Draw second card)'
-                      : (bothShareEtbSelfBounce
-                        ? 'Cross-color engine mechanic peer (ETB self-bounce permanent)'
-                        : (bothShareDeathAmassToken
-                          ? 'Cross-color engine mechanic peer (Dies into token / Amass)'
-                          : (bothShareEtbSacRemoval
-                            ? 'Cross-color engine mechanic peer (ETB sacrifice removal)'
-                            : (bothSharePower4PlusSynergy
-                              ? 'Cross-color engine mechanic peer (Power 4+ synergy)'
-                              : (bothShareLandfallPayoff
-                                ? 'Cross-color engine mechanic peer (Landfall trigger)'
-                                : (bothShareFetchLand
-                                  ? 'Cross-color mana fixer peer (Fetchland)'
-                                  : (bothShareCultivateRamp
-                                    ? 'Cross-color ramp peer (Cultivate)'
-                                    : (bothShareAttackGranter
-                                      ? 'Cross-color engine mechanic peer (Attack trigger keyword mentor)'
-                                      : 'Cross-color engine mechanic peer (Recruit & Connive)')))))))))))))))
-    );
+    colorScore = (bothShareExactConverge || bothShareExactSunburst) ? 18 : 14;
+    let engineReason = 'Cross-color engine mechanic peer (Recruit & Connive)';
+    if (bothShareExactConverge) engineReason = 'Cross-color engine peer (Exact Converge colors-spent scaling)';
+    else if (bothShareExactSunburst) engineReason = 'Cross-color engine peer (Exact Sunburst colors-spent scaling)';
+    else if (bothShareConvergeSunburst) engineReason = 'Cross-color engine peer (Converge / Sunburst colors-spent scaling)';
+    else if (bothShareMultiColorScaling) engineReason = 'Cross-color engine peer (Multicolor-scaling payoff: Converge, Sunburst, Vivid, Domain)';
+    else if (bothShareRampArtifactToken) engineReason = 'Cross-color engine mechanic peer (Ramp token generator: Heartwood/Powerstone)';
+    else if (bothShareArtifactAnimatorAura) engineReason = 'Cross-color archetype peer (Artifact-animating Aura)';
+    else if (bothShareArtifactSacPayoff) engineReason = 'Cross-color engine peer (Artifact sacrifice payoff)';
+    else if (bothShareArtifactTapPayoff) engineReason = 'Cross-color engine peer (Artifact tap payoff)';
+    else if (bothShareTwoDropManaDork) engineReason = 'Cross-color 2-drop mana ramp peer';
+    else if (bothShareThreeDropManaDork) engineReason = 'Cross-color 3-drop mana ramp peer';
+    else if (bothShareManaRock) engineReason = 'Cross-color mana rock / fixing artifact peer';
+    else if (bothShareSecondCardDrawn) engineReason = 'Cross-color engine mechanic peer (Draw second card)';
+    else if (bothShareEtbSelfBounce) engineReason = 'Cross-color engine mechanic peer (ETB self-bounce permanent)';
+    else if (bothShareDeathAmassToken) engineReason = 'Cross-color engine mechanic peer (Dies into token / Amass)';
+    else if (bothShareEtbSacRemoval) engineReason = 'Cross-color engine mechanic peer (ETB sacrifice removal)';
+    else if (bothSharePower4PlusSynergy) engineReason = 'Cross-color engine mechanic peer (Power 4+ synergy)';
+    else if (bothShareLandfallPayoff) engineReason = 'Cross-color engine mechanic peer (Landfall trigger)';
+    else if (bothShareFetchLand) engineReason = 'Cross-color mana fixer peer (Fetchland)';
+    else if (bothShareCultivateRamp) engineReason = 'Cross-color ramp peer (Cultivate)';
+    else if (bothShareAttackGranter) engineReason = 'Cross-color engine mechanic peer (Attack trigger keyword mentor)';
+    baselineReasons.push(engineReason);
   } else if (bothShareLivingWeapon) {
     colorScore = 14;
     baselineReasons.push('Cross-color engine mechanic peer (Living Weapon / Token Equipment)');
@@ -2268,7 +2471,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   const targetIsInstant = tFeatures.isInstant;
   const candIsInstant = cFeatures.isInstant;
 
-  if (effectiveDiff <= 0.15) {
+  if (tFeatures.hasXCost && cFeatures.hasXCost) {
+    cmcScore = 20;
+    baselineReasons.push('Both scalable X-cost spells (variable mana sinks)');
+  } else if (tFeatures.hasXCost !== cFeatures.hasXCost) {
+    cmcScore = 0;
+  } else if (effectiveDiff <= 0.15) {
     cmcScore = 20;
     if (targetIsInstant && !candIsInstant) {
       baselineReasons.push(`Speed-parity (${target.cmc}M instant ≈ ${candidate.cmc}M sorcery)`);
@@ -2443,11 +2651,22 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     }
   }
 
-  if (bothShareSignatureEngine) {
+  if (bothShareExactConverge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 8);
+    lexicalReasons.push('Identical Converge mechanic (scaled by colors of mana spent)');
+  } else if (bothShareExactSunburst) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 8);
+    lexicalReasons.push('Identical Sunburst mechanic (scaled by colors of mana spent)');
+  } else if (bothShareMultiColorScaling) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 6);
+    lexicalReasons.push('Both multicolor-scaling mechanics (Converge, Sunburst, Vivid, Domain)');
+  } else if (bothShareSignatureEngine) {
     method1LexicalScore = Math.min(25, method1LexicalScore + (bothShareAttackGranter ? 6 : 8));
-    lexicalReasons.push(bothShareAttackGranter
-      ? 'Shared attack-trigger combat mentor mechanic'
-      : 'Shared signature engine: Recruit & Connive (ETB loot + discard payoff)');
+    if (bothShareAttackGranter) {
+      lexicalReasons.push('Shared attack-trigger combat mentor mechanic');
+    } else if (tFeatures.actionSubtypes.has('connive_recruit') && cFeatures.actionSubtypes.has('connive_recruit')) {
+      lexicalReasons.push('Shared signature engine: Recruit & Connive (ETB loot + discard payoff)');
+    }
   }
 
   if (bothShareLivingWeapon) {
@@ -2560,6 +2779,22 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     lexicalReasons.push('Shared death counter transfer trigger');
   }
 
+  if (bothShareTeamCounterDistributor) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 16);
+    lexicalReasons.push('Shared team-wide +1/+1 counter distribution anthem');
+  } else if (bothShareCombatCounterDistributor) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared combat-phase +1/+1 counter distribution');
+  }
+
+  if (bothShareEntersWithXCounters) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 15);
+    lexicalReasons.push('Shared scalable entry with X +1/+1 counters');
+  } else if (bothShareScalableX) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.push('Shared scalable X mana cost');
+  }
+
   if (bothShareEmpowerJace) {
     method1LexicalScore = Math.min(25, method1LexicalScore + 14);
     lexicalReasons.push('Both feature Empower Jace planeswalker engine');
@@ -2631,6 +2866,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     evasion_threat: { pts: 13, label: 'Both evasive draft threats' },
     defensive_wall: { pts: 12, label: 'Both defensive board stabilizers' },
     death_counter_transfer: { pts: 22, label: 'Both transfer +1/+1 counters upon death (Modular / counter bequeath)' },
+    enters_with_x_counters: { pts: 22, label: 'Both scalable creatures entering with X +1/+1 counters (Hydra scaling)' },
+    team_counter_distributor: { pts: 22, label: 'Both distribute +1/+1 counters across your entire board (go-wide counter anthem)' },
+    combat_counter_distributor: { pts: 18, label: 'Both trigger counter distribution at the beginning of combat' },
+    counter_transfer_distributor: { pts: 20, label: 'Both convert own counters into team-wide board growth' },
+    scalable_x_spell: { pts: 15, label: 'Both scalable X-cost spells' },
+    hydra: { pts: 16, label: 'Both Hydra scaling creatures' },
     enters_with_counters: { pts: 18, label: 'Both enter the battlefield with +1/+1 counters' },
     triggered_growth_other_enters: { pts: 20, label: 'Both triggered growth when other creatures enter (Alliance / creature-fall)' },
     etb_counter_distributor: { pts: 16, label: 'Both distribute +1/+1 counters on enters' },
@@ -2671,6 +2912,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     empower_jace_surveil: { pts: 16, label: 'Both provide repeatable card selection / surveil' },
     empower_jace_draw: { pts: 18, label: 'Both provide card draw advantage' },
     amass_parallel: { pts: 16, label: 'Both provide spell interaction with permanent token presence (Rectangle Theory)' },
+    converge_sunburst: { pts: 22, label: 'Both Converge / Sunburst creatures (scaled by colors of mana spent)' },
+    domain_vivid_scaling: { pts: 20, label: 'Both multicolor-scaling payoffs (Vivid / Domain permanents scaling)' },
+    color_scaling_payoff: { pts: 18, label: 'Both multicolor-scaling payoffs (rewarding 3+ color decks)' },
+    colors_spent_mechanic: { pts: 18, label: 'Both mechanics scaling with colors of mana spent' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
 
@@ -2760,6 +3005,62 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
   if (tFeatures.actionSubtypes.has('triggered_growth_other_enters') && cFeatures.actionSubtypes.has('triggered_growth_other_enters')) {
     structuralReasons.unshift('Both triggered growth when other creatures enter (Alliance / creature-fall)');
+  }
+
+  if (bothShareTeamCounterDistributor) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    structuralReasons.unshift('Both distribute +1/+1 counters across your entire board (go-wide counter anthem)');
+  }
+
+  if (bothShareCombatCounterDistributor) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    structuralReasons.unshift('Both trigger counter distribution at the beginning of combat');
+  }
+
+  if (bothShareCounterTransferDistributor) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    structuralReasons.unshift('Both convert own counters into team-wide board growth');
+  }
+
+  if (bothShareEntersWithXCounters) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    structuralReasons.unshift('Both scalable creatures entering with X +1/+1 counters (Hydra scaling)');
+  } else if (bothShareScalableX) {
+    structuralActionPoints = Math.max(structuralActionPoints, 16);
+    structuralReasons.unshift('Both scalable X-cost spells');
+  }
+
+  if (bothShareHydra) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    structuralReasons.unshift('Both Hydra scaling creatures');
+  }
+
+  if (bothShareExactConverge) {
+    structuralActionPoints = Math.max(structuralActionPoints, 24);
+    structuralReasons.unshift('Both Converge creatures (scaled by colors of mana spent to cast)');
+  } else if (bothShareExactSunburst) {
+    structuralActionPoints = Math.max(structuralActionPoints, 23);
+    structuralReasons.unshift('Both Sunburst creatures (scaled by colors of mana spent to pay cost)');
+  } else if (bothShareConvergeSunburst) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    structuralReasons.unshift('Both Converge / Sunburst creatures (scaled by colors of mana spent)');
+  } else if (bothShareMultiColorScaling) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    structuralReasons.unshift('Both multicolor-scaling payoffs (Converge, Sunburst, Vivid, Domain)');
+  }
+
+  // Reach & Trample combat keyword parity
+  const tHasReach = (target.keywords || []).some(k => /reach/i.test(k)) || /reach/i.test(target.oracle_text || '');
+  const cHasReach = (candidate.keywords || []).some(k => /reach/i.test(k)) || /reach/i.test(candidate.oracle_text || '');
+  const tHasTrample = (target.keywords || []).some(k => /trample/i.test(k)) || /trample/i.test(target.oracle_text || '');
+  const cHasTrample = (candidate.keywords || []).some(k => /trample/i.test(k)) || /trample/i.test(candidate.oracle_text || '');
+
+  if (tHasReach && cHasReach && tHasTrample && cHasTrample) {
+    structuralActionPoints = Math.min(25, structuralActionPoints + 4);
+    structuralReasons.push('Both share Reach and Trample combat keywords');
+  } else if ((tHasReach && cHasReach) || (tHasTrample && cHasTrample)) {
+    structuralActionPoints = Math.min(25, structuralActionPoints + 2);
+    structuralReasons.push(tHasReach && cHasReach ? 'Both have Reach' : 'Both have Trample');
   }
 
   if (tFeatures.actionSubtypes.has('etb_counter_distributor') && cFeatures.actionSubtypes.has('etb_counter_distributor')) {
@@ -3085,6 +3386,28 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
   }
 
+  // Scalable X-Cost vs Fixed-Cost Mismatch Penalty
+  if (tFeatures.hasXCost !== cFeatures.hasXCost) {
+    const hasCombatCounterDist = tFeatures.actionSubtypes.has('combat_counter_distributor') || cFeatures.actionSubtypes.has('combat_counter_distributor');
+    if ((tFeatures.hasXCost && cFeatures.cmc <= 2 && !hasCombatCounterDist) ||
+        (cFeatures.hasXCost && tFeatures.cmc <= 2 && !hasCombatCounterDist)) {
+      actionMismatchPenalty += 22;
+      baselineReasons.push('Cost scaling mismatch: scalable X-spell vs fixed low-curve card');
+    } else {
+      actionMismatchPenalty += 12;
+    }
+  }
+
+  // Team Counter Distributor Scope Mismatch Penalty:
+  // Distributing counters across your entire board (go-wide anthem) is fundamentally different from
+  // single-target growth or self-growth.
+  if (tFeatures.actionSubtypes.has('team_counter_distributor') &&
+      !cFeatures.actionSubtypes.has('team_counter_distributor') &&
+      !cFeatures.actionSubtypes.has('team_pump') &&
+      !cFeatures.actionSubtypes.has('combat_counter_distributor')) {
+    actionMismatchPenalty += 16;
+  }
+
   // Modal / Conditional treasure penalty: target has unconditional ETB treasure, but candidate is conditional or modal
   const targetIsUnconditionalTreasure = tFeatures.actionSubtypes.has('etb_treasure') && !/choose one|if /i.test(target.oracle_text || '');
   const candIsModalOrConditionalTreasure = cFeatures.actionSubtypes.has('etb_treasure') && (/choose one/i.test(candidate.oracle_text || '') || /if [\s\S]*create [\s\S]*treasure/i.test(candidate.oracle_text || ''));
@@ -3112,7 +3435,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
   // Cost Structure Match (up to 5 pts)
   let costStructurePoints = 0;
-  if (tFeatures.costProfile === 'additional_cost' && cFeatures.costProfile === 'additional_cost') {
+  if (tFeatures.costProfile === 'x_cost' && cFeatures.costProfile === 'x_cost') {
+    costStructurePoints = 6;
+    structuralReasons.push('Both scalable X-cost spells');
+  } else if (tFeatures.costProfile === 'additional_cost' && cFeatures.costProfile === 'additional_cost') {
     costStructurePoints = 5;
     structuralReasons.push('Both cost-gated / additional cost spells');
   } else if (tFeatures.costProfile === cFeatures.costProfile) {
@@ -3180,7 +3506,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       statlineScore = 10;
       const isTargetBoosted = (tFeatures.entersWithCountersCount ?? 0) > 0 || (tFeatures.etbSelfCounterCount ?? 0) > 0;
       const isCandBoosted = (cFeatures.entersWithCountersCount ?? 0) > 0 || (cFeatures.etbSelfCounterCount ?? 0) > 0;
-      if (isTargetBoosted && isCandBoosted) {
+      if (bothShareExactConverge) {
+        baselineReasons.push(`Identical base ${target.power}/${target.toughness} body with matching Converge color-scaling growth`);
+      } else if (bothShareExactSunburst) {
+        baselineReasons.push(`Identical base ${target.power}/${target.toughness} body with matching Sunburst color-scaling growth`);
+      } else if (isTargetBoosted && isCandBoosted) {
         baselineReasons.push(`Exact effective P/T (${tFeatures.power}/${tFeatures.toughness} via counters)`);
       } else if (isTargetBoosted || isCandBoosted) {
         baselineReasons.push(`Exact effective P/T (${tFeatures.power}/${tFeatures.toughness})`);
@@ -3301,27 +3631,28 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   // Rarity Role Affinity: Prioritize same limited drafting tier (Common vs Rare)
   let rarityAdjustment = 0;
   const sharesCounterDistributor = tFeatures.actionSubtypes.has('etb_counter_distributor') && cFeatures.actionSubtypes.has('etb_counter_distributor');
+  const sharesExactMechanicArchetype = bothShareExactConverge || bothShareExactSunburst || bothShareLivingWeapon;
 
   if (tFeatures.rarity === 'common') {
     if (cFeatures.rarity === 'common') {
       rarityAdjustment = 3; // Both are common draft staples
       baselineReasons.push('Common draft staple comp');
     } else if (cFeatures.rarity === 'uncommon') {
-      rarityAdjustment = (bothShareLivingWeapon || sharesCounterDistributor || bothShareLateGameSacDestruction || bothShareFlyingLifegain || bothShareActivatedTeamPump) ? -1 : -3;
+      rarityAdjustment = (sharesExactMechanicArchetype || sharesCounterDistributor || bothShareLateGameSacDestruction || bothShareFlyingLifegain || bothShareActivatedTeamPump) ? -1 : -3;
     } else {
-      rarityAdjustment = -8; // Rare/Mythic power-level penalty vs Common draft baseline
+      rarityAdjustment = sharesExactMechanicArchetype ? 0 : -8; // Rare/Mythic power-level penalty vs Common draft baseline (waived for exact mechanic archetype mirrors)
     }
   } else if (tFeatures.rarity === 'uncommon') {
     if (cFeatures.rarity === 'uncommon' || cFeatures.rarity === 'common') {
       rarityAdjustment = 2;
     } else {
-      rarityAdjustment = bothShareRemovalWithCompensation ? 0 : -4;
+      rarityAdjustment = (sharesExactMechanicArchetype || bothShareRemovalWithCompensation) ? 0 : -4;
     }
   } else if (tFeatures.rarity === 'rare' || tFeatures.rarity === 'mythic') {
     if (cFeatures.rarity === 'rare' || cFeatures.rarity === 'mythic') {
       rarityAdjustment = 3;
     } else {
-      rarityAdjustment = -2;
+      rarityAdjustment = sharesExactMechanicArchetype ? 0 : -2;
     }
   }
 
@@ -3349,17 +3680,36 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     if (tHasKw !== cHasKw) {
       if (tFeatures.isCreature && cFeatures.isCreature) {
         if (kw === 'flying') {
-          keywordMismatchPenalty += 12;
+          const oneHasReach = tHasKw ? ((candidate.keywords || []).some(k => /reach/i.test(k)) || /reach/i.test(candidate.oracle_text || ''))
+                                     : ((target.keywords || []).some(k => /reach/i.test(k)) || /reach/i.test(target.oracle_text || ''));
+          if (oneHasReach && (bothShareConvergeSunburst || bothShareMultiColorScaling)) {
+            keywordMismatchPenalty += 4;
+          } else {
+            keywordMismatchPenalty += 12;
+          }
         } else if (kw === 'reach' || kw === 'defender') {
-          keywordMismatchPenalty += 8;
+          const otherHasFlying = tHasKw
+            ? ((candidate.keywords || []).some(k => /flying/i.test(k)) || /flying/i.test(candidate.oracle_text || ''))
+            : ((target.keywords || []).some(k => /flying/i.test(k)) || /flying/i.test(target.oracle_text || ''));
+          if (otherHasFlying && (bothShareConvergeSunburst || bothShareMultiColorScaling)) {
+            keywordMismatchPenalty += 0;
+          } else {
+            keywordMismatchPenalty += (bothShareConvergeSunburst || bothShareMultiColorScaling) ? 3 : 8;
+          }
         } else {
-          keywordMismatchPenalty += 5;
+          keywordMismatchPenalty += (bothShareConvergeSunburst || bothShareMultiColorScaling) ? 3 : 5;
         }
       } else if (!isEmpowerCrossMechanicBridge) {
         // Non-creature combat tricks / spells granting keywords
         keywordMismatchPenalty += 2;
       }
     }
+  }
+
+  if (bothShareExactConverge || bothShareExactSunburst) {
+    keywordMismatchPenalty = Math.min(3, keywordMismatchPenalty);
+  } else if (bothShareConvergeSunburst || bothShareMultiColorScaling) {
+    keywordMismatchPenalty = Math.min(6, keywordMismatchPenalty);
   }
 
   const ALL_VALUE_RIDERS = [
@@ -3387,7 +3737,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
   let cardTypeMismatchPenalty = 0;
   if (tFeatures.isCreature && cFeatures.isCreature) {
-    if (tFeatures.isArtifact !== cFeatures.isArtifact && !bothShareDeathCounterTransfer) {
+    if (tFeatures.isArtifact !== cFeatures.isArtifact && !bothShareDeathCounterTransfer && !bothShareConvergeSunburst && !bothShareMultiColorScaling) {
       cardTypeMismatchPenalty += 4;
     }
     if (tFeatures.isEnchantment !== cFeatures.isEnchantment) {
@@ -3492,10 +3842,83 @@ export function getCuratedBenchmarkCandidates(
     }
 
     // CMC Proximity
-    const cmcDiff = Math.abs(c.cmc - targetCard.cmc);
-    if (cmcDiff === 0) relevance += 15;
-    else if (cmcDiff === 1) relevance += 10;
-    else if (cmcDiff === 2) relevance += 5;
+    const targetHasXCost = /\{X\}/i.test(targetCard.mana_cost || '') || /enters.*with X/i.test(targetCard.oracle_text || '');
+    const cHasXCost = /\{X\}/i.test(c.mana_cost || '') || /enters.*with X/i.test(c.oracle_text || '');
+    if (targetHasXCost || cHasXCost) {
+      if (targetHasXCost && cHasXCost) {
+        relevance += 40;
+      } else if (targetHasXCost && !cHasXCost && c.cmc <= 1) {
+        // Heavily penalize fixed 1-drops when searching comps for an X-cost card!
+        relevance -= 40;
+      }
+    } else {
+      const cmcDiff = Math.abs(c.cmc - targetCard.cmc);
+      if (cmcDiff === 0) relevance += 15;
+      else if (cmcDiff === 1) relevance += 10;
+      else if (cmcDiff === 2) relevance += 5;
+    }
+
+    // Team and combat counter distribution priority
+    const targetIsTeamDistributor = /put\s+(?:a|an|\d+|one|two)?\s*(?:\+1\/\+1)?\s+counters?\s+on\s+each\s+(?:other\s+)?creature\s+you\s+control/i.test(targetCard.oracle_text || '');
+    const cIsTeamDistributor = /put\s+(?:a|an|\d+|one|two)?\s*(?:\+1\/\+1)?\s+counters?\s+on\s+each\s+(?:other\s+)?creature\s+you\s+control/i.test(c.oracle_text || '');
+    if (targetIsTeamDistributor && cIsTeamDistributor) {
+      relevance += 45;
+    }
+
+    const targetIsCombatCounter = /at\s+the\s+beginning\s+of\s+combat\s+on\s+your\s+turn.*put\s+(?:a|an|\d+|one|two)?\s*(?:\+1\/\+1)?\s+counter/i.test(targetCard.oracle_text || '') ||
+      /at\s+the\s+beginning\s+of\s+combat\s+on\s+your\s+turn.*remove\s+a\s+\+1\/\+1\s+counter/i.test(targetCard.oracle_text || '');
+    const cIsCombatCounter = /at\s+the\s+beginning\s+of\s+combat\s+on\s+your\s+turn.*put\s+(?:a|an|\d+|one|two)?\s*(?:\+1\/\+1)?\s+counter/i.test(c.oracle_text || '') ||
+      /at\s+the\s+beginning\s+of\s+combat\s+on\s+your\s+turn.*remove\s+a\s+\+1\/\+1\s+counter/i.test(c.oracle_text || '');
+    if (targetIsCombatCounter && cIsCombatCounter) {
+      relevance += 35;
+    }
+
+    // Multicolor Scaling (Converge, Sunburst, Vivid, Domain) Priority
+    const targetIsMultiColorScaling = /converge|sunburst|vivid|domain|for each color of mana spent|colors among permanents|basic land type/i.test(targetCard.oracle_text || '') ||
+      (targetCard.keywords || []).some(k => /converge|sunburst|vivid/i.test(k));
+    const cIsMultiColorScaling = /converge|sunburst|vivid|domain|for each color of mana spent|colors among permanents|basic land type/i.test(c.oracle_text || '') ||
+      (c.keywords || []).some(k => /converge|sunburst|vivid/i.test(k));
+
+    if (targetIsMultiColorScaling && cIsMultiColorScaling) {
+      relevance += 50;
+
+      const targetIsConvergeSunburst = /converge|sunburst|colors? of mana spent/i.test(targetCard.oracle_text || '') ||
+        (targetCard.keywords || []).some(k => /converge|sunburst/i.test(k));
+      const cIsConvergeSunburst = /converge|sunburst|colors? of mana spent/i.test(c.oracle_text || '') ||
+        (c.keywords || []).some(k => /converge|sunburst/i.test(k));
+      if (targetIsConvergeSunburst && cIsConvergeSunburst) {
+        relevance += 25;
+      }
+
+      const targetIsConverge = /converge/i.test(targetCard.oracle_text || '') || (targetCard.keywords || []).some(k => /converge/i.test(k));
+      const cIsConverge = /converge/i.test(c.oracle_text || '') || (c.keywords || []).some(k => /converge/i.test(k));
+      if (targetIsConverge && cIsConverge) {
+        relevance += 40;
+      }
+
+      const targetIsSunburst = /sunburst/i.test(targetCard.oracle_text || '') || (targetCard.keywords || []).some(k => /sunburst/i.test(k));
+      const cIsSunburst = /sunburst/i.test(c.oracle_text || '') || (c.keywords || []).some(k => /sunburst/i.test(k));
+      if (targetIsSunburst && cIsSunburst) {
+        relevance += 40;
+      }
+
+      // If target is colorless converge/sunburst and candidate is colorless (e.g. Rancorous Archaic vs Skyreach Manta)
+      if (targetColors.size === 0 && (c.colors || []).length === 0) {
+        relevance += 20;
+      }
+
+      // Shared Reach / Trample combat keywords (e.g. Rancorous Archaic vs Wildvine Pummeler)
+      const targetHasReach = /reach/i.test(targetCard.oracle_text || '') || (targetCard.keywords || []).some(k => /reach/i.test(k));
+      const cHasReach = /reach/i.test(c.oracle_text || '') || (c.keywords || []).some(k => /reach/i.test(k));
+      const targetHasTrample = /trample/i.test(targetCard.oracle_text || '') || (targetCard.keywords || []).some(k => /trample/i.test(k));
+      const cHasTrample = /trample/i.test(c.oracle_text || '') || (c.keywords || []).some(k => /trample/i.test(k));
+
+      if (targetHasReach && cHasReach && targetHasTrample && cHasTrample) {
+        relevance += 30;
+      } else if ((targetHasReach && cHasReach) || (targetHasTrample && cHasTrample)) {
+        relevance += 15;
+      }
+    }
 
     // Tutor Priority: Noncreature tutors must prioritize other library tutors and penalize removal/tricks
     const targetIsTutor = (targetIsInstant || targetIsSorcery) && /search your library/i.test(targetCard.oracle_text || '');
@@ -3610,7 +4033,7 @@ export async function findSimilarCards(
   fallbackPool: Card[] = [],
   userId?: string
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v63`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v65`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -3678,7 +4101,7 @@ export async function findSimilarCards(
         const typeTerm = features.isCreature
           ? 't:creature'
           : (features.isInstant ? 't:instant' : (features.isSorcery ? 't:sorcery' : (features.isAura ? 't:aura' : (features.isEnchantment ? 't:enchantment' : (features.isArtifact ? 't:artifact' : (features.isPlaneswalker ? 't:planeswalker' : (features.isLand ? 't:land' : '')))))));
-        const cmcTerm = `m>=${Math.max(0, targetCard.cmc - 1)} m<=${targetCard.cmc + 1}`;
+        const cmcTerm = features.hasXCost ? 'm:{X}' : `m>=${Math.max(0, targetCard.cmc - 1)} m<=${targetCard.cmc + 1}`;
         const setTerms = COMPARABLE_PREMIER_SETS
           .filter(s => !targetSet || s.toUpperCase() !== targetSet)
           .slice(0, 16)

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, GradeTier, SeventeenLandsCardRating, UserCardEvaluation } from '../../types/mtg';
 import { GRADE_TIERS, gradeTierToIndex, winRateToGradeTier, get17LandsCardUrl } from '../../services/seventeenLands';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
-import { Scale, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, ShieldAlert, Sparkles, BarChart2, Award, ExternalLink } from 'lucide-react';
+import { Scale, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, Sparkles, BarChart2, Award, ExternalLink } from 'lucide-react';
 
 interface GradeComparisonCardProps {
   card: Card;
@@ -68,16 +68,25 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
       return (
         <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 text-xs font-bold flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>🎯 Exact Match vs 17Lands</span>
+          <span>Exact Match (Correct)</span>
         </span>
       );
     }
 
-    if (Math.abs(tierDelta) === 1) {
+    if (tierDelta === 1) {
       return (
         <span className="px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>✓ {tierDelta > 0 ? '+1 Step Over' : '-1 Step Under'} 17Lands (Within Tolerance)</span>
+          <span>+1 Tier (Correct)</span>
+        </span>
+      );
+    }
+
+    if (tierDelta === -1) {
+      return (
+        <span className="px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span>-1 Tier (Correct)</span>
         </span>
       );
     }
@@ -86,7 +95,7 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
       return (
         <span className="px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 border bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/40">
           <TrendingUp className="w-3.5 h-3.5" />
-          <span>+2 Over 17Lands (Minor Trap)</span>
+          <span>+2 Tiers (Trap)</span>
         </span>
       );
     }
@@ -95,7 +104,7 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
       return (
         <span className="px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 border bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-500/40">
           <TrendingDown className="w-3.5 h-3.5" />
-          <span>-2 Under 17Lands (Minor Sleeper)</span>
+          <span>-2 Tiers (Sleeper)</span>
         </span>
       );
     }
@@ -103,8 +112,8 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
     if (tierDelta >= 3) {
       return (
         <span className="px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 border bg-rose-100 dark:bg-rose-500/25 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-500/50">
-          <ShieldAlert className="w-3.5 h-3.5" />
-          <span>+{tierDelta} Over 17Lands (Major Trap 🔥)</span>
+          <TrendingUp className="w-3.5 h-3.5" />
+          <span>+{tierDelta} Tiers (Trap)</span>
         </span>
       );
     }
@@ -112,7 +121,7 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
     return (
       <span className="px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 border bg-blue-100 dark:bg-blue-500/25 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-500/50">
         <TrendingDown className="w-3.5 h-3.5" />
-        <span>{tierDelta} Under 17Lands (Major Sleeper 🧊)</span>
+        <span>{tierDelta} Tiers (Sleeper)</span>
       </span>
     );
   };

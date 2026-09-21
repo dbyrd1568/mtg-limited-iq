@@ -560,6 +560,23 @@ const BENCHMARK_17LANDS_CARDS: Record<string, Partial<SeventeenLandsCardRating>>
   'Dawn\'s Light Archer': { win_rate: 0.545, avg_seen: 5.9, iwd: 0.008, tier_grade: 'B-', seen_count: 172000, game_count: 46000, card_id: 101512 },
   // MSH
   'Yellowjacket, Heartless Marauder': { win_rate: 0.564, avg_seen: 4.8, iwd: 0.021, tier_grade: 'B', seen_count: 110000, game_count: 42000, card_id: 102140 },
+  // Scalable X-Spells & Team Counter Benchmarks
+  'Mikaeus, the Lunarch': { win_rate: 0.625, avg_seen: 1.4, iwd: 0.068, tier_grade: 'A', seen_count: 2200, game_count: 5100 },
+  'Stonecoil Serpent': { win_rate: 0.618, avg_seen: 1.5, iwd: 0.062, tier_grade: 'A', seen_count: 3100, game_count: 7800 },
+  'Goldvein Hydra': { win_rate: 0.642, avg_seen: 1.2, iwd: 0.081, tier_grade: 'A+', seen_count: 1400, game_count: 4900 },
+  'Wildwood Scourge': { win_rate: 0.585, avg_seen: 2.7, iwd: 0.040, tier_grade: 'A-', seen_count: 2900, game_count: 6700 },
+  'Voracious Hydra': { win_rate: 0.635, avg_seen: 1.3, iwd: 0.076, tier_grade: 'A+', seen_count: 1800, game_count: 5500 },
+  'Luminarch Aspirant': { win_rate: 0.645, avg_seen: 1.1, iwd: 0.088, tier_grade: 'A+', seen_count: 2400, game_count: 8200 },
+  'Siege Veteran': { win_rate: 0.632, avg_seen: 1.3, iwd: 0.073, tier_grade: 'A+', seen_count: 2100, game_count: 6400 },
+  'Shalai, Voice of Plenty': { win_rate: 0.628, avg_seen: 1.4, iwd: 0.069, tier_grade: 'A', seen_count: 1900, game_count: 5200 },
+  'Endless One': { win_rate: 0.565, avg_seen: 3.5, iwd: 0.025, tier_grade: 'B', seen_count: 3200, game_count: 7100 },
+  // Multicolor Scaling & Domain / Converge / Sunburst / Vivid Benchmarks
+  'Skyreach Manta': { win_rate: 0.568, avg_seen: 4.8, iwd: 0.022, tier_grade: 'B', seen_count: 8500, game_count: 18000 },
+  'Woodland Wanderer': { win_rate: 0.592, avg_seen: 2.1, iwd: 0.052, tier_grade: 'A-', seen_count: 4200, game_count: 11000 },
+  'Tajuru Stalwart': { win_rate: 0.554, avg_seen: 5.2, iwd: 0.012, tier_grade: 'B-', seen_count: 14000, game_count: 32000 },
+  'Wildvine Pummeler': { win_rate: 0.550, avg_seen: 5.5, iwd: 0.010, tier_grade: 'C+', seen_count: 9000, game_count: 21000 },
+  'Etched Oracle': { win_rate: 0.561, avg_seen: 4.1, iwd: 0.019, tier_grade: 'B', seen_count: 3800, game_count: 8200 },
+  'Nishoba Brawler': { win_rate: 0.575, avg_seen: 4.2, iwd: 0.035, tier_grade: 'B+', seen_count: 16000, game_count: 38000 },
 };
 
 /**
