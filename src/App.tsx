@@ -67,7 +67,7 @@ const AppContent: React.FC = () => {
   // User Accounts State (Nullable when unauthenticated)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getActiveUser());
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isSupabaseConfigured());
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isSupabaseConfigured() && isProdEnvironment());
 
   // Check administrator permissions whenever currentUser changes
   useEffect(() => {
@@ -161,6 +161,11 @@ const AppContent: React.FC = () => {
       return;
     }
 
+    // Strict safety timeout: ensure auth initialization NEVER hangs indefinitely on a loading screen
+    const safetyTimeout = setTimeout(() => {
+      setIsAuthInitializing(false);
+    }, 1500);
+
     let isProcessingSession = false;
     const handleUserSession = async (user: any) => {
       if (!user || isProcessingSession) return;
@@ -191,8 +196,12 @@ const AppContent: React.FC = () => {
             );
         }
 
-        // 1. Pull existing remote cloud data
-        const { stats, evaluations } = await pullRemoteUserData(cloudUser.id);
+        // 1. Pull existing remote cloud data (with 2.5s race timeout so remote latency never hangs UI)
+        const pullPromise = pullRemoteUserData(cloudUser.id);
+        const timeoutPromise = new Promise<{ stats: null; evaluations: {} }>((resolve) =>
+          setTimeout(() => resolve({ stats: null, evaluations: {} }), 2500)
+        );
+        const { stats, evaluations } = await Promise.race([pullPromise, timeoutPromise]);
 
         // 2. Check if local guest has progress and cloud is fresh
         const localStats = loadUserStats('guest');
@@ -217,6 +226,7 @@ const AppContent: React.FC = () => {
       } finally {
         isProcessingSession = false;
         setIsAuthInitializing(false);
+        clearTimeout(safetyTimeout);
       }
     };
 
@@ -231,10 +241,9 @@ const AppContent: React.FC = () => {
         handleUserSession(session.user);
       } else if (isOAuthRedirectCallback && !window.location.search.includes('error=')) {
         // Supabase PKCE exchange is in flight; wait for onAuthStateChange('SIGNED_IN')
-        // Safety timeout in case exchange fails so the app does not remain in loading indefinitely
         setTimeout(() => {
           setIsAuthInitializing(false);
-        }, 4000);
+        }, 3000);
       } else {
         const storedUser = getActiveUser();
         if (storedUser) {
@@ -242,8 +251,10 @@ const AppContent: React.FC = () => {
           setIsAuthInitializing(false);
           return;
         }
-        clearActiveUser();
-        setCurrentUser(null);
+        if (isProdEnvironment()) {
+          clearActiveUser();
+          setCurrentUser(null);
+        }
         setIsAuthInitializing(false);
       }
     }).catch(() => {
@@ -256,16 +267,19 @@ const AppContent: React.FC = () => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         await handleUserSession(session.user);
       } else if (event === 'SIGNED_OUT') {
-        clearActiveUser();
-        setCurrentUser(null);
-        setUserStats(defaultStats);
-        setUserEvaluations({});
-        setUserArchetypeEvaluations({});
-        setUserColorEvaluations({});
+        if (isProdEnvironment()) {
+          clearActiveUser();
+          setCurrentUser(null);
+          setUserStats(defaultStats);
+          setUserEvaluations({});
+          setUserArchetypeEvaluations({});
+          setUserColorEvaluations({});
+        }
       }
     });
 
     return () => {
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);

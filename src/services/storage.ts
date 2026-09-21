@@ -1,7 +1,7 @@
 import { UserProfileStats, QuizResult, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, QuestionCategory, SetMasteryStat, UserAccount } from '../types/mtg';
 import { queueStatsSync, queueEvaluationSync, queueEvaluationClearForSet } from './cloudSync';
 import { POPULAR_LIMITED_SETS } from './scryfall';
-import { isProdEnvironment, isCloudUUID } from './environment';
+import { isProdEnvironment, isLocalhost, isCloudUUID } from './environment';
 import { isSupabaseConfigured } from './supabase';
 
 const USERS_LIST_KEY = 'mtg_users_list_v2';
@@ -48,8 +48,8 @@ export function getAllUsers(): UserAccount[] {
     const raw = localStorage.getItem(USERS_LIST_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as UserAccount[];
-    // Strictly filter out any unauthenticated local mock accounts when Supabase is configured
-    if (isSupabaseConfigured()) {
+    // Strictly filter out unauthenticated local accounts in production when Supabase is configured
+    if (isSupabaseConfigured() && isProdEnvironment()) {
       return parsed.filter((u) => u.provider !== 'local' || isCloudUUID(u.id));
     }
     return parsed;
@@ -62,16 +62,15 @@ export function getAllUsers(): UserAccount[] {
 export function getActiveUser(): UserAccount | null {
   try {
     if (typeof localStorage === 'undefined') {
-      if (!isSupabaseConfigured()) {
+      if (!isProdEnvironment() || isLocalhost()) {
         const devUser: UserAccount = {
           id: 'admin_owner_01',
-          name: 'Format Admin',
-          email: 'admin@mtglimitediq.local',
-          avatarColor: 'from-violet-500 to-cyan-500',
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces',
-          createdAt: '2025-01-01T00:00:00.000Z',
-          lastLoginAt: new Date().toISOString(),
+          name: 'Devon Byrd (Local Admin)',
+          email: 'dbyrd1568@gmail.com',
+          avatarColor: '#8b5cf6',
           provider: 'local',
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
         };
         return devUser;
       }
@@ -81,13 +80,13 @@ export function getActiveUser(): UserAccount | null {
     const activeId = localStorage.getItem(ACTIVE_USER_ID_KEY);
     const found = users.find((u) => u.id === activeId);
     if (found) {
-      if (isSupabaseConfigured() && found.provider === 'local' && !isCloudUUID(found.id)) {
+      if (isProdEnvironment() && found.provider === 'local' && !isCloudUUID(found.id)) {
         return null;
       }
       return found;
     }
-    // Offline development fallback: provide default account ONLY if Supabase is not configured
-    if (!isSupabaseConfigured()) {
+    // Local development fallback: automatically provide Devon Byrd account when on localhost / dev
+    if (!isProdEnvironment() || isLocalhost()) {
       const devUser: UserAccount = {
         id: 'admin_owner_01',
         name: 'Devon Byrd (Local Admin)',
