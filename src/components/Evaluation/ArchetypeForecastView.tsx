@@ -59,7 +59,6 @@ interface ArchetypeForecastViewProps {
   isBlindGrading?: boolean;
   setCode: string;
   setName: string;
-  onOpenRapidGrader: () => void;
   onSelectCard?: (card: Card) => void;
 }
 
@@ -74,7 +73,6 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
   isBlindGrading = false,
   setCode,
   setName,
-  onOpenRapidGrader,
   onSelectCard,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -317,21 +315,13 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               <span>{copied ? 'Copied to Clipboard!' : 'Share / Copy Tier List'}</span>
             </button>
 
-            {report.isFullyGraded ? (
+            {report.isFullyGraded && (
               <button
                 onClick={handleTriggerConfetti}
                 className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Celebrate 100%</span>
-              </button>
-            ) : (
-              <button
-                onClick={onOpenRapidGrader}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
-              >
-                <Zap className="w-4 h-4 text-white" />
-                <span>Continue Grading</span>
               </button>
             )}
           </div>
@@ -392,12 +382,6 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 <strong className="text-slate-900 dark:text-white">17Lands Calibration Standing By:</strong> Grade at least <strong className="text-violet-700 dark:text-cyan-300 font-mono">15 cards</strong> to calculate your Meta Calibration Score (Currently <strong className="text-amber-600 dark:text-amber-300 font-mono">{report.ratedCards}/15</strong> graded).
               </span>
             </div>
-            <button
-              onClick={onOpenRapidGrader}
-              className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer self-start sm:self-auto"
-            >
-              ⚡ Continue Grading
-            </button>
           </div>
         )
       ) : (

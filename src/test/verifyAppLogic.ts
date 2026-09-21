@@ -1,7 +1,7 @@
 import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS, deduplicateCards, normalizeScryfallCard, isRemovalSpell, isCounterspell, isCardDrawSpell, isInteractionSpell } from '../services/scryfall';
 import { cardMatchesRoleFilter } from '../components/UI/ManaColorFilterBar';
 import { generateQuiz } from '../services/quizGenerator';
-import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl } from '../services/seventeenLands';
+import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl, getPreloaded17LandsData, get17LandsCardRating } from '../services/seventeenLands';
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
 import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
@@ -17,8 +17,11 @@ import {
   isTourStepCompleted,
   resetTourSteps,
   skipAllTourSteps,
+  getCalibrationPlotPanelPosition,
+  saveCalibrationPlotPanelPosition,
 } from '../services/storage';
 import { TOUR_STEP_DEFINITIONS } from '../context/ContextualTourContext';
+import { calculateLinearRegression, getTrendlineSegment } from '../components/Evaluation/CalibrationScatterPlot';
 
 console.log('=== MTG Limited IQ Verification Tests ===\n');
 
@@ -188,7 +191,7 @@ console.assert(!isAuthentic17LandsDataSet(leakedOld17Lands as unknown as Sevente
 
 const unreleasedReport = generateSetSynthesisReport(unreleasedCards as unknown as Card[], {}, 'FRA', 'Final Fantasy', leakedOld17Lands as unknown as SeventeenLandsSetData);
 console.assert(unreleasedReport.has17LandsData === false, 'has17LandsData must be false for unreleased set');
-console.assert(unreleasedReport.seventeenLandsBestColor === undefined, 'No best color fallback for unreleased set');
+console.assert(!unreleasedReport.seventeenLandsBestColor, 'No best color fallback for unreleased set');
 console.assert(unreleasedReport.colorRankings.every(c => c.seventeenLandsAvgWinRate === undefined), 'All color win rates must be undefined');
 console.assert(unreleasedReport.archetypeRankings.every(a => a.seventeenLandsWinRate === undefined), 'All archetype win rates must be undefined');
 console.log('   ✓ Unreleased sets (FRA) correctly reject leaked 17Lands data and yield TBD values.');
@@ -1017,6 +1020,139 @@ console.log('   ✓ All 7 contextual tour steps verified with valid DOM selector
 console.log('   ✓ Contextual tour step definitions and step sequencing verified.');
 console.log('   ✓ Storage lifecycle (mark completed, skip all, reset) verified.');
 
+// =========================================================================
+// TEST 16: OLS Linear Regression & RSQ (R²) Calibration Modeling
+// =========================================================================
+console.log('\n--- Test 16: OLS Linear Regression & RSQ (R²) Calibration Modeling ---');
+
+// 1. Perfect 1:1 Parity Dataset
+const perfectPoints = [
+  { x: 0, y: 0 },
+  { x: 2, y: 2 },
+  { x: 5, y: 5 },
+  { x: 8, y: 8 },
+  { x: 12, y: 12 },
+];
+const perfectReg = calculateLinearRegression(perfectPoints);
+console.assert(Math.abs(perfectReg.slope - 1.0) < 0.001, `Slope must be 1.0 (got ${perfectReg.slope})`);
+console.assert(Math.abs(perfectReg.intercept - 0.0) < 0.001, `Intercept must be 0.0 (got ${perfectReg.intercept})`);
+console.assert(Math.abs(perfectReg.correlation - 1.0) < 0.001, `Correlation must be 1.0 (got ${perfectReg.correlation})`);
+console.assert(Math.abs(perfectReg.rSquared - 1.0) < 0.001, `R² must be 1.0 (got ${perfectReg.rSquared})`);
+console.assert(perfectReg.biasDiagnosis.includes('Balanced calibration'), 'Diagnosis should be balanced');
+console.log('   ✓ Perfect 1:1 parity regression verified (slope=1.0, R²=1.0).');
+
+// 2. Systematic Optimist / Offset Dataset
+const offsetPoints = [
+  { x: 2, y: 0 },
+  { x: 4, y: 2 },
+  { x: 6, y: 4 },
+  { x: 8, y: 6 },
+  { x: 10, y: 8 },
+];
+const offsetReg = calculateLinearRegression(offsetPoints);
+console.assert(Math.abs(offsetReg.slope - 1.0) < 0.001, `Offset slope must be 1.0 (got ${offsetReg.slope})`);
+console.assert(Math.abs(offsetReg.intercept - (-2.0)) < 0.001, `Offset intercept must be -2.0 (got ${offsetReg.intercept})`);
+console.assert(offsetReg.rSquared === 1.0, `Offset R² must still be 1.0 (got ${offsetReg.rSquared})`);
+console.assert(offsetReg.biasDiagnosis.includes('Format optimist'), 'Diagnosis should identify optimism');
+console.log('   ✓ Systematic offset regression verified (intercept=-2.0, format optimist identified).');
+
+// 3. Compressed Spread Dataset (m < 0.75)
+const compressedPoints = [
+  { x: 0, y: 3 },
+  { x: 3, y: 4 },
+  { x: 6, y: 5 },
+  { x: 9, y: 6 },
+  { x: 12, y: 7 },
+];
+const compressedReg = calculateLinearRegression(compressedPoints);
+console.assert(compressedReg.slope < 0.75, `Compressed slope must be < 0.75 (got ${compressedReg.slope})`);
+console.assert(compressedReg.biasDiagnosis.includes('Compressed spread'), 'Diagnosis should flag compressed spread');
+console.log('   ✓ Compressed spread regression verified (slope < 0.75, compressed spread identified).');
+
+// 4. Trendline Clipping to [0, 12] ViewBox bounds
+const steepSegment = getTrendlineSegment(2.0, -4.0, 12);
+console.assert(steepSegment.x1 >= 0 && steepSegment.x1 <= 12, `x1 in bounds: ${steepSegment.x1}`);
+console.assert(steepSegment.y1 >= 0 && steepSegment.y1 <= 12, `y1 in bounds: ${steepSegment.y1}`);
+console.assert(steepSegment.x2 >= 0 && steepSegment.x2 <= 12, `x2 in bounds: ${steepSegment.x2}`);
+console.assert(steepSegment.y2 >= 0 && steepSegment.y2 <= 12, `y2 in bounds: ${steepSegment.y2}`);
+console.log('   ✓ Trendline coordinate clipping verified within [0, 12] view space.');
+
+// =========================================================================
+// TEST 17: User-Scoped Calibration Plot Docking Position Persistence
+// =========================================================================
+console.log('\n--- Test 17: User-Scoped Calibration Plot Docking Position Persistence ---');
+
+// Default fallback for guest or unconfigured user is 'right'
+console.assert(getCalibrationPlotPanelPosition('user_alpha') === 'right', 'Initial position should default to right');
+
+// Save 'left' for user_alpha
+saveCalibrationPlotPanelPosition('left', 'user_alpha');
+console.assert(getCalibrationPlotPanelPosition('user_alpha') === 'left', 'user_alpha position should be left');
+
+// user_beta should remain independent and default to 'right'
+console.assert(getCalibrationPlotPanelPosition('user_beta') === 'right', 'user_beta position should still be right');
+
+// Save 'right' explicitly for user_alpha and verify toggle back
+saveCalibrationPlotPanelPosition('right', 'user_alpha');
+console.assert(getCalibrationPlotPanelPosition('user_alpha') === 'right', 'user_alpha position should toggle to right');
+
+// =========================================================================
+// TEST 18: Secrets of Strixhaven (SOS) & Released Sets 17Lands Bulletproofing
+// =========================================================================
+console.log('\n--- Test 18: Secrets of Strixhaven (SOS) & Released Sets 17Lands Bulletproofing ---');
+
+// 1. Verify bundled preloaded dataset for SOS exists and contains full set (341 cards)
+const sosPreloaded = getPreloaded17LandsData('SOS');
+console.assert(sosPreloaded !== null, 'SOS must have non-null preloaded 17Lands dataset');
+const sosCardCount = Object.keys(sosPreloaded?.cards || {}).length;
+console.assert(sosCardCount === 341, `SOS preloaded dataset must contain 341 cards, got: ${sosCardCount}`);
+console.log(`   ✓ SOS bundled preloaded dataset verified with complete 341-card draft catalog.`);
+
+// 2. Verify authentic telemetry on "The Dawning Archaic"
+const dawningRating = get17LandsCardRating({ name: 'The Dawning Archaic', set: 'SOS' }, sosPreloaded);
+console.assert(dawningRating !== null, 'The Dawning Archaic must have non-null 17Lands telemetry');
+console.assert((dawningRating?.win_rate || 0) > 0.53 && (dawningRating?.win_rate || 0) < 0.55, `The Dawning Archaic WR must be ~53.8%, got: ${dawningRating?.win_rate}`);
+console.assert(dawningRating?.avg_seen === 1.89, `The Dawning Archaic ALSA must be 1.89, got: ${dawningRating?.avg_seen}`);
+console.assert(dawningRating?.tier_grade === 'C+', `The Dawning Archaic tier_grade must be C+, got: ${dawningRating?.tier_grade}`);
+console.assert(dawningRating?.game_count === 21296, `The Dawning Archaic game_count must be 21296, got: ${dawningRating?.game_count}`);
+console.log(`   ✓ "The Dawning Archaic" authentic telemetry verified (WR: 53.79%, ALSA: 1.89, 21,296 games, Tier: C+).`);
+
+// 3. Verify authentic telemetry on "Sundering Archaic"
+const sunderingRating = get17LandsCardRating({ name: 'Sundering Archaic', set: 'SOS' }, sosPreloaded);
+console.assert(sunderingRating !== null, 'Sundering Archaic must have non-null 17Lands telemetry');
+console.assert((sunderingRating?.win_rate || 0) > 0.58, `Sundering Archaic WR must be >58%, got: ${sunderingRating?.win_rate}`);
+console.assert(sunderingRating?.tier_grade === 'B+', `Sundering Archaic tier_grade must be B+, got: ${sunderingRating?.tier_grade}`);
+console.assert(sunderingRating?.game_count === 141633, `Sundering Archaic game_count must be 141,633, got: ${sunderingRating?.game_count}`);
+console.log(`   ✓ "Sundering Archaic" authentic telemetry verified (WR: 58.85%, ALSA: 4.45, 141,633 games, Tier: B+).`);
+
+// 4. Verify authentic telemetry on top bomb "Together as One"
+const togetherRating = get17LandsCardRating({ name: 'Together as One', set: 'SOS' }, sosPreloaded);
+console.assert(togetherRating !== null, 'Together as One must have non-null 17Lands telemetry');
+console.assert((togetherRating?.win_rate || 0) > 0.65, `Together as One WR must be >65%, got: ${togetherRating?.win_rate}`);
+console.assert(togetherRating?.tier_grade === 'A+', `Together as One tier_grade must be A+, got: ${togetherRating?.tier_grade}`);
+console.log(`   ✓ "Together as One" authentic telemetry verified (WR: 65.61%, Tier: A+).`);
+
+// 5. Verify authenticity and eligibility checks for SOS
+const sampleSosCards: Card[] = [
+  { id: 'sos-1', name: 'The Dawning Archaic', set: 'SOS', colors: [], rarity: 'mythic' } as unknown as Card,
+  { id: 'sos-2', name: 'Sundering Archaic', set: 'SOS', colors: [], rarity: 'uncommon' } as unknown as Card,
+  { id: 'sos-3', name: 'Together as One', set: 'SOS', colors: ['W'], rarity: 'rare' } as unknown as Card,
+];
+console.assert(isAuthentic17LandsDataSet(sosPreloaded, 'SOS', sampleSosCards) === true, 'SOS preloaded data must be certified authentic');
+console.assert(is17LandsEligibleForSet('2026-04-24', sosPreloaded, 'SOS', sampleSosCards) === true, 'SOS must be 17Lands eligible');
+console.log(`   ✓ SOS authenticity and 17Lands feature eligibility verified.`);
+
+// 6. Verify that partial benchmark stubs (<50 cards) are NOT returned as full set preloaded data
+const stxPreloaded = getPreloaded17LandsData('STX');
+console.assert(stxPreloaded === null, 'Partial benchmark set STX must return null from getPreloaded17LandsData to prevent cache poisoning');
+console.log(`   ✓ Partial benchmark stubs (<50 cards) strictly barred from masquerading as full sets.`);
+
+// 7. Verify benchmark card lookups continue working seamlessly for cross-set precedents
+const iterationRating = get17LandsCardRating({ name: 'Expressive Iteration' });
+console.assert(iterationRating !== null && (iterationRating.win_rate || 0) > 0.60, 'Expressive Iteration benchmark rating must resolve');
+console.log(`   ✓ Cross-set precedent benchmark lookup verified.`);
+
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
+
 
 

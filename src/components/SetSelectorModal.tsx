@@ -142,20 +142,15 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
           </div>
         </div>
 
+        {/* Subtle Non-shifting Loading Progress Bar */}
+        <div className="h-0.5 w-full bg-transparent overflow-hidden">
+          {isLoadingCards && (
+            <div className="h-full bg-gradient-to-r from-violet-500 via-cyan-400 to-violet-500 animate-pulse w-full" />
+          )}
+        </div>
+
         {/* Set List Grid (Expansive 2-Column Full Width) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
-          {isLoadingCards && (
-            <div className="p-6 text-center space-y-2 bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
-              <div className="w-7 h-7 border-3 border-violet-600 dark:border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm font-bold text-slate-900 dark:text-cyan-300">Fetching Scryfall Card Visuals & Oracle Rules...</p>
-              {downloadProgress && (
-                <p className="text-xs font-mono text-slate-500 dark:text-violet-300">
-                  Cached {downloadProgress.loaded} / {downloadProgress.total} cards strictly for this set
-                </p>
-              )}
-            </div>
-          )}
-
           {filteredSets.length === 0 ? (
             <div className="py-16 text-center text-slate-500 space-y-2">
               <p className="text-sm font-semibold">No sets found matching "{searchQuery}"</p>
@@ -238,10 +233,18 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Selected Checkmark */}
+                    {/* Selected Checkmark & Loading Spinner */}
                     {isSelected && (
-                      <div className="p-1.5 rounded-full bg-violet-600 text-white shadow-xs shrink-0">
-                        <Check className="w-4 h-4 stroke-[3]" />
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isLoadingCards && (
+                          <div
+                            className="w-4 h-4 border-2 border-violet-600 dark:border-cyan-400 border-t-transparent rounded-full animate-spin"
+                            title="Loading set cards..."
+                          />
+                        )}
+                        <div className="p-1.5 rounded-full bg-violet-600 text-white shadow-xs">
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </div>
                       </div>
                     )}
                   </button>
@@ -249,6 +252,28 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
               })}
             </div>
           )}
+        </div>
+
+        {/* Modal Footer (Fixed height status bar, prevents content jump) */}
+        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0">
+          <div>
+            {isLoadingCards ? (
+              <span className="flex items-center gap-2 text-violet-600 dark:text-cyan-400 font-medium">
+                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                {downloadProgress && downloadProgress.total > 0
+                  ? `Syncing cards (${downloadProgress.loaded} / ${downloadProgress.total})...`
+                  : 'Syncing Scryfall card visuals & rules...'}
+              </span>
+            ) : (
+              <span>{filteredSets.length} sets available</span>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

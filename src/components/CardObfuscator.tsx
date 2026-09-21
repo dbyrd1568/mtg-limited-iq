@@ -1,8 +1,186 @@
 import React, { useState } from 'react';
-import { Card, CardObfuscationConfig } from '../types/mtg';
+import { Card, CardObfuscationConfig, MTGColor } from '../types/mtg';
 import { RotateCw, Sparkles, EyeOff } from 'lucide-react';
 import { CardImage } from './UI/CardImage';
-import { ManaCostRenderer } from './UI/ManaSymbol';
+import { ManaCostRenderer, ManaSymbol } from './UI/ManaSymbol';
+
+/**
+ * Extracts self-referential name patterns for a card (full name, shortened legendary name, possessives).
+ */
+export function getCardSelfReferentialNames(cardName?: string, typeLine?: string): string[] {
+  if (!cardName) return [];
+  const patterns = new Set<string>();
+  const cleanName = cardName.trim();
+  patterns.add(cleanName);
+
+  // Strip DFC separator if present
+  if (cleanName.includes(' // ')) {
+    cleanName.split(' // ').forEach(part => {
+      const p = part.trim();
+      if (p.length >= 3) patterns.add(p);
+    });
+  }
+
+  // Strip comma (e.g. "Teyo, Diamondblade Mage" -> "Teyo")
+  if (cleanName.includes(',')) {
+    const primary = cleanName.split(',')[0].trim();
+    if (primary.length >= 3) {
+      patterns.add(primary);
+    }
+  }
+
+  // If legendary or planeswalker, often referred to by first word (e.g. "Fblthp the Lost" -> "Fblthp")
+  const isLegendary = (typeLine || '').includes('Legendary') || (typeLine || '').includes('Planeswalker');
+  if (isLegendary) {
+    const firstWord = cleanName.split(/[\s,]+/)[0].trim();
+    const commonTitles = ['The', 'Lord', 'Lady', 'Saint', 'Sir', 'Baron', 'Count', 'King', 'Queen', 'Master'];
+    if (firstWord.length >= 3 && !commonTitles.includes(firstWord)) {
+      patterns.add(firstWord);
+    }
+  }
+
+  // Include possessive forms ("Teyo's", "Teyo’s")
+  const result: string[] = [];
+  patterns.forEach(p => {
+    result.push(p);
+    result.push(`${p}'s`);
+    result.push(`${p}’s`);
+  });
+
+  // Sort descending by length so longer patterns match first
+  return result.sort((a, b) => b.length - a.length);
+}
+
+/**
+ * Checks if the oracle rules text contains any self-referential name patterns.
+ */
+export function oracleContainsCardName(oracleText?: string, namePatterns: string[] = []): boolean {
+  if (!oracleText || namePatterns.length === 0) return false;
+  return namePatterns.some(pat => {
+    const escaped = pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    return regex.test(oracleText);
+  });
+}
+
+/**
+ * Returns frame background and border styles for text box overlays matching card colors.
+ */
+export function getFrameTextboxStyle(colors?: MTGColor[]) {
+  if (!colors || colors.length === 0 || (colors.length === 1 && colors[0] === 'C')) {
+    return {
+      bg: 'bg-[#deddd9]/95 dark:bg-[#1a1c24]/95',
+      border: 'border-slate-400/50 dark:border-slate-700/70',
+      text: 'text-slate-900 dark:text-slate-100',
+    };
+  }
+  if (colors.length > 1) {
+    return {
+      bg: 'bg-[#f4eedd]/95 dark:bg-[#201c14]/95',
+      border: 'border-amber-500/50 dark:border-amber-700/60',
+      text: 'text-amber-950 dark:text-amber-100',
+    };
+  }
+  switch (colors[0]) {
+    case 'W':
+      return {
+        bg: 'bg-[#f7f3ea]/95 dark:bg-[#24211b]/95',
+        border: 'border-amber-300/60 dark:border-amber-700/60',
+        text: 'text-stone-900 dark:text-stone-100',
+      };
+    case 'U':
+      return {
+        bg: 'bg-[#eaf1f7]/95 dark:bg-[#141e28]/95',
+        border: 'border-blue-300/60 dark:border-blue-700/60',
+        text: 'text-slate-900 dark:text-slate-100',
+      };
+    case 'B':
+      return {
+        bg: 'bg-[#e0dfdc]/95 dark:bg-[#181a22]/95',
+        border: 'border-stone-500/60 dark:border-stone-700/70',
+        text: 'text-neutral-900 dark:text-neutral-100',
+      };
+    case 'R':
+      return {
+        bg: 'bg-[#f7ece8]/95 dark:bg-[#251816]/95',
+        border: 'border-red-300/60 dark:border-red-800/60',
+        text: 'text-stone-900 dark:text-stone-100',
+      };
+    case 'G':
+      return {
+        bg: 'bg-[#edf4eb]/95 dark:bg-[#152216]/95',
+        border: 'border-emerald-300/60 dark:border-emerald-800/60',
+        text: 'text-stone-900 dark:text-stone-100',
+      };
+    default:
+      return {
+        bg: 'bg-[#deddd9]/95 dark:bg-[#1a1c24]/95',
+        border: 'border-slate-400/50 dark:border-slate-700/70',
+        text: 'text-slate-900 dark:text-slate-100',
+      };
+  }
+}
+
+/**
+ * Tokenizes oracle text and replaces occurrences of self-referential card names with a [Concealed] badge.
+ */
+export function tokenizeAndSanitizeOracleText(
+  text: string,
+  namePatterns: string[],
+  size: 'sm' | 'md' | 'lg' | 'xl' | '2xl' = 'lg'
+): React.ReactNode[] {
+  if (!text) return [];
+
+  const escapedPatterns = namePatterns.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const combinedRegex = new RegExp(`(\\{[^}]+\\}|\\([^)]+\\)|\\b(?:${escapedPatterns})\\b)`, 'gi');
+
+  const parts = text.split(combinedRegex);
+  const nameSet = new Set(namePatterns.map(p => p.toLowerCase()));
+
+  const pillSizeClass =
+    size === 'sm'
+      ? 'text-[7px] px-1 py-0.2'
+      : size === 'md'
+      ? 'text-[8px] px-1.5 py-0.2'
+      : size === '2xl'
+      ? 'text-[10px] px-2 py-0.5'
+      : 'text-[8.5px] px-1.5 py-0.2';
+
+  return parts.map((part, idx) => {
+    if (!part) return null;
+
+    if (part.startsWith('{') && part.endsWith('}')) {
+      return (
+        <span key={idx} className="inline-block mx-0.5 align-middle">
+          <ManaSymbol symbol={part} size="xs" />
+        </span>
+      );
+    }
+
+    if (part.startsWith('(') && part.endsWith(')')) {
+      return (
+        <span key={idx} className="italic opacity-70">
+          {part}
+        </span>
+      );
+    }
+
+    if (nameSet.has(part.toLowerCase())) {
+      return (
+        <span
+          key={idx}
+          className={`inline-flex items-center gap-0.5 mx-0.5 rounded bg-[#050818] text-cyan-300 font-mono font-bold border border-cyan-400/50 shadow-xs align-baseline select-none ${pillSizeClass}`}
+          title="Card name concealed for quiz deduction"
+        >
+          <EyeOff className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+          <span>[Concealed]</span>
+        </span>
+      );
+    }
+
+    return <span key={idx}>{part}</span>;
+  });
+}
 
 interface CardObfuscatorProps {
   card: Card;
@@ -122,6 +300,76 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
     );
   };
 
+  const renderSanitizedOracleOverlay = () => {
+    if (!isMasked || obfuscation.isRevealed) {
+      return null;
+    }
+    // Only sanitize rules text when the card's name is concealed
+    if (obfuscation.target !== 'name_and_cost' && (obfuscation.target as string) !== 'name') {
+      return null;
+    }
+
+    const oracleText = activeCardData.oracle_text || card.oracle_text;
+    if (!oracleText || !oracleText.trim()) {
+      return null;
+    }
+
+    const cardName = activeCardData.name || card.name || '';
+    const typeLine = activeCardData.type_line || card.type_line || '';
+    const namePatterns = getCardSelfReferentialNames(cardName, typeLine);
+    if (!oracleContainsCardName(oracleText, namePatterns)) {
+      return null;
+    }
+
+    const frameStyle = getFrameTextboxStyle(activeCardData.colors || card.colors);
+    const hasPT = Boolean(
+      (activeCardData.power !== undefined && activeCardData.toughness !== undefined) ||
+      (card.power !== undefined && card.toughness !== undefined)
+    );
+    const power = activeCardData.power ?? card.power;
+    const toughness = activeCardData.toughness ?? card.toughness;
+
+    const fontSizeClass =
+      size === 'sm'
+        ? 'text-[7px] sm:text-[7.5px] leading-tight'
+        : size === 'md'
+        ? 'text-[8px] sm:text-[8.5px] leading-tight'
+        : size === '2xl'
+        ? 'text-[11px] sm:text-[12px] leading-relaxed'
+        : 'text-[9px] sm:text-[9.5px] leading-snug';
+
+    return (
+      <>
+        {/* Sanitized Oracle Text Box Overlay */}
+        <div
+          className={`absolute top-[61.6%] left-[4.5%] right-[4.5%] w-[91%] h-[30.4%] z-20 rounded-[5px] border ${frameStyle.bg} ${frameStyle.border} ${frameStyle.text} shadow-md p-1.5 sm:p-2 overflow-y-auto custom-scrollbar flex flex-col justify-between select-none animate-in fade-in duration-200`}
+        >
+          <div className={`space-y-0.5 sm:space-y-1 text-left ${hasPT ? 'pr-[20%]' : ''}`}>
+            {oracleText.split('\n').map((para, pIdx) => (
+              <p key={pIdx} className={`${fontSizeClass} font-sans`}>
+                {tokenizeAndSanitizeOracleText(para, namePatterns, size)}
+              </p>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between text-[7px] sm:text-[7.5px] font-mono opacity-65 pt-0.5 mt-auto border-t border-black/10 dark:border-white/10">
+            <span className="flex items-center gap-1">
+              <EyeOff className="w-2.5 h-2.5 text-cyan-500" />
+              <span>Name concealed in rules text</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Crisp Power / Toughness badge re-anchored on top if creature */}
+        {hasPT && (
+          <div className="absolute bottom-[2.5%] right-[3.8%] z-30 px-2 py-0.5 rounded-md bg-[#deddd9] dark:bg-[#181a24] border border-slate-700/80 font-mono font-black text-[10.5px] sm:text-xs text-slate-900 dark:text-white shadow-md">
+            {power}/{toughness}
+          </div>
+        )}
+      </>
+    );
+  };
+
   const sizeConfig = SIZE_CONFIGS[size] || SIZE_CONFIGS.md;
 
   return (
@@ -170,6 +418,9 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
 
             {/* Targeted Obfuscation Mask */}
             {renderObfuscationOverlay()}
+
+            {/* Sanitized Oracle Text Overlay (covers card name in rules text) */}
+            {renderSanitizedOracleOverlay()}
           </div>
         )}
 

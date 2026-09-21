@@ -25,7 +25,7 @@ import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
 import { deduplicateCards } from '../../services/scryfall';
 import { CalibrationScatterPlot } from './CalibrationScatterPlot';
-import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink, Zap } from 'lucide-react';
+import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink } from 'lucide-react';
 import { ExportGradesModal } from './ExportGradesModal';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
@@ -219,13 +219,6 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   useEffect(() => {
     updateAppUrlParams({ subtab: activeSubTab });
   }, [activeSubTab]);
-
-  // If set has no 17Lands data and user is on calibration tab, fallback to grade tab
-  useEffect(() => {
-    if (!effective17LandsData && activeSubTab === 'calibration') {
-      setActiveSubTab('grade');
-    }
-  }, [effective17LandsData, activeSubTab]);
 
   // Deep-link / troubleshooting: auto-open card specified in URL query
   useEffect(() => {
@@ -460,13 +453,6 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     onSaveEvaluation(evaluation);
   };
 
-  const handleOpenRapidGrader = () => {
-    const firstUngraded = cards.find(
-      (c) => !userEvaluations[`${c.set.toLowerCase()}_${c.name.toLowerCase()}`]
-    );
-    handleSelectCardForModal(firstUngraded || cards[0]);
-  };
-
   const isFilteredActive = Boolean(
     (!selectedColors.includes('ALL') && selectedColors.length > 0) ||
     (!selectedRarities.includes('ALL') && selectedRarities.length > 0) ||
@@ -517,21 +503,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, zero scrollbar) */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs no-scrollbar">
-        {/* Left: Primary CTA & Sub-tabs */}
+        {/* Left: Sub-tabs */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleOpenRapidGrader}
-            className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
-            title="Open Rapid Grader to evaluate cards sequentially"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
-            <span>Rapid Grade</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-violet-700/90 text-violet-100 border border-violet-500/40">
-              {ratedCountInSet}/{cards.length}
-            </span>
-          </button>
-
           <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
             <button
               onClick={() => setActiveSubTab('grade')}
@@ -555,18 +528,16 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               Archetypes
             </button>
 
-            {effective17LandsData && (
-              <button
-                onClick={() => setActiveSubTab('calibration')}
-                className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeSubTab === 'calibration'
-                    ? 'bg-violet-600 text-white shadow-xs font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                17Lands {calibrationSummary.totalRated > 0 ? `(${calibrationSummary.calibrationScore}%)` : ''}
-              </button>
-            )}
+            <button
+              onClick={() => setActiveSubTab('calibration')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeSubTab === 'calibration'
+                  ? 'bg-violet-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              17Lands {effective17LandsData && calibrationSummary.totalRated > 0 ? `(${calibrationSummary.calibrationScore}%)` : ''}
+            </button>
 
             <button
               onClick={() => setActiveSubTab('notes')}
@@ -841,7 +812,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             {filteredCards.map((card, cardIndex) => {
               const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
               const userEval = userEvaluations[evalKey];
-              const landData = get17LandsCardRating(card, effective17LandsData) || undefined;
+              const landData = get17LandsCardRating(card, effective17LandsData) || getOrEstimate17LandsCardRating(card, effective17LandsData) || undefined;
 
               return (
                 <div
@@ -1080,12 +1051,6 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           setCode={currentSetCode}
           setName={currentSetName}
           onSelectCard={handleSelectCardForModal}
-          onOpenRapidGrader={() => {
-            const firstUngraded = cards.find(
-              (c) => !userEvaluations[`${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`]
-            );
-            handleSelectCardForModal(firstUngraded || cards[0] || null);
-          }}
         />
       )}
 
@@ -1432,6 +1397,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 seventeenLandsData={effective17LandsData}
                 onSelectCard={handleSelectCardForModal}
                 availableSets={availableSets}
+                userId={currentUser?.id}
               />
             )}
 

@@ -224,6 +224,7 @@ export function deleteUserAccount(userId: string): void {
     localStorage.removeItem(`mtg_archetype_evaluations_${userId}`);
     localStorage.removeItem(`mtg_color_evaluations_${userId}`);
     localStorage.removeItem(`mtg_last_set_${userId}`);
+    localStorage.removeItem(`mtg_calibration_panel_pos_${userId}`);
   } catch (e) {
     console.error('Failed to delete user account:', e);
   }
@@ -613,6 +614,25 @@ export function saveLastSelectedSetCode(code: string, userId?: string): void {
     localStorage.setItem(LEGACY_LAST_SET_KEY, code.toUpperCase());
   } catch (e) {
     console.error('Failed to save last selected set code:', e);
+  }
+}
+
+export function getCalibrationPlotPanelPosition(userId?: string): 'left' | 'right' {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const saved = localStorage.getItem(`mtg_calibration_panel_pos_${activeId}`);
+    return saved === 'left' || saved === 'right' ? saved : 'right';
+  } catch (e) {
+    return 'right';
+  }
+}
+
+export function saveCalibrationPlotPanelPosition(position: 'left' | 'right', userId?: string): void {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    localStorage.setItem(`mtg_calibration_panel_pos_${activeId}`, position);
+  } catch (e) {
+    console.error('Failed to save calibration panel position:', e);
   }
 }
 

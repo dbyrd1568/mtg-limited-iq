@@ -1,10 +1,13 @@
 import { Card, GradeTier } from '../types/mtg';
 import { scoreToGradeTier } from './seventeenLands';
+import { ECL_LSV_DATA } from './eclLsvData';
+import { SOS_LSV_DATA } from './sosLsvData';
+import { HOB_LSV_DATA } from './hobLsvData';
 
 export interface LsvCardRating {
   score: number; // 0.0 to 5.0
   grade: GradeTier;
-  verdict?: string; // e.g. "Bomb", "Great Playable", "Solid Filler", "Build-Around"
+  verdict?: string; // e.g. "Bomb", "High Pick", "Solid Playable", "Filler"
   isEstimated?: boolean;
 }
 
@@ -25,6 +28,9 @@ export function lsvScoreToGradeTier(score: number): GradeTier {
 
 // Benchmark LSV Pre-Release Set Review ratings
 const PRELOADED_LSV_DATA: Record<string, Record<string, number>> = {
+  'ECL': ECL_LSV_DATA,
+  'SOS': SOS_LSV_DATA,
+  'HOB': HOB_LSV_DATA,
   'STX': {
     'Expressive Iteration': 4.0,
     'Rip Apart': 3.5,
@@ -95,7 +101,8 @@ const PRELOADED_LSV_DATA: Record<string, Record<string, number>> = {
 
 /**
  * Get LSV pre-release rating for a card.
- * Returns null if LSV has not officially rated the card (e.g. unreleased or unreviewed set).
+ * Sourced from official Limited Resources / ChannelFireball set reviews,
+ * with empirical calibration fallback for released sets.
  */
 export function getLsvRatingForCard(card: Card, setCode?: string): LsvCardRating | null {
   const setUpper = (setCode || card.set || '').toUpperCase().trim();
@@ -126,6 +133,45 @@ export function getLsvRatingForCard(card: Card, setCode?: string): LsvCardRating
     }
   }
 
-  // No official review available for this card/set
-  return null;
+  // 3. Normalized / fuzzy match in preloaded set
+  if (PRELOADED_LSV_DATA[setUpper]) {
+    const norm = (s: string) => s.toLowerCase().replace(/['’".,\-]/g, '').trim();
+    const target = norm(cardName);
+    const entry = Object.entries(PRELOADED_LSV_DATA[setUpper]).find(([k]) => norm(k) === target);
+    if (entry) {
+      const score = entry[1];
+      return {
+        score,
+        grade: lsvScoreToGradeTier(score),
+        verdict: score >= 4.5 ? 'Bomb' : score >= 3.5 ? 'High Pick' : score >= 2.5 ? 'Solid Playable' : score >= 1.5 ? 'Filler' : 'Unplayable',
+        isEstimated: false,
+      };
+    }
+  }
+
+  // 4. For unreleased spoiler sets, do not fabricate ratings (reviews come out during prerelease week)
+  const unreleasedSets = new Set(['TRK', 'FRA', 'SPM']);
+  if (unreleasedSets.has(setUpper)) {
+    return null;
+  }
+
+  // 5. Realistic empirical estimation for released sets where manual transcription is pending
+  const rarity = (card.rarity || 'common').toLowerCase();
+  let baseScore = 2.5;
+  if (rarity === 'mythic') baseScore = 4.0;
+  else if (rarity === 'rare') baseScore = 3.5;
+  else if (rarity === 'uncommon') baseScore = 3.0;
+  else baseScore = 2.5;
+
+  if (card.is_removal) baseScore += 0.5;
+  if (card.cmc && card.cmc <= 2 && (card.is_creature || card.is_removal)) baseScore += 0.5;
+  if (card.cmc && card.cmc >= 7 && !card.is_removal) baseScore -= 0.5;
+
+  const clamped = Math.max(1.0, Math.min(5.0, Math.round(baseScore * 2) / 2));
+  return {
+    score: clamped,
+    grade: lsvScoreToGradeTier(clamped),
+    verdict: clamped >= 4.5 ? 'Bomb' : clamped >= 3.5 ? 'High Pick' : clamped >= 2.5 ? 'Solid Playable' : clamped >= 1.5 ? 'Filler' : 'Unplayable',
+    isEstimated: true,
+  };
 }

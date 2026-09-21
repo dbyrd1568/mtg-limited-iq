@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS, deduplicateCards } from './services/scryfall';
-import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData } from './services/seventeenLands';
+import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData, get17LandsCardRating } from './services/seventeenLands';
 import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
 
 import { generateQuiz } from './services/quizGenerator';
@@ -296,7 +296,7 @@ const AppContent: React.FC = () => {
           if (savedCode) {
             const match = sorted.find(s => s.code.toUpperCase() === savedCode.toUpperCase());
             if (match) {
-              setCurrentSet(match);
+              setCurrentSet(prev => (prev && prev.code.toUpperCase() === match.code.toUpperCase() ? prev : match));
             }
           }
         }
@@ -360,30 +360,78 @@ const AppContent: React.FC = () => {
     try {
       const [fetchedCards, landsData] = await Promise.all([cardsPromise, landsPromise]);
       const dedupedFetched = deduplicateCards(fetchedCards);
-      setCards(dedupedFetched);
+      setCards((prev) => {
+        if (
+          prev.length === dedupedFetched.length &&
+          prev.length > 0 &&
+          prev[0]?.id === dedupedFetched[0]?.id &&
+          prev[prev.length - 1]?.id === dedupedFetched[dedupedFetched.length - 1]?.id
+        ) {
+          return prev;
+        }
+        return dedupedFetched;
+      });
 
       // Keep currentSet and allSets card_count aligned with the deduplicated card catalog count
       if (dedupedFetched && dedupedFetched.length > 0) {
-        setCurrentSet((prev) => (prev && prev.code.toUpperCase() === set.code.toUpperCase() ? { ...prev, card_count: dedupedFetched.length } : prev));
-        setAllSets((prev) => prev.map((s) => s.code.toUpperCase() === set.code.toUpperCase() ? { ...s, card_count: dedupedFetched.length } : s));
+        setCurrentSet((prev) => {
+          if (!prev || prev.code.toUpperCase() !== set.code.toUpperCase()) return prev;
+          if (prev.card_count === dedupedFetched.length) return prev;
+          return { ...prev, card_count: dedupedFetched.length };
+        });
+        setAllSets((prev) => {
+          const match = prev.find((s) => s.code.toUpperCase() === set.code.toUpperCase());
+          if (!match || match.card_count === dedupedFetched.length) return prev;
+          return prev.map((s) => s.code.toUpperCase() === set.code.toUpperCase() ? { ...s, card_count: dedupedFetched.length } : s);
+        });
       }
+
+      // Determine the best 17Lands dataset between fresh network/cached fetch and bundled preloaded data
+      let bestLandsData: SeventeenLandsSetData | null = null;
+      const landsCount = landsData?.cards ? Object.keys(landsData.cards).length : 0;
+      const preloadedCount = preloaded?.cards ? Object.keys(preloaded.cards).length : 0;
 
       if (
         landsData &&
         landsData.setCode?.toUpperCase() === set.code.toUpperCase() &&
         (landsData.sampleSize || 0) > 500 &&
-        Object.keys(landsData.cards || {}).length >= 5
+        landsCount >= 20 &&
+        landsCount >= preloadedCount
       ) {
-        setSeventeenLandsData(landsData);
-      } else if (preloaded) {
-        setSeventeenLandsData(preloaded);
-      } else if (set.has_17lands_data !== false && fetchedCards && fetchedCards.length > 0) {
-        // Ensure every set that has 17Lands draft history has rich telemetry
-        const estimated = generateEstimated17LandsData(fetchedCards);
-        setSeventeenLandsData(estimated);
-      } else {
-        setSeventeenLandsData(null);
+        bestLandsData = landsData;
+      } else if (preloaded && preloadedCount > 0) {
+        bestLandsData = preloaded;
+      } else if (landsData && landsCount > 0) {
+        bestLandsData = landsData;
       }
+
+      // If the set has draft history (has_17lands_data !== false), ensure 100% card coverage
+      if (set.has_17lands_data !== false && dedupedFetched && dedupedFetched.length > 0) {
+        if (!bestLandsData) {
+          bestLandsData = generateEstimated17LandsData(dedupedFetched);
+        } else {
+          // If any cards in the set catalog are missing from 17Lands (e.g. bonus sheet or 0-game cards),
+          // seamlessly supplement them so NO card in a released set ever displays "Data Pending" or "TBD"
+          const estimated = generateEstimated17LandsData(dedupedFetched);
+          let supplemented = false;
+          const mergedCards = { ...bestLandsData.cards };
+          for (const card of dedupedFetched) {
+            const existing = get17LandsCardRating(card, bestLandsData);
+            if (!existing) {
+              const estRating = get17LandsCardRating(card, estimated);
+              if (estRating) {
+                mergedCards[card.name] = estRating;
+                supplemented = true;
+              }
+            }
+          }
+          if (supplemented) {
+            bestLandsData = { ...bestLandsData, cards: mergedCards };
+          }
+        }
+      }
+
+      setSeventeenLandsData(bestLandsData);
     } catch (err) {
       console.error(`Error loading data for set ${set.code}:`, err);
       if (!preloaded) {
@@ -396,8 +444,18 @@ const AppContent: React.FC = () => {
   }, []);
 
 
+  const loadedSetCodeRef = useRef<string | null>(null);
+
   useEffect(() => {
-    loadSetData(currentSet);
+    if (!currentSet) {
+      loadedSetCodeRef.current = null;
+      loadSetData(null);
+      return;
+    }
+    if (loadedSetCodeRef.current !== currentSet.code.toUpperCase()) {
+      loadedSetCodeRef.current = currentSet.code.toUpperCase();
+      loadSetData(currentSet);
+    }
   }, [currentSet, loadSetData]);
 
   // Sync URL query params whenever activeTab or currentSet changes
@@ -428,7 +486,7 @@ const AppContent: React.FC = () => {
   // Handle Set Change
   const handleSelectSet = (set: SetInfo) => {
     saveLastSelectedSetCode(set.code, currentUser?.id || 'guest');
-    setCurrentSet(set);
+    setCurrentSet((prev) => (prev && prev.code.toUpperCase() === set.code.toUpperCase() ? prev : set));
     setIsSetSelectorOpen(false);
     setQuizState('setup');
     trackFeature('set_switcher', { set: set.code }, currentUser);

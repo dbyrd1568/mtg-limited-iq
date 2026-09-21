@@ -145,7 +145,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
       (seventeenLandsData.sampleSize || 0) > 500 &&
       Object.keys(seventeenLandsData.cards || {}).length >= 5
     ) {
-      const hasMatchingCards = cards.some((c) => {
+      const hasMatchingCards = cards.length === 0 || cards.some((c) => {
         const rating = get17LandsCardRating(c, seventeenLandsData);
         return (rating?.game_count || 0) > 0;
       });
@@ -686,7 +686,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           {filteredAndSortedCards.map((card) => {
             const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
             const userEval = userEvaluations[evalKey];
-            const landData = get17LandsCardRating(card, effective17LandsData) || undefined;
+            const landData = get17LandsCardRating(card, effective17LandsData) || getOrEstimate17LandsCardRating(card, effective17LandsData) || undefined;
 
             return (
               <div

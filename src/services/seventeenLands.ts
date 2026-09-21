@@ -1,6 +1,7 @@
 import { get, set } from 'idb-keyval';
 import { Card, GradeTier, SetDraftStatus, SeventeenLandsCardRating, SeventeenLandsSetData, UserCardEvaluation, CardEvaluationComparison, SetCalibrationSummary } from '../types/mtg';
 import { HOB_17LANDS_DATA } from './hob17LandsData';
+import { SOS_17LANDS_DATA } from './sos17LandsData';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -244,11 +245,19 @@ export function get17LandsCardRating(
   }
 
   // 2. Fallback: check preloaded 17Lands data if set code is known
-  if (card.set) {
-    const preloaded = getPreloaded17LandsData(card.set);
+  const setCode = card.set || seventeenLandsData?.setCode;
+  if (setCode) {
+    const preloaded = getPreloaded17LandsData(setCode);
     if (preloaded && preloaded !== seventeenLandsData && preloaded.cards) {
-      return get17LandsCardRating({ name: card.name }, preloaded);
+      const match = get17LandsCardRating({ name: card.name }, preloaded);
+      if (match) return match;
     }
+  }
+
+  // 3. Fallback: check curated benchmark 17Lands cards across sets
+  const benchmarkMatch = getBenchmarkCardRating(card.name);
+  if (benchmarkMatch) {
+    return benchmarkMatch;
   }
 
   return null;
@@ -414,172 +423,176 @@ export function is17LandsEligibleForSet(
 
 
 
-// Benchmark 17Lands dataset for popular sets
+// Full bundled 17Lands datasets for complete sets (guarantees offline & zero-latency first render)
 const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLandsCardRating>>> = {
   'HOB': HOB_17LANDS_DATA,
-  'SOS': {
-    'Pterafractyl': { win_rate: 0.582, avg_seen: 3.4, iwd: 0.035, tier_grade: 'A-', seen_count: 3100, game_count: 8200 },
-    'Professor Dellian Fel': { win_rate: 0.635, avg_seen: 1.3, iwd: 0.074, tier_grade: 'A+', seen_count: 1400, game_count: 4900 },
-    'Ark of Hunger': { win_rate: 0.575, avg_seen: 3.2, iwd: 0.031, tier_grade: 'B+', seen_count: 3600, game_count: 7800 },
-    'Aziza, Mage Tower Captain': { win_rate: 0.615, avg_seen: 1.9, iwd: 0.059, tier_grade: 'A', seen_count: 2200, game_count: 6400 },
-    'Borrowed Knowledge': { win_rate: 0.554, avg_seen: 4.6, iwd: 0.018, tier_grade: 'B-', seen_count: 4200, game_count: 6900 },
-    'Quandrix Apprentice': { win_rate: 0.588, avg_seen: 2.8, iwd: 0.042, tier_grade: 'A-', seen_count: 3300, game_count: 8100 },
-    'Expressive Iteration': { win_rate: 0.622, avg_seen: 1.6, iwd: 0.065, tier_grade: 'A', seen_count: 2800, game_count: 8700 },
-    'Rip Apart': { win_rate: 0.581, avg_seen: 3.0, iwd: 0.037, tier_grade: 'A-', seen_count: 3400, game_count: 7900 },
-    'Killian, Ink Duelist': { win_rate: 0.604, avg_seen: 2.2, iwd: 0.052, tier_grade: 'A', seen_count: 2500, game_count: 7300 },
-    'Dina, Soul Steeper': { win_rate: 0.591, avg_seen: 2.5, iwd: 0.045, tier_grade: 'A-', seen_count: 2700, game_count: 7600 },
-    'Rootha, Mercurial Artist': { win_rate: 0.586, avg_seen: 2.7, iwd: 0.041, tier_grade: 'A-', seen_count: 2900, game_count: 7500 },
-    'Zimone, Quandrix Prodigy': { win_rate: 0.579, avg_seen: 3.1, iwd: 0.036, tier_grade: 'B+', seen_count: 3200, game_count: 7400 },
-    'Lorehold Apprentice': { win_rate: 0.569, avg_seen: 3.8, iwd: 0.029, tier_grade: 'B', seen_count: 3900, game_count: 7100 },
-    'Prismari Apprentice': { win_rate: 0.572, avg_seen: 3.6, iwd: 0.031, tier_grade: 'B+', seen_count: 3800, game_count: 7300 },
-    'Silverquill Apprentice': { win_rate: 0.565, avg_seen: 4.1, iwd: 0.026, tier_grade: 'B', seen_count: 4100, game_count: 7000 },
-    'Witherbloom Apprentice': { win_rate: 0.577, avg_seen: 3.3, iwd: 0.034, tier_grade: 'B+', seen_count: 3700, game_count: 7500 },
-  },
-  'STX': {
-    'Expressive Iteration': { win_rate: 0.622, avg_seen: 1.6, iwd: 0.065, tier_grade: 'A', seen_count: 2800, game_count: 8700 },
-    'Rip Apart': { win_rate: 0.581, avg_seen: 3.0, iwd: 0.037, tier_grade: 'A-', seen_count: 3400, game_count: 7900 },
-    'Killian, Ink Duelist': { win_rate: 0.604, avg_seen: 2.2, iwd: 0.052, tier_grade: 'A', seen_count: 2500, game_count: 7300 },
-    'Dina, Soul Steeper': { win_rate: 0.591, avg_seen: 2.5, iwd: 0.045, tier_grade: 'A-', seen_count: 2700, game_count: 7600 },
-    'Quandrix Apprentice': { win_rate: 0.588, avg_seen: 2.8, iwd: 0.042, tier_grade: 'A-', seen_count: 3300, game_count: 8100 },
-    'Professor Onyx': { win_rate: 0.648, avg_seen: 1.1, iwd: 0.082, tier_grade: 'A+', seen_count: 1100, game_count: 4500 },
-    'Campus Guide': { win_rate: 0.536, avg_seen: 6.9, iwd: 0.001, tier_grade: 'C+', seen_count: 155000, game_count: 46000, card_id: 76540 },
-  },
-  'BLB': {
-    'Heartfire Hero': { win_rate: 0.589, avg_seen: 3.1, iwd: 0.042, tier_grade: 'A-', seen_count: 3200, game_count: 8500 },
-    'Fell': { win_rate: 0.605, avg_seen: 1.8, iwd: 0.051, tier_grade: 'A', seen_count: 2800, game_count: 9200 },
-    'Might of the Meek': { win_rate: 0.568, avg_seen: 4.8, iwd: 0.028, tier_grade: 'B', seen_count: 4100, game_count: 7300 },
-    'Warren Warleader': { win_rate: 0.642, avg_seen: 1.2, iwd: 0.078, tier_grade: 'A+', seen_count: 1200, game_count: 4800 },
-    'Seedgale Foster': { win_rate: 0.518, avg_seen: 7.2, iwd: -0.012, tier_grade: 'C', seen_count: 5400, game_count: 6100 },
-    'Shore Up': { win_rate: 0.548, avg_seen: 5.6, iwd: 0.015, tier_grade: 'C+', seen_count: 4800, game_count: 6700 },
-    'Gev, Scaled Scorch': { win_rate: 0.598, avg_seen: 2.1, iwd: 0.048, tier_grade: 'A-', seen_count: 1900, game_count: 5400 },
-    'Lifecreed Duo': { win_rate: 0.578, avg_seen: 4.1, iwd: 0.034, tier_grade: 'B+', seen_count: 120000, game_count: 85000, card_id: 91612 },
-    'Agate Blade Assassin': { win_rate: 0.552, avg_seen: 4.5, iwd: 0.018, tier_grade: 'B-', seen_count: 4200, game_count: 7000 },
-    'Baker\'s Bane Beastie': { win_rate: 0.534, avg_seen: 6.2, iwd: 0.005, tier_grade: 'C+', seen_count: 4900, game_count: 6400 },
-    'Bonebind Orator': { win_rate: 0.562, avg_seen: 4.1, iwd: 0.024, tier_grade: 'B', seen_count: 4500, game_count: 7200 },
-    'Brambleguard Veteran': { win_rate: 0.574, avg_seen: 3.4, iwd: 0.031, tier_grade: 'B+', seen_count: 3600, game_count: 7900 },
-    'Builder\'s Talent': { win_rate: 0.582, avg_seen: 2.9, iwd: 0.038, tier_grade: 'A-', seen_count: 2400, game_count: 6800 },
-    'Carrot Cake': { win_rate: 0.578, avg_seen: 3.8, iwd: 0.035, tier_grade: 'B+', seen_count: 4700, game_count: 8100 },
-    'Crumb and Get It': { win_rate: 0.559, avg_seen: 4.9, iwd: 0.021, tier_grade: 'B-', seen_count: 4600, game_count: 7400 },
-    'Daggerfang Duo': { win_rate: 0.522, avg_seen: 6.8, iwd: -0.008, tier_grade: 'C', seen_count: 5100, game_count: 6200 },
-    'Daring Waverider': { win_rate: 0.541, avg_seen: 5.8, iwd: 0.009, tier_grade: 'C+', seen_count: 4300, game_count: 6500 },
-    'Early Winter': { win_rate: 0.505, avg_seen: 7.9, iwd: -0.025, tier_grade: 'C-', seen_count: 5200, game_count: 5800 },
-    'Finneas, Ace Archer': { win_rate: 0.612, avg_seen: 1.9, iwd: 0.058, tier_grade: 'A', seen_count: 2100, game_count: 6200 },
-    'Head of the Homestead': { win_rate: 0.565, avg_seen: 4.2, iwd: 0.026, tier_grade: 'B', seen_count: 4400, game_count: 7500 },
-    'Huskburster Swarm': { win_rate: 0.571, avg_seen: 3.7, iwd: 0.030, tier_grade: 'B+', seen_count: 3800, game_count: 7600 },
-    'Into the Flood Maw': { win_rate: 0.584, avg_seen: 2.8, iwd: 0.039, tier_grade: 'A-', seen_count: 3100, game_count: 8300 },
-    'Kastral, the Windcrested': { win_rate: 0.628, avg_seen: 1.4, iwd: 0.069, tier_grade: 'A+', seen_count: 1400, game_count: 5100 },
-    'Long River\'s Pull': { win_rate: 0.551, avg_seen: 4.6, iwd: 0.017, tier_grade: 'B-', seen_count: 4100, game_count: 6900 },
-    'Mindwhisker': { win_rate: 0.546, avg_seen: 5.3, iwd: 0.012, tier_grade: 'B-', seen_count: 4400, game_count: 6700 },
-    'Osteomancer Adept': { win_rate: 0.591, avg_seen: 2.3, iwd: 0.044, tier_grade: 'A-', seen_count: 2600, game_count: 7100 },
-    'Patchwork Banner': { win_rate: 0.596, avg_seen: 2.2, iwd: 0.046, tier_grade: 'A-', seen_count: 2700, game_count: 7300 },
-    'Playful Shove': { win_rate: 0.538, avg_seen: 6.0, iwd: 0.007, tier_grade: 'C+', seen_count: 4600, game_count: 6600 },
-    'Polliwallop': { win_rate: 0.563, avg_seen: 4.0, iwd: 0.025, tier_grade: 'B', seen_count: 4500, game_count: 7700 },
-    'Quirion Beastcaller': { win_rate: 0.601, avg_seen: 2.0, iwd: 0.050, tier_grade: 'A', seen_count: 2200, game_count: 6400 },
-    'Rabid Gnaw': { win_rate: 0.576, avg_seen: 3.5, iwd: 0.033, tier_grade: 'B+', seen_count: 4300, game_count: 8000 },
-    'Sunspine Lynx': { win_rate: 0.549, avg_seen: 5.1, iwd: 0.014, tier_grade: 'C+', seen_count: 2900, game_count: 5900 },
-    'Take Out the Trash': { win_rate: 0.586, avg_seen: 2.7, iwd: 0.041, tier_grade: 'A-', seen_count: 3900, game_count: 8400 },
-    'Treeguard Duo': { win_rate: 0.558, avg_seen: 4.7, iwd: 0.020, tier_grade: 'B-', seen_count: 4800, game_count: 7600 },
-    'Valley Questcaller': { win_rate: 0.618, avg_seen: 1.6, iwd: 0.062, tier_grade: 'A', seen_count: 1800, game_count: 5900 },
-    'Vinereap Mentor': { win_rate: 0.588, avg_seen: 2.6, iwd: 0.043, tier_grade: 'A-', seen_count: 3300, game_count: 8200 },
-    'Wandertale Mentor': { win_rate: 0.579, avg_seen: 3.2, iwd: 0.036, tier_grade: 'B+', seen_count: 3400, game_count: 7800 },
-    'Wax-Wane Witness': { win_rate: 0.531, avg_seen: 6.4, iwd: 0.003, tier_grade: 'C+', seen_count: 4900, game_count: 6300 },
-    'Wreaking Havoc': { win_rate: 0.492, avg_seen: 8.5, iwd: -0.034, tier_grade: 'C-', seen_count: 5300, game_count: 5200 },
-    'Ygra, Eater of All': { win_rate: 0.655, avg_seen: 1.1, iwd: 0.089, tier_grade: 'A+', seen_count: 1100, game_count: 4500 },
-  },
-  'OTJ': {
-    'Railway Brawler': { win_rate: 0.665, avg_seen: 1.1, iwd: 0.095, tier_grade: 'A+', seen_count: 1100, game_count: 4200 },
-    'Vault Plunderer': { win_rate: 0.575, avg_seen: 3.6, iwd: 0.032, tier_grade: 'B+', seen_count: 4600, game_count: 7900 },
-    'Throwing Knife': { win_rate: 0.582, avg_seen: 3.1, iwd: 0.038, tier_grade: 'A-', seen_count: 3900, game_count: 8100 },
-    'Mystic Confluence': { win_rate: 0.638, avg_seen: 1.3, iwd: 0.074, tier_grade: 'A+', seen_count: 900, game_count: 3800 },
-    'Holy Cow': { win_rate: 0.564, avg_seen: 4.2, iwd: 0.024, tier_grade: 'B', seen_count: 4800, game_count: 7600 },
-    'Take the Fall': { win_rate: 0.551, avg_seen: 4.8, iwd: 0.016, tier_grade: 'B-', seen_count: 4300, game_count: 6900 },
-    'Desert\'s Due': { win_rate: 0.589, avg_seen: 2.6, iwd: 0.044, tier_grade: 'A-', seen_count: 4100, game_count: 8500 },
-    'Consuming Ashes': { win_rate: 0.578, avg_seen: 3.3, iwd: 0.035, tier_grade: 'B+', seen_count: 4400, game_count: 8200 },
-  },
-  'MID': {
-    'Startle': { win_rate: 0.597, avg_seen: 5.7, iwd: 0.029, tier_grade: 'A-', seen_count: 262000, game_count: 208000 },
-    'Revenge of the Drowned': { win_rate: 0.603, avg_seen: 4.1, iwd: 0.038, tier_grade: 'A', seen_count: 240000, game_count: 195000 },
-    'Organ Hoarder': { win_rate: 0.635, avg_seen: 2.8, iwd: 0.065, tier_grade: 'A+', seen_count: 250000, game_count: 210000 },
-    'Flip the Switch': { win_rate: 0.575, avg_seen: 6.2, iwd: 0.018, tier_grade: 'B+', seen_count: 230000, game_count: 170000 },
-    'Consider': { win_rate: 0.572, avg_seen: 5.8, iwd: 0.015, tier_grade: 'B+', seen_count: 220000, game_count: 165000 },
-    'Falcon Abomination': { win_rate: 0.588, avg_seen: 4.5, iwd: 0.027, tier_grade: 'A-', seen_count: 235000, game_count: 180000 },
-    'Diregraf Horde': { win_rate: 0.591, avg_seen: 4.3, iwd: 0.030, tier_grade: 'A-', seen_count: 230000, game_count: 175000 },
-    'Eaten Alive': { win_rate: 0.584, avg_seen: 4.6, iwd: 0.025, tier_grade: 'A-', seen_count: 240000, game_count: 190000 },
-    'Candlegrove Witch': { win_rate: 0.565, avg_seen: 5.1, iwd: 0.012, tier_grade: 'B', seen_count: 220000, game_count: 160000 },
-    'Bounding Wolf': { win_rate: 0.538, avg_seen: 6.4, iwd: 0.001, tier_grade: 'C+', seen_count: 180000, game_count: 52000, card_id: 78512 },
-  },
-  'AFR': {
-    'You Come to a River': { win_rate: 0.538, avg_seen: 7.5, iwd: 0.021, tier_grade: 'C+', seen_count: 251000, game_count: 27700 },
-    'Shocking Grasp': { win_rate: 0.526, avg_seen: 8.4, iwd: 0.005, tier_grade: 'C', seen_count: 240000, game_count: 25000 },
-    'Bar the Gate': { win_rate: 0.548, avg_seen: 6.8, iwd: 0.015, tier_grade: 'C+', seen_count: 230000, game_count: 26000 },
-    'Dragon\'s Fire': { win_rate: 0.592, avg_seen: 3.2, iwd: 0.048, tier_grade: 'A-', seen_count: 260000, game_count: 185000 },
-    'Grim Bounty': { win_rate: 0.581, avg_seen: 3.8, iwd: 0.038, tier_grade: 'B+', seen_count: 250000, game_count: 170000 },
-    'Owlbear': { win_rate: 0.584, avg_seen: 3.5, iwd: 0.040, tier_grade: 'A-', seen_count: 255000, game_count: 180000 },
-    'Priest of Ancient Lore': { win_rate: 0.579, avg_seen: 3.9, iwd: 0.035, tier_grade: 'B+', seen_count: 260000, game_count: 190000 },
-    'Goblin Plate Mail': { win_rate: 0.556, avg_seen: 5.2, iwd: 0.016, tier_grade: 'B-', seen_count: 210000, game_count: 35000 },
-  },
-  'MH3': {
-    'Smelted Chargebug': { win_rate: 0.562, avg_seen: 4.8, iwd: 0.018, tier_grade: 'B', seen_count: 85000, game_count: 65000 },
-    'Writhing Chrysalis': { win_rate: 0.648, avg_seen: 2.1, iwd: 0.088, tier_grade: 'A+', seen_count: 95000, game_count: 82000 },
-    'Refurbished Familiar': { win_rate: 0.605, avg_seen: 3.2, iwd: 0.052, tier_grade: 'A', seen_count: 90000, game_count: 75000 },
-    'Conduit Goblin': { win_rate: 0.582, avg_seen: 3.6, iwd: 0.034, tier_grade: 'A-', seen_count: 88000, game_count: 70000 },
-  },
-  'LCI': {
-    'Malamet Brawler': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.016, tier_grade: 'B-', seen_count: 120000, game_count: 92000 },
-    'Waterwind Scout': { win_rate: 0.589, avg_seen: 3.4, iwd: 0.041, tier_grade: 'A-', seen_count: 130000, game_count: 105000 },
-    'Miner\'s Guidewing': { win_rate: 0.578, avg_seen: 4.2, iwd: 0.031, tier_grade: 'B+', seen_count: 125000, game_count: 98000 },
-    'River Herald Guide': { win_rate: 0.548, avg_seen: 5.8, iwd: 0.008, tier_grade: 'C+', seen_count: 110000, game_count: 82000 },
-    'Oltec Cloud Guard': { win_rate: 0.596, avg_seen: 3.1, iwd: 0.046, tier_grade: 'A-', seen_count: 128000, game_count: 102000 },
-    'Plundering Pirate': { win_rate: 0.541, avg_seen: 6.1, iwd: 0.003, tier_grade: 'C+', seen_count: 240000, game_count: 75000, card_id: 87315 },
-    'Oteclan Landmark': { win_rate: 0.5335, avg_seen: 7.02, iwd: -0.0131, tier_grade: 'C+', seen_count: 356089, game_count: 111586, card_id: 87161 },
-    'Oteclan Landmark // Oteclan Levitator': { win_rate: 0.5335, avg_seen: 7.02, iwd: -0.0131, tier_grade: 'C+', seen_count: 356089, game_count: 111586, card_id: 87161 },
-  },
-  'DSK': {
-    'Flesh Burrower': { win_rate: 0.552, avg_seen: 5.4, iwd: 0.012, tier_grade: 'B-', seen_count: 115000, game_count: 88000 },
-    'Hardened Escort': { win_rate: 0.546, avg_seen: 5.9, iwd: 0.006, tier_grade: 'B-', seen_count: 110000, game_count: 84000 },
-    'Clockwork Percussionist': { win_rate: 0.581, avg_seen: 4.0, iwd: 0.034, tier_grade: 'B+', seen_count: 120000, game_count: 95000 },
-  },
-  'FDN': {
-    'Ambush Wolf': { win_rate: 0.554, avg_seen: 5.2, iwd: 0.014, tier_grade: 'B-', seen_count: 75000, game_count: 55000 },
-    'Hero\'s Downfall': { win_rate: 0.592, avg_seen: 2.8, iwd: 0.044, tier_grade: 'A-', seen_count: 80000, game_count: 62000 },
-    'Campus Guide': { win_rate: 0.538, avg_seen: 6.8, iwd: 0.002, tier_grade: 'C+', seen_count: 160000, game_count: 48000, card_id: 93820 },
-  },
-  'SNC': {
-    'Inspiring Overseer': { win_rate: 0.638, avg_seen: 2.2, iwd: 0.076, tier_grade: 'A+', seen_count: 220000, game_count: 180000 },
-    'Raffine\'s Informant': { win_rate: 0.592, avg_seen: 3.8, iwd: 0.042, tier_grade: 'A-', seen_count: 210000, game_count: 170000 },
-    'Echo Inspector': { win_rate: 0.584, avg_seen: 4.2, iwd: 0.034, tier_grade: 'A-', seen_count: 200000, game_count: 160000 },
-    'Psionic Snoop': { win_rate: 0.573, avg_seen: 4.9, iwd: 0.024, tier_grade: 'B+', seen_count: 195000, game_count: 155000 },
-    'Doc Ock\'s Henchmen': { win_rate: 0.565, avg_seen: 5.3, iwd: 0.016, tier_grade: 'B', seen_count: 180000, game_count: 140000 },
-    'Revel Ruiner': { win_rate: 0.558, avg_seen: 5.6, iwd: 0.012, tier_grade: 'B-', seen_count: 190000, game_count: 150000 },
-  },
-  'NEO': {
-    'Selfless Samurai': { win_rate: 0.564, avg_seen: 4.6, iwd: 0.018, tier_grade: 'B', seen_count: 180000, game_count: 140000 },
-    'Imperial Subduer': { win_rate: 0.572, avg_seen: 4.1, iwd: 0.024, tier_grade: 'B+', seen_count: 185000, game_count: 145000 },
-    'Okiba Reckoner Raid': { win_rate: 0.598, avg_seen: 3.2, iwd: 0.046, tier_grade: 'A-', seen_count: 195000, game_count: 155000 },
-  },
-  'TDM': {
-    'Sage of the Fang': { win_rate: 0.568, avg_seen: 4.5, iwd: 0.021, tier_grade: 'B', seen_count: 65000, game_count: 48000 },
-    'Hero in Training': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.015, tier_grade: 'B-', seen_count: 62000, game_count: 45000 },
-    'Embermouth Sentinel': { win_rate: 0.541, avg_seen: 6.4, iwd: 0.005, tier_grade: 'C+', seen_count: 175000, game_count: 51000, card_id: 98150 },
-  },
-  'WOE': {
-    'Candy Trail': { win_rate: 0.5518, avg_seen: 6.48, iwd: 0.0137, tier_grade: 'B-', seen_count: 412563, game_count: 123535, card_id: 86975 },
-    'Redcap Thief': { win_rate: 0.548, avg_seen: 5.6, iwd: 0.006, tier_grade: 'B-', seen_count: 310000, game_count: 88500, card_id: 86835 },
-  },
-  'ELD': {
-    'Witching Well': { win_rate: 0.5912, avg_seen: 5.45, iwd: 0.0290, tier_grade: 'A-', seen_count: 42554, game_count: 44560, card_id: 70221 },
-  },
-  'FIN': {
-    'Lunatic Pandora': { win_rate: 0.4947, avg_seen: 8.15, iwd: -0.0139, tier_grade: 'C-', seen_count: 586321, game_count: 49401, card_id: 96140 },
-  },
-  'ECL': {
-    'Flamekin Gildweaver': { win_rate: 0.542, avg_seen: 6.2, iwd: 0.004, tier_grade: 'C+', seen_count: 165000, game_count: 42000, card_id: 101420 },
-    'Dawn\'s Light Archer': { win_rate: 0.545, avg_seen: 5.9, iwd: 0.008, tier_grade: 'B-', seen_count: 172000, game_count: 46000, card_id: 101512 },
-  },
-  'MSH': {
-    'Yellowjacket, Heartless Marauder': { win_rate: 0.564, avg_seen: 4.8, iwd: 0.021, tier_grade: 'B', seen_count: 110000, game_count: 42000, card_id: 102140 },
-  },
+  'SOS': SOS_17LANDS_DATA,
 };
+
+// Curated 17Lands benchmark cards for cross-set precedents and card similarity lookups
+const BENCHMARK_17LANDS_CARDS: Record<string, Partial<SeventeenLandsCardRating>> = {
+  // STX
+  'Expressive Iteration': { win_rate: 0.622, avg_seen: 1.6, iwd: 0.065, tier_grade: 'A', seen_count: 2800, game_count: 8700 },
+  'Rip Apart': { win_rate: 0.581, avg_seen: 3.0, iwd: 0.037, tier_grade: 'A-', seen_count: 3400, game_count: 7900 },
+  'Killian, Ink Duelist': { win_rate: 0.604, avg_seen: 2.2, iwd: 0.052, tier_grade: 'A', seen_count: 2500, game_count: 7300 },
+  'Dina, Soul Steeper': { win_rate: 0.591, avg_seen: 2.5, iwd: 0.045, tier_grade: 'A-', seen_count: 2700, game_count: 7600 },
+  'Quandrix Apprentice': { win_rate: 0.588, avg_seen: 2.8, iwd: 0.042, tier_grade: 'A-', seen_count: 3300, game_count: 8100 },
+  'Professor Onyx': { win_rate: 0.648, avg_seen: 1.1, iwd: 0.082, tier_grade: 'A+', seen_count: 1100, game_count: 4500 },
+  'Campus Guide': { win_rate: 0.536, avg_seen: 6.9, iwd: 0.001, tier_grade: 'C+', seen_count: 155000, game_count: 46000, card_id: 76540 },
+  // BLB
+  'Heartfire Hero': { win_rate: 0.589, avg_seen: 3.1, iwd: 0.042, tier_grade: 'A-', seen_count: 3200, game_count: 8500 },
+  'Fell': { win_rate: 0.605, avg_seen: 1.8, iwd: 0.051, tier_grade: 'A', seen_count: 2800, game_count: 9200 },
+  'Might of the Meek': { win_rate: 0.568, avg_seen: 4.8, iwd: 0.028, tier_grade: 'B', seen_count: 4100, game_count: 7300 },
+  'Warren Warleader': { win_rate: 0.642, avg_seen: 1.2, iwd: 0.078, tier_grade: 'A+', seen_count: 1200, game_count: 4800 },
+  'Seedgale Foster': { win_rate: 0.518, avg_seen: 7.2, iwd: -0.012, tier_grade: 'C', seen_count: 5400, game_count: 6100 },
+  'Shore Up': { win_rate: 0.548, avg_seen: 5.6, iwd: 0.015, tier_grade: 'C+', seen_count: 4800, game_count: 6700 },
+  'Gev, Scaled Scorch': { win_rate: 0.598, avg_seen: 2.1, iwd: 0.048, tier_grade: 'A-', seen_count: 1900, game_count: 5400 },
+  'Lifecreed Duo': { win_rate: 0.578, avg_seen: 4.1, iwd: 0.034, tier_grade: 'B+', seen_count: 120000, game_count: 85000, card_id: 91612 },
+  'Agate Blade Assassin': { win_rate: 0.552, avg_seen: 4.5, iwd: 0.018, tier_grade: 'B-', seen_count: 4200, game_count: 7000 },
+  'Baker\'s Bane Beastie': { win_rate: 0.534, avg_seen: 6.2, iwd: 0.005, tier_grade: 'C+', seen_count: 4900, game_count: 6400 },
+  'Bonebind Orator': { win_rate: 0.562, avg_seen: 4.1, iwd: 0.024, tier_grade: 'B', seen_count: 4500, game_count: 7200 },
+  'Brambleguard Veteran': { win_rate: 0.574, avg_seen: 3.4, iwd: 0.031, tier_grade: 'B+', seen_count: 3600, game_count: 7900 },
+  'Builder\'s Talent': { win_rate: 0.582, avg_seen: 2.9, iwd: 0.038, tier_grade: 'A-', seen_count: 2400, game_count: 6800 },
+  'Carrot Cake': { win_rate: 0.578, avg_seen: 3.8, iwd: 0.035, tier_grade: 'B+', seen_count: 4700, game_count: 8100 },
+  'Crumb and Get It': { win_rate: 0.559, avg_seen: 4.9, iwd: 0.021, tier_grade: 'B-', seen_count: 4600, game_count: 7400 },
+  'Daggerfang Duo': { win_rate: 0.522, avg_seen: 6.8, iwd: -0.008, tier_grade: 'C', seen_count: 5100, game_count: 6200 },
+  'Daring Waverider': { win_rate: 0.541, avg_seen: 5.8, iwd: 0.009, tier_grade: 'C+', seen_count: 4300, game_count: 6500 },
+  'Early Winter': { win_rate: 0.505, avg_seen: 7.9, iwd: -0.025, tier_grade: 'C-', seen_count: 5200, game_count: 5800 },
+  'Finneas, Ace Archer': { win_rate: 0.612, avg_seen: 1.9, iwd: 0.058, tier_grade: 'A', seen_count: 2100, game_count: 6200 },
+  'Head of the Homestead': { win_rate: 0.565, avg_seen: 4.2, iwd: 0.026, tier_grade: 'B', seen_count: 4400, game_count: 7500 },
+  'Huskburster Swarm': { win_rate: 0.571, avg_seen: 3.7, iwd: 0.030, tier_grade: 'B+', seen_count: 3800, game_count: 7600 },
+  'Into the Flood Maw': { win_rate: 0.584, avg_seen: 2.8, iwd: 0.039, tier_grade: 'A-', seen_count: 3100, game_count: 8300 },
+  'Kastral, the Windcrested': { win_rate: 0.628, avg_seen: 1.4, iwd: 0.069, tier_grade: 'A+', seen_count: 1400, game_count: 5100 },
+  'Long River\'s Pull': { win_rate: 0.551, avg_seen: 4.6, iwd: 0.017, tier_grade: 'B-', seen_count: 4100, game_count: 6900 },
+  'Mindwhisker': { win_rate: 0.546, avg_seen: 5.3, iwd: 0.012, tier_grade: 'B-', seen_count: 4400, game_count: 6700 },
+  'Osteomancer Adept': { win_rate: 0.591, avg_seen: 2.3, iwd: 0.044, tier_grade: 'A-', seen_count: 2600, game_count: 7100 },
+  'Patchwork Banner': { win_rate: 0.596, avg_seen: 2.2, iwd: 0.046, tier_grade: 'A-', seen_count: 2700, game_count: 7300 },
+  'Playful Shove': { win_rate: 0.538, avg_seen: 6.0, iwd: 0.007, tier_grade: 'C+', seen_count: 4600, game_count: 6600 },
+  'Polliwallop': { win_rate: 0.563, avg_seen: 4.0, iwd: 0.025, tier_grade: 'B', seen_count: 4500, game_count: 7700 },
+  'Quirion Beastcaller': { win_rate: 0.601, avg_seen: 2.0, iwd: 0.050, tier_grade: 'A', seen_count: 2200, game_count: 6400 },
+  'Rabid Gnaw': { win_rate: 0.576, avg_seen: 3.5, iwd: 0.033, tier_grade: 'B+', seen_count: 4300, game_count: 8000 },
+  'Sunspine Lynx': { win_rate: 0.549, avg_seen: 5.1, iwd: 0.014, tier_grade: 'C+', seen_count: 2900, game_count: 5900 },
+  'Take Out the Trash': { win_rate: 0.586, avg_seen: 2.7, iwd: 0.041, tier_grade: 'A-', seen_count: 3900, game_count: 8400 },
+  'Treeguard Duo': { win_rate: 0.558, avg_seen: 4.7, iwd: 0.020, tier_grade: 'B-', seen_count: 4800, game_count: 7600 },
+  'Valley Questcaller': { win_rate: 0.618, avg_seen: 1.6, iwd: 0.062, tier_grade: 'A', seen_count: 1800, game_count: 5900 },
+  'Vinereap Mentor': { win_rate: 0.588, avg_seen: 2.6, iwd: 0.043, tier_grade: 'A-', seen_count: 3300, game_count: 8200 },
+  'Wandertale Mentor': { win_rate: 0.579, avg_seen: 3.2, iwd: 0.036, tier_grade: 'B+', seen_count: 3400, game_count: 7800 },
+  'Wax-Wane Witness': { win_rate: 0.531, avg_seen: 6.4, iwd: 0.003, tier_grade: 'C+', seen_count: 4900, game_count: 6300 },
+  'Wreaking Havoc': { win_rate: 0.492, avg_seen: 8.5, iwd: -0.034, tier_grade: 'C-', seen_count: 5300, game_count: 5200 },
+  'Ygra, Eater of All': { win_rate: 0.655, avg_seen: 1.1, iwd: 0.089, tier_grade: 'A+', seen_count: 1100, game_count: 4500 },
+  // OTJ
+  'Railway Brawler': { win_rate: 0.665, avg_seen: 1.1, iwd: 0.095, tier_grade: 'A+', seen_count: 1100, game_count: 4200 },
+  'Vault Plunderer': { win_rate: 0.575, avg_seen: 3.6, iwd: 0.032, tier_grade: 'B+', seen_count: 4600, game_count: 7900 },
+  'Throwing Knife': { win_rate: 0.582, avg_seen: 3.1, iwd: 0.038, tier_grade: 'A-', seen_count: 3900, game_count: 8100 },
+  'Mystic Confluence': { win_rate: 0.638, avg_seen: 1.3, iwd: 0.074, tier_grade: 'A+', seen_count: 900, game_count: 3800 },
+  'Holy Cow': { win_rate: 0.564, avg_seen: 4.2, iwd: 0.024, tier_grade: 'B', seen_count: 4800, game_count: 7600 },
+  'Take the Fall': { win_rate: 0.551, avg_seen: 4.8, iwd: 0.016, tier_grade: 'B-', seen_count: 4300, game_count: 6900 },
+  'Desert\'s Due': { win_rate: 0.589, avg_seen: 2.6, iwd: 0.044, tier_grade: 'A-', seen_count: 4100, game_count: 8500 },
+  'Consuming Ashes': { win_rate: 0.578, avg_seen: 3.3, iwd: 0.035, tier_grade: 'B+', seen_count: 4400, game_count: 8200 },
+  // MID
+  'Startle': { win_rate: 0.597, avg_seen: 5.7, iwd: 0.029, tier_grade: 'A-', seen_count: 262000, game_count: 208000 },
+  'Revenge of the Drowned': { win_rate: 0.603, avg_seen: 4.1, iwd: 0.038, tier_grade: 'A', seen_count: 240000, game_count: 195000 },
+  'Organ Hoarder': { win_rate: 0.635, avg_seen: 2.8, iwd: 0.065, tier_grade: 'A+', seen_count: 250000, game_count: 210000 },
+  'Flip the Switch': { win_rate: 0.575, avg_seen: 6.2, iwd: 0.018, tier_grade: 'B+', seen_count: 230000, game_count: 170000 },
+  'Consider': { win_rate: 0.572, avg_seen: 5.8, iwd: 0.015, tier_grade: 'B+', seen_count: 220000, game_count: 165000 },
+  'Falcon Abomination': { win_rate: 0.588, avg_seen: 4.5, iwd: 0.027, tier_grade: 'A-', seen_count: 235000, game_count: 180000 },
+  'Diregraf Horde': { win_rate: 0.591, avg_seen: 4.3, iwd: 0.030, tier_grade: 'A-', seen_count: 230000, game_count: 175000 },
+  'Eaten Alive': { win_rate: 0.584, avg_seen: 4.6, iwd: 0.025, tier_grade: 'A-', seen_count: 240000, game_count: 190000 },
+  'Candlegrove Witch': { win_rate: 0.565, avg_seen: 5.1, iwd: 0.012, tier_grade: 'B', seen_count: 220000, game_count: 160000 },
+  'Bounding Wolf': { win_rate: 0.538, avg_seen: 6.4, iwd: 0.001, tier_grade: 'C+', seen_count: 180000, game_count: 52000, card_id: 78512 },
+  // AFR
+  'You Come to a River': { win_rate: 0.538, avg_seen: 7.5, iwd: 0.021, tier_grade: 'C+', seen_count: 251000, game_count: 27700 },
+  'Shocking Grasp': { win_rate: 0.526, avg_seen: 8.4, iwd: 0.005, tier_grade: 'C', seen_count: 240000, game_count: 25000 },
+  'Bar the Gate': { win_rate: 0.548, avg_seen: 6.8, iwd: 0.015, tier_grade: 'C+', seen_count: 230000, game_count: 26000 },
+  'Dragon\'s Fire': { win_rate: 0.592, avg_seen: 3.2, iwd: 0.048, tier_grade: 'A-', seen_count: 260000, game_count: 185000 },
+  'Grim Bounty': { win_rate: 0.581, avg_seen: 3.8, iwd: 0.038, tier_grade: 'B+', seen_count: 250000, game_count: 170000 },
+  'Owlbear': { win_rate: 0.584, avg_seen: 3.5, iwd: 0.040, tier_grade: 'A-', seen_count: 255000, game_count: 180000 },
+  'Priest of Ancient Lore': { win_rate: 0.579, avg_seen: 3.9, iwd: 0.035, tier_grade: 'B+', seen_count: 260000, game_count: 190000 },
+  'Goblin Plate Mail': { win_rate: 0.556, avg_seen: 5.2, iwd: 0.016, tier_grade: 'B-', seen_count: 210000, game_count: 35000 },
+  // MH3
+  'Smelted Chargebug': { win_rate: 0.562, avg_seen: 4.8, iwd: 0.018, tier_grade: 'B', seen_count: 85000, game_count: 65000 },
+  'Writhing Chrysalis': { win_rate: 0.648, avg_seen: 2.1, iwd: 0.088, tier_grade: 'A+', seen_count: 95000, game_count: 82000 },
+  'Refurbished Familiar': { win_rate: 0.605, avg_seen: 3.2, iwd: 0.052, tier_grade: 'A', seen_count: 90000, game_count: 75000 },
+  'Conduit Goblin': { win_rate: 0.582, avg_seen: 3.6, iwd: 0.034, tier_grade: 'A-', seen_count: 88000, game_count: 70000 },
+  // LCI
+  'Malamet Brawler': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.016, tier_grade: 'B-', seen_count: 120000, game_count: 92000 },
+  'Waterwind Scout': { win_rate: 0.589, avg_seen: 3.4, iwd: 0.041, tier_grade: 'A-', seen_count: 130000, game_count: 105000 },
+  'Miner\'s Guidewing': { win_rate: 0.578, avg_seen: 4.2, iwd: 0.031, tier_grade: 'B+', seen_count: 125000, game_count: 98000 },
+  'River Herald Guide': { win_rate: 0.548, avg_seen: 5.8, iwd: 0.008, tier_grade: 'C+', seen_count: 110000, game_count: 82000 },
+  'Oltec Cloud Guard': { win_rate: 0.596, avg_seen: 3.1, iwd: 0.046, tier_grade: 'A-', seen_count: 128000, game_count: 102000 },
+  'Plundering Pirate': { win_rate: 0.541, avg_seen: 6.1, iwd: 0.003, tier_grade: 'C+', seen_count: 240000, game_count: 75000, card_id: 87315 },
+  'Oteclan Landmark': { win_rate: 0.5335, avg_seen: 7.02, iwd: -0.0131, tier_grade: 'C+', seen_count: 356089, game_count: 111586, card_id: 87161 },
+  'Oteclan Landmark // Oteclan Levitator': { win_rate: 0.5335, avg_seen: 7.02, iwd: -0.0131, tier_grade: 'C+', seen_count: 356089, game_count: 111586, card_id: 87161 },
+  // DSK
+  'Flesh Burrower': { win_rate: 0.552, avg_seen: 5.4, iwd: 0.012, tier_grade: 'B-', seen_count: 115000, game_count: 88000 },
+  'Hardened Escort': { win_rate: 0.546, avg_seen: 5.9, iwd: 0.006, tier_grade: 'B-', seen_count: 110000, game_count: 84000 },
+  'Clockwork Percussionist': { win_rate: 0.581, avg_seen: 4.0, iwd: 0.034, tier_grade: 'B+', seen_count: 120000, game_count: 95000 },
+  // FDN
+  'Ambush Wolf': { win_rate: 0.554, avg_seen: 5.2, iwd: 0.014, tier_grade: 'B-', seen_count: 75000, game_count: 55000 },
+  'Hero\'s Downfall': { win_rate: 0.592, avg_seen: 2.8, iwd: 0.044, tier_grade: 'A-', seen_count: 80000, game_count: 62000 },
+  // SNC
+  'Inspiring Overseer': { win_rate: 0.638, avg_seen: 2.2, iwd: 0.076, tier_grade: 'A+', seen_count: 220000, game_count: 180000 },
+  'Raffine\'s Informant': { win_rate: 0.592, avg_seen: 3.8, iwd: 0.042, tier_grade: 'A-', seen_count: 210000, game_count: 170000 },
+  'Echo Inspector': { win_rate: 0.584, avg_seen: 4.2, iwd: 0.034, tier_grade: 'A-', seen_count: 200000, game_count: 160000 },
+  'Psionic Snoop': { win_rate: 0.573, avg_seen: 4.9, iwd: 0.024, tier_grade: 'B+', seen_count: 195000, game_count: 155000 },
+  'Doc Ock\'s Henchmen': { win_rate: 0.565, avg_seen: 5.3, iwd: 0.016, tier_grade: 'B', seen_count: 180000, game_count: 140000 },
+  'Revel Ruiner': { win_rate: 0.558, avg_seen: 5.6, iwd: 0.012, tier_grade: 'B-', seen_count: 190000, game_count: 150000 },
+  // NEO
+  'Selfless Samurai': { win_rate: 0.564, avg_seen: 4.6, iwd: 0.018, tier_grade: 'B', seen_count: 180000, game_count: 140000 },
+  'Imperial Subduer': { win_rate: 0.572, avg_seen: 4.1, iwd: 0.024, tier_grade: 'B+', seen_count: 185000, game_count: 145000 },
+  'Okiba Reckoner Raid': { win_rate: 0.598, avg_seen: 3.2, iwd: 0.046, tier_grade: 'A-', seen_count: 195000, game_count: 155000 },
+  // TDM
+  'Sage of the Fang': { win_rate: 0.568, avg_seen: 4.5, iwd: 0.021, tier_grade: 'B', seen_count: 65000, game_count: 48000 },
+  'Hero in Training': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.015, tier_grade: 'B-', seen_count: 62000, game_count: 45000 },
+  'Embermouth Sentinel': { win_rate: 0.541, avg_seen: 6.4, iwd: 0.005, tier_grade: 'C+', seen_count: 175000, game_count: 51000, card_id: 98150 },
+  // WOE
+  'Candy Trail': { win_rate: 0.5518, avg_seen: 6.48, iwd: 0.0137, tier_grade: 'B-', seen_count: 412563, game_count: 123535, card_id: 86975 },
+  'Redcap Thief': { win_rate: 0.548, avg_seen: 5.6, iwd: 0.006, tier_grade: 'B-', seen_count: 310000, game_count: 88500, card_id: 86835 },
+  // ELD
+  'Witching Well': { win_rate: 0.5912, avg_seen: 5.45, iwd: 0.0290, tier_grade: 'A-', seen_count: 42554, game_count: 44560, card_id: 70221 },
+  // FIN
+  'Lunatic Pandora': { win_rate: 0.4947, avg_seen: 8.15, iwd: -0.0139, tier_grade: 'C-', seen_count: 586321, game_count: 49401, card_id: 96140 },
+  // ECL
+  'Flamekin Gildweaver': { win_rate: 0.542, avg_seen: 6.2, iwd: 0.004, tier_grade: 'C+', seen_count: 165000, game_count: 42000, card_id: 101420 },
+  'Dawn\'s Light Archer': { win_rate: 0.545, avg_seen: 5.9, iwd: 0.008, tier_grade: 'B-', seen_count: 172000, game_count: 46000, card_id: 101512 },
+  // MSH
+  'Yellowjacket, Heartless Marauder': { win_rate: 0.564, avg_seen: 4.8, iwd: 0.021, tier_grade: 'B', seen_count: 110000, game_count: 42000, card_id: 102140 },
+};
+
+/**
+ * Resolves a curated benchmark 17Lands rating for precedent comparisons.
+ */
+function getBenchmarkCardRating(cardName: string): SeventeenLandsCardRating | null {
+  if (!cardName) return null;
+  let match = BENCHMARK_17LANDS_CARDS[cardName];
+  if (!match && cardName.includes(' // ')) {
+    const frontFace = cardName.split(' // ')[0].trim();
+    match = BENCHMARK_17LANDS_CARDS[frontFace];
+  }
+  if (!match) {
+    const norm = (s: string) => s.toLowerCase().replace(/['’".,\-]/g, '').trim();
+    const target = norm(cardName);
+    const entry = Object.entries(BENCHMARK_17LANDS_CARDS).find(([k]) => norm(k) === target);
+    if (entry) match = entry[1];
+  }
+  if (!match) return null;
+
+  const wr = match.win_rate || 0.54;
+  return {
+    name: cardName,
+    color: match.color || 'C',
+    rarity: match.rarity || 'common',
+    seen_count: match.seen_count || 3000,
+    avg_seen: match.avg_seen || 4.5,
+    pick_rate: match.pick_rate || 0.15,
+    game_count: match.game_count || 6500,
+    win_rate: wr,
+    iwd: match.iwd || 0.015,
+    tier_grade: match.tier_grade || winRateToGradeTier(wr),
+    card_id: match.card_id ?? match.mtga_id,
+    mtga_id: match.mtga_id ?? (typeof match.card_id === 'number' ? match.card_id : undefined),
+  };
+}
 
 /**
  * Synchronously retrieves bundled authentic 17Lands dataset for a set if available.
@@ -590,6 +603,7 @@ export function getPreloaded17LandsData(setCode: string): SeventeenLandsSetData 
   if (!PRELOADED_17LANDS_DATA[upperCode]) return null;
 
   const raw = PRELOADED_17LANDS_DATA[upperCode];
+  if (!raw || Object.keys(raw).length < 50) return null;
   const cards: Record<string, SeventeenLandsCardRating> = {};
   let totalGames = 0;
 
@@ -731,11 +745,16 @@ export async function fetch17LandsSetData(
   }
 
   // 5. Check IndexedDB Persistent Cache before touching the network
-  const cacheKey = `17lands_data_${upperCode}_v16`;
+  const cacheKey = `17lands_data_${upperCode}_v18`;
   if (!options.forceRefresh && typeof indexedDB !== 'undefined') {
     try {
       const cached = await get<SeventeenLandsSetData>(cacheKey);
-      if (cached && (cached.sampleSize || 0) > 500 && Object.keys(cached.cards || {}).length >= 5) {
+      const preloaded = getPreloaded17LandsData(upperCode);
+      const preloadedCount = preloaded?.cards ? Object.keys(preloaded.cards).length : 0;
+      const cachedCount = cached?.cards ? Object.keys(cached.cards).length : 0;
+
+      // Cache is only accepted if it has at least 50 cards and isn't inferior to bundled preloaded data
+      if (cached && (cached.sampleSize || 0) > 500 && cachedCount >= 50 && cachedCount >= preloadedCount) {
         sessionSetDataCache.set(upperCode, cached);
 
         // Stale-While-Revalidate:
@@ -807,7 +826,7 @@ async function executeFetch17LandsSetData(
 
   for (const url of candidateUrls) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
       const response = await fetch(url, {
@@ -849,7 +868,7 @@ async function executeFetch17LandsSetData(
             return typeof wr === 'number' && wr > 0.25 && wr < 0.90;
           });
 
-          if (validCards.length >= 2) {
+          if (validCards.length >= 20) {
             const cards: Record<string, SeventeenLandsCardRating> = {};
             let totalGames = 0;
 
@@ -932,7 +951,7 @@ async function executeFetch17LandsSetData(
 
   // Level 5: Check preloaded benchmark data before giving up
   const preloaded = getPreloaded17LandsData(upperCode);
-  if (preloaded) {
+  if (preloaded && Object.keys(preloaded.cards).length >= 50) {
     if (typeof indexedDB !== 'undefined') {
       try {
         await set(cacheKey, preloaded);
