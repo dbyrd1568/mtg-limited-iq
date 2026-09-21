@@ -35,6 +35,7 @@ import { SetBadge, SetSymbol } from './components/UI/SetSymbol';
 import { LegalModal, LegalDocType } from './components/Legal/LegalModal';
 import { ContextualTourProvider } from './context/ContextualTourContext';
 import { ContextualTourTooltip } from './components/UI/ContextualTourTooltip';
+import { ErrorBoundary } from './components/UI/ErrorBoundary';
 
 const AppContent: React.FC = () => {
   // Navigation & Modal State (Parsed from URL query parameters)
@@ -1011,9 +1012,11 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <ContextualTourProvider>
-      <AppContent />
-    </ContextualTourProvider>
+    <ErrorBoundary>
+      <ContextualTourProvider>
+        <AppContent />
+      </ContextualTourProvider>
+    </ErrorBoundary>
   );
 };
 

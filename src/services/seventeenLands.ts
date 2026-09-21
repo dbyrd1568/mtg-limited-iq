@@ -206,7 +206,8 @@ export function isSetRecentOrActive(setCode: string): boolean {
  */
 export function get17LandsCardRating(
   card: { name: string; set?: string } | null | undefined,
-  seventeenLandsData?: SeventeenLandsSetData | null
+  seventeenLandsData?: SeventeenLandsSetData | null,
+  allowFallback = true
 ): SeventeenLandsCardRating | null {
   if (!card) return null;
 
@@ -244,13 +245,15 @@ export function get17LandsCardRating(
     }
   }
 
-  // 2. Fallback: check preloaded 17Lands data if set code is known
-  const setCode = card.set || seventeenLandsData?.setCode;
-  if (setCode) {
-    const preloaded = getPreloaded17LandsData(setCode);
-    if (preloaded && preloaded !== seventeenLandsData && preloaded.cards) {
-      const match = get17LandsCardRating({ name: card.name }, preloaded);
-      if (match) return match;
+  // 2. Fallback: check preloaded 17Lands data if set code is known and hasn't been checked yet
+  if (allowFallback) {
+    const setCode = (card.set || seventeenLandsData?.setCode || '').toUpperCase().trim();
+    if (setCode && setCode !== seventeenLandsData?.setCode?.toUpperCase()) {
+      const preloaded = getPreloaded17LandsData(setCode);
+      if (preloaded && preloaded.cards) {
+        const match = get17LandsCardRating({ name: card.name }, preloaded, false);
+        if (match) return match;
+      }
     }
   }
 
@@ -594,12 +597,18 @@ function getBenchmarkCardRating(cardName: string): SeventeenLandsCardRating | nu
   };
 }
 
+const preloaded17LandsCache = new Map<string, SeventeenLandsSetData>();
+
 /**
  * Synchronously retrieves bundled authentic 17Lands dataset for a set if available.
  * Guarantees zero latency on first render so 17Lands features never flicker or show "Data Unavailable".
  */
 export function getPreloaded17LandsData(setCode: string): SeventeenLandsSetData | null {
   const upperCode = (setCode || '').toUpperCase().trim();
+  if (!upperCode) return null;
+  if (preloaded17LandsCache.has(upperCode)) {
+    return preloaded17LandsCache.get(upperCode)!;
+  }
   if (!PRELOADED_17LANDS_DATA[upperCode]) return null;
 
   const raw = PRELOADED_17LANDS_DATA[upperCode];
@@ -632,7 +641,7 @@ export function getPreloaded17LandsData(setCode: string): SeventeenLandsSetData 
     }
   });
 
-  return {
+  const parsed: SeventeenLandsSetData = {
     setCode: upperCode,
     setName: upperCode,
     format: 'PremierDraft',
@@ -640,6 +649,8 @@ export function getPreloaded17LandsData(setCode: string): SeventeenLandsSetData 
     cards,
     updatedAt: new Date().toISOString(),
   };
+  preloaded17LandsCache.set(upperCode, parsed);
+  return parsed;
 }
 
 // ==================== 17LANDS SESSION CACHING & DEDUPLICATION ====================
