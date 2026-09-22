@@ -350,6 +350,15 @@ export function getOrEstimate17LandsCardRating(
     baseWr += 0.022;
     baseAlsa -= 0.6;
   }
+  if (/heartwood/i.test(oracle)) {
+    baseWr += 0.020;
+    baseAlsa -= 0.6;
+    baseIwd += 0.018;
+  } else if (/powerstone/i.test(oracle)) {
+    baseWr += 0.012;
+    baseAlsa -= 0.3;
+    baseIwd += 0.010;
+  }
 
   const typeLine = ('type_line' in card ? card.type_line : '') || '';
   if (typeLine.toLowerCase().includes('planeswalker')) {

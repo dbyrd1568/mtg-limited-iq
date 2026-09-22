@@ -1880,6 +1880,8 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   if (features.actionSubtypes.has('ramp_token_producer')) {
     queries.push(`${baseFilter} ${excludeSelf} (o:"heartwood token" or o:"powerstone token" or o:"treasure token")`);
     queries.push(`${baseFilter} ${excludeSelf} (o:"create" o:"token" (o:"{t}: add" or o:"powerstone" or o:"heartwood"))`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"{t}: add" or o:"powerstone" or o:"heartwood")`);
+    queries.push(`${baseFilter} ${excludeSelf} o:"heartwood token"`);
   }
   if (features.actionSubtypes.has('artifact_animator_aura')) {
     queries.push(`${baseFilter} ${excludeSelf} t:enchantment (o:"enchant artifact" or o:"enchanted artifact") (o:"base power and toughness" or o:"creature")`);
@@ -2788,6 +2790,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   const bothShareRampArtifactToken = (
     tFeatures.actionSubtypes.has('ramp_token_producer') && cFeatures.actionSubtypes.has('ramp_token_producer')
   );
+  const isRampTokenCrossDorkBridge = (
+    (tFeatures.actionSubtypes.has('ramp_token_producer') && (cFeatures.actionSubtypes.has('two_drop_mana_dork') || cFeatures.actionSubtypes.has('three_drop_mana_dork') || cFeatures.actionSubtypes.has('mana_rock') || cFeatures.actionSubtypes.has('cultivate_ramp'))) ||
+    (cFeatures.actionSubtypes.has('ramp_token_producer') && (tFeatures.actionSubtypes.has('two_drop_mana_dork') || tFeatures.actionSubtypes.has('three_drop_mana_dork') || tFeatures.actionSubtypes.has('mana_rock') || tFeatures.actionSubtypes.has('cultivate_ramp')))
+  );
   const bothShareArtifactAnimatorAura = (
     tFeatures.actionSubtypes.has('artifact_animator_aura') && cFeatures.actionSubtypes.has('artifact_animator_aura')
   );
@@ -2885,6 +2891,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     bothShareAuraGyRecursion ||
     bothShareBasicTutorArtifact ||
     bothShareRampArtifactToken ||
+    isRampTokenCrossDorkBridge ||
     bothShareArtifactAnimatorAura ||
     bothShareArtifactSacPayoff ||
     bothShareArtifactTapPayoff ||
@@ -3125,6 +3132,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     else if (bothShareConvergeSunburst) engineReason = 'Cross-color engine peer (Converge / Sunburst colors-spent scaling)';
     else if (bothShareMultiColorScaling) engineReason = 'Cross-color engine peer (Multicolor-scaling payoff: Converge, Sunburst, Vivid, Domain)';
     else if (bothShareRampArtifactToken) engineReason = 'Cross-color engine mechanic peer (Ramp token generator: Heartwood/Powerstone)';
+    else if (isRampTokenCrossDorkBridge) engineReason = 'Cross-color mana ramp engine peer (Ramp token generator <-> Mana dork/rock)';
     else if (bothShareArtifactAnimatorAura) engineReason = 'Cross-color archetype peer (Artifact-animating Aura)';
     else if (bothShareArtifactSacPayoff) engineReason = 'Cross-color engine peer (Artifact sacrifice payoff)';
     else if (bothShareArtifactTapPayoff) engineReason = 'Cross-color engine peer (Artifact tap payoff)';
@@ -3647,6 +3655,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   if (bothEtbCounter && structuralActionPoints < 15) {
     structuralActionPoints = 15;
     structuralReasons.push('Both creature with +1/+1 counter entry value');
+  }
+
+  // Cross-ramp matching: Permanent ramp artifact token generator <-> Mana dork or mana rock
+  if (isRampTokenCrossDorkBridge && structuralActionPoints < 16) {
+    structuralActionPoints = 16;
+    structuralReasons.push('Both permanent mana ramp providers (Ramp token generator / Mana dork / Mana rock)');
   }
 
   // Cross-removal matching: Both are targeted creature removal spells

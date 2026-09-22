@@ -48,6 +48,8 @@ export const SET_DEVELOPED_ARCHETYPES: Record<string, string[]> = {
   HOB: ['WU', 'UB', 'BR', 'RG', 'GW'],
   // Secrets of Strixhaven (develops all 10 guilds/archetypes)
   SOS: ['WU', 'UB', 'BR', 'RG', 'GW', 'WB', 'UR', 'BG', 'RW', 'GU'],
+  // Reality Fracture (develops all 10 guilds/archetypes)
+  FRA: ['WU', 'UB', 'BR', 'RG', 'GW', 'WB', 'UR', 'BG', 'RW', 'GU'],
 };
 
 export function getDevelopedArchetypeCodes(setCode: string, cards?: Card[]): Set<string> {

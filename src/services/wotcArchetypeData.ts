@@ -90,10 +90,10 @@ export const EXPANDED_SET_WOTC_ARCHETYPES: Record<string, Record<string, WOTCArc
       "mechanics": ["Sacrifice Engines", "Direct Burn", "Aggro Curve", "Morbid Triggers"]
     },
     "RG": {
-      "name": "Rampaging Anomalies",
-      "headline": "Primal Stompy • 4+ Power Behemoths, Trample & Dimensional Might",
-      "description": "Red-Green unleashes mutated temporal beasts. Ramps quickly into 4+ power creatures with trample that exploit fracture rifts to smash through defensive lines and dominate the red zone.",
-      "mechanics": ["4+ Power Threshold", "Mana Ramp", "Trample Beatdown", "Combat Dominance"]
+      "name": "Konstrari Heartwood & Ramp",
+      "headline": "Konstrari Artificers • Heartwood Tokens, Mana Ramp & Artifact Stompy",
+      "description": "Red-Green commands the Konstrari artificers, weaving living wood into predefined Heartwood artifact tokens ({T}: Add {R} or {G}). Ramp ahead on curve with prepared Soul Tether spells into hulking constructs, while leveraging persistent artifact tokens to power up abilities, pay artifact costs, and dominate combat.",
+      "mechanics": ["Heartwood Tokens", "Mana Ramp", "Prepared Spells", "Artifact Synergy", "Affinity / Tap Artifacts"]
     },
     "GW": {
       "name": "Resilient Vanguard & Shield Counters",

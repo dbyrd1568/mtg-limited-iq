@@ -5,8 +5,8 @@ import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, 
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
 import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
-import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint, buildCompTuningString, SimilarCardMatch } from '../services/cardSimilarity';
-import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes } from '../services/wotcArchetypes';
+import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint, buildCompTuningString, SimilarCardMatch, HISTORICAL_BENCHMARK_CARDS } from '../services/cardSimilarity';
+import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes, SET_DEVELOPED_ARCHETYPES } from '../services/wotcArchetypes';
 import { cardMatchesQuery } from '../services/cardSearchParser';
 import { buildScryfallPrecedentQuery } from '../components/Evaluation/PrecedentCardSearch';
 import {
@@ -1178,6 +1178,39 @@ console.assert(
   `Expected exact tuning format, got: "${tuningOutput}"`
 );
 console.log(`[PASS] Admin Comp Tuning String captured accurately: "${tuningOutput}"`);
+
+// =========================================================================
+// TEST 19: Reality Fracture (FRA) & Heartwood Token Engine Tuning
+// =========================================================================
+console.log('\n--- Test 19: Reality Fracture (FRA) & Heartwood Token Engine Tuning ---');
+const fraRGInfo = getWOTCArchetypeInfo('FRA', 'RG');
+console.assert(
+  fraRGInfo.name.toLowerCase().includes('heartwood'),
+  `FRA RG archetype must feature Heartwood, got: ${fraRGInfo.name}`
+);
+console.assert(
+  fraRGInfo.mechanics.includes('Heartwood Tokens'),
+  'FRA RG archetype mechanics must include Heartwood Tokens'
+);
+console.log('   ✓ FRA RG canonical Konstrari Heartwood archetype verified.');
+
+const fraDeveloped = SET_DEVELOPED_ARCHETYPES['FRA'];
+console.assert(
+  fraDeveloped && fraDeveloped.includes('RG') && fraDeveloped.length === 10,
+  'FRA must develop all 10 color pairs'
+);
+console.log('   ✓ FRA develops all 10 color pairs registered in SET_DEVELOPED_ARCHETYPES.');
+
+const fraCards = getFallbackCards('FRA');
+console.assert(fraCards.length >= 7, 'FRA must include spoiled preview cards');
+const konstrari = fraCards.find(c => c.name.startsWith('Konstrari Improviser'))!;
+const opportunistCard = HISTORICAL_BENCHMARK_CARDS.find(c => c.name === 'Argothian Opportunist')!;
+const opportunistComp = calculateCardSimilarity(konstrari, opportunistCard);
+console.assert(
+  opportunistComp.score >= 50 && opportunistComp.reasons.some(r => r.toLowerCase().includes('ramp artifact token')),
+  `Expected ramp artifact token peer match between Improviser and Opportunist, got score: ${opportunistComp.score}`
+);
+console.log('   ✓ Heartwood token <-> Powerstone ramp token similarity comp verified.');
 
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
 
