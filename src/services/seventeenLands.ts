@@ -577,6 +577,23 @@ const BENCHMARK_17LANDS_CARDS: Record<string, Partial<SeventeenLandsCardRating>>
   'Wildvine Pummeler': { win_rate: 0.550, avg_seen: 5.5, iwd: 0.010, tier_grade: 'C+', seen_count: 9000, game_count: 21000 },
   'Etched Oracle': { win_rate: 0.561, avg_seen: 4.1, iwd: 0.019, tier_grade: 'B', seen_count: 3800, game_count: 8200 },
   'Nishoba Brawler': { win_rate: 0.575, avg_seen: 4.2, iwd: 0.035, tier_grade: 'B+', seen_count: 16000, game_count: 38000 },
+  // Toughness Combat Damage & "Butt-Strike" Benchmarks
+  'Bedrock Tortoise': { win_rate: 0.584, avg_seen: 2.8, iwd: 0.045, tier_grade: 'A-', seen_count: 5200, game_count: 14000 },
+  'Doran, Besieged by Time': { win_rate: 0.578, avg_seen: 3.1, iwd: 0.038, tier_grade: 'B+', seen_count: 3800, game_count: 9500 },
+  'Ancient Lumberknot': { win_rate: 0.552, avg_seen: 5.4, iwd: 0.012, tier_grade: 'B-', seen_count: 6400, game_count: 15000 },
+  'Doran, the Siege Tower': { win_rate: 0.582, avg_seen: 2.9, iwd: 0.042, tier_grade: 'A-', seen_count: 2200, game_count: 5800 },
+  'High Alert': { win_rate: 0.565, avg_seen: 4.5, iwd: 0.024, tier_grade: 'B', seen_count: 7500, game_count: 18000 },
+  // Token Anthems, Discard / Channel Removal, and White Utility Benchmarks
+  'Intangible Virtue': { win_rate: 0.582, avg_seen: 4.2, iwd: 0.035, tier_grade: 'B+', seen_count: 4500, game_count: 12000 },
+  'Touch the Spirit Realm': { win_rate: 0.589, avg_seen: 3.2, iwd: 0.048, tier_grade: 'A-', seen_count: 7200, game_count: 18500 },
+  'Flowering of the White Tree': { win_rate: 0.595, avg_seen: 2.1, iwd: 0.055, tier_grade: 'A', seen_count: 2100, game_count: 5400 },
+  'Gideon\'s Reproach': { win_rate: 0.568, avg_seen: 5.6, iwd: 0.021, tier_grade: 'B', seen_count: 9800, game_count: 24000 },
+  // Tuck / Library-Bounce Removal & Noncreature Spellslinger Benchmarks
+  'Desynchronize': { win_rate: 0.548, avg_seen: 4.5, iwd: 0.015, tier_grade: 'C+', seen_count: 5200, game_count: 14000 },
+  'Dire Downdraft': { win_rate: 0.575, avg_seen: 3.4, iwd: 0.038, tier_grade: 'B+', seen_count: 4800, game_count: 13000 },
+  'Run Aground': { win_rate: 0.542, avg_seen: 5.2, iwd: 0.008, tier_grade: 'C+', seen_count: 6100, game_count: 15500 },
+  'Cruel Witness': { win_rate: 0.556, avg_seen: 4.8, iwd: 0.022, tier_grade: 'B-', seen_count: 5500, game_count: 14500 },
+  'Out of Sight': { win_rate: 0.564, avg_seen: 3.8, iwd: 0.028, tier_grade: 'B', seen_count: 3200, game_count: 8500 },
 };
 
 /**

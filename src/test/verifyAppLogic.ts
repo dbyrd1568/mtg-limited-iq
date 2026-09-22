@@ -5,7 +5,7 @@ import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, 
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
 import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
-import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint } from '../services/cardSimilarity';
+import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint, buildCompTuningString, SimilarCardMatch } from '../services/cardSimilarity';
 import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes } from '../services/wotcArchetypes';
 import { cardMatchesQuery } from '../services/cardSearchParser';
 import { buildScryfallPrecedentQuery } from '../components/Evaluation/PrecedentCardSearch';
@@ -1151,6 +1151,33 @@ console.log(`   ✓ Partial benchmark stubs (<50 cards) strictly barred from mas
 const iterationRating = get17LandsCardRating({ name: 'Expressive Iteration' });
 console.assert(iterationRating !== null && (iterationRating.win_rate || 0) > 0.60, 'Expressive Iteration benchmark rating must resolve');
 console.log(`   ✓ Cross-set precedent benchmark lookup verified.`);
+
+// 8. Verify Admin Comp Tuning String formatting: "<Ref card name> vs <comp1 name>, <comp2 name>, <comp3 name>, <comp4 name>"
+const targetCardForTuning: Card = {
+  id: 'ref-1',
+  name: 'Lightning Strike',
+  set: 'DMU',
+  mana_cost: '{1}{R}',
+  cmc: 2,
+  type_line: 'Instant',
+  oracle_text: 'Lightning Strike deals 3 damage to any target.',
+  colors: ['R'],
+  rarity: 'common',
+} as unknown as Card;
+
+const mockMatchesForTuning: SimilarCardMatch[] = [
+  { card: { id: 'c1', name: 'Abrade', set: 'VOW' } as Card, similarityScore: 90, matchReasons: [] },
+  { card: { id: 'c2', name: 'Shock', set: 'M21' } as Card, similarityScore: 85, matchReasons: [] },
+  { card: { id: 'c3', name: 'Torch Breath', set: 'SNC' } as Card, similarityScore: 80, matchReasons: [] },
+  { card: { id: 'c4', name: 'Play with Fire', set: 'MID' } as Card, similarityScore: 78, matchReasons: [] },
+];
+
+const tuningOutput = buildCompTuningString(targetCardForTuning, mockMatchesForTuning);
+console.assert(
+  tuningOutput === 'Lightning Strike vs Abrade, Shock, Torch Breath, Play with Fire',
+  `Expected exact tuning format, got: "${tuningOutput}"`
+);
+console.log(`[PASS] Admin Comp Tuning String captured accurately: "${tuningOutput}"`);
 
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
 

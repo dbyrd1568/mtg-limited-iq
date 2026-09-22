@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, GradeTier } from '../../types/mtg';
-import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch, generateGuaranteedFallbackResult, getCachedSimilarCards } from '../../services/cardSimilarity';
+import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch, generateGuaranteedFallbackResult, getCachedSimilarCards, buildCompTuningString } from '../../services/cardSimilarity';
 import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { getTargetCardOverrides, savePrecedentOverride, removePrecedentOverride, clearTargetCardOverrides, PrecedentSlotOverride } from '../../services/precedentOverrides';
+import { checkIsAdmin } from '../../services/admin';
+import { getActiveUser } from '../../services/storage';
 import { PrecedentSwapSearchModal } from './PrecedentSwapSearchModal';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
 import { CardImage } from '../UI/CardImage';
-import { X, Scale, Check, PlayingCardsFan, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, ArrowRight, Sparkles, Search } from 'lucide-react';
+import { X, Scale, Check, PlayingCardsFan, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, ArrowRight, Sparkles, Search, Shield } from 'lucide-react';
 import { useContextualTour } from '../../context/ContextualTourContext';
 
 export interface CardPerformanceMetrics {
@@ -31,6 +33,7 @@ export interface SimilarCardsModalProps {
   onNavigateNext?: () => void;
   hasPrev?: boolean;
   hasNext?: boolean;
+  isAdmin?: boolean;
 }
 
 export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
@@ -46,6 +49,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   onNavigateNext,
   hasPrev,
   hasNext,
+  isAdmin,
 }) => {
   const targetCardKey = targetCard ? `${(targetCard.set || '').toUpperCase()}_${targetCard.name.toUpperCase()}` : '';
 
@@ -352,6 +356,40 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     }
   }, [currentInspectIndex, presentedMatches]);
 
+  const [effectiveIsAdmin, setEffectiveIsAdmin] = useState<boolean>(isAdmin ?? false);
+  const [copiedTuning, setCopiedTuning] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof isAdmin === 'boolean') {
+      setEffectiveIsAdmin(isAdmin);
+      return;
+    }
+    const user = getActiveUser();
+    checkIsAdmin(user).then((res) => setEffectiveIsAdmin(res));
+  }, [isAdmin]);
+
+  const handleCopyTuningComps = useCallback(async () => {
+    if (!targetCard || !presentedMatches.length) return;
+    const tuningStr = buildCompTuningString(targetCard, presentedMatches);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tuningStr);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = tuningStr;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedTuning(true);
+      setTimeout(() => setCopiedTuning(false), 2000);
+      console.log('[Comp Tuning Captured]:', tuningStr);
+    } catch (err) {
+      console.error('Failed to copy comp tuning string to clipboard:', err);
+    }
+  }, [targetCard, presentedMatches]);
+
   const hasCustomOverrides = useMemo(() => {
     return Object.keys(customOverrides).length > 0;
   }, [customOverrides]);
@@ -554,14 +592,37 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Close (Esc)"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {effectiveIsAdmin && presentedMatches.length > 0 && (
+              <button
+                type="button"
+                onClick={handleCopyTuningComps}
+                className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 shadow-2xs"
+                title="Admin: Capture '<Ref card> vs <comp1>, <comp2>, <comp3>, <comp4>' to clipboard for tuning"
+              >
+                {copiedTuning ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-emerald-700 dark:text-emerald-300">Copied Tuning String!</span>
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Capture Tuning Comps</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Close (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -813,7 +874,27 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold font-mono uppercase tracking-wide border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1.5">
                       <span>Comparable Historical Cards ({presentedMatches.length})</span>
                     </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      {effectiveIsAdmin && presentedMatches.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleCopyTuningComps}
+                          className="text-[11px] font-mono font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 flex items-center gap-1 cursor-pointer bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 shadow-2xs"
+                          title="Admin: Capture '<Ref card> vs <comp1>, <comp2>, <comp3>, <comp4>' to clipboard for tuning"
+                        >
+                          {copiedTuning ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-emerald-700 dark:text-emerald-300">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                              <span>Capture Comps</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                       {hasCustomOverrides && (
                         <button
                           type="button"
@@ -1192,13 +1273,36 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setInspectCardMatch(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {effectiveIsAdmin && presentedMatches.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleCopyTuningComps}
+                    className="px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 shadow-2xs"
+                    title="Admin: Capture '<Ref card> vs <comp1>, <comp2>, <comp3>, <comp4>' to clipboard for tuning"
+                  >
+                    {copiedTuning ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-700 dark:text-emerald-300">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>Capture Comps</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setInspectCardMatch(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Body: 2-Column Side-by-Side Comparison */}
@@ -1664,6 +1768,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
           initialSlotIndex={swapSearchSlotIndex}
           onConfirmSlotReplacement={handleConfirmSlotReplacement}
           onRevertSlot={handleRevertSlot}
+          isAdmin={effectiveIsAdmin}
         />
       )}
     </div>

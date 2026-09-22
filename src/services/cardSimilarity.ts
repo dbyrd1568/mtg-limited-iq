@@ -46,7 +46,7 @@ const similarityCache = new Map<string, CardSimilarityResult>();
  */
 export function getCachedSimilarCards(targetCard: Card | null | undefined): CardSimilarityResult | null {
   if (!targetCard || !targetCard.name || !targetCard.set) return null;
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v65`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v68`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -141,6 +141,11 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Organ Hoarder', 'MID', '{3}{U}', 4, 'Creature — Zombie', 'When Organ Hoarder enters the battlefield, look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.', ['U'], '3', '2'),
   createBenchmarkCard('Ancestral Reminiscence', 'LCI', '{3}{U}', 4, 'Sorcery', 'Draw three cards, then discard a card.', ['U'], undefined, undefined, 'common'),
   createBenchmarkCard('Daring Waverider', 'BLB', '{4}{U}{U}', 6, 'Creature — Otter Wizard', 'When Daring Waverider enters the battlefield, you may cast target instant or sorcery card from your graveyard without paying its mana cost.', ['U'], '4', '4', 'uncommon'),
+  createBenchmarkCard('Desynchronize', 'BRO', '{4}{U}', 5, 'Instant', "Target nonland permanent's owner puts it on their choice of the top or bottom of their library. Scry 2.", ['U'], undefined, undefined, 'common', ['Scry']),
+  createBenchmarkCard('Dire Downdraft', 'BLB', '{3}{U}', 4, 'Instant', "This spell costs {1} less to cast if it targets an attacking or tapped creature.\nTarget creature's owner puts it on their choice of the top or bottom of their library.", ['U'], undefined, undefined, 'common'),
+  createBenchmarkCard('Run Aground', 'XLN', '{3}{U}', 4, 'Instant', "Put target artifact or creature on top of its owner's library.", ['U'], undefined, undefined, 'common'),
+  createBenchmarkCard('Cruel Witness', 'VOW', '{2}{U}{U}', 4, 'Creature — Bird Horror', "Flying\nWhenever you cast a noncreature spell, surveil 1.", ['U'], '3', '3', 'common', ['Flying', 'Surveil']),
+  createBenchmarkCard('Out of Sight', 'MH3', '{3}{U}', 4, 'Instant', "Put target nonland permanent into its owner's library third from the top.", ['U'], undefined, undefined, 'uncommon'),
 
   // Black
   createBenchmarkCard('Eaten Alive', 'MID', '{B}', 1, 'Sorcery', 'As an additional cost to cast this spell, sacrifice a creature or pay {2}{B}. Exile target creature or planeswalker.', ['B']),
@@ -226,6 +231,18 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Nishoba Brawler', 'DMU', '{1}{G}', 2, 'Creature — Cat Warrior', 'Trample\nDomain — Nishoba Brawler\'s power is equal to the number of basic land types among lands you control.', ['G'], '*', '3', 'common', ['Trample', 'Domain']),
   createBenchmarkCard('Steelclaw Lance', 'ELD', '{B}{R}', 2, 'Artifact — Equipment', 'Equipped creature gets +2/+2. Equip Knight {1}. Equip {3}.', ['B', 'R'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Cultivate', 'M11', '{2}{G}', 3, 'Sorcery', 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', ['G'], undefined, undefined, 'common'),
+  // Toughness Combat Damage & "Butt-Strike" Benchmarks
+  createBenchmarkCard('Bedrock Tortoise', 'LCI', '{3}{G}', 4, 'Creature — Turtle', 'During your turn, creatures you control have hexproof.\nEach creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power.', ['G'], '0', '6', 'rare'),
+  createBenchmarkCard('Doran, Besieged by Time', 'ECL', '{1}{W}{B}{G}', 4, 'Legendary Creature — Treefolk Druid', 'Each creature spell you cast with toughness greater than its power costs {1} less to cast.\nWhenever a creature you control attacks or blocks, it gets +X/+X until end of turn, where X is the difference between its power and toughness.', ['W', 'B', 'G'], '0', '5', 'rare'),
+  createBenchmarkCard('Ancient Lumberknot', 'VOW', '{2}{B}{G}', 4, 'Creature — Treefolk', 'Each creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power.', ['B', 'G'], '1', '4', 'uncommon'),
+  createBenchmarkCard('Doran, the Siege Tower', '2X2', '{W}{B}{G}', 3, 'Legendary Creature — Treefolk Shaman', 'Each creature assigns combat damage equal to its toughness rather than its power.', ['W', 'B', 'G'], '0', '5', 'rare'),
+  createBenchmarkCard('High Alert', 'RNA', '{1}{W}{U}', 3, 'Enchantment', 'Each creature you control assigns combat damage equal to its toughness rather than its power.\nCreatures you control can attack as though they didn\'t have defender.\n{2}{W}{U}: Untap target creature.', ['W', 'U'], undefined, undefined, 'uncommon'),
+  // Token Anthems, Discard / Channel Removal, and White Utility Benchmarks
+  createBenchmarkCard('Intangible Virtue', 'EMA', '{1}{W}', 2, 'Enchantment', 'Creature tokens you control get +1/+1 and have vigilance.', ['W'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Touch the Spirit Realm', 'NEO', '{2}{W}', 3, 'Enchantment', 'When Touch the Spirit Realm enters the battlefield, exile up to one other target artifact or creature until Touch the Spirit Realm leaves the battlefield.\nChannel — {1}{W}, Discard Touch the Spirit Realm: Exile target artifact or creature. Return it to the battlefield under its owner\'s control at the beginning of the next end step.', ['W'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Flowering of the White Tree', 'LTR', '{W}{W}', 2, 'Legendary Enchantment', 'Legendary creatures you control get +2/+1 and have ward {1}.\nNonlegendary creatures you control get +1/+1.', ['W'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Gideon\'s Reproach', 'BFZ', '{1}{W}', 2, 'Instant', 'Gideon\'s Reproach deals 4 damage to target attacking or blocking creature.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Phantom General', 'RTR', '{3}{W}', 4, 'Creature — Spirit Soldier', 'Creature tokens you control get +1/+1.', ['W'], '2', '3', 'uncommon'),
 
   // Lands & Fetchlands
   createBenchmarkCard('Terramorphic Expanse', 'SOS', '', 0, 'Land', '{T}, Sacrifice Terramorphic Expanse: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', [], undefined, undefined, 'common'),
@@ -310,6 +327,7 @@ const EFFECT_PATTERNS: EffectPattern[] = [
   { pattern: /scry (\d+|x)|surveil (\d+|x)/i, label: 'Scry / Surveil', category: 'selection' },
   { pattern: /put (a|\d+) \+1\/\+1 counter/i, label: '+1/+1 Counter', category: 'counters' },
   { pattern: /return target .* to its owner's hand/i, label: 'Bounce Effect', category: 'bounce' },
+  { pattern: /(?:the owner of )?(?:up to \w+\s+|other\s+)*target (?:nonland permanent|creature|permanent)(?:'s owner)? puts it on (?:their choice of )?the (?:top or bottom|top|bottom) of (?:their|its owner's) library|(?:put|puts) (?:target )?(?:nonland permanent|creature|permanent) (?:on|into) (?:the )?(?:top or bottom|top|bottom) of its owner's library/i, label: 'Tuck Removal / Library Bounce', category: 'bounce' },
   { pattern: /target creature can't (block|attack)/i, label: 'Pacifism / Lock', category: 'pacifism' },
   { pattern: /enchanted (creature|permanent) (can't attack|can't block|doesn't untap)/i, label: 'Pacifism Aura', category: 'pacifism' },
   { pattern: /enchanted (creature|permanent) loses all abilities|lose all abilities|has no abilities/i, label: 'Ability Loss Aura', category: 'pacifism' },
@@ -520,6 +538,26 @@ export function extractCardFeatures(card: Card) {
     actionSubtypes.add('burn_damage');
   } else if (/deals damage equal to (its|target creature's) power|fights target creature/i.test(oracle)) {
     actionSubtypes.add('bite_fight');
+  } else if (
+    /(?:the owner of )?(?:up to \w+\s+|other\s+)*target (?:nonland permanent|artifact or creature|creature|permanent)(?:'s owner)? puts it on (?:their choice of )?the (?:top or bottom|top|bottom) of (?:their|its owner's) library/i.test(oracle) ||
+    /(?:put|puts) (?:target )?(?:nonland permanent|artifact or creature|creature|permanent) (?:on|into) (?:the )?(?:top or bottom|top|bottom) of its owner's library/i.test(oracle) ||
+    /target (?:nonland permanent|artifact or creature) into its owner's library/i.test(oracle)
+  ) {
+    actionSubtypes.add('tuck_removal');
+    actionSubtypes.add('bounce_removal');
+    detectedCategories.add('removal');
+    detectedCategories.add('bounce');
+    if (/target (?:nonland permanent|permanent)/i.test(oracle)) {
+      actionSubtypes.add('permanent_removal');
+      actionSubtypes.add('unconditional_removal');
+    } else {
+      actionSubtypes.add('conditional_removal');
+    }
+    const isEtbTuck = /when .* enters/i.test(rawOracle) || /when .* enters/i.test(oracle);
+    if (isEtbTuck) {
+      actionSubtypes.add('etb_tuck_removal');
+      actionSubtypes.add('etb_removal');
+    }
   } else if (/(destroy|exile) (up to \w+ )?target (permanent|nonland permanent|artifact, creature, or enchantment)/i.test(oracle)) {
     actionSubtypes.add('permanent_removal');
     actionSubtypes.add('unconditional_removal');
@@ -908,6 +946,26 @@ export function extractCardFeatures(card: Card) {
       actionSubtypes.add('raw_draw');
       detectedCategories.add('draw');
     }
+
+    const isNoncreatureTrigger = /whenever you cast (?:a|your first) noncreature spell/i.test(oracle);
+    if (isNoncreatureTrigger) {
+      actionSubtypes.add('noncreature_spell_trigger');
+      actionSubtypes.add('spellslinger_payoff');
+      actionSubtypes.add('noncreature_surveil_engine');
+      actionSubtypes.add('empower_jace_surveil');
+      detectedCategories.add('selection');
+    }
+  }
+
+  // Generic Noncreature Spell Triggers (Spellslinger Payoffs e.g. Cruel Witness, Third Path Iconoclast, Ledger Shredder)
+  const isGenericNoncreatureTrigger = /whenever you cast (?:a|your first) noncreature spell/i.test(oracle);
+  if (isGenericNoncreatureTrigger && !hasEmpowerJace) {
+    actionSubtypes.add('noncreature_spell_trigger');
+    actionSubtypes.add('spellslinger_payoff');
+    if (/surveil/i.test(oracle) || actionSubtypes.has('surveil')) {
+      actionSubtypes.add('noncreature_surveil_engine');
+      detectedCategories.add('selection');
+    }
   }
 
   // ETB Counter Distribution, Static Entry & Growth Subtypes
@@ -1058,6 +1116,63 @@ export function extractCardFeatures(card: Card) {
     detectedCategories.add('synergy');
   }
 
+  // 10. Toughness Combat Damage ("Butt-Strike") & Toughness-Matters Archetype
+  const isToughnessCombatDamage = (
+    /assigns combat damage equal to (?:its|their) toughness/i.test(oracle) ||
+    /assigns combat damage equal to toughness rather than/i.test(oracle) ||
+    /difference between (?:its|their) power and toughness/i.test(oracle)
+  );
+
+  const isDefenderAttackEnabler = (
+    /can attack as though (?:they|it) didn['’]t have defender/i.test(oracle) ||
+    /can attack as though (?:they|it) had not defender/i.test(oracle)
+  );
+
+  const isSelfToughnessCostReduction = (
+    /this spell costs (?:\{X\}|\{\d+\}|[0-9]+) less to cast, where X is (?:the )?greatest toughness/i.test(oracle)
+  );
+
+  const isToughnessCostReduction = (
+    isSelfToughnessCostReduction ||
+    /costs (?:\{X\}|\{\d+\}|[0-9]+) less to cast, where X is (?:the )?greatest toughness/i.test(oracle) ||
+    /creature spell(?:s)? you cast with toughness greater than (?:its|their) power costs? (?:\{X\}|\{\d+\}|[0-9]+) less/i.test(oracle)
+  );
+
+  const isToughnessCombatPump = (
+    /difference between (?:its|their) power and toughness/i.test(oracle) ||
+    /where X is (?:its|their|the) toughness/i.test(oracle) ||
+    /where X is (?:the )?greatest toughness/i.test(oracle)
+  );
+
+  const isToughnessMatters = (
+    isToughnessCombatDamage ||
+    isDefenderAttackEnabler ||
+    isToughnessCostReduction ||
+    isToughnessCombatPump ||
+    /toughness greater than (?:its|their) power/i.test(oracle) ||
+    /greatest toughness among creatures you control/i.test(oracle)
+  );
+
+  if (isToughnessCombatDamage) {
+    actionSubtypes.add('toughness_combat_damage');
+    detectedCategories.add('synergy');
+  }
+
+  if (isDefenderAttackEnabler) {
+    actionSubtypes.add('defender_attack_enabler');
+    detectedCategories.add('synergy');
+  }
+
+  if (isToughnessCostReduction) {
+    actionSubtypes.add('toughness_cost_reduction');
+    detectedCategories.add('ramp');
+  }
+
+  if (isToughnessMatters) {
+    actionSubtypes.add('toughness_matters_archetype');
+    detectedCategories.add('synergy');
+  }
+
   // 7. Equipment Subtypes
   if (isEquipment) {
     actionSubtypes.add('equipment');
@@ -1086,7 +1201,8 @@ export function extractCardFeatures(card: Card) {
       detectedCategories.add('synergy');
     }
 
-    if (/{t}: add/i.test(oracle)) {
+    const isPlaneswalkerOnlyMana = /spend this mana only to cast a planeswalker spell/i.test(oracle);
+    if (/{t}: add/i.test(oracle) && !isPlaneswalkerOnlyMana) {
       actionSubtypes.add('mana_rock');
     }
 
@@ -1237,14 +1353,52 @@ export function extractCardFeatures(card: Card) {
     detectedCategories.add('token_army');
   }
 
+  // Token Anthems, Team Anthems & Discard / Channel Removal
+  const isTokenAnthem = (
+    /creature tokens (?:you control )?get \+[0-9x]+\/\+[0-9x]+/i.test(oracle) ||
+    /tokens you control get \+[0-9x]+\/\+[0-9x]+/i.test(oracle) ||
+    /creature tokens you control (?:get|have)/i.test(oracle) ||
+    /tokens you control have/i.test(oracle)
+  );
+  if (isTokenAnthem) {
+    actionSubtypes.add('token_anthem');
+    actionSubtypes.add('team_anthem');
+    detectedCategories.add('token_anthem');
+    detectedCategories.add('synergy');
+  }
+
+  const isTeamAnthem = (
+    /creatures you control get \+[0-9x]+\/\+[0-9x]+/i.test(oracle) ||
+    /other creatures you control get \+[0-9x]+\/\+[0-9x]+/i.test(oracle) ||
+    /creatures you control have (?:vigilance|flying|first strike|lifelink|trample)/i.test(oracle)
+  );
+  if (isTeamAnthem) {
+    actionSubtypes.add('team_anthem');
+    detectedCategories.add('team_anthem');
+    detectedCategories.add('synergy');
+  }
+
+  const isDiscardRemoval = (
+    /discard (?:this card|~):\s*(?:(?:it|~) deals \d+ damage|destroy target|exile target)/i.test(oracle) ||
+    /channel\s*—.*discard (?:this card|~):\s*(?:(?:it|~) deals \d+ damage|destroy target|exile target)/i.test(oracle)
+  );
+  if (isDiscardRemoval) {
+    actionSubtypes.add('discard_removal');
+    actionSubtypes.add('conditional_removal');
+    detectedCategories.add('removal');
+  }
+
   // Effective CMC: Scalable X spells typically cast for X=2, 3, or 4 in Limited
   // Vivid spells typically cast with 2-3 colors among permanents (-2.5 cost reduction)
+  // Toughness cost reduction spells (e.g. Ghalta) typically cast with 4-5 toughness on board (-4.5 cost reduction)
   // Accounting for the Instant Speed Tax (-0.75 for noncreature instant/flash)
   const effectiveCmc = hasXCost
     ? Math.max(3.5, (card.cmc || 0) + 2.5)
-    : ((isVivid && /costs \{\d+\} less.*for each color/i.test(oracle))
-      ? Math.max(2, (card.cmc || 0) - 2.5)
-      : (((isInstant || hasFlash) && !isCreature) ? Math.max(0.5, (card.cmc || 0) - 0.75) : (card.cmc || 0)));
+    : (isSelfToughnessCostReduction
+      ? Math.max(3.5, (card.cmc || 0) - 4.5)
+      : ((isVivid && /costs \{\d+\} less.*for each color/i.test(oracle))
+        ? Math.max(2, (card.cmc || 0) - 2.5)
+        : (((isInstant || hasFlash) && !isCreature) ? Math.max(0.5, (card.cmc || 0) - 0.75) : (card.cmc || 0))));
 
   const cardColors = (card.colors || []).filter(c => c !== 'C');
 
@@ -1260,8 +1414,17 @@ export function extractCardFeatures(card: Card) {
   const counterBoost = isConvergeOrSunburstCreature
     ? (3 + etbSelfCounterCount)
     : (entersWithCountersCount + etbSelfCounterCount);
-  const effectivePower = (basePower !== undefined && !isNaN(basePower)) ? basePower + counterBoost : basePower;
+  let effectivePower = (basePower !== undefined && !isNaN(basePower)) ? basePower + counterBoost : basePower;
   const effectiveToughness = (baseToughness !== undefined && !isNaN(baseToughness)) ? baseToughness + counterBoost : baseToughness;
+
+  // Toughness-based combat damage ("Butt-Strike" & Doran combat pump):
+  // When a creature assigns combat damage equal to its toughness rather than its power,
+  // or pumps by the difference between power and toughness, its effective combat threat is its toughness!
+  if (isCreature && (isToughnessCombatDamage || isToughnessCombatPump)) {
+    if (effectiveToughness !== undefined && !isNaN(effectiveToughness)) {
+      effectivePower = effectiveToughness;
+    }
+  }
 
   return {
     primaryType,
@@ -1309,6 +1472,10 @@ export function extractCardFeatures(card: Card) {
     isDomain,
     isColorsSpentMechanic,
     isMultiColorScaling,
+    isToughnessCombatDamage,
+    isDefenderAttackEnabler,
+    isToughnessCostReduction,
+    isToughnessMatters,
     colors: cardColors,
     creatureSubtypes,
     basePower,
@@ -1334,7 +1501,12 @@ export function extractCardFeatures(card: Card) {
     isLegendaryTutor,
     hasEmpowerJace,
     empowerJaceCount,
-    isRemoval: detectedCategories.has('removal') || isAuraRemoval || actionSubtypes.has('sweeper') || actionSubtypes.has('burn_damage') || actionSubtypes.has('bite_fight') || actionSubtypes.has('permanent_removal') || actionSubtypes.has('unconditional_removal') || actionSubtypes.has('conditional_removal') || actionSubtypes.has('power_toughness_removal') || actionSubtypes.has('toughness_4_plus_removal') || actionSubtypes.has('artifact_enchantment_removal'),
+    isTokenAnthem,
+    isTeamAnthem,
+    isDiscardRemoval,
+    isTuckRemoval: actionSubtypes.has('tuck_removal'),
+    isEtbTuckRemoval: actionSubtypes.has('etb_tuck_removal'),
+    isRemoval: isDiscardRemoval || actionSubtypes.has('tuck_removal') || actionSubtypes.has('etb_tuck_removal') || detectedCategories.has('removal') || isAuraRemoval || actionSubtypes.has('sweeper') || actionSubtypes.has('burn_damage') || actionSubtypes.has('bite_fight') || actionSubtypes.has('permanent_removal') || actionSubtypes.has('unconditional_removal') || actionSubtypes.has('conditional_removal') || actionSubtypes.has('power_toughness_removal') || actionSubtypes.has('toughness_4_plus_removal') || actionSubtypes.has('artifact_enchantment_removal'),
   };
 }
 
@@ -1436,6 +1608,34 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
   if (tFeatures.isArtifact && cFeatures.isArtifact) return true;
   if (tFeatures.isEnchantment && cFeatures.isEnchantment) return true;
 
+  // Non-creature permanent peers (Artifact vs Enchantment for Anthems, Utility, Sagas, Tutors, and Engines)
+  if ((tFeatures.isArtifact || tFeatures.isEnchantment) && (cFeatures.isArtifact || cFeatures.isEnchantment)) {
+    if (!tFeatures.isEquipment && !cFeatures.isEquipment && !tFeatures.isAura && !cFeatures.isAura) {
+      return true;
+    }
+  }
+
+  // Discard / Channel removal permanent vs Instant / Sorcery removal
+  if ((tFeatures.actionSubtypes.has('discard_removal') || tFeatures.actionSubtypes.has('channel_removal')) && cSpell && cFeatures.isRemoval) {
+    return true;
+  }
+  if ((cFeatures.actionSubtypes.has('discard_removal') || cFeatures.actionSubtypes.has('channel_removal')) && tSpell && tFeatures.isRemoval) {
+    return true;
+  }
+
+  // ETB Removal / Tuck permanents can compare to Instant / Sorcery removal / bounce
+  const tIsEtbRemovalOrTuck = tFeatures.actionSubtypes.has('tuck_removal') || tFeatures.actionSubtypes.has('etb_removal') || tFeatures.actionSubtypes.has('etb_tuck_removal');
+  const cIsEtbRemovalOrTuck = cFeatures.actionSubtypes.has('tuck_removal') || cFeatures.actionSubtypes.has('etb_removal') || cFeatures.actionSubtypes.has('etb_tuck_removal');
+
+  if (tIsEtbRemovalOrTuck && cSpell && (cFeatures.isRemoval || cFeatures.detectedCategories.has('bounce') || cFeatures.actionSubtypes.has('tuck_removal'))) {
+    if (cIsSweeper) return false;
+    return true;
+  }
+  if (cIsEtbRemovalOrTuck && tSpell && (tFeatures.isRemoval || tFeatures.detectedCategories.has('bounce') || tFeatures.actionSubtypes.has('tuck_removal'))) {
+    if (tIsSweeper) return false;
+    return true;
+  }
+
   return false;
 }
 
@@ -1485,10 +1685,51 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     typeFilter = 't:creature';
   }
 
-  const minCmc = Math.max(1, features.cmc - 1);
-  const maxCmc = features.cmc + 1;
+  const minCmc = features.actionSubtypes.has('toughness_cost_reduction')
+    ? Math.max(2, Math.round(features.effectiveCmc) - 1)
+    : Math.max(1, features.cmc - 1);
+  const maxCmc = features.actionSubtypes.has('toughness_cost_reduction')
+    ? Math.round(features.effectiveCmc) + 1
+    : features.cmc + 1;
 
   const queries: string[] = [];
+
+  // Toughness Combat Damage ("Butt-Strike") & Toughness-Matters Queries
+  if (features.actionSubtypes.has('toughness_combat_damage') || features.actionSubtypes.has('toughness_matters_archetype')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"assigns combat damage equal to" or o:"toughness greater than its power")`);
+    queries.push(`${baseFilter} ${excludeSelf} (o:"assigns combat damage equal to" or o:"toughness greater than its power")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"can attack as though" o:defender)`);
+    queries.push(`${baseFilter} ${excludeSelf} (o:"where X is the greatest toughness" or o:"greatest toughness among")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (c=W or c=G or c=B or c=U) (o:"damage equal to" o:toughness)`);
+  }
+
+  // Token Anthems, Team Anthems & Discard / Channel Removal Queries
+  if (features.actionSubtypes.has('token_anthem')) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:artifact or t:enchantment) ${exactColorQuery} (o:"tokens you control get" or o:"creature tokens you control get")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:artifact or t:enchantment) (o:"tokens you control get" o:vigilance)`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:artifact or t:enchantment) ${exactColorQuery} (o:"creatures you control get" o:vigilance)`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:artifact or t:enchantment) ${exactColorQuery} cmc>=1 cmc<=3 (o:"tokens you control get" or o:"creatures you control get")`);
+  } else if (features.actionSubtypes.has('team_anthem')) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:artifact or t:enchantment) ${exactColorQuery} (o:"creatures you control get" o:"+1/+1" or o:"creatures you control get +1/+0")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:artifact or t:enchantment) ${exactColorQuery} cmc>=1 cmc<=3 (o:"creatures you control get")`);
+  }
+  if (features.actionSubtypes.has('discard_removal')) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:artifact or t:enchantment) ${exactColorQuery} (o:"deals 4 damage to target attacking or blocking creature" or o:"target attacking or blocking creature")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:artifact or t:enchantment) (o:"discard this card" o:damage)`);
+  }
+
+  // Tuck / Library-Bounce Removal Queries
+  if (features.actionSubtypes.has('tuck_removal')) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:sorcery or t:enchantment) ${exactColorQuery} (o:"puts it on their choice of the top or bottom" or o:"top or bottom of their library" or o:"top or bottom of its owner's library")`);
+    queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"target nonland permanent" (o:"top or bottom" or o:"owner's library"))`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:instant or t:enchantment) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"top or bottom" or o:"owner's library")`);
+  }
+
+  // Noncreature Spellslinger Surveil Engine Queries
+  if (features.actionSubtypes.has('noncreature_surveil_engine') || (features.actionSubtypes.has('noncreature_spell_trigger') && features.actionSubtypes.has('empower_jace'))) {
+    queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"whenever you cast a noncreature spell" or o:"whenever you cast your first noncreature spell")`);
+    queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"noncreature spell" (o:surveil or o:scry or o:draw))`);
+  }
 
   // Learned Mechanic Bridge Queries (Rosetta Stone):
   // When a card features a mechanic with a learned bridge to historical terms, execute priority queries
@@ -2008,6 +2249,410 @@ export function isExactFunctionalReprint(target: Card, candidate: Card): boolean
 }
 
 /**
+ * Normalizes oracle text specifically for exact clause and rules matching:
+ * - Strips reminder text in parentheses
+ * - Normalizes self-referential card names (and 1-word first names for legends) to '~'
+ * - Normalizes 'this creature', 'this spell', 'this artifact', 'this permanent' to '~'
+ * - Normalizes BLB / modern wording variations: 'enters the battlefield' -> 'enters'
+ * - Standardizes apostrophes: didn't -> didnt, doesn't -> doesnt, can't -> cant
+ * - Strips punctuation and normalizes spacing
+ */
+export function normalizeOracleClause(clause: string, cardName: string): string {
+  if (!clause) return '';
+  let cleaned = clause.replace(/\([^)]*\)/g, '');
+  if (cardName) {
+    const escaped = cardName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '~');
+    // Also strip first name for legendary creatures (e.g. 'Ghalta', 'Doran', 'Mikaeus')
+    const firstName = cardName.trim().split(/[\s,]+/)[0];
+    if (firstName && firstName.length >= 4) {
+      const escFirst = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      cleaned = cleaned.replace(new RegExp(`\\b${escFirst}\\b`, 'gi'), '~');
+    }
+  }
+  cleaned = cleaned.replace(/\bthis (creature|spell|artifact|permanent|enchantment|planeswalker)\b/gi, '~');
+  cleaned = cleaned.replace(/\benters the battlefield\b/gi, 'enters');
+  cleaned = cleaned.replace(/didn['’]t/gi, 'didnt');
+  cleaned = cleaned.replace(/doesn['’]t/gi, 'doesnt');
+  cleaned = cleaned.replace(/can['’]t/gi, 'cant');
+  return cleaned
+    .toLowerCase()
+    .replace(/[.,:;!'"\u2019\u2018]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Extracts substantive rules clauses from a card's oracle text.
+ * Ignores standalone 1-2 word keywords (flying, reach, etc.), isolating substantive mechanics.
+ */
+export function extractSubstantiveOracleClauses(oracleText: string, cardName: string): string[] {
+  if (!oracleText) return [];
+  const lines = oracleText.split(/\n+/);
+  const rawClauses: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // If the line is just a list of keywords like "Reach, trample" or "Flying", skip it
+    const keywordOnly = trimmed.split(/,\s*/).every(word => {
+      const w = word.trim().toLowerCase();
+      return ['flying', 'reach', 'trample', 'vigilance', 'haste', 'hexproof', 'indestructible', 'lifelink', 'deathtouch', 'first strike', 'double strike', 'menace', 'defender', 'flash'].includes(w);
+    });
+    if (keywordOnly) continue;
+
+    // Do not split activated abilities or lines containing riders/restrictions into disjoint sentences
+    const hasRestriction = /spend this mana only|activate only|if this mana|as a sorcery|activate this ability only/i.test(trimmed);
+    if (hasRestriction || /^[^{]*\{[^}]+\}.*:/i.test(trimmed)) {
+      rawClauses.push(trimmed);
+    } else {
+      // Split line into sentences
+      const sentences = trimmed.split(/\.\s+/);
+      for (const sent of sentences) {
+        const cleanSent = sent.trim();
+        if (!cleanSent) continue;
+        rawClauses.push(cleanSent);
+      }
+    }
+  }
+
+  const normalizedClauses: string[] = [];
+  for (const rc of rawClauses) {
+    const norm = normalizeOracleClause(rc, cardName);
+    if (!norm) continue;
+
+    // Generic boilerplate mana rock / dork text (e.g. "{t}: add one mana of any color" or "{t}: add {c}")
+    // is a standard utility mechanic evaluated under Pillar 4, NOT a unique substantive rules clause for Directive 2
+    const isGenericMana = /^\{?t\}?\s*add\s*(one mana of any color|[wubrgc0-9]+|c)$/i.test(norm) ||
+      norm === 't add one mana of any color' ||
+      norm === 't add c';
+    if (isGenericMana) continue;
+
+    const words = norm.split(' ');
+    // A substantive clause must be at least 5 words, OR contain a signature mechanic phrase
+    const isSignature = /assigns combat damage equal to|toughness greater than|can attack as though|for each color of mana spent|converge|sunburst|vivid|greatest toughness among|difference between.*power and toughness|tokens you control get|creatures you control get|deals \d+ damage to target attacking or blocking|puts it on (?:their choice of )?the top or bottom|top or bottom of (?:their|its owner's) library|puts target .* on top of its owner's library/i.test(norm);
+    if (words.length >= 5 || isSignature) {
+      normalizedClauses.push(norm);
+    }
+  }
+
+  return normalizedClauses;
+}
+
+export interface OracleClauseMatchResult {
+  matchType: 'exact' | 'template' | 'subject_relaxed' | 'channel_discard' | 'tuck_exact' | 'tuck_relaxed';
+  matchingClause: string;
+  statBuffDelta?: number;
+  description: string;
+}
+
+export function normalizeClauseTemplate(clause: string): { template: string; pBuff?: number; tBuff?: number } {
+  let pBuff: number | undefined = undefined;
+  let tBuff: number | undefined = undefined;
+  const match = clause.match(/\+([0-9x]+)\/\+([0-9x]+)/i);
+  if (match) {
+    pBuff = match[1].toLowerCase() === 'x' ? 0 : parseInt(match[1], 10);
+    tBuff = match[2].toLowerCase() === 'x' ? 0 : parseInt(match[2], 10);
+  }
+  const template = clause.replace(/\+[0-9x]+\/\+[0-9x]+/gi, '+P/+T');
+  return { template, pBuff, tBuff };
+}
+
+export function extractCoreEffect(clause: string): string {
+  let res = clause.replace(/^(?:\{[^}]+\}|\d+|[wubrgc]|\s|,)+discard (?:this card|~):\s*/i, '');
+  res = res.replace(/^(?:channel\s*—\s*)?(?:\{[^}]+\}|\d+|[wubrgc]|\s|,)*discard (?:this card|~):\s*/i, '');
+  res = res.replace(/^(?:it|~) deals/i, 'deals');
+  return res.trim();
+}
+
+export function normalizeTuckClause(clause: string): { normalized: string; isTuck: boolean; targetsNonland: boolean } {
+  let res = clause.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const isTuck = /puts it on (?:their choice of )?the (?:top or bottom|top|bottom) of (?:their|its owner s|its owners)\s+library|puts? target .* (?:on|into) (?:the )?(?:top or bottom|top|bottom) of (?:its owner s|its owners|their)\s+library/i.test(res);
+  if (!isTuck) return { normalized: res, isTuck: false, targetsNonland: false };
+
+  const targetsNonland = /nonland permanent/i.test(res);
+
+  // Strip ETB prefix if permanent
+  res = res.replace(/^when (?:this (?:enchantment|artifact|creature)|~)?\s*enters\s*/i, '');
+  // Normalize subject prefix
+  res = res.replace(/^(?:the owner of )?.*?\btarget (nonland permanent|artifact or creature|creature|permanent)s?(?: owner)? puts it on/i, 'target $1 owner puts it on');
+  res = res.replace(/^target (nonland permanent|artifact or creature|creature|permanent)s? owner puts it on/i, 'target $1 owner puts it on');
+  res = res.replace(/^put target (nonland permanent|artifact or creature|creature|permanent) on/i, 'target $1 owner puts it on');
+  // Normalize library destination
+  res = res.replace(/\btheir choice of the top or bottom\b/g, 'the top or bottom');
+  res = res.replace(/\b(?:the )?top of\b/g, 'the top or bottom of');
+  res = res.replace(/\b(?:their|its owners?|its owner s?)\s+library\b/g, 'library');
+  return { normalized: res.trim(), isTuck: true, targetsNonland };
+}
+
+/**
+ * Checks whether target and candidate share an exact oracle clause / core rules text,
+ * or a structural template (e.g. creature tokens you control get +P/+T and have vigilance),
+ * or a relaxed subject anthem, or a channel/discard activated effect, or a library-tuck removal effect.
+ * Returns match details if found, or null otherwise.
+ */
+export function findExactOracleClauseMatch(
+  target: Card,
+  candidate: Card,
+  tFeatures: ReturnType<typeof extractCardFeatures>,
+  cFeatures: ReturnType<typeof extractCardFeatures>
+): OracleClauseMatchResult | null {
+  const tClauses = extractSubstantiveOracleClauses(target.oracle_text || '', target.name);
+  const cClauses = extractSubstantiveOracleClauses(candidate.oracle_text || '', candidate.name);
+
+  // 1. Literal Verbatim Match (Anchor 95%)
+  for (const tc of tClauses) {
+    for (const cc of cClauses) {
+      if (tc === cc) {
+        return {
+          matchType: 'exact',
+          matchingClause: tc,
+          description: 'Exact matching rules text',
+        };
+      }
+    }
+  }
+
+  // 2. Parameterized Template Match (Anchor 94%, deduct for buff delta)
+  for (const tc of tClauses) {
+    const tTpl = normalizeClauseTemplate(tc);
+    for (const cc of cClauses) {
+      const cTpl = normalizeClauseTemplate(cc);
+      if (tTpl.template === cTpl.template && (tTpl.pBuff !== undefined || cTpl.pBuff !== undefined)) {
+        const statBuffDelta = (Math.abs((tTpl.pBuff ?? 0) - (cTpl.pBuff ?? 0))) +
+                              (Math.abs((tTpl.tBuff ?? 0) - (cTpl.tBuff ?? 0)));
+        return {
+          matchType: 'template',
+          matchingClause: tc,
+          statBuffDelta,
+          description: 'Matching rules text template',
+        };
+      }
+    }
+  }
+
+  // 3. Subject-Decomposed Anthem Match (Anchor 87%)
+  for (const tc of tClauses) {
+    const tTpl = normalizeClauseTemplate(tc);
+    const tRelaxed = tTpl.template
+      .replace(/\bcreature tokens you control get\b/g, 'creatures you control get')
+      .replace(/\btokens you control get\b/g, 'creatures you control get');
+
+    for (const cc of cClauses) {
+      const cTpl = normalizeClauseTemplate(cc);
+      const cRelaxed = cTpl.template
+        .replace(/\bcreature tokens you control get\b/g, 'creatures you control get')
+        .replace(/\btokens you control get\b/g, 'creatures you control get');
+
+      if (tRelaxed === cRelaxed && tRelaxed.includes('creatures you control get')) {
+        const statBuffDelta = (Math.abs((tTpl.pBuff ?? 0) - (cTpl.pBuff ?? 0))) +
+                              (Math.abs((tTpl.tBuff ?? 0) - (cTpl.tBuff ?? 0)));
+        return {
+          matchType: 'subject_relaxed',
+          matchingClause: tc,
+          statBuffDelta,
+          description: 'Matching anthem / team buff rules text',
+        };
+      }
+    }
+  }
+
+  // 4. Channel / Discard Ability Core Effect Match (Anchor 88%)
+  for (const tc of tClauses) {
+    const tEffect = extractCoreEffect(tc);
+    if (tEffect.length >= 15 && tEffect.split(' ').length >= 4) {
+      for (const cc of cClauses) {
+        const cEffect = extractCoreEffect(cc);
+        if (tEffect === cEffect) {
+          return {
+            matchType: 'channel_discard',
+            matchingClause: tc,
+            description: 'Matching activated / channel effect',
+          };
+        }
+      }
+    }
+  }
+
+  // 5. Tuck / Library-Bounce Removal Match (Anchor 90% for exact nonland, 86% for relaxed target)
+  for (const tc of tClauses) {
+    const tTuck = normalizeTuckClause(tc);
+    if (!tTuck.isTuck) continue;
+
+    for (const cc of cClauses) {
+      const cTuck = normalizeTuckClause(cc);
+      if (!cTuck.isTuck) continue;
+
+      if (tTuck.normalized === cTuck.normalized) {
+        return {
+          matchType: 'tuck_exact',
+          matchingClause: tc,
+          description: 'Matching library-tuck removal effect',
+        };
+      }
+
+      // Relaxed target subject (nonland permanent vs creature vs artifact or creature)
+      const tRelaxed = tTuck.normalized.replace(/target (?:nonland permanent|artifact or creature|creature|permanent)/g, 'target permanent');
+      const cRelaxed = cTuck.normalized.replace(/target (?:nonland permanent|artifact or creature|creature|permanent)/g, 'target permanent');
+      if (tRelaxed === cRelaxed) {
+        return {
+          matchType: 'tuck_relaxed',
+          matchingClause: tc,
+          description: 'Matching library-tuck tempo effect',
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Computes the similarity score for two cards sharing an exact oracle text clause
+ * or structural template under Directive 2 (Exact Oracle Text Matching is First Priority).
+ * - Anchors at 95% (or 94% for template, 87% for subject relaxed, 88% for channel/discard)
+ * - Deducts for effective CMC difference
+ * - Deducts for power/toughness difference
+ * - Deducts for combat keyword discrepancies
+ * - Deducts for color, rarity, and supertype differences
+ */
+export function computeExactOracleMatchScore(
+  target: Card,
+  candidate: Card,
+  tFeatures: ReturnType<typeof extractCardFeatures>,
+  cFeatures: ReturnType<typeof extractCardFeatures>,
+  matchResult: OracleClauseMatchResult | string
+): { score: number; reasons: string[] } {
+  const matchObj: OracleClauseMatchResult = typeof matchResult === 'string'
+    ? { matchType: 'exact', matchingClause: matchResult, description: 'Exact matching rules text' }
+    : matchResult;
+
+  let score = 95;
+  const reasons: string[] = [];
+
+  if (matchObj.matchType === 'exact') {
+    score = 95;
+    reasons.push('Exact matching rules text');
+  } else if (matchObj.matchType === 'template') {
+    score = 94;
+    reasons.push('Matching rules text template');
+    if (matchObj.statBuffDelta && matchObj.statBuffDelta > 0) {
+      score -= Math.min(4, matchObj.statBuffDelta * 2);
+    }
+  } else if (matchObj.matchType === 'subject_relaxed') {
+    score = 87;
+    reasons.push('Matching anthem / team buff rules text');
+    if (matchObj.statBuffDelta && matchObj.statBuffDelta > 0) {
+      score -= Math.min(4, matchObj.statBuffDelta * 2);
+    }
+  } else if (matchObj.matchType === 'channel_discard') {
+    score = 88;
+    reasons.push('Matching activated / channel effect');
+    if (tFeatures.primaryType !== cFeatures.primaryType) {
+      score -= 3;
+    }
+  } else if (matchObj.matchType === 'tuck_exact') {
+    score = 90;
+    reasons.push('Matching library-tuck removal effect');
+  } else if (matchObj.matchType === 'tuck_relaxed') {
+    score = 86;
+    reasons.push('Matching library-tuck tempo effect');
+  }
+
+  if (matchObj.matchType === 'tuck_exact' || matchObj.matchType === 'tuck_relaxed') {
+    const bothHaveCardSelection = (tFeatures.actionSubtypes.has('empower_jace_surveil') || tFeatures.detectedCategories.has('selection')) &&
+                                  (cFeatures.actionSubtypes.has('scry') || cFeatures.actionSubtypes.has('surveil') || cFeatures.detectedCategories.has('selection'));
+    if (bothHaveCardSelection) {
+      score += 2;
+      reasons.push('Both pair library-tuck removal with card selection (scry/surveil)');
+    }
+  }
+
+  // 1. Deduct for Mana Cost / Effective CMC Difference
+  const cmcDiff = Math.abs(tFeatures.effectiveCmc - cFeatures.effectiveCmc);
+  if (cmcDiff === 0) {
+    reasons.push(`Identical effective mana cost (${tFeatures.effectiveCmc} CMC)`);
+  } else if (cmcDiff <= 0.6) {
+    score -= 2;
+    reasons.push(`Matching effective mana curve (effective ${tFeatures.effectiveCmc} vs ${cFeatures.effectiveCmc} CMC)`);
+  } else if (cmcDiff <= 1.15) {
+    score -= 3;
+    reasons.push(`Close mana curve (±1 CMC)`);
+  } else if (cmcDiff <= 2.2) {
+    score -= 7;
+  } else {
+    score -= Math.min(15, Math.round(cmcDiff * 4));
+  }
+
+  // 2. Deduct for Power / Toughness Difference (for creatures)
+  if (tFeatures.isCreature && cFeatures.isCreature) {
+    const tEffP = tFeatures.effectivePower ?? 0;
+    const tEffT = tFeatures.effectiveToughness ?? 0;
+    const cEffP = cFeatures.effectivePower ?? 0;
+    const cEffT = cFeatures.effectiveToughness ?? 0;
+    const totalStatDiff = Math.abs((tEffP + tEffT) - (cEffP + cEffT));
+
+    if (tEffP === cEffP && tEffT === cEffT) {
+      reasons.push(`Identical effective combat stats (${tEffP}/${tEffT})`);
+    } else if (totalStatDiff <= 2) {
+      score -= 3;
+      reasons.push(`Matching combat body scale (effective ${tEffP}/${tEffT} vs ${cEffP}/${cEffT})`);
+    } else if (totalStatDiff <= 4) {
+      score -= 5;
+    } else {
+      score -= Math.min(10, Math.round(totalStatDiff * 1.5));
+    }
+  } else if (tFeatures.isCreature !== cFeatures.isCreature) {
+    score -= 10;
+  }
+
+  // 3. Deduct for Combat Keywords Discrepancies
+  let keywordMismatch = 0;
+  for (const kw of ['flying', 'reach', 'trample', 'vigilance', 'haste', 'hexproof', 'lifelink', 'deathtouch']) {
+    const tHas = (target.keywords || []).some(k => k.toLowerCase() === kw) || new RegExp(`\\b${kw}\\b`, 'i').test(target.oracle_text || '');
+    const cHas = (candidate.keywords || []).some(k => k.toLowerCase() === kw) || new RegExp(`\\b${kw}\\b`, 'i').test(candidate.oracle_text || '');
+    if (tHas !== cHas) {
+      keywordMismatch++;
+    }
+  }
+  score -= Math.min(4, keywordMismatch);
+
+  // 4. Deduct for Rest of Metrics (Color, Rarity, Legendary)
+  const tColors = new Set(tFeatures.colors);
+  const cColors = new Set(cFeatures.colors);
+  const isExactColor = tColors.size === cColors.size && [...tColors].every(c => cColors.has(c));
+  const sharesColor = [...tColors].some(c => cColors.has(c));
+
+  if (isExactColor) {
+    reasons.push('Same color alignment');
+  } else if (sharesColor || tColors.size === 0 || cColors.size === 0) {
+    score -= 1;
+    reasons.push('Shared / colorless color alignment');
+  } else {
+    score -= 2;
+  }
+
+  // Rarity difference
+  const rarityGap = Math.abs(
+    (tFeatures.rarity === 'common' ? 1 : (tFeatures.rarity === 'uncommon' ? 2 : 3)) -
+    (cFeatures.rarity === 'common' ? 1 : (cFeatures.rarity === 'uncommon' ? 2 : 3))
+  );
+  score -= Math.min(1, rarityGap);
+
+  // Legendary mismatch
+  const tLeg = (target.type_line || '').includes('Legendary');
+  const cLeg = (candidate.type_line || '').includes('Legendary');
+  if (tLeg !== cLeg) {
+    score -= 1;
+  }
+
+  return {
+    score: Math.max(35, Math.min(95, score)),
+    reasons: reasons.slice(0, 4),
+  };
+}
+
+/**
  * Determines if two cards are an exact reprint (same name across expansions)
  * or an exact functional reprint (identical cost, stats, types, keywords, and oracle text).
  */
@@ -2075,6 +2720,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   // Non-flicker cards must never be paired with flicker/protection spells, and vice versa.
   if (tFeatures.actionSubtypes.has('flicker_protection') !== cFeatures.actionSubtypes.has('flicker_protection')) {
     return { score: 0, reasons: [] };
+  }
+
+  // 0.4 Exact Oracle Text / Core Rules Clause Priority Match (Rule 2)
+  const exactClauseMatch = findExactOracleClauseMatch(target, candidate, tFeatures, cFeatures);
+  if (exactClauseMatch) {
+    return computeExactOracleMatchScore(target, candidate, tFeatures, cFeatures, exactClauseMatch);
   }
 
   let colorScore = 0;
@@ -2192,6 +2843,34 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   const bothShareColorsSpent = (
     tFeatures.actionSubtypes.has('colors_spent_mechanic') && cFeatures.actionSubtypes.has('colors_spent_mechanic')
   );
+  const bothShareToughnessCombatDamage = (
+    tFeatures.actionSubtypes.has('toughness_combat_damage') && cFeatures.actionSubtypes.has('toughness_combat_damage')
+  );
+  const bothShareToughnessMatters = (
+    tFeatures.actionSubtypes.has('toughness_matters_archetype') && cFeatures.actionSubtypes.has('toughness_matters_archetype')
+  );
+  const bothShareDefenderAttackEnabler = (
+    tFeatures.actionSubtypes.has('defender_attack_enabler') && cFeatures.actionSubtypes.has('defender_attack_enabler')
+  );
+  const bothShareToughnessCostReduction = (
+    tFeatures.actionSubtypes.has('toughness_cost_reduction') && cFeatures.actionSubtypes.has('toughness_cost_reduction')
+  );
+  const bothShareTokenAnthem = (
+    tFeatures.actionSubtypes.has('token_anthem') && cFeatures.actionSubtypes.has('token_anthem')
+  );
+  const bothShareTeamAnthem = (
+    tFeatures.actionSubtypes.has('team_anthem') && cFeatures.actionSubtypes.has('team_anthem')
+  );
+  const bothShareDiscardRemoval = (
+    tFeatures.actionSubtypes.has('discard_removal') && cFeatures.actionSubtypes.has('discard_removal')
+  );
+  const bothShareTuckRemoval = (
+    tFeatures.actionSubtypes.has('tuck_removal') && cFeatures.actionSubtypes.has('tuck_removal')
+  );
+  const bothShareNoncreatureSurveilEngine = (
+    (tFeatures.actionSubtypes.has('noncreature_surveil_engine') || (tFeatures.actionSubtypes.has('noncreature_spell_trigger') && tFeatures.actionSubtypes.has('empower_jace'))) &&
+    (cFeatures.actionSubtypes.has('noncreature_surveil_engine') || (cFeatures.actionSubtypes.has('noncreature_spell_trigger') && (cFeatures.actionSubtypes.has('surveil') || cFeatures.detectedCategories.has('selection'))))
+  );
   const bothShareSignatureEngine = (
     (tFeatures.actionSubtypes.has('connive_recruit') && cFeatures.actionSubtypes.has('connive_recruit')) ||
     bothShareAttackGranter ||
@@ -2203,6 +2882,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     bothShareLandfallPayoff ||
     bothShareFetchLand ||
     bothShareCultivateRamp ||
+    bothShareAuraGyRecursion ||
     bothShareBasicTutorArtifact ||
     bothShareRampArtifactToken ||
     bothShareArtifactAnimatorAura ||
@@ -2217,10 +2897,21 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     bothShareCounterTransferDistributor ||
     bothShareScalableX ||
     bothShareHydra ||
+    bothShareExactConverge ||
+    bothShareExactSunburst ||
     bothShareConvergeSunburst ||
     bothShareDomainVivid ||
     bothShareMultiColorScaling ||
     bothShareColorsSpent ||
+    bothShareToughnessCombatDamage ||
+    bothShareToughnessMatters ||
+    bothShareDefenderAttackEnabler ||
+    bothShareToughnessCostReduction ||
+    bothShareTokenAnthem ||
+    bothShareTeamAnthem ||
+    bothShareDiscardRemoval ||
+    bothShareTuckRemoval ||
+    bothShareNoncreatureSurveilEngine ||
     (tFeatures.actionSubtypes.has('death_counter_transfer') && cFeatures.actionSubtypes.has('death_counter_transfer'))
   );
   const bothShareDeathCounterTransfer = (
@@ -2547,6 +3238,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     lifegain_payoff: { pts: 12, label: 'Matching lifegain payoff synergy' },
     counters: { pts: 8, label: 'Matching counter synergy' },
     synergy: { pts: 7, label: 'Matching ETB / synergy trigger' },
+    token_anthem: { pts: 14, label: 'Matching token anthem / lord effect' },
+    team_anthem: { pts: 12, label: 'Matching team anthem effect' },
     equipment: { pts: 11, label: 'Matching equipment subtype' },
     tutor: { pts: 14, label: 'Matching library search / tutor effect' },
   };
@@ -2916,6 +3609,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     domain_vivid_scaling: { pts: 20, label: 'Both multicolor-scaling payoffs (Vivid / Domain permanents scaling)' },
     color_scaling_payoff: { pts: 18, label: 'Both multicolor-scaling payoffs (rewarding 3+ color decks)' },
     colors_spent_mechanic: { pts: 18, label: 'Both mechanics scaling with colors of mana spent' },
+    token_anthem: { pts: 22, label: 'Both anthem effects buffing creature tokens' },
+    team_anthem: { pts: 20, label: 'Both team-wide anthem effects' },
+    discard_removal: { pts: 20, label: 'Both activated / discard removal tricks' },
+    tuck_removal: { pts: 22, label: 'Both library-tuck removal / bounce effects' },
+    noncreature_surveil_engine: { pts: 20, label: 'Both noncreature spell trigger -> repeatable surveil engines' },
+    noncreature_spell_trigger: { pts: 16, label: 'Both noncreature spell trigger payoffs (spellslinger engine)' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
 
@@ -3323,6 +4022,32 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     }
   }
 
+  if (bothShareToughnessCombatDamage) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both assign combat damage based on toughness ("butt-strike")')) {
+      structuralReasons.unshift('Both assign combat damage based on toughness ("butt-strike")');
+    }
+  } else if (bothShareToughnessMatters) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    if (!structuralReasons.includes('Both high-toughness scaling archetype engines')) {
+      structuralReasons.unshift('Both high-toughness scaling archetype engines');
+    }
+  }
+
+  if (bothShareDefenderAttackEnabler) {
+    structuralActionPoints = Math.max(structuralActionPoints, 16);
+    if (!structuralReasons.includes('Both enable defender creatures to attack')) {
+      structuralReasons.push('Both enable defender creatures to attack');
+    }
+  }
+
+  if (bothShareToughnessCostReduction) {
+    structuralActionPoints = Math.max(structuralActionPoints, 16);
+    if (!structuralReasons.includes('Both feature toughness-based cost reduction')) {
+      structuralReasons.push('Both feature toughness-based cost reduction');
+    }
+  }
+
   // Action Subtype Mismatch Penalties
   let actionMismatchPenalty = 0;
 
@@ -3379,6 +4104,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 10);
   }
 
+  // Tuck / Library Bounce Removal vs Non-interactive Permanent mismatch penalty
+  if (tFeatures.actionSubtypes.has('tuck_removal') && !cFeatures.isRemoval && !cFeatures.detectedCategories.has('bounce')) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 28);
+  } else if (!tFeatures.isRemoval && !tFeatures.detectedCategories.has('bounce') && cFeatures.actionSubtypes.has('tuck_removal')) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 28);
+  }
+
   // Alliance / Creature-fall Triggered Growth Mismatch Penalty:
   // A conditional triggered-growth creature (undersized body requiring other creatures to enter to grow)
   // must never be scored as equivalent to a static enters-with / modular creature or baseline body!
@@ -3431,6 +4163,25 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   );
   if (tFeatures.actionSubtypes.has('etb_scry_artifact') && !candidateHasFiltering) {
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 10);
+  }
+
+  // Toughness-Matters / Butt-Strike vs Unrelated Go-Wide Overrun Finisher Mismatch:
+  // An archetype engine revolving around toughness and high-toughness defenders
+  // must never be matched with pure go-wide army overrun cards (e.g. Moonshaker Cavalry, Warren Warleader, Head of the Homestead)
+  if ((tFeatures.actionSubtypes.has('toughness_combat_damage') || tFeatures.actionSubtypes.has('toughness_matters_archetype')) &&
+      !cFeatures.actionSubtypes.has('toughness_combat_damage') && !cFeatures.actionSubtypes.has('toughness_matters_archetype')) {
+    if (cFeatures.createsCreatureTokens || cFeatures.actionSubtypes.has('creature_token_army') || cFeatures.actionSubtypes.has('team_pump') || (cFeatures.cmc >= 7 && !cFeatures.actionSubtypes.has('toughness_cost_reduction'))) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 28);
+    }
+  }
+
+  // Token Anthem / Team Anthem vs Unrelated Artifact Reanimator / Graveyard Engine Mismatch:
+  // A token anthem or team buff must never pair with a graveyard artifact reanimator or pure mana rock
+  if ((tFeatures.actionSubtypes.has('token_anthem') || tFeatures.actionSubtypes.has('team_anthem')) &&
+      !cFeatures.actionSubtypes.has('token_anthem') && !cFeatures.actionSubtypes.has('team_anthem')) {
+    if (cFeatures.actionSubtypes.has('reanimation') || cFeatures.detectedCategories.has('graveyard') || cFeatures.actionSubtypes.has('artifact_sac_sink') || cFeatures.actionSubtypes.has('mana_rock')) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 28);
+    }
   }
 
   // Cost Structure Match (up to 5 pts)
@@ -3542,6 +4293,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
         baselineReasons.push(`Curve-scaled stats (${cFeatures.power}/${cFeatures.toughness} for ${candidate.cmc}M)`);
       } else {
         statlineScore = 5;
+      }
+    } else if (totalStatDiff <= 4) {
+      statlineScore = (bothShareToughnessCombatDamage || bothShareToughnessMatters) ? 7 : 4;
+      if (bothShareToughnessCombatDamage || bothShareToughnessMatters) {
+        baselineReasons.push(`Comparable high-toughness combat scaling (effective ${tFeatures.effectivePower}/${tFeatures.effectiveToughness} vs ${cFeatures.effectivePower}/${cFeatures.effectiveToughness})`);
       }
     }
 
@@ -3688,16 +4444,20 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
             keywordMismatchPenalty += 12;
           }
         } else if (kw === 'reach' || kw === 'defender') {
-          const otherHasFlying = tHasKw
-            ? ((candidate.keywords || []).some(k => /flying/i.test(k)) || /flying/i.test(candidate.oracle_text || ''))
-            : ((target.keywords || []).some(k => /flying/i.test(k)) || /flying/i.test(target.oracle_text || ''));
-          if (otherHasFlying && (bothShareConvergeSunburst || bothShareMultiColorScaling)) {
+          if (bothShareToughnessCombatDamage || bothShareToughnessMatters) {
             keywordMismatchPenalty += 0;
           } else {
-            keywordMismatchPenalty += (bothShareConvergeSunburst || bothShareMultiColorScaling) ? 3 : 8;
+            const otherHasFlying = tHasKw
+              ? ((candidate.keywords || []).some(k => /flying/i.test(k)) || /flying/i.test(candidate.oracle_text || ''))
+              : ((target.keywords || []).some(k => /flying/i.test(k)) || /flying/i.test(target.oracle_text || ''));
+            if (otherHasFlying && (bothShareConvergeSunburst || bothShareMultiColorScaling)) {
+              keywordMismatchPenalty += 0;
+            } else {
+              keywordMismatchPenalty += (bothShareConvergeSunburst || bothShareMultiColorScaling) ? 3 : 8;
+            }
           }
         } else {
-          keywordMismatchPenalty += (bothShareConvergeSunburst || bothShareMultiColorScaling) ? 3 : 5;
+          keywordMismatchPenalty += (bothShareConvergeSunburst || bothShareMultiColorScaling || bothShareToughnessCombatDamage || bothShareToughnessMatters) ? 3 : 5;
         }
       } else if (!isEmpowerCrossMechanicBridge) {
         // Non-creature combat tricks / spells granting keywords
@@ -3706,9 +4466,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     }
   }
 
-  if (bothShareExactConverge || bothShareExactSunburst) {
+  if (bothShareExactConverge || bothShareExactSunburst || bothShareToughnessCombatDamage) {
     keywordMismatchPenalty = Math.min(3, keywordMismatchPenalty);
-  } else if (bothShareConvergeSunburst || bothShareMultiColorScaling) {
+  } else if (bothShareConvergeSunburst || bothShareMultiColorScaling || bothShareToughnessMatters) {
     keywordMismatchPenalty = Math.min(6, keywordMismatchPenalty);
   }
 
@@ -3744,8 +4504,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       cardTypeMismatchPenalty += 4;
     }
   }
+  let tuckMismatchPenalty = 0;
+  if ((tFeatures.actionSubtypes.has('tuck_removal') && !cFeatures.isRemoval && !cFeatures.detectedCategories.has('bounce')) ||
+      (!tFeatures.isRemoval && !tFeatures.detectedCategories.has('bounce') && cFeatures.actionSubtypes.has('tuck_removal'))) {
+    tuckMismatchPenalty += 24;
+  }
 
-  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty + excessActionMismatch;
+  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty + excessActionMismatch + tuckMismatchPenalty;
   let rawScore = colorScore + cmcScore + method1LexicalScore + method2StructuralScore + statlineScore - discrepancyPenalty;
 
   // Learned Precedent Boost & Attribution (Touchstone benchmarks & bridged mechanics)
@@ -3813,6 +4578,52 @@ export function getCuratedBenchmarkCandidates(
   const scored = uniquePool.map(c => {
     let relevance = 0;
     const cType = (c.type_line || '').toLowerCase();
+    const tFeatures = extractCardFeatures(targetCard);
+    const cFeatures = extractCardFeatures(c);
+
+    // Exact Oracle Clause Match Priority (Directive 2)
+    const exactMatch = findExactOracleClauseMatch(targetCard, c, tFeatures, cFeatures);
+    if (exactMatch) {
+      relevance += 120;
+    }
+
+    // Toughness Combat Damage & Toughness Matters Archetype Priority
+    const targetIsToughness = tFeatures.actionSubtypes.has('toughness_combat_damage') || tFeatures.actionSubtypes.has('toughness_matters_archetype');
+    const cIsToughness = cFeatures.actionSubtypes.has('toughness_combat_damage') || cFeatures.actionSubtypes.has('toughness_matters_archetype');
+
+    if (targetIsToughness && cIsToughness) {
+      relevance += 70;
+      if (tFeatures.actionSubtypes.has('toughness_combat_damage') && cFeatures.actionSubtypes.has('toughness_combat_damage')) {
+        relevance += 30;
+      }
+      if (tFeatures.actionSubtypes.has('defender_attack_enabler') && cFeatures.actionSubtypes.has('defender_attack_enabler')) {
+        relevance += 20;
+      }
+    } else if (targetIsToughness && !cIsToughness) {
+      // Disqualify / heavily demote generic go-wide swarm/token wincons when comparing a toughness engine!
+      if (cFeatures.actionSubtypes.has('creature_token_army') || cFeatures.actionSubtypes.has('team_pump') || (c.cmc >= 7 && !cFeatures.actionSubtypes.has('toughness_cost_reduction'))) {
+        relevance -= 60;
+      }
+    }
+
+    // Tuck / Library-Bounce Removal Priority
+    const targetIsTuck = tFeatures.actionSubtypes.has('tuck_removal');
+    const cIsTuck = cFeatures.actionSubtypes.has('tuck_removal');
+    if (targetIsTuck && cIsTuck) {
+      relevance += 90;
+      if (cFeatures.actionSubtypes.has('scry') || cFeatures.actionSubtypes.has('surveil') || cFeatures.actionSubtypes.has('empower_jace_surveil')) {
+        relevance += 20;
+      }
+    } else if (targetIsTuck && !cFeatures.isRemoval && !cFeatures.detectedCategories.has('bounce')) {
+      relevance -= 60;
+    }
+
+    // Noncreature Spellslinger Surveil Engine Priority
+    const targetIsSpellslingerSurveil = tFeatures.actionSubtypes.has('noncreature_surveil_engine');
+    const cIsSpellslingerSurveil = cFeatures.actionSubtypes.has('noncreature_surveil_engine') || (cFeatures.actionSubtypes.has('noncreature_spell_trigger') && (cFeatures.actionSubtypes.has('surveil') || cFeatures.detectedCategories.has('selection')));
+    if (targetIsSpellslingerSurveil && cIsSpellslingerSurveil) {
+      relevance += 70;
+    }
 
     // Type Match
     if (targetIsCreature && cType.includes('creature')) relevance += 30;
@@ -3852,10 +4663,10 @@ export function getCuratedBenchmarkCandidates(
         relevance -= 40;
       }
     } else {
-      const cmcDiff = Math.abs(c.cmc - targetCard.cmc);
-      if (cmcDiff === 0) relevance += 15;
-      else if (cmcDiff === 1) relevance += 10;
-      else if (cmcDiff === 2) relevance += 5;
+      const cmcDiff = Math.abs(cFeatures.effectiveCmc - tFeatures.effectiveCmc);
+      if (cmcDiff <= 0.5) relevance += 15;
+      else if (cmcDiff <= 1.5) relevance += 10;
+      else if (cmcDiff <= 2.5) relevance += 5;
     }
 
     // Team and combat counter distribution priority
@@ -3963,6 +4774,40 @@ export function getCuratedBenchmarkCandidates(
       }
     }
 
+    // Token Anthem & Discard / Channel Removal Priority
+    const targetIsTokenAnthem = (
+      /creature tokens (?:you control )?get \+[0-9x]+\/\+[0-9x]+/i.test(targetCard.oracle_text || '') ||
+      /tokens you control get \+[0-9x]+\/\+[0-9x]+/i.test(targetCard.oracle_text || '') ||
+      /creature tokens you control (?:get|have)/i.test(targetCard.oracle_text || '')
+    );
+    const cIsTokenAnthem = (
+      /creature tokens (?:you control )?get \+[0-9x]+\/\+[0-9x]+/i.test(c.oracle_text || '') ||
+      /tokens you control get \+[0-9x]+\/\+[0-9x]+/i.test(c.oracle_text || '') ||
+      /creature tokens you control (?:get|have)/i.test(c.oracle_text || '')
+    );
+    if (targetIsTokenAnthem && cIsTokenAnthem) {
+      relevance += 80;
+    } else if (targetIsTokenAnthem) {
+      const cIsTeamAnthem = /creatures you control get \+[0-9x]+\/\+[0-9x]+/i.test(c.oracle_text || '');
+      if (cIsTeamAnthem) relevance += 40;
+      // Demote pure artifact reanimators / combo artifacts
+      if (/exile.*artifacts.*from your graveyard|sacrifice an artifact/i.test(c.oracle_text || '')) {
+        relevance -= 60;
+      }
+    }
+
+    const targetIsDiscardRemoval = /discard (?:this card|~):\s*(?:(?:it|~) deals \d+ damage|destroy target|exile target)/i.test(targetCard.oracle_text || '');
+    if (targetIsDiscardRemoval) {
+      const cIsCombatOrInstantRemoval = /deals \d+ damage to target attacking or blocking creature|target attacking or blocking creature/i.test(c.oracle_text || '');
+      if (cIsCombatOrInstantRemoval) {
+        relevance += 60;
+      }
+      const cIsChannelOrDiscard = /channel\s*—|discard (?:this card|~):/i.test(c.oracle_text || '');
+      if (cIsChannelOrDiscard) {
+        relevance += 50;
+      }
+    }
+
     return { card: c, relevance };
   });
 
@@ -4033,7 +4878,7 @@ export async function findSimilarCards(
   fallbackPool: Card[] = [],
   userId?: string
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v65`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v68`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -4597,4 +5442,19 @@ export async function buildCustomPrecedentMatch(
     tierGrade,
     isCustomOverride: true,
   };
+}
+
+/**
+ * Formats a target reference card and its comparable precedent cards into
+ * a standardized tuning capture string:
+ * "<Ref card name> vs <comp1 name>, <comp2 name>, <comp3 name>, <comp4 name>"
+ */
+export function buildCompTuningString(targetCard: Card, matches: SimilarCardMatch[]): string {
+  if (!targetCard) return '';
+  const compNames = matches
+    .map((m) => m.card?.name)
+    .filter(Boolean)
+    .join(', ');
+
+  return `${targetCard.name} vs ${compNames}`;
 }

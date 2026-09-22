@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Card } from '../../types/mtg';
-import { SimilarCardMatch, calculateCardSimilarity } from '../../services/cardSimilarity';
+import { SimilarCardMatch, calculateCardSimilarity, buildCompTuningString } from '../../services/cardSimilarity';
 import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from '../../services/scryfall';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
 import { CardImage } from '../UI/CardImage';
 import { CardObfuscator } from '../CardObfuscator';
 import { getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
+import { checkIsAdmin } from '../../services/admin';
+import { getActiveUser } from '../../services/storage';
 import {
   X,
   Search,
@@ -15,6 +17,8 @@ import {
   ArrowLeftRight,
   Sparkles,
   RotateCcw,
+  Shield,
+  Check,
 } from 'lucide-react';
 import { buildScryfallPrecedentQuery } from './PrecedentCardSearch';
 
@@ -54,6 +58,7 @@ interface PrecedentSwapSearchModalProps {
   initialSlotIndex?: number;
   onConfirmSlotReplacement: (slotIndex: number, chosenCard: Card) => void;
   onRevertSlot?: (slotIndex: number) => void;
+  isAdmin?: boolean;
 }
 
 export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> = ({
@@ -64,6 +69,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
   initialSlotIndex = 0,
   onConfirmSlotReplacement,
   onRevertSlot,
+  isAdmin,
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<number>(0);
   const [query, setQuery] = useState<string>('');
@@ -75,20 +81,58 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
   const [results, setResults] = useState<Card[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [activeCardView, setActiveCardView] = useState<'reference' | 'slot'>('slot');
+  const [mobileTab, setMobileTab] = useState<'search' | 'preview'>('search');
 
   const targetCardRating = useMemo(() => {
     return targetCard ? getOrEstimate17LandsCardRating(targetCard) : null;
   }, [targetCard]);
 
+  const [effectiveIsAdmin, setEffectiveIsAdmin] = useState<boolean>(isAdmin ?? false);
+  const [copiedTuning, setCopiedTuning] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof isAdmin === 'boolean') {
+      setEffectiveIsAdmin(isAdmin);
+      return;
+    }
+    const user = getActiveUser();
+    checkIsAdmin(user).then((res) => setEffectiveIsAdmin(res));
+  }, [isAdmin]);
+
+  const handleCopyTuningComps = useCallback(async () => {
+    if (!targetCard || !currentMatches.length) return;
+    const tuningStr = buildCompTuningString(targetCard, currentMatches);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tuningStr);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = tuningStr;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedTuning(true);
+      setTimeout(() => setCopiedTuning(false), 2000);
+      console.log('[Comp Tuning Captured]:', tuningStr);
+    } catch (err) {
+      console.error('Failed to copy comp tuning string to clipboard:', err);
+    }
+  }, [targetCard, currentMatches]);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Sync initial slot index
+  // Sync initial slot index & reset mobile tab to search on open
   useEffect(() => {
     if (typeof initialSlotIndex === 'number' && initialSlotIndex >= 0 && initialSlotIndex < 4) {
       setSelectedSlot(initialSlotIndex);
     } else {
       setSelectedSlot(0);
+    }
+    if (isOpen) {
+      setMobileTab('search');
     }
   }, [initialSlotIndex, isOpen]);
 
@@ -368,7 +412,10 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                 </h3>
                 <button
                   type="button"
-                  onClick={() => setActiveCardView('reference')}
+                  onClick={() => {
+                    setActiveCardView('reference');
+                    setMobileTab('preview');
+                  }}
                   className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 font-bold border border-violet-200 dark:border-violet-800/60 hover:bg-violet-200 dark:hover:bg-violet-900/80 transition-colors cursor-pointer flex items-center gap-1.5"
                   title="Click to view original reference card in left panel"
                 >
@@ -382,14 +429,67 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Close (Esc)"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {effectiveIsAdmin && currentMatches.length > 0 && (
+              <button
+                type="button"
+                onClick={handleCopyTuningComps}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 shadow-2xs"
+                title="Admin: Capture '<Ref card> vs <comp1>, <comp2>, <comp3>, <comp4>' to clipboard for tuning"
+              >
+                {copiedTuning ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-emerald-700 dark:text-emerald-300">Copied Tuning String!</span>
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Capture Tuning Comps</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Close (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile View Toggle Bar (Visible only on < md) */}
+        <div className="flex md:hidden items-center justify-between gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-[#070b1e] shrink-0">
+          <div className="flex items-center gap-1 w-full bg-slate-200/80 dark:bg-[#050818] p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setMobileTab('search')}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mobileTab === 'search'
+                  ? 'bg-violet-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Search & Candidates</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('preview')}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mobileTab === 'preview'
+                  ? 'bg-violet-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              <span>Current Slot {selectedSlot + 1}</span>
+            </button>
+          </div>
         </div>
 
         {/* Modal Body: 2-Column Split Layout */}
@@ -397,7 +497,9 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
           {/* ========================================================= */}
           {/* LEFT COLUMN: Card Being Swapped (Width ~360px)            */}
           {/* ========================================================= */}
-          <div className="w-full md:w-[360px] lg:w-[380px] shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#070b1e]/60 flex flex-col overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-4">
+          <div className={`w-full md:w-[360px] lg:w-[380px] shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#070b1e]/60 flex-col overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-4 ${
+            mobileTab === 'preview' ? 'flex flex-1 min-h-0' : 'hidden md:flex'
+          }`}>
             {/* Slot Selector Tabs & Reference Card Toggle */}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-1">
@@ -518,7 +620,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       <CardObfuscator
                         card={targetCard}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
-                        size="lg"
+                        size="md"
                         showSublabel={false}
                       />
                     </div>
@@ -631,7 +733,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       <CardObfuscator
                         card={currentSlotCard}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
-                        size="lg"
+                        size="md"
                         showSublabel={false}
                       />
                     </div>
@@ -741,14 +843,59 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                 </div>
               )}
             </div>
+
+            {/* Mobile Return to Search Button */}
+            <div className="flex md:hidden pt-1">
+              <button
+                type="button"
+                onClick={() => setMobileTab('search')}
+                className="w-full py-2.5 px-3 rounded-xl text-xs font-mono font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Search className="w-4 h-4" />
+                <span>Search Candidates for Slot {selectedSlot + 1}</span>
+              </button>
+            </div>
           </div>
 
           {/* ========================================================= */}
           {/* RIGHT COLUMN: Robust Search & Visual Card Grid            */}
           {/* ========================================================= */}
-          <div className="flex-1 min-w-0 flex flex-col bg-white dark:bg-[#090e24] overflow-hidden">
+          <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#090e24] overflow-hidden ${
+            mobileTab === 'search' ? 'flex min-h-0' : 'hidden md:flex'
+          }`}>
             {/* Search Toolbar (Main Screen Style) */}
-            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0 bg-slate-50/50 dark:bg-[#060a1d]/50">
+            <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3 shrink-0 bg-slate-50/50 dark:bg-[#060a1d]/50">
+              {/* Mobile-only slot selector strip */}
+              <div className="flex md:hidden items-center justify-between gap-1.5 p-1 bg-slate-200/70 dark:bg-[#050818] rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono mb-1">
+                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 pl-1.5">
+                  Slot:
+                </span>
+                <div className="flex items-center gap-1">
+                  {[0, 1, 2, 3].map((slotIdx) => {
+                    const isCur = selectedSlot === slotIdx;
+                    const match = currentMatches[slotIdx];
+                    const hasCustom = match?.isCustomOverride;
+                    return (
+                      <button
+                        key={slotIdx}
+                        type="button"
+                        onClick={() => setSelectedSlot(slotIdx)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                          isCur
+                            ? 'bg-violet-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span>Slot {slotIdx + 1}</span>
+                        {hasCustom && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isCur ? 'bg-amber-300' : 'bg-amber-500'}`} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Row 1: Search Input */}
               <div className="flex items-center gap-2">
                 <div className="relative flex-1 group">
@@ -1098,27 +1245,24 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-[#050818]/90 shrink-0">
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/90 dark:bg-[#050818]/90 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold font-mono text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold font-mono text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           >
             Cancel
           </button>
 
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
-            <span>Target Card:</span>
-            <span className="font-bold text-slate-900 dark:text-white">
-              {targetCard.name}
-            </span>
-            <span>• Active Slot:</span>
-            <span className="font-bold text-violet-700 dark:text-cyan-300">
-              Slot {selectedSlot + 1} ({currentSlotCard?.name || 'Empty'})
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
+            <span className="hidden sm:inline">Target: <strong className="text-slate-900 dark:text-white">{targetCard.name}</strong> •</span>
+            <span>Replacing:</span>
+            <span className="font-bold text-violet-700 dark:text-cyan-300 truncate">
+              Slot {selectedSlot + 1} {currentSlotCard?.name ? `(${currentSlotCard.name})` : ''}
             </span>
           </div>
 
-          <div className="text-xs font-mono text-slate-400">
+          <div className="hidden lg:block text-xs font-mono text-slate-400 shrink-0">
             Click any card's "Swap into Slot {selectedSlot + 1}" button to replace
           </div>
         </div>

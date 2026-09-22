@@ -44,6 +44,7 @@ interface SetExplorerProps {
   onSelectedColorsChange?: (c: string[]) => void;
   onSelectedRaritiesChange?: (r: string[]) => void;
   onSelectedRolesChange?: (r: string[]) => void;
+  isAdmin?: boolean;
 }
 
 export const SetExplorer: React.FC<SetExplorerProps> = ({
@@ -52,6 +53,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   currentSetName,
   currentSet,
   currentUser,
+  isAdmin,
   userEvaluations = {},
   seventeenLandsData,
   isBlindGrading: propIsBlindGrading,
@@ -1474,6 +1476,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           onAdoptGrade={(targetCard, grade) => {
             handleQuickGradeInModal(targetCard, grade);
           }}
+          isAdmin={isAdmin}
         />
       )}
 

@@ -877,6 +877,7 @@ const AppContent: React.FC = () => {
                 currentSetName={currentSet.name}
                 currentSet={currentSet}
                 currentUser={currentUser}
+                isAdmin={isAdmin}
                 userEvaluations={userEvaluations}
                 userArchetypeEvaluations={userArchetypeEvaluations}
                 userColorEvaluations={userColorEvaluations}
@@ -907,6 +908,7 @@ const AppContent: React.FC = () => {
                 currentSetName={currentSet.name}
                 currentSet={currentSet}
                 currentUser={currentUser}
+                isAdmin={isAdmin}
                 userEvaluations={userEvaluations}
                 seventeenLandsData={seventeenLandsData}
                 isBlindGrading={isBlindGrading}

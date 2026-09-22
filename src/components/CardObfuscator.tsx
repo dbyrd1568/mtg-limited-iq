@@ -377,7 +377,7 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
       {/* Card Outer Container */}
       <div
         style={{
-          width: `min(${sizeConfig.maxW}px, 100%, 100cqw, calc(100cqh * 63 / 88))`,
+          width: `min(${sizeConfig.maxW}px, 100%)`,
           aspectRatio: '63 / 88',
           maxHeight: '100%',
           maxWidth: '100%',

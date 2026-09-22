@@ -538,7 +538,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
               <span>CMC {currentCard.cmc}</span>
             </div>
 
-            <div className="flex-1 min-h-0 w-full flex items-center justify-center [container-type:size]">
+            <div className="w-full flex items-center justify-center py-2 md:flex-1 md:min-h-0">
               <CardObfuscator
                 card={currentCard}
                 obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}

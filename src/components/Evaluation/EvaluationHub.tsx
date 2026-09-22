@@ -62,6 +62,7 @@ interface EvaluationHubProps {
   onSelectedRaritiesChange?: (r: string[]) => void;
   onSelectedRolesChange?: (r: string[]) => void;
   availableSets?: SetInfo[];
+  isAdmin?: boolean;
 }
 
 export const EvaluationHub: React.FC<EvaluationHubProps> = ({
@@ -70,6 +71,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   currentSetName,
   currentSet,
   currentUser,
+  isAdmin,
   userEvaluations,
   userArchetypeEvaluations,
   userColorEvaluations,
@@ -2006,6 +2008,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           onAdoptGrade={(targetCard, grade) => {
             handleQuickGrade(targetCard, grade);
           }}
+          isAdmin={isAdmin}
         />
       )}
 
