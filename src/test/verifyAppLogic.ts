@@ -1,4 +1,4 @@
-import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS, deduplicateCards, normalizeScryfallCard, isRemovalSpell, isCounterspell, isCardDrawSpell, isInteractionSpell } from '../services/scryfall';
+import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS, deduplicateCards, normalizeScryfallCard, isRemovalSpell, isCounterspell, isCardDrawSpell, isInteractionSpell, isBasicLand } from '../services/scryfall';
 import { cardMatchesRoleFilter } from '../components/UI/ManaColorFilterBar';
 import { generateQuiz } from '../services/quizGenerator';
 import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl, getPreloaded17LandsData, get17LandsCardRating } from '../services/seventeenLands';
@@ -920,6 +920,22 @@ const rawTestCards: Card[] = [
     keywords: [],
     booster: true,
   },
+  // Duplicate Plains #262 (promo variant of the same collector number, should deduplicate to base booster)
+  {
+    id: 'blb-262-promo',
+    name: 'Plains',
+    set: 'BLB',
+    set_name: 'Bloomburrow',
+    collector_number: '262',
+    cmc: 0,
+    type_line: 'Basic Land — Plains',
+    colors: ['C'],
+    color_identity: ['W'],
+    rarity: 'common',
+    keywords: [],
+    booster: false,
+    promo: true,
+  },
   // Distinct other card
   {
     id: 'blb-95',
@@ -937,8 +953,11 @@ const rawTestCards: Card[] = [
   },
 ];
 
+console.assert(isBasicLand(rawTestCards[3]) === true, 'isBasicLand must return true for Basic Land — Plains');
+console.assert(isBasicLand(rawTestCards[0]) === false, 'isBasicLand must return false for Heartfire Hero');
+
 const deduped = deduplicateCards(rawTestCards);
-console.assert(deduped.length === 3, `Expected exactly 3 unique cards, got ${deduped.length}`);
+console.assert(deduped.length === 4, `Expected exactly 4 unique cards (Hero #138, Plains #262, Plains #263, Fell #95), got ${deduped.length}`);
 
 const hero = deduped.find(c => c.name === 'Heartfire Hero');
 console.assert(hero !== undefined, 'Heartfire Hero must be present in deduped cards');
@@ -946,8 +965,9 @@ console.assert(hero?.collector_number === '138', `Heartfire Hero must resolve to
 console.assert(hero?.booster === true, 'Heartfire Hero must have booster=true');
 
 const plains = deduped.filter(c => c.name === 'Plains');
-console.assert(plains.length === 1, `Expected exactly 1 Plains, got ${plains.length}`);
-console.assert(plains[0].collector_number === '262', `Plains must resolve to lowest collector number 262, got #${plains[0].collector_number}`);
+console.assert(plains.length === 2, `Expected exactly 2 distinct Plains collector number variants, got ${plains.length}`);
+console.assert(plains.some(p => p.collector_number === '262' && p.booster === true && p.promo !== true), 'Plains #262 must resolve to booster over promo');
+console.assert(plains.some(p => p.collector_number === '263'), 'Plains #263 must be retained as distinct basic land variant');
 
 // Order Inversion Test: Even if showcase #272 appears FIRST in array, #138 must be selected
 const invertedCards: Card[] = [rawTestCards[1], rawTestCards[0]];
@@ -957,7 +977,7 @@ console.assert(invertedDeduped[0].collector_number === '138', 'Inverted list mus
 
 console.log('   ✓ Exact name deduplication verified.');
 console.log('   ✓ Preferred base booster printing over showcase/promo treatments verified.');
-console.log('   ✓ Redundant basic land variant deduplication verified.');
+console.log('   ✓ Basic land variant exception verified (distinct collector numbers preserved, identical prints deduplicated).');
 console.log('   ✓ Order-independent canonical selection verified.');
 
 // Test 15: Contextual First-Time Onboarding Tour Verification

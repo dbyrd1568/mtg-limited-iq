@@ -412,14 +412,31 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
   }
 }
 
+export function isBasicLand(card: Card | { name?: string; type_line?: string }): boolean {
+  if (!card) return false;
+  const typeLine = (card.type_line || '').toLowerCase();
+  if (typeLine.includes('basic') && typeLine.includes('land')) return true;
+  const name = (card.name || '').trim().toLowerCase();
+  const standardBasics = [
+    'plains', 'island', 'swamp', 'mountain', 'forest', 'wastes',
+    'snow-covered plains', 'snow-covered island', 'snow-covered swamp', 'snow-covered mountain', 'snow-covered forest'
+  ];
+  return standardBasics.includes(name);
+}
+
 /**
- * Deduplicates cards in a set by exact card name.
+ * Deduplicates cards in a set by exact card name, with an explicit exception for Basic Lands.
  * When multiple treatments/variants exist for the same card in a set (e.g. standard frame vs showcase/borderless/extended art/promo),
  * this preserves the canonical base booster printing:
  * 1. Prefer booster pack printings (booster !== false) over special bonus/commander/promo sheets
  * 2. Prefer non-promo printings (promo !== true) over promo versions
  * 3. Prefer lowest numeric collector number (standard booster cards in MTG sets are always assigned the lowest collector numbers)
  * 4. Maintain consistent set ordering
+ * 
+ * BASIC LAND EXCEPTION:
+ * For Basic Lands, distinct collector number variants (e.g. Plains #281 and Plains #282 in Reality Fracture FRA)
+ * are preserved so that total card counts match physical booster set runs. Duplicate treatments of the same collector
+ * number (e.g. promo/foil variants of the same number) are still cleanly deduplicated.
  */
 export function deduplicateCards(cards: Card[]): Card[] {
   if (!cards || cards.length === 0) return [];
@@ -429,7 +446,10 @@ export function deduplicateCards(cards: Card[]): Card[] {
   for (const card of cards) {
     if (!card || !card.name) continue;
     const exactName = card.name.trim();
-    const key = exactName.toLowerCase();
+    const isBasic = isBasicLand(card);
+    const key = isBasic
+      ? `${exactName.toLowerCase()}_${(card.collector_number || '').trim().toLowerCase()}`
+      : exactName.toLowerCase();
     const existing = map.get(key);
 
     if (!existing) {
@@ -475,8 +495,9 @@ export async function fetchCardsForSet(
   onCachedCards?: (cards: Card[]) => void
 ): Promise<Card[]> {
   const upperCode = setCode.toUpperCase();
-  const cacheKey = `scryfall_cards_${upperCode}_v8`;
+  const cacheKey = `scryfall_cards_${upperCode}_v9`;
   const legacyCacheKeys = [
+    `scryfall_cards_${upperCode}_v8`,
     `scryfall_cards_${upperCode}_v7`,
     `scryfall_cards_${upperCode}_v6`,
     `scryfall_cards_${upperCode}_v5`,
@@ -484,6 +505,9 @@ export async function fetchCardsForSet(
 
   // 1. Read cached cards from IndexedDB if available and deliver immediately for instant UI
   let cachedCards: Card[] | null = null;
+  const popSet = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === upperCode);
+  const targetSetCount = popSet?.card_count || 0;
+
   try {
     let rawCached = await get<Card[]>(cacheKey);
     if (!rawCached || rawCached.length === 0) {
@@ -555,17 +579,21 @@ export async function fetchCardsForSet(
         allCards.push(...normalized);
       }
 
-      // Check on EVERY load: Does cached cards count match or exceed the authoritative live Scryfall total?
-      // If cachedCards already matches Scryfall's live total_cards count and set exceeds 1 page,
+      // Check on EVERY load: Does cached cards count match or exceed the target set count or live Scryfall total?
+      // If cachedCards already matches targetSetCount (e.g. 290) or live totalCount and set exceeds 1 page,
       // the cache is confirmed complete and we can return cachedCards without fetching subsequent pages.
-      if (isFirstPage && cachedCards && totalCount > 0 && cachedCards.length >= totalCount && totalCount > 175) {
+      const isComplete = targetSetCount > 0
+        ? (cachedCards && cachedCards.length >= targetSetCount)
+        : (cachedCards && totalCount > 0 && cachedCards.length >= totalCount && totalCount > 175);
+
+      if (isFirstPage && isComplete && cachedCards) {
         set(cacheKey, cachedCards).catch(() => {});
         return cachedCards;
       }
       isFirstPage = false;
 
       if (onProgress) {
-        onProgress(allCards.length, Math.max(totalCount, allCards.length));
+        onProgress(allCards.length, Math.max(targetSetCount, totalCount, allCards.length));
       }
 
       nextUrl = data.has_more ? data.next_page : null;
@@ -574,6 +602,35 @@ export async function fetchCardsForSet(
         // Respect Scryfall polite rate limit (50-100ms)
         await new Promise((res) => setTimeout(res, 80));
       }
+    }
+
+    // Fetch additional basic land printings within the set's main collector run so distinct basic land variants are retained
+    try {
+      const basicQuery = encodeURIComponent(`set:${upperCode.toLowerCase()} t:basic -layout:art_series -t:token`);
+      const basicUrl = `${SCRYFALL_API_BASE}/cards/search?q=${basicQuery}&unique=prints&order=set`;
+      const basicRes = await fetch(basicUrl, {
+        headers: {
+          'User-Agent': 'MTGLimitedIQ/2.0 (https://mtg-limited-iq.com)',
+          Accept: 'application/json',
+        },
+      });
+      if (basicRes.ok) {
+        const basicData: any = await basicRes.json();
+        if (Array.isArray(basicData.data)) {
+          const maxCollectorNum = targetSetCount > 0 ? targetSetCount : 400;
+          const normalizedBasics = basicData.data
+            .filter((c: any) => {
+              if (c.set?.toUpperCase() !== upperCode) return false;
+              if (!c.image_uris && (!c.card_faces || !c.card_faces[0]?.image_uris)) return false;
+              const num = parseInt(String(c.collector_number || '').replace(/\D/g, ''), 10);
+              return isNaN(num) || num <= maxCollectorNum;
+            })
+            .map(normalizeScryfallCard);
+          allCards.push(...normalizedBasics);
+        }
+      }
+    } catch (basicErr) {
+      console.warn(`Could not fetch extra basic land prints for ${upperCode}:`, basicErr);
     }
 
     const dedupedCards = deduplicateCards(allCards);
