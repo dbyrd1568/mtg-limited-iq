@@ -104,7 +104,7 @@ export interface SeventeenLandsSetData {
 }
 
 // Card Evaluation Types
-export type GradeTier = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D' | 'F';
+export type GradeTier = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D' | 'F' | 'N/A';
 
 export interface UserCardEvaluation {
   cardId: string;
@@ -152,7 +152,7 @@ export interface CardEvaluationComparison {
   seventeenLandsData?: SeventeenLandsCardRating;
   gradeDelta: number; // positive = user overrated, negative = user underrated
   calibrationScore: number; // 0-100%
-  status: 'exact' | 'close' | 'overrated' | 'underrated' | 'unrated';
+  status: 'exact' | 'close' | 'overrated' | 'underrated' | 'unrated' | 'na';
 }
 
 export interface SetCalibrationSummary {
@@ -317,6 +317,7 @@ export interface UserAccount {
   provider: 'local' | 'google' | 'discord' | 'apple' | 'email';
   createdAt: string;
   lastLoginAt: string;
+  isAdmin?: boolean;
 }
 
 

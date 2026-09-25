@@ -55,10 +55,10 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
           <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-500/10 via-cyan-500/10 to-emerald-500/10 border border-violet-200/80 dark:border-cyan-800/50 space-y-1.5">
             <div className="flex items-center gap-2 font-bold text-violet-900 dark:text-cyan-200 text-xs font-heading">
               <Sparkles className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
-              <span>Natural &amp; Flexible Search (No Syntax Codes Required!)</span>
+              <span>Natural &amp; Flexible Search (Exact Phrases &amp; OR Words)</span>
             </div>
             <p className="text-slate-600 dark:text-slate-300 font-sans leading-relaxed text-[11px]">
-              You don&apos;t need <code className="px-1 py-0.5 rounded bg-violet-100 dark:bg-violet-950 font-mono font-bold text-violet-700 dark:text-cyan-300">o:</code> or quotes to find card rules text. Simply type natural phrases like <span className="font-bold text-slate-900 dark:text-white">"draw a card"</span> or <span className="font-bold text-slate-900 dark:text-white">"destroy target creature"</span> to search names, card faces, and rules text everywhere. Mana costs (<span className="font-bold">{'{2}{W}'}</span> or <span className="font-bold">2W</span>) and stats (<span className="font-bold">2/3</span>) are automatically inferred and can be freely mixed with text in any order!
+              Use quotes like <span className="font-bold text-slate-900 dark:text-white">"Counter target white or black spell"</span> or <span className="font-bold text-slate-900 dark:text-white">"draw a card"</span> to search for that exact combo of words in that order. Unquoted words like <span className="font-bold text-slate-900 dark:text-white">Counter target white or black spell</span> search for cards containing any/or of those words. Mana costs (<span className="font-bold">{'{2}{W}'}</span> or <span className="font-bold">2W</span>) and stats (<span className="font-bold">2/3</span>) are automatically inferred and can be freely mixed with text!
             </p>
           </div>
 
@@ -315,12 +315,20 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {[
                   {
+                    code: '"Counter target white or black spell"',
+                    desc: 'Exact phrase search: keeps words together in that exact sequence and order',
+                  },
+                  {
+                    code: 'Counter target white or black spell',
+                    desc: 'Any/or search: finds cards containing any of these words across the card',
+                  },
+                  {
                     code: 'draw a card',
-                    desc: 'Automatically searches rules text and card faces without requiring o: or quotes',
+                    desc: 'Searches for cards containing rules text and card faces',
                   },
                   {
                     code: 'draw a card {1}{U}',
-                    desc: 'Combines rules text phrase with {1}{U} mana cost',
+                    desc: 'Combines rules text with {1}{U} mana cost',
                   },
                   {
                     code: '{2}{W}',

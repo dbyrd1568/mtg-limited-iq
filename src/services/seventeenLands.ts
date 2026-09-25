@@ -7,7 +7,7 @@ import { supabase, isSupabaseConfigured } from './supabase';
 
 export const GRADE_TIERS: GradeTier[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
 
-export const GRADE_SCORES: Record<GradeTier, number> = {
+export const GRADE_SCORES: Record<GradeTier | 'N/A', number> = {
   'A+': 5.0,
   'A': 4.7,
   'A-': 4.3,
@@ -19,6 +19,7 @@ export const GRADE_SCORES: Record<GradeTier, number> = {
   'C-': 2.3,
   'D': 1.5,
   'F': 0.5,
+  'N/A': 0.0,
 };
 
 export function winRateToGradeTier(winRate: number): GradeTier {
@@ -36,7 +37,8 @@ export function winRateToGradeTier(winRate: number): GradeTier {
   return 'F';
 }
 
-export function gradeTierToIndex(tier: GradeTier): number {
+export function gradeTierToIndex(tier?: GradeTier | 'N/A'): number {
+  if (!tier || tier === 'N/A') return -1;
   return GRADE_TIERS.indexOf(tier);
 }
 
@@ -1224,6 +1226,20 @@ export function calculateSetCalibration(
     const key = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
     const userEval = userEvaluations[key];
     const landData = has17Lands ? seventeenLandsData?.cards[card.name] : undefined;
+    const isLand = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
+    const isNA = isLand || userEval?.userGrade === 'N/A';
+
+    if (isNA) {
+      comparisons.push({
+        card,
+        userEvaluation: userEval,
+        seventeenLandsData: landData,
+        gradeDelta: 0,
+        calibrationScore: 0,
+        status: 'na',
+      });
+      return;
+    }
 
     if (!userEval) {
       comparisons.push({
@@ -1310,7 +1326,7 @@ export function calculateSetCalibration(
   const evaluatorMeta = accuracyToEvaluatorGrade(overallCalScore);
 
   // Find biggest traps (user rated way too high, gap >= 2) and sleepers (user rated way too low, gap <= -2)
-  const ratedComparisons = comparisons.filter(c => c.userEvaluation && c.seventeenLandsData);
+  const ratedComparisons = comparisons.filter(c => c.userEvaluation && c.seventeenLandsData && c.status !== 'na');
   const biggestTraps = [...ratedComparisons]
     .filter(c => c.gradeDelta >= 2)
     .sort((a, b) => b.gradeDelta - a.gradeDelta)
@@ -1327,10 +1343,12 @@ export function calculateSetCalibration(
     else if (avgStepDelta < -0.5) bias = 'overly_critical';
   }
 
+  const gradableCardsCount = cards.filter(c => !(c.is_land || c.type_line?.toLowerCase().includes('land'))).length;
+
   return {
     setCode: cards[0]?.set || '',
     totalRated: totalRatedWith17Lands,
-    totalCards: cards.length,
+    totalCards: gradableCardsCount > 0 ? gradableCardsCount : cards.length,
     calibrationScore: overallCalScore,
     weightedScore: weightedCalScore,
     overallGrade: evaluatorMeta.grade,

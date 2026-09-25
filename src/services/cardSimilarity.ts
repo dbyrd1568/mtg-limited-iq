@@ -2,6 +2,7 @@ import { Card, GradeTier, MTGColor, MTGRarity } from '../types/mtg';
 import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from './scryfall';
 import { fetch17LandsSetData, winRateToGradeTier, gradeTierToIndex, indexToGradeTier, GRADE_SCORES, scoreToGradeTier, getOrEstimate17LandsCardRating } from './seventeenLands';
 import { getLearnedBenchmarkCandidates, getLearnedQueryExpansions, getLearnedPrecedentBoost } from './precedentLearning';
+import { getStoredCanonicalPrecedents, getTargetCardKey } from './precedentApprovalService';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
@@ -46,7 +47,7 @@ const similarityCache = new Map<string, CardSimilarityResult>();
  */
 export function getCachedSimilarCards(targetCard: Card | null | undefined): CardSimilarityResult | null {
   if (!targetCard || !targetCard.name || !targetCard.set) return null;
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v68`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v70`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -146,6 +147,12 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Run Aground', 'XLN', '{3}{U}', 4, 'Instant', "Put target artifact or creature on top of its owner's library.", ['U'], undefined, undefined, 'common'),
   createBenchmarkCard('Cruel Witness', 'VOW', '{2}{U}{U}', 4, 'Creature — Bird Horror', "Flying\nWhenever you cast a noncreature spell, surveil 1.", ['U'], '3', '3', 'common', ['Flying', 'Surveil']),
   createBenchmarkCard('Out of Sight', 'MH3', '{3}{U}', 4, 'Instant', "Put target nonland permanent into its owner's library third from the top.", ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Flashfreeze', 'FDN', '{1}{U}', 2, 'Instant', 'Counter target red or green spell.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Change the Equation', 'MOM', '{1}{U}', 2, 'Instant', "Choose one —\n• Counter target spell with mana value 2 or less.\n• Counter target red or green spell with mana value 6 or less.", ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Gainsay', 'THS', '{1}{U}', 2, 'Instant', 'Counter target blue spell.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Jace\'s Defeat', 'HOU', '{1}{U}', 2, 'Instant', 'Counter target blue spell. If it was a Jace planeswalker spell, scry 2.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Neutralizing Blast', 'FRF', '{1}{U}', 2, 'Instant', 'Counter target multicolored spell.', ['U'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Mystical Dispute', 'ELD', '{2}{U}', 3, 'Instant', "This spell costs {2} less to cast if it targets a blue spell.\nCounter target spell unless its controller pays {3}.", ['U'], undefined, undefined, 'uncommon'),
 
   // Black
   createBenchmarkCard('Eaten Alive', 'MID', '{B}', 1, 'Sorcery', 'As an additional cost to cast this spell, sacrifice a creature or pay {2}{B}. Exile target creature or planeswalker.', ['B']),
@@ -288,6 +295,12 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Gleaming Geardrake', 'MKM', '{U}{R}', 2, 'Artifact Creature — Drake', 'Flying. When Gleaming Geardrake enters the battlefield, investigate. Whenever you sacrifice an artifact, put a +1/+1 counter on Gleaming Geardrake.', ['U', 'R'], '1', '1', 'uncommon', ['Flying']),
   createBenchmarkCard('Oni-Cult Anvil', 'NEO', '{B}{R}', 2, 'Artifact', 'Whenever one or more artifacts you control leave the battlefield during your turn, create a 1/1 colorless Construct artifact creature token. {T}, Sacrifice an artifact: Oni-Cult Anvil deals 1 damage to each opponent. You gain 1 life.', ['B', 'R'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Unctus\'s Retrofitter', 'ONE', '{1}{U}', 2, 'Creature — Phyrexian Artificer', 'When Unctus\'s Retrofitter enters the battlefield, target noncreature artifact you control becomes an artifact creature with base power and toughness 4/4 for as long as Unctus\'s Retrofitter remains on the battlefield.', ['U'], '2', '3', 'uncommon'),
+  // High-Power Menace & Landcycling Curve-Topper Benchmarks
+  createBenchmarkCard('Ripscale Predator', 'CLU', '{4}{R}{R}', 6, 'Creature — Dinosaur', 'Menace', ['R'], '6', '5', 'common', ['Menace']),
+  createBenchmarkCard('Troll of Khazad-dûm', 'LTR', '{5}{B}', 6, 'Creature — Troll', 'This creature can\'t be blocked except by three or more creatures.\nSwampcycling {1}', ['B'], '6', '5', 'common', ['Landcycling', 'Swampcycling', 'Cycling']),
+  createBenchmarkCard('Gloomfang Mauler', 'MOM', '{5}{B}{B}', 7, 'Creature — Nightmare', 'Swampcycling {2}\nBackup 2\nMenace', ['B'], '5', '5', 'common', ['Backup', 'Landcycling', 'Menace', 'Swampcycling', 'Cycling']),
+  createBenchmarkCard('Baleful Beholder', 'AFR', '{4}{B}{B}', 6, 'Creature — Beholder', 'When this creature enters, choose one —\n• Antimagic Cone — Each opponent sacrifices an enchantment of their choice.\n• Fear Ray — Creatures you control gain menace until end of turn.', ['B'], '6', '5', 'common'),
+  createBenchmarkCard('Ogre Chitterlord', 'WOE', '{4}{R}{R}', 6, 'Creature — Ogre Warrior', 'Menace\nWhenever this creature enters or attacks, create two 1/1 black Rat creature tokens with "This token can\'t block." Then if you control five or more Rats, each Rat you control gets +2/+0 until end of turn.', ['R'], '6', '5', 'rare', ['Menace']),
 ];
 
 export const HISTORICAL_BENCHMARK_NAMES = new Set(
@@ -314,8 +327,8 @@ const EFFECT_PATTERNS: EffectPattern[] = [
   { pattern: /destroy all creatures with power/i, label: 'Board Wipe / Conditional Wrath', category: 'sweeper' },
   { pattern: /deals \d+ damage to each creature/i, label: 'Board Wipe / Sweeper', category: 'sweeper' },
   { pattern: /each creature gets [+-]?-\d+\/[+-]?-\d+/i, label: 'Board Wipe / Languish', category: 'sweeper' },
-  { pattern: /destroy all creatures/i, label: 'Board Wipe / Wrath', category: 'sweeper' },
-  { pattern: /counter target (spell|noncreature spell|creature spell)/i, label: 'Counterspell', category: 'counter' },
+  { pattern: /counter target (?:(?:white|blue|black|red|green)(?: or (?:white|blue|black|red|green))?|multicolored|non\w+) spell/i, label: 'Color Hoser Counterspell', category: 'counter' },
+  { pattern: /counter target (?:.*?\b)?spell/i, label: 'Counterspell', category: 'counter' },
   { pattern: /(draw|draws) (a|\d+|one|two|three|four|five|x|that many) cards?/i, label: 'Card Draw', category: 'draw' },
   { pattern: /where x is the amount of life you gained|if you gained life|whenever you gain life|amount of life you gained|if you gained \d+ or more life/i, label: 'Lifegain Payoff', category: 'lifegain_payoff' },
   { pattern: /target creature gets [+-]\d+\/[+-]\d+/i, label: 'Stat Modifier', category: 'trick' },
@@ -380,6 +393,13 @@ export function extractCardFeatures(card: Card) {
   const isCreature = frontTypeLine.includes('creature');
   const hasFlash = (card.keywords || []).some(k => k.toLowerCase() === 'flash') || oracle.includes('flash');
   const hasFlying = (card.keywords || []).some(k => k.toLowerCase() === 'flying') || oracle.includes('flying');
+  const hasMenace = (card.keywords || []).some(k => k.toLowerCase() === 'menace') ||
+                    /(^|\n|\b)menace\b/i.test(oracle) ||
+                    /can't be blocked except by (two|three|\d+)( or more)? creatures/i.test(oracle);
+  const hasTrample = (card.keywords || []).some(k => k.toLowerCase() === 'trample') || /(^|\n|\b)trample\b/i.test(oracle);
+  const hasDeathtouch = (card.keywords || []).some(k => k.toLowerCase() === 'deathtouch') || /(^|\n|\b)deathtouch\b/i.test(oracle);
+  const hasLandcycling = (card.keywords || []).some(k => /cycling/i.test(k)) ||
+                         /(basic landcycling|landcycling|plainscycling|islandcycling|swampcycling|mountaincycling|forestcycling)/i.test(rawOracle);
   const isInstant = frontTypeLine.includes('instant');
   const isSorcery = frontTypeLine.includes('sorcery');
   const isEnchantment = frontTypeLine.includes('enchantment');
@@ -508,13 +528,43 @@ export function extractCardFeatures(card: Card) {
   const isModalSpell = /choose (one|two|three)\b/i.test(rawOracle);
 
   // 1. Counterspell Subtypes
-  if (/counter target/i.test(oracle)) {
+  const isCounterspell = /counter target/i.test(oracle) || /counter that spell/i.test(oracle) || detectedCategories.has('counter');
+  let isColorHoserCounter = false;
+  let isColorPairHoser = false;
+  let isSingleColorHoser = false;
+
+  if (isCounterspell) {
+    detectedCategories.add('counter');
     if (/counter target .* unless/i.test(oracle)) {
       actionSubtypes.add('soft_tax_counter');
-    } else if (/counter target (spell|instant or sorcery spell)/i.test(oracle)) {
+    }
+    if (/counter target (?:.*?\b)?spell/i.test(oracle) && !/unless/i.test(oracle) && !/(?:noncreature|creature|artifact|enchantment|white|blue|black|red|green|multicolored)/i.test(oracle)) {
       actionSubtypes.add('hard_counter');
-    } else if (/counter target (noncreature|creature|artifact|enchantment) spell/i.test(oracle)) {
+    }
+    if (/counter target (noncreature|creature|artifact|enchantment) spell/i.test(oracle)) {
       actionSubtypes.add('restricted_counter');
+      if (/creature spell/i.test(oracle)) actionSubtypes.add('creature_counter');
+      if (/noncreature spell/i.test(oracle)) actionSubtypes.add('noncreature_counter');
+    }
+
+    // Color Hoser Counterspell Detection
+    const colorHoserMatch = oracle.match(/counter target (?:(?:white|blue|black|red|green)(?: or (?:white|blue|black|red|green))?|multicolored|nonblue|nonblack|nonwhite|nonred|nongreen) spell/i);
+    const modalColorHoser = isModalSpell && /counter target (?:(?:white|blue|black|red|green)(?: or (?:white|blue|black|red|green))?|multicolored) spell/i.test(rawOracle);
+
+    if (colorHoserMatch || modalColorHoser) {
+      isColorHoserCounter = true;
+      actionSubtypes.add('color_hoser_counter');
+      const textToAnalyze = colorHoserMatch ? colorHoserMatch[0] : rawOracle;
+      if (/(?:white or black|black or white|red or green|green or red|white or blue|blue or white|blue or black|black or blue|black or red|red or black|green or white|white or green|blue or red|red or blue|green or blue|blue or green)/i.test(textToAnalyze)) {
+        isColorPairHoser = true;
+        actionSubtypes.add('color_pair_hoser');
+      } else if (/(?:white|blue|black|red|green|nonblue|nonblack|nonwhite|nonred|nongreen) spell/i.test(textToAnalyze)) {
+        isSingleColorHoser = true;
+        actionSubtypes.add('single_color_hoser');
+      }
+      if (/multicolored spell/i.test(textToAnalyze)) {
+        actionSubtypes.add('multicolor_hoser');
+      }
     }
   }
 
@@ -862,6 +912,27 @@ export function extractCardFeatures(card: Card) {
       valueRiders.add('ramp');
       detectedCategories.add('ramp');
     }
+
+    // High-Power Menace Finisher (e.g. Apex Witchstalker, Ripscale Predator, Troll of Khazad-dûm, Baleful Beholder, Gloomfang Mauler, Ogre Chitterlord)
+    const powerVal = parseInt(card.power || '0', 10);
+    const isHighPowerMenace = hasMenace && (powerVal >= 5 || ((card.cmc || 0) >= 5 && powerVal >= 4));
+    if (isHighPowerMenace) {
+      actionSubtypes.add('high_power_menace');
+      actionSubtypes.add('evasion_threat');
+      detectedCategories.add('evasion');
+    }
+
+    // Landcycling Creature (e.g. Apex Witchstalker, Troll of Khazad-dûm, Gloomfang Mauler, Generous Ent, Eagles of the North)
+    if (hasLandcycling) {
+      actionSubtypes.add('landcycling_creature');
+      valueRiders.add('ramp');
+      detectedCategories.add('ramp');
+    }
+  }
+
+  if (hasLandcycling) {
+    valueRiders.add('ramp');
+    detectedCategories.add('ramp');
   }
 
   // Prepared creature / spell (Reality Fracture)
@@ -1476,6 +1547,10 @@ export function extractCardFeatures(card: Card) {
     isDefenderAttackEnabler,
     isToughnessCostReduction,
     isToughnessMatters,
+    isCounterspell,
+    isColorHoserCounter,
+    isColorPairHoser,
+    isSingleColorHoser,
     colors: cardColors,
     creatureSubtypes,
     basePower,
@@ -1487,6 +1562,10 @@ export function extractCardFeatures(card: Card) {
     entersWithCountersCount,
     etbSelfCounterCount,
     rarity: (card.rarity || 'common').toLowerCase(),
+    hasMenace,
+    hasTrample,
+    hasDeathtouch,
+    hasLandcycling,
     cleanOracle: oracle,
     rawOracle,
     isHybrid,
@@ -1729,6 +1808,32 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   if (features.actionSubtypes.has('noncreature_surveil_engine') || (features.actionSubtypes.has('noncreature_spell_trigger') && features.actionSubtypes.has('empower_jace'))) {
     queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"whenever you cast a noncreature spell" or o:"whenever you cast your first noncreature spell")`);
     queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"noncreature spell" (o:surveil or o:scry or o:draw))`);
+  }
+
+  // Color-Hoser Counterspell & Restricted Counter Queries
+  if (features.actionSubtypes.has('color_hoser_counter') || features.actionSubtypes.has('color_pair_hoser')) {
+    queries.push(`${baseFilter} ${excludeSelf} t:instant ${exactColorQuery} (o:"counter target" (o:white or o:blue or o:black or o:red or o:green or o:multicolored))`);
+    queries.push(`${baseFilter} ${excludeSelf} t:instant ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"counter target" o:"spell")`);
+    queries.push(`${baseFilter} ${excludeSelf} (o:"counter target red or green spell" or o:"counter target white or black spell" or o:"counter target blue spell" or o:"counter target multicolored spell")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:instant ${exactColorQuery} (o:"counter target" (o:"or green" or o:"or black" or o:"or white" or o:"or red" or o:"or blue"))`);
+  }
+
+  // High-Power Menace & Late-Game Menace Finishers (e.g. Apex Witchstalker, Ripscale Predator, Troll of Khazad-dûm, Baleful Beholder)
+  if (features.actionSubtypes.has('high_power_menace') || ((features.power ?? 0) >= 5 && (card.keywords || []).some(k => /menace/i.test(k)))) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:menace or kw:menace) pow>=5`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:menace or kw:menace) (pow=6 or pow=5)`);
+    // Rakdos Menace Finisher Bridge: Black and Red share premier high-power menace finishers in Limited
+    if (features.colors.includes('B') || features.colors.includes('R')) {
+      queries.push(`${baseFilter} ${excludeSelf} t:creature (c=B or c=R) cmc>=${minCmc} cmc<=${maxCmc} (o:menace or kw:menace) pow>=5`);
+      queries.push(`${baseFilter} ${excludeSelf} t:creature (c=B or c=R) (o:menace or kw:menace) (pow=6 or pow=5)`);
+    }
+  }
+
+  // Landcycling / Basic Landcycling Finishers (e.g. Troll of Khazad-dûm, Gloomfang Mauler, Apex Witchstalker)
+  if (features.actionSubtypes.has('landcycling_creature') || features.hasLandcycling) {
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:cycling or o:landcycling or o:swampcycling or o:basic)`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} (o:landcycling or o:"basic landcycling" or o:swampcycling or o:cycling) pow>=5`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:landcycling or o:"basic landcycling" or o:cycling) cmc>=${minCmc} cmc<=${maxCmc}`);
   }
 
   // Learned Mechanic Bridge Queries (Rosetta Stone):
@@ -2105,6 +2210,10 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
         // Skip quoting literal hyper-specific token clauses (e.g. "create x 2/2 colorless wizard soldier creature tokens")
         continue;
       }
+      // Skip hyper-generic ETB trigger clause on high-power curve-toppers (e.g. "when this creature enters" on a 6-drop 6/4 menace beatstick)
+      if (clause.raw.includes('when this creature enters') && (features.isCreature && (features.power ?? 0) >= 5)) {
+        continue;
+      }
       queries.push(
         `${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"${clause.raw}"`
       );
@@ -2143,9 +2252,12 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
 
   // Relaxed Color fallback for rare mechanics
   if (features.detectedClauses.length > 0) {
-    queries.push(
-      `${baseFilter} ${excludeSelf} ${typeFilter} ${relaxedColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"${features.detectedClauses[0].raw}"`
-    );
+    const rawClause = features.detectedClauses[0].raw;
+    if (!(rawClause.includes('when this creature enters') && (features.isCreature && (features.power ?? 0) >= 5))) {
+      queries.push(
+        `${baseFilter} ${excludeSelf} ${typeFilter} ${relaxedColorQuery} cmc>=${minCmc} cmc<=${maxCmc} o:"${rawClause}"`
+      );
+    }
   }
 
   return queries;
@@ -2332,7 +2444,7 @@ export function extractSubstantiveOracleClauses(oracleText: string, cardName: st
 
     const words = norm.split(' ');
     // A substantive clause must be at least 5 words, OR contain a signature mechanic phrase
-    const isSignature = /assigns combat damage equal to|toughness greater than|can attack as though|for each color of mana spent|converge|sunburst|vivid|greatest toughness among|difference between.*power and toughness|tokens you control get|creatures you control get|deals \d+ damage to target attacking or blocking|puts it on (?:their choice of )?the top or bottom|top or bottom of (?:their|its owner's) library|puts target .* on top of its owner's library/i.test(norm);
+    const isSignature = /counter target|assigns combat damage equal to|toughness greater than|can attack as though|for each color of mana spent|converge|sunburst|vivid|greatest toughness among|difference between.*power and toughness|tokens you control get|creatures you control get|deals \d+ damage to target attacking or blocking|puts it on (?:their choice of )?the top or bottom|top or bottom of (?:their|its owner's) library|puts target .* on top of its owner's library/i.test(norm);
     if (words.length >= 5 || isSignature) {
       normalizedClauses.push(norm);
     }
@@ -2342,10 +2454,109 @@ export function extractSubstantiveOracleClauses(oracleText: string, cardName: st
 }
 
 export interface OracleClauseMatchResult {
-  matchType: 'exact' | 'template' | 'subject_relaxed' | 'channel_discard' | 'tuck_exact' | 'tuck_relaxed';
+  matchType: 'exact' | 'template' | 'subject_relaxed' | 'channel_discard' | 'tuck_exact' | 'tuck_relaxed' | 'color_hoser_exact' | 'color_hoser_relaxed';
   matchingClause: string;
   statBuffDelta?: number;
   description: string;
+}
+
+export interface CounterClauseDecomposition {
+  isCounter: boolean;
+  isColorHoser: boolean;
+  colorCount: number;
+  colors: string[];
+  isTaxCounter: boolean;
+  taxAmount?: number;
+  typeRestriction?: string;
+  normalizedTemplate: string;
+}
+
+export function normalizeCounterClause(clause: string): CounterClauseDecomposition {
+  let cleaned = clause.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  cleaned = cleaned.replace(/^choose (?:one|two|three)\s*(?:—|-)?\s*/i, '');
+  cleaned = cleaned.replace(/^[•\-\*]\s*/, '');
+
+  if (!cleaned.includes('counter target') && !cleaned.startsWith('counter that spell')) {
+    return {
+      isCounter: false,
+      isColorHoser: false,
+      colorCount: 0,
+      colors: [],
+      isTaxCounter: false,
+      normalizedTemplate: cleaned,
+    };
+  }
+
+  // 1. Two-color hoser counterspells
+  // e.g. "counter target white or black spell", "counter target red or green spell"
+  // with optional mana value cap e.g. "with mana value 6 or less"
+  const colorPairMatch = cleaned.match(/counter target (white|blue|black|red|green) or (white|blue|black|red|green) spell(?: with mana value (\d+) or less)?/i);
+  if (colorPairMatch) {
+    const c1 = colorPairMatch[1];
+    const c2 = colorPairMatch[2];
+    const mvCap = colorPairMatch[3] ? ` with mana value ${colorPairMatch[3]} or less` : '';
+    return {
+      isCounter: true,
+      isColorHoser: true,
+      colorCount: 2,
+      colors: [c1, c2],
+      isTaxCounter: false,
+      normalizedTemplate: `counter target [color-pair] spell${mvCap}`,
+    };
+  }
+
+  // 2. Single-color or multicolored hoser
+  const singleColorMatch = cleaned.match(/counter target (white|blue|black|red|green|nonblue|nonblack|nonwhite|nonred|nongreen|multicolored) spell(?: with mana value (\d+) or less)?/i);
+  if (singleColorMatch) {
+    const color = singleColorMatch[1];
+    const mvCap = singleColorMatch[2] ? ` with mana value ${singleColorMatch[2]} or less` : '';
+    return {
+      isCounter: true,
+      isColorHoser: true,
+      colorCount: 1,
+      colors: [color],
+      isTaxCounter: false,
+      normalizedTemplate: `counter target [single-color] spell${mvCap}`,
+    };
+  }
+
+  // 3. Type-restricted counter
+  const typeRestrMatch = cleaned.match(/counter target (creature|noncreature|artifact or creature|creature or planeswalker|artifact or enchantment|instant or sorcery) spell/i);
+  if (typeRestrMatch) {
+    return {
+      isCounter: true,
+      isColorHoser: false,
+      colorCount: 0,
+      colors: [],
+      isTaxCounter: false,
+      typeRestriction: typeRestrMatch[1],
+      normalizedTemplate: `counter target ${typeRestrMatch[1]} spell`,
+    };
+  }
+
+  // 4. Tax counter
+  const taxMatch = cleaned.match(/counter target (?:.*?\b)?spell unless (?:its controller|their controller) pays (?:\{(\d+|x)\}|(\d+|x))/i);
+  if (taxMatch) {
+    const amount = taxMatch[1] || taxMatch[2];
+    return {
+      isCounter: true,
+      isColorHoser: false,
+      colorCount: 0,
+      colors: [],
+      isTaxCounter: true,
+      taxAmount: amount ? (amount.toLowerCase() === 'x' ? 0 : parseInt(amount, 10)) : undefined,
+      normalizedTemplate: 'counter target spell unless its controller pays {x}',
+    };
+  }
+
+  return {
+    isCounter: true,
+    isColorHoser: false,
+    colorCount: 0,
+    colors: [],
+    isTaxCounter: false,
+    normalizedTemplate: 'counter target spell',
+  };
 }
 
 export function normalizeClauseTemplate(clause: string): { template: string; pBuff?: number; tBuff?: number } {
@@ -2506,6 +2717,39 @@ export function findExactOracleClauseMatch(
     }
   }
 
+  // 6. Color-Hoser Counterspell Target Decomposition (Anchor 95% for color-pair mirror, 86% for relaxed color hoser)
+  for (const tc of tClauses) {
+    const tCounter = normalizeCounterClause(tc);
+    if (!tCounter.isCounter) continue;
+
+    for (const cc of cClauses) {
+      const cCounter = normalizeCounterClause(cc);
+      if (!cCounter.isCounter) continue;
+
+      if (tCounter.isColorHoser && cCounter.isColorHoser) {
+        if (tCounter.normalizedTemplate === cCounter.normalizedTemplate && tCounter.colorCount === 2) {
+          return {
+            matchType: 'color_hoser_exact',
+            matchingClause: tc,
+            description: 'Exact matching 2-color hoser counterspell template',
+          };
+        }
+        if (tCounter.normalizedTemplate === cCounter.normalizedTemplate) {
+          return {
+            matchType: 'color_hoser_exact',
+            matchingClause: tc,
+            description: 'Matching color-hoser counterspell template',
+          };
+        }
+        return {
+          matchType: 'color_hoser_relaxed',
+          matchingClause: tc,
+          description: 'Matching color-hoser counterspell template',
+        };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -2559,6 +2803,12 @@ export function computeExactOracleMatchScore(
   } else if (matchObj.matchType === 'tuck_relaxed') {
     score = 86;
     reasons.push('Matching library-tuck tempo effect');
+  } else if (matchObj.matchType === 'color_hoser_exact') {
+    score = 95;
+    reasons.push('Exact matching 2-color hoser counterspell template');
+  } else if (matchObj.matchType === 'color_hoser_relaxed') {
+    score = 86;
+    reasons.push('Matching color-hoser counterspell template');
   }
 
   if (matchObj.matchType === 'tuck_exact' || matchObj.matchType === 'tuck_relaxed') {
@@ -2877,6 +3127,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     (tFeatures.actionSubtypes.has('noncreature_surveil_engine') || (tFeatures.actionSubtypes.has('noncreature_spell_trigger') && tFeatures.actionSubtypes.has('empower_jace'))) &&
     (cFeatures.actionSubtypes.has('noncreature_surveil_engine') || (cFeatures.actionSubtypes.has('noncreature_spell_trigger') && (cFeatures.actionSubtypes.has('surveil') || cFeatures.detectedCategories.has('selection'))))
   );
+  const bothShareHighPowerMenace = (
+    tFeatures.actionSubtypes.has('high_power_menace') && cFeatures.actionSubtypes.has('high_power_menace')
+  );
+  const bothShareLandcycling = (
+    tFeatures.actionSubtypes.has('landcycling_creature') && cFeatures.actionSubtypes.has('landcycling_creature')
+  );
   const bothShareSignatureEngine = (
     (tFeatures.actionSubtypes.has('connive_recruit') && cFeatures.actionSubtypes.has('connive_recruit')) ||
     bothShareAttackGranter ||
@@ -2919,6 +3175,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     bothShareDiscardRemoval ||
     bothShareTuckRemoval ||
     bothShareNoncreatureSurveilEngine ||
+    bothShareHighPowerMenace ||
+    bothShareLandcycling ||
     (tFeatures.actionSubtypes.has('death_counter_transfer') && cFeatures.actionSubtypes.has('death_counter_transfer'))
   );
   const bothShareDeathCounterTransfer = (
@@ -3125,30 +3383,37 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     colorScore = 14;
     baselineReasons.push(`Component color (${[...cColors][0]})`);
   } else if (bothShareSignatureEngine) {
-    colorScore = (bothShareExactConverge || bothShareExactSunburst) ? 18 : 14;
-    let engineReason = 'Cross-color engine mechanic peer (Recruit & Connive)';
-    if (bothShareExactConverge) engineReason = 'Cross-color engine peer (Exact Converge colors-spent scaling)';
-    else if (bothShareExactSunburst) engineReason = 'Cross-color engine peer (Exact Sunburst colors-spent scaling)';
-    else if (bothShareConvergeSunburst) engineReason = 'Cross-color engine peer (Converge / Sunburst colors-spent scaling)';
-    else if (bothShareMultiColorScaling) engineReason = 'Cross-color engine peer (Multicolor-scaling payoff: Converge, Sunburst, Vivid, Domain)';
-    else if (bothShareRampArtifactToken) engineReason = 'Cross-color engine mechanic peer (Ramp token generator: Heartwood/Powerstone)';
-    else if (isRampTokenCrossDorkBridge) engineReason = 'Cross-color mana ramp engine peer (Ramp token generator <-> Mana dork/rock)';
-    else if (bothShareArtifactAnimatorAura) engineReason = 'Cross-color archetype peer (Artifact-animating Aura)';
-    else if (bothShareArtifactSacPayoff) engineReason = 'Cross-color engine peer (Artifact sacrifice payoff)';
-    else if (bothShareArtifactTapPayoff) engineReason = 'Cross-color engine peer (Artifact tap payoff)';
-    else if (bothShareTwoDropManaDork) engineReason = 'Cross-color 2-drop mana ramp peer';
-    else if (bothShareThreeDropManaDork) engineReason = 'Cross-color 3-drop mana ramp peer';
-    else if (bothShareManaRock) engineReason = 'Cross-color mana rock / fixing artifact peer';
-    else if (bothShareSecondCardDrawn) engineReason = 'Cross-color engine mechanic peer (Draw second card)';
-    else if (bothShareEtbSelfBounce) engineReason = 'Cross-color engine mechanic peer (ETB self-bounce permanent)';
-    else if (bothShareDeathAmassToken) engineReason = 'Cross-color engine mechanic peer (Dies into token / Amass)';
-    else if (bothShareEtbSacRemoval) engineReason = 'Cross-color engine mechanic peer (ETB sacrifice removal)';
-    else if (bothSharePower4PlusSynergy) engineReason = 'Cross-color engine mechanic peer (Power 4+ synergy)';
-    else if (bothShareLandfallPayoff) engineReason = 'Cross-color engine mechanic peer (Landfall trigger)';
-    else if (bothShareFetchLand) engineReason = 'Cross-color mana fixer peer (Fetchland)';
-    else if (bothShareCultivateRamp) engineReason = 'Cross-color ramp peer (Cultivate)';
-    else if (bothShareAttackGranter) engineReason = 'Cross-color engine mechanic peer (Attack trigger keyword mentor)';
-    baselineReasons.push(engineReason);
+    if (bothShareHighPowerMenace && ((tColors.has('B') && cColors.has('R')) || (tColors.has('R') && cColors.has('B')))) {
+      colorScore = 16;
+      baselineReasons.push('Cross-color archetype finisher peer: Rakdos high-power Menace curve-topper (6/4, 6/5 beater)');
+    } else {
+      colorScore = (bothShareExactConverge || bothShareExactSunburst) ? 18 : 14;
+      let engineReason = 'Cross-color engine mechanic peer (Recruit & Connive)';
+      if (bothShareHighPowerMenace) engineReason = 'Cross-color archetype finisher peer: High-power Menace curve-topper (6/4, 6/5 beater)';
+      else if (bothShareLandcycling) engineReason = 'Cross-color archetype peer: Late-game curve-topper with early Landcycling flexibility';
+      else if (bothShareExactConverge) engineReason = 'Cross-color engine peer (Exact Converge colors-spent scaling)';
+      else if (bothShareExactSunburst) engineReason = 'Cross-color engine peer (Exact Sunburst colors-spent scaling)';
+      else if (bothShareConvergeSunburst) engineReason = 'Cross-color engine peer (Converge / Sunburst colors-spent scaling)';
+      else if (bothShareMultiColorScaling) engineReason = 'Cross-color engine peer (Multicolor-scaling payoff: Converge, Sunburst, Vivid, Domain)';
+      else if (bothShareRampArtifactToken) engineReason = 'Cross-color engine mechanic peer (Ramp token generator: Heartwood/Powerstone)';
+      else if (isRampTokenCrossDorkBridge) engineReason = 'Cross-color mana ramp engine peer (Ramp token generator <-> Mana dork/rock)';
+      else if (bothShareArtifactAnimatorAura) engineReason = 'Cross-color archetype peer (Artifact-animating Aura)';
+      else if (bothShareArtifactSacPayoff) engineReason = 'Cross-color engine peer (Artifact sacrifice payoff)';
+      else if (bothShareArtifactTapPayoff) engineReason = 'Cross-color engine peer (Artifact tap payoff)';
+      else if (bothShareTwoDropManaDork) engineReason = 'Cross-color 2-drop mana ramp peer';
+      else if (bothShareThreeDropManaDork) engineReason = 'Cross-color 3-drop mana ramp peer';
+      else if (bothShareManaRock) engineReason = 'Cross-color mana rock / fixing artifact peer';
+      else if (bothShareSecondCardDrawn) engineReason = 'Cross-color engine mechanic peer (Draw second card)';
+      else if (bothShareEtbSelfBounce) engineReason = 'Cross-color engine mechanic peer (ETB self-bounce permanent)';
+      else if (bothShareDeathAmassToken) engineReason = 'Cross-color engine mechanic peer (Dies into token / Amass)';
+      else if (bothShareEtbSacRemoval) engineReason = 'Cross-color engine mechanic peer (ETB sacrifice removal)';
+      else if (bothSharePower4PlusSynergy) engineReason = 'Cross-color engine mechanic peer (Power 4+ synergy)';
+      else if (bothShareLandfallPayoff) engineReason = 'Cross-color engine mechanic peer (Landfall trigger)';
+      else if (bothShareFetchLand) engineReason = 'Cross-color mana fixer peer (Fetchland)';
+      else if (bothShareCultivateRamp) engineReason = 'Cross-color ramp peer (Cultivate)';
+      else if (bothShareAttackGranter) engineReason = 'Cross-color engine mechanic peer (Attack trigger keyword mentor)';
+      baselineReasons.push(engineReason);
+    }
   } else if (bothShareLivingWeapon) {
     colorScore = 14;
     baselineReasons.push('Cross-color engine mechanic peer (Living Weapon / Token Equipment)');
@@ -3540,6 +3805,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     hard_counter: { pts: 15, label: 'Both unconditional hard counterspells' },
     soft_tax_counter: { pts: 14, label: 'Both mana-tax soft counters' },
     restricted_counter: { pts: 13, label: 'Both targeted/restricted counters' },
+    color_pair_hoser: { pts: 24, label: 'Both 2-color hoser counterspells' },
+    color_hoser_counter: { pts: 22, label: 'Both color-specific hoser counterspells' },
+    single_color_hoser: { pts: 20, label: 'Both single-color hoser counterspells' },
+    creature_counter: { pts: 18, label: 'Both creature counterspells (Essence Scatter variant)' },
+    noncreature_counter: { pts: 18, label: 'Both noncreature counterspells (Negate variant)' },
     ability_loss_aura: { pts: 20, label: 'Both creature ability-stripping Auras ("loses all abilities")' },
     freeze_aura: { pts: 18, label: 'Both freeze / tap-lockdown Auras' },
     pacifism_aura: { pts: 16, label: 'Both pacifism / lockdown Auras' },
@@ -3565,6 +3835,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     pump_trick: { pts: 14, label: 'Both combat pump tricks' },
     mana_dork: { pts: 15, label: 'Both mana ramp / dork creatures' },
     evasion_threat: { pts: 13, label: 'Both evasive draft threats' },
+    high_power_menace: { pts: 22, label: 'Both high-power Menace curve-toppers (6/4, 6/5)' },
+    landcycling_creature: { pts: 22, label: 'Both late-game curve-toppers with Landcycling flexibility' },
     defensive_wall: { pts: 12, label: 'Both defensive board stabilizers' },
     death_counter_transfer: { pts: 22, label: 'Both transfer +1/+1 counters upon death (Modular / counter bequeath)' },
     enters_with_x_counters: { pts: 22, label: 'Both scalable creatures entering with X +1/+1 counters (Hydra scaling)' },
@@ -4062,6 +4334,33 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     }
   }
 
+  const bothShareColorPairHoser = tFeatures.actionSubtypes.has('color_pair_hoser') && cFeatures.actionSubtypes.has('color_pair_hoser');
+  const bothShareColorHoser = tFeatures.actionSubtypes.has('color_hoser_counter') && cFeatures.actionSubtypes.has('color_hoser_counter');
+  if (bothShareColorPairHoser) {
+    structuralActionPoints = Math.max(structuralActionPoints, 24);
+    if (!structuralReasons.includes('Both 2-color hoser counterspells')) {
+      structuralReasons.unshift('Both 2-color hoser counterspells');
+    }
+  } else if (bothShareColorHoser) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both color-specific hoser counterspells')) {
+      structuralReasons.unshift('Both color-specific hoser counterspells');
+    }
+  }
+
+  if (bothShareHighPowerMenace) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both high-power Menace curve-toppers (6/4, 6/5)')) {
+      structuralReasons.unshift('Both high-power Menace curve-toppers (6/4, 6/5)');
+    }
+  }
+  if (bothShareLandcycling) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both late-game curve-toppers with Landcycling flexibility')) {
+      structuralReasons.unshift('Both late-game curve-toppers with Landcycling flexibility');
+    }
+  }
+
   // Action Subtype Mismatch Penalties
   let actionMismatchPenalty = 0;
 
@@ -4098,6 +4397,15 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
   }
 
+  // Color Hoser Counter vs Generic / Non-Color Counter Mismatch Penalty
+  const tIsColorHoser = tFeatures.actionSubtypes.has('color_hoser_counter') || tFeatures.actionSubtypes.has('color_pair_hoser');
+  const cIsColorHoser = cFeatures.actionSubtypes.has('color_hoser_counter') || cFeatures.actionSubtypes.has('color_pair_hoser');
+  if (tIsColorHoser && !cIsColorHoser) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 24);
+  } else if (!tIsColorHoser && cIsColorHoser) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 24);
+  }
+
   if (tFeatures.actionSubtypes.has('hard_counter') && cFeatures.actionSubtypes.has('soft_tax_counter')) {
     actionMismatchPenalty = 10;
   } else if (tFeatures.actionSubtypes.has('soft_tax_counter') && cFeatures.actionSubtypes.has('hard_counter')) {
@@ -4116,6 +4424,22 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
   if (tFeatures.actionSubtypes.has('activated_team_pump') && !cFeatures.actionSubtypes.has('activated_team_pump')) {
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 10);
+  }
+
+  // High-Power Menace Finisher vs Non-Evasive Utility / Defensive Creature Mismatch Penalty
+  // A 6-mana 6/4 or 6/5 lethal Menace clock must not be matched with 4/4 vanilla/ETB creatures (e.g. Malboro, Cemetery Desecrator)
+  if (tFeatures.actionSubtypes.has('high_power_menace') && !cFeatures.actionSubtypes.has('high_power_menace')) {
+    if (!cFeatures.hasMenace && (cFeatures.power ?? 0) <= 4) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 22);
+    } else if (!cFeatures.hasMenace && !cFeatures.hasFlying && !cFeatures.hasTrample) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 14);
+    }
+  } else if (!tFeatures.actionSubtypes.has('high_power_menace') && cFeatures.actionSubtypes.has('high_power_menace')) {
+    if (!tFeatures.hasMenace && (tFeatures.power ?? 0) <= 4) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 22);
+    } else if (!tFeatures.hasMenace && !tFeatures.hasFlying && !tFeatures.hasTrample) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 14);
+    }
   }
 
   // Tuck / Library Bounce Removal vs Non-interactive Permanent mismatch penalty
@@ -4286,8 +4610,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       statlineScore = 8;
       baselineReasons.push(`Matching effective power (${tFeatures.power} power)`);
     } else if (tDiff === 0) {
-      statlineScore = 8;
-      baselineReasons.push(`Matching effective toughness (${tFeatures.toughness} toughness)`);
+      if (pDiff >= 2) {
+        statlineScore = 5;
+        baselineReasons.push(`Matching toughness (${tFeatures.toughness} toughness, ${cFeatures.power} vs ${tFeatures.power} power)`);
+      } else {
+        statlineScore = 8;
+        baselineReasons.push(`Matching effective toughness (${tFeatures.toughness} toughness)`);
+      }
     } else if (totalStatDiff === 0) {
       if (pDiff > 0 && tDiff > 0) {
         statlineScore = 4;
@@ -4523,8 +4852,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       (!tFeatures.isRemoval && !tFeatures.detectedCategories.has('bounce') && cFeatures.actionSubtypes.has('tuck_removal'))) {
     tuckMismatchPenalty += 24;
   }
+  let colorHoserMismatchPenalty = 0;
+  if ((tFeatures.actionSubtypes.has('color_hoser_counter') && !cFeatures.actionSubtypes.has('color_hoser_counter')) ||
+      (!tFeatures.actionSubtypes.has('color_hoser_counter') && cFeatures.actionSubtypes.has('color_hoser_counter'))) {
+    colorHoserMismatchPenalty += 24;
+  }
 
-  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty + excessActionMismatch + tuckMismatchPenalty;
+  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty + excessActionMismatch + tuckMismatchPenalty + colorHoserMismatchPenalty;
   let rawScore = colorScore + cmcScore + method1LexicalScore + method2StructuralScore + statlineScore - discrepancyPenalty;
 
   // Learned Precedent Boost & Attribution (Touchstone benchmarks & bridged mechanics)
@@ -4534,6 +4868,31 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     if (learnedBoost.reason) {
       structuralReasons.unshift(learnedBoost.reason);
     }
+  }
+
+  // Canonical Precedent Override (Globally approved comps by admins)
+  try {
+    const canonicalMap = getStoredCanonicalPrecedents();
+    const targetKey = getTargetCardKey(target.set, target.name);
+    const slots = canonicalMap[targetKey];
+    if (slots) {
+      for (const slot of Object.values(slots)) {
+        if (
+          slot.precedentCardName.toLowerCase() === candidate.name.toLowerCase() &&
+          (!slot.precedentCardSet || !candidate.set || slot.precedentCardSet.toUpperCase() === candidate.set.toUpperCase())
+        ) {
+          rawScore = Math.max(rawScore, slot.precedentScore ?? 92);
+          if (slot.reasons && slot.reasons.length > 0) {
+            structuralReasons.unshift(...slot.reasons);
+          } else {
+            structuralReasons.unshift('Approved Canonical Precedent');
+          }
+          break;
+        }
+      }
+    }
+  } catch (err) {
+    // Graceful fallback
   }
 
   // Non-reprint ceiling: 100% is strictly reserved for true reprints / functional reprints
@@ -4637,6 +4996,39 @@ export function getCuratedBenchmarkCandidates(
     const cIsSpellslingerSurveil = cFeatures.actionSubtypes.has('noncreature_surveil_engine') || (cFeatures.actionSubtypes.has('noncreature_spell_trigger') && (cFeatures.actionSubtypes.has('surveil') || cFeatures.detectedCategories.has('selection')));
     if (targetIsSpellslingerSurveil && cIsSpellslingerSurveil) {
       relevance += 70;
+    }
+
+    // Color Hoser Counterspell Priority
+    const targetIsColorHoser = tFeatures.actionSubtypes.has('color_hoser_counter') || tFeatures.actionSubtypes.has('color_pair_hoser');
+    const cIsColorHoser = cFeatures.actionSubtypes.has('color_hoser_counter') || cFeatures.actionSubtypes.has('color_pair_hoser');
+    if (targetIsColorHoser && cIsColorHoser) {
+      relevance += 110;
+      if (tFeatures.actionSubtypes.has('color_pair_hoser') && cFeatures.actionSubtypes.has('color_pair_hoser')) {
+        relevance += 40;
+      }
+    } else if (targetIsColorHoser && !cIsColorHoser && (cFeatures.actionSubtypes.has('soft_tax_counter') || cFeatures.actionSubtypes.has('creature_counter') || cFeatures.actionSubtypes.has('hard_counter') || cFeatures.detectedCategories.has('counter'))) {
+      // Heavily demote generic tax or creature counters when looking for color hosers
+      relevance -= 70;
+    }
+
+    // High-Power Menace Finishers (6/4, 6/5 Menace beaters)
+    const targetIsHighPowerMenace = tFeatures.actionSubtypes.has('high_power_menace') || ((tFeatures.power ?? 0) >= 5 && (targetCard.keywords || []).some(k => /menace/i.test(k)));
+    const cIsHighPowerMenace = cFeatures.actionSubtypes.has('high_power_menace') || ((cFeatures.power ?? 0) >= 5 && (c.keywords || []).some(k => /menace/i.test(k)));
+    if (targetIsHighPowerMenace && cIsHighPowerMenace) {
+      relevance += 110;
+      if (Math.abs((cFeatures.power ?? 0) - (tFeatures.power ?? 0)) <= 1) {
+        relevance += 40;
+      }
+    } else if (targetIsHighPowerMenace && !cIsHighPowerMenace && (cFeatures.power ?? 0) <= 4 && !(c.keywords || []).some(k => /menace|flying|trample/i.test(k))) {
+      // Heavily demote small non-evasive utility creatures when matching high-power menace finishers
+      relevance -= 60;
+    }
+
+    // Landcycling Creatures (Troll of Khazad-dûm, Gloomfang Mauler, Apex Witchstalker)
+    const targetIsLandcycling = tFeatures.actionSubtypes.has('landcycling_creature') || tFeatures.hasLandcycling;
+    const cIsLandcycling = cFeatures.actionSubtypes.has('landcycling_creature') || cFeatures.hasLandcycling;
+    if (targetIsLandcycling && cIsLandcycling) {
+      relevance += 90;
     }
 
     // Type Match
@@ -4892,7 +5284,7 @@ export async function findSimilarCards(
   fallbackPool: Card[] = [],
   userId?: string
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v68`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v70`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -5012,6 +5404,25 @@ export async function findSimilarCards(
         candidateCards.push(c);
       }
     });
+
+    // Canonical Approved Precedents (Globally approved comps by admins)
+    try {
+      const canonicalMap = getStoredCanonicalPrecedents();
+      const targetKey = getTargetCardKey(targetCard.set, targetCard.name);
+      const canonicalSlots = canonicalMap[targetKey];
+      if (canonicalSlots) {
+        for (const entry of Object.values(canonicalSlots)) {
+          if (!candidateCards.some(existing => existing.name.toLowerCase() === entry.precedentCardName.toLowerCase())) {
+            const inPool = fallbackPool.find(c => c.name.toLowerCase() === entry.precedentCardName.toLowerCase());
+            if (inPool && !isExcluded(inPool)) {
+              candidateCards.unshift(inPool);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Graceful fallback
+    }
 
     if (candidateCards.length < 12) {
       benchmarkCandidates.forEach((c) => {

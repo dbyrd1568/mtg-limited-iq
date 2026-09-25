@@ -272,7 +272,7 @@ export async function pullRemoteUserData(userId: string): Promise<{
     // 2. Fetch Remote Evaluations
     const { data: evalRows, error: evalErr } = await supabase
       .from('card_evaluations')
-      .select('set_code, card_name, evaluation_json')
+      .select('set_code, card_name, evaluation_json, updated_at')
       .eq('user_id', userId);
 
     if (evalErr) {
@@ -285,15 +285,82 @@ export async function pullRemoteUserData(userId: string): Promise<{
         const key = `${row.set_code.toLowerCase()}_${row.card_name.toLowerCase()}`;
         remoteEvals[key] = row.evaluation_json as UserCardEvaluation;
       });
-      localStorage.setItem(`mtg_evaluations_${userId}`, JSON.stringify(remoteEvals));
+    }
+
+    // 3. Proactive Bidirectional Reconciliation:
+    // Read local evaluations for this user AND any unmigrated guest evaluations
+    const localUserEvals = loadUserEvaluations(userId);
+    const guestEvals = loadUserEvaluations('guest');
+    const combinedLocal: Record<string, UserCardEvaluation> = { ...guestEvals, ...localUserEvals };
+
+    const toUpload: UserCardEvaluation[] = [];
+    for (const [key, localItem] of Object.entries(combinedLocal)) {
+      if (!localItem?.cardName || !localItem?.setCode) continue;
+      const remoteItem = remoteEvals[key];
+      if (!remoteItem) {
+        toUpload.push(localItem);
+      } else if (localItem.updatedAt && remoteItem.updatedAt) {
+        if (new Date(localItem.updatedAt).getTime() > new Date(remoteItem.updatedAt).getTime()) {
+          toUpload.push(localItem);
+        }
+      }
+    }
+
+    // Flush any pending or previously failed local evaluations to Supabase
+    if (toUpload.length > 0) {
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < toUpload.length; i += BATCH_SIZE) {
+        const chunk = toUpload.slice(i, i + BATCH_SIZE);
+        const batch = chunk.map((ev) => ({
+          user_id: userId,
+          set_code: ev.setCode.toUpperCase(),
+          card_name: ev.cardName,
+          evaluation_json: ev,
+          updated_at: ev.updatedAt || new Date().toISOString(),
+        }));
+
+        try {
+          const { error: upsertErr } = await supabase.from('card_evaluations').upsert(batch, {
+            onConflict: 'user_id,set_code,card_name',
+          });
+          if (upsertErr) {
+            console.warn('Proactive evaluation sync batch warning:', upsertErr.message);
+          } else {
+            chunk.forEach((ev) => {
+              const key = `${ev.setCode.toLowerCase()}_${ev.cardName.toLowerCase()}`;
+              remoteEvals[key] = ev;
+            });
+          }
+        } catch (batchErr) {
+          console.warn('Proactive evaluation batch exception:', batchErr);
+        }
+      }
+
+      // If guest evaluations were successfully merged, clear guest store
+      if (Object.keys(guestEvals).length > 0) {
+        try {
+          localStorage.removeItem('mtg_evaluations_guest');
+        } catch {}
+      }
+    }
+
+    // Persist full unified evaluations locally
+    const mergedEvals: Record<string, UserCardEvaluation> = { ...combinedLocal, ...remoteEvals };
+    if (Object.keys(mergedEvals).length > 0) {
+      try {
+        localStorage.setItem(`mtg_evaluations_${userId}`, JSON.stringify(mergedEvals));
+      } catch (e) {
+        console.warn('Failed to cache merged evaluations locally:', e);
+      }
     }
 
     setSyncStatus('synced');
-    return { stats: remoteStats, evaluations: remoteEvals };
+    return { stats: remoteStats, evaluations: mergedEvals };
   } catch (err: any) {
-    console.error('Failed to pull remote data from Supabase:', err);
+    console.error('Failed to pull/reconcile remote data from Supabase:', err);
     setSyncStatus('error', err?.message || 'Failed to pull cloud data');
-    return { stats: null, evaluations: {} };
+    const fallbackLocal = loadUserEvaluations(userId);
+    return { stats: null, evaluations: fallbackLocal };
   }
 }
 

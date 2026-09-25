@@ -361,7 +361,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         actualTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
       }
 
-      if (userEval && actualTier) {
+      const isLand = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
+      const isNA = isLand || userEval?.userGrade === 'N/A';
+
+      if (userEval && actualTier && !isNA) {
         const userIndex = gradeTierToIndex(userEval.userGrade);
         const seventeenIndex = gradeTierToIndex(actualTier);
         tierGap = seventeenIndex - userIndex;
@@ -371,11 +374,13 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         card,
         userEval,
         landData,
-        tierGap,
+        tierGap: isNA ? 0 : tierGap,
         userGrade: userEval?.userGrade,
         actualTier,
         winRate: landData?.win_rate,
         isRated: Boolean(userEval),
+        isNA,
+        isLand,
       };
     });
 
@@ -427,8 +432,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
   const ratedPercentage = cards.length > 0 ? Math.round((ratedCountInSet / cards.length) * 100) : 0;
 
-  const handleQuickGrade = (card: Card, tier: GradeTier) => {
-    const priority = tier.startsWith('A')
+  const handleQuickGrade = (card: Card, tier: GradeTier | 'N/A') => {
+    const priority = tier === 'N/A'
+      ? 'Sideboard / Unplayable'
+      : tier.startsWith('A')
       ? '1st Pick Bomb'
       : tier.startsWith('B')
       ? 'Early Pick'
@@ -446,7 +453,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
       cardName: card.name,
       setCode: card.set,
       userGrade: tier,
-      userScore: GRADE_SCORES[tier] || 2.5,
+      userScore: GRADE_SCORES[tier] ?? 0,
       pickPriority: priority,
       notes: existingEval?.notes,
       updatedAt: new Date().toISOString(),
@@ -471,7 +478,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     handleSearchQuery('');
   };
 
-  const formatTierGapVerdict = (gap: number) => {
+  const formatTierGapVerdict = (gap: number, isNA?: boolean) => {
+    if (isNA) {
+      return { text: 'N/A (Excluded from math)', color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700', isCorrect: true };
+    }
     if (gap === 0) {
       return { text: 'Exact Match (Correct)', color: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 font-bold', isCorrect: true };
     }
@@ -493,7 +503,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     return { text: `${gap} Tiers (Sleeper)`, color: 'bg-blue-100 dark:bg-blue-500/25 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-500/50 font-bold', isCorrect: false };
   };
 
-  const getTierBadgeColor = (tier: GradeTier) => {
+  const getTierBadgeColor = (tier: GradeTier | 'N/A') => {
+    if (tier === 'N/A') return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 font-bold';
     if (tier.startsWith('A')) return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40 font-bold';
     if (tier.startsWith('B')) return 'bg-cyan-100 text-cyan-900 border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40 font-bold';
     if (tier.startsWith('C')) return 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 font-bold';
@@ -823,7 +834,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
                 >
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-                    <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[185px]">
+                    <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[185px] relative z-20">
                       {/* Top Bar above card: Grade badge(s) in a single horizontal non-wrapping row */}
                       <div className="w-full flex items-center justify-center sm:justify-start gap-1 mb-1.5 min-h-[22px] overflow-hidden">
                         <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
@@ -1006,33 +1017,55 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       </button>
                     </div>
 
-                    <div
-                      className="grid grid-cols-6 sm:grid-cols-11 gap-1 sm:gap-0.5"
-                      title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
-                    >
-                      {GRADE_TIERS.map((tier) => {
-                        const isSelected = userEval?.userGrade === tier;
-                        return (
-                          <button
-                            key={tier}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleQuickGrade(card, tier);
-                            }}
-                            className={`py-1.5 sm:py-1 rounded-md text-xs sm:text-[10px] font-mono font-bold transition-all cursor-pointer border min-h-[36px] sm:min-h-0 ${
-                              tier === 'F' ? 'col-span-2 sm:col-span-1' : ''
-                            } ${
-                              isSelected
-                                ? 'bg-violet-600 text-white border-violet-500 shadow-xs font-black ring-1 ring-violet-400'
-                                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700'
-                            }`}
-                          >
-                            {tier}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const isCardLand = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
+                      return (
+                        <div
+                          className={`grid gap-1 sm:gap-0.5 ${isCardLand ? 'grid-cols-6 sm:grid-cols-12' : 'grid-cols-6 sm:grid-cols-11'}`}
+                          title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
+                        >
+                          {GRADE_TIERS.map((tier) => {
+                            const isSelected = userEval?.userGrade === tier;
+                            return (
+                              <button
+                                key={tier}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleQuickGrade(card, tier);
+                                }}
+                                className={`py-1.5 sm:py-1 rounded-md text-xs sm:text-[10px] font-mono font-bold transition-all cursor-pointer border min-h-[36px] sm:min-h-0 ${
+                                  tier === 'F' && !isCardLand ? 'col-span-2 sm:col-span-1' : ''
+                                } ${
+                                  isSelected
+                                    ? 'bg-violet-600 text-white border-violet-500 shadow-xs font-black ring-1 ring-violet-400'
+                                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700'
+                                }`}
+                              >
+                                {tier}
+                              </button>
+                            );
+                          })}
+                          {isCardLand && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickGrade(card, 'N/A');
+                              }}
+                              className={`py-1.5 sm:py-1 rounded-md text-xs sm:text-[10px] font-mono font-bold transition-all cursor-pointer border min-h-[36px] sm:min-h-0 ${
+                                userEval?.userGrade === 'N/A'
+                                  ? 'bg-slate-700 text-white border-slate-500 shadow-xs font-black ring-1 ring-slate-400'
+                                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700'
+                              }`}
+                              title="Mark land as N/A (Excluded from math)"
+                            >
+                              N/A
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -1731,7 +1764,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-900 font-sans">
                   {filteredComparisonList.map((row) => {
-                    const verdict = formatTierGapVerdict(row.tierGap);
+                    const verdict = formatTierGapVerdict(row.tierGap, row.isNA);
                     return (
                       <tr
                         key={row.card.id}
@@ -1755,7 +1788,11 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                           {row.card.rarity}
                         </td>
                         <td className="py-2 px-3">
-                          {row.userGrade ? (
+                          {row.userGrade === 'N/A' ? (
+                            <span className="font-mono font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700">
+                              N/A
+                            </span>
+                          ) : row.userGrade ? (
                             <span className="font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 px-2 py-0.5 rounded border border-violet-300 dark:border-violet-800/80">
                               {row.userGrade}
                             </span>

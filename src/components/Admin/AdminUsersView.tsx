@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -18,10 +18,17 @@ import {
   ShieldOff,
   UserPlus,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { AdminUserSummary } from '../../types/admin';
 import { UserAccount } from '../../types/mtg';
-import { grantAdminAccess, revokeAdminAccess, isPermanentSuperAdmin } from '../../services/admin';
+import {
+  grantAdminAccess,
+  revokeAdminAccess,
+  isPermanentSuperAdmin,
+  fetchEvaluationsForUser,
+  computeUserSetGradingDetails,
+} from '../../services/admin';
 
 interface AdminUsersViewProps {
   users: AdminUserSummary[];
@@ -46,6 +53,45 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
   const [sortField, setSortField] = useState<SortField>('lastLogin');
   const [sortAsc, setSortAsc] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const [liveEvaluations, setLiveEvaluations] = useState<Record<string, any> | null>(null);
+  const [isLoadingLiveEvals, setIsLoadingLiveEvals] = useState(false);
+
+  useEffect(() => {
+    if (!selectedUser) {
+      setLiveEvaluations(null);
+      return;
+    }
+
+    if (selectedUser.cardsGradedTotal === 0) {
+      setIsLoadingLiveEvals(true);
+      fetchEvaluationsForUser(selectedUser.id)
+        .then((evals) => {
+          if (evals && Object.keys(evals).length > 0) {
+            setLiveEvaluations(evals);
+          }
+        })
+        .finally(() => {
+          setIsLoadingLiveEvals(false);
+        });
+    } else {
+      setLiveEvaluations(null);
+    }
+  }, [selectedUser?.id]);
+
+  const activeUser = useMemo(() => {
+    if (!selectedUser) return null;
+    if (liveEvaluations && Object.keys(liveEvaluations).length > 0) {
+      const setsGraded = computeUserSetGradingDetails(liveEvaluations);
+      const cardsGradedTotal = Object.keys(liveEvaluations).length;
+      return {
+        ...selectedUser,
+        cardsGradedTotal,
+        setsGraded,
+      };
+    }
+    return selectedUser;
+  }, [selectedUser, liveEvaluations]);
 
   const handleRevokeAdmin = async (user: AdminUserSummary) => {
     if (isPermanentSuperAdmin(user.email)) {
@@ -437,141 +483,165 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
       </div>
 
       {/* Slide-over User Detail Modal / Drawer */}
-      {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-xl h-full bg-white dark:bg-slate-900 shadow-2xl p-6 overflow-y-auto space-y-6 border-l border-slate-200 dark:border-slate-800">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                {selectedUser.avatarUrl ? (
-                  <img
-                    src={selectedUser.avatarUrl}
-                    alt={selectedUser.name}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLElement).style.display = 'none';
-                      const next = e.currentTarget.nextElementSibling as HTMLElement;
-                      if (next) next.style.display = 'flex';
+      {selectedUser && (() => {
+        const displayUser = activeUser || selectedUser;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
+            <div className="w-full max-w-xl h-full bg-white dark:bg-slate-900 shadow-2xl p-6 overflow-y-auto space-y-6 border-l border-slate-200 dark:border-slate-800">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  {displayUser.avatarUrl ? (
+                    <img
+                      src={displayUser.avatarUrl}
+                      alt={displayUser.name}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                        const next = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (next) next.style.display = 'flex';
+                      }}
+                      className="w-12 h-12 rounded-2xl object-cover border border-violet-500/40 shadow-md shrink-0"
+                    />
+                  ) : null}
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-base text-white shadow-md"
+                    style={{
+                      backgroundColor: displayUser.avatarColor,
+                      display: displayUser.avatarUrl ? 'none' : 'flex',
                     }}
-                    className="w-12 h-12 rounded-2xl object-cover border border-violet-500/40 shadow-md shrink-0"
-                  />
-                ) : null}
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-base text-white shadow-md"
-                  style={{
-                    backgroundColor: selectedUser.avatarColor,
-                    display: selectedUser.avatarUrl ? 'none' : 'flex',
-                  }}
-                >
-                  {selectedUser.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white font-heading">
-                      {selectedUser.name}
-                    </h2>
-                    {selectedUser.isAdmin && (
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300">
-                        ADMIN
-                      </span>
-                    )}
+                  >
+                    {displayUser.name.charAt(0).toUpperCase()}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    ID: {selectedUser.id}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                        {displayUser.name}
+                      </h2>
+                      {displayUser.isAdmin && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300">
+                          ADMIN
+                        </span>
+                      )}
+                      {isLoadingLiveEvals && (
+                        <span className="text-[10px] font-mono text-violet-600 dark:text-violet-400 animate-pulse">
+                          Syncing evaluations...
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      ID: {displayUser.id}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => onSelectUser(null)}
+                  aria-label="Close user dossier drawer"
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* RLS Visibility / Telemetry Status Note if User Shows 0 Cards */}
+              {displayUser.cardsGradedTotal === 0 && !isPermanentSuperAdmin(displayUser.email) && (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-1">
+                  <div className="font-bold flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      Database Telemetry Status
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-700 dark:text-amber-400">0 Cloud Rows</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+                    No card evaluations are currently recorded in the cloud database for this user. If they graded cards in their browser, their evaluations are preserved in their device's local storage and will automatically flush to the cloud on their next visit.
                   </p>
                 </div>
-              </div>
+              )}
 
-              <button
-                onClick={() => onSelectUser(null)}
-                aria-label="Close user dossier drawer"
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Quick Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Cards Graded</div>
-                <div className="text-lg font-black text-slate-900 dark:text-white font-heading mt-0.5">
-                  {selectedUser.cardsGradedTotal}
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Grade Accuracy</div>
-                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-heading mt-0.5">
-                  {selectedUser.cardsGradedTotal > 0 ? `${selectedUser.gradingAccuracyScore}%` : '—'}
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Evaluator GPA</div>
-                <div className="text-lg font-black text-indigo-600 dark:text-cyan-400 font-heading mt-0.5">
-                  {selectedUser.cardsGradedTotal > 0 ? selectedUser.gradingGpa : '—'}
-                </div>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Quizzes Taken</div>
-                <div className="text-lg font-black text-amber-600 dark:text-amber-400 font-heading mt-0.5">
-                  {selectedUser.totalQuizzes}
-                </div>
-              </div>
-            </div>
-
-            {/* Sets Graded Breakdown (How many sets they have graded & cards per set) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                  <span>Sets Graded Breakdown (Cards Per Set)</span>
-                </h3>
-                <span className="text-xs font-mono text-slate-400">
-                  {selectedUser.setsGraded.filter((s) => s.cardsGraded > 0).length} Sets Active
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {selectedUser.setsGraded.map((set) => (
-                  <div
-                    key={set.setCode}
-                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 space-y-2"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-violet-600 dark:text-cyan-300">
-                          {set.setCode}
-                        </span>
-                        <span className="font-medium text-slate-700 dark:text-slate-300">
-                          {set.setName}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 font-mono font-semibold">
-                        <span className="text-slate-900 dark:text-white">
-                          {set.cardsGraded} / {set.totalCards} cards
-                        </span>
-                        <span className="text-xs text-violet-600 dark:text-cyan-300">
-                          ({set.percentComplete}%)
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          set.percentComplete === 100
-                            ? 'bg-emerald-500'
-                            : 'bg-violet-600 dark:bg-cyan-400'
-                        }`}
-                        style={{ width: `${set.percentComplete}%` }}
-                      />
-                    </div>
+              {/* Quick Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Cards Graded</div>
+                  <div className="text-lg font-black text-slate-900 dark:text-white font-heading mt-0.5">
+                    {displayUser.cardsGradedTotal}
                   </div>
-                ))}
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Grade Accuracy</div>
+                  <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-heading mt-0.5">
+                    {displayUser.cardsGradedTotal > 0 ? `${displayUser.gradingAccuracyScore}%` : '—'}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Evaluator GPA</div>
+                  <div className="text-lg font-black text-indigo-600 dark:text-cyan-400 font-heading mt-0.5">
+                    {displayUser.cardsGradedTotal > 0 ? displayUser.gradingGpa : '—'}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Quizzes Taken</div>
+                  <div className="text-lg font-black text-amber-600 dark:text-amber-400 font-heading mt-0.5">
+                    {displayUser.totalQuizzes}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sets Graded Breakdown (How many sets they have graded & cards per set) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                    <span>Sets Graded Breakdown (Cards Per Set)</span>
+                  </h3>
+                  <span className="text-xs font-mono text-slate-400">
+                    {displayUser.setsGraded.filter((s) => s.cardsGraded > 0).length} Sets Active
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {displayUser.setsGraded.map((set) => (
+                    <div
+                      key={set.setCode}
+                      className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-violet-600 dark:text-cyan-300">
+                            {set.setCode}
+                          </span>
+                          <span className="font-medium text-slate-700 dark:text-slate-300">
+                            {set.setName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono font-semibold">
+                          <span className="text-slate-900 dark:text-white">
+                            {set.cardsGraded} / {set.totalCards} cards
+                          </span>
+                          <span className="text-xs text-violet-600 dark:text-cyan-300">
+                            ({set.percentComplete}%)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            set.percentComplete === 100
+                              ? 'bg-emerald-500'
+                              : 'bg-violet-600 dark:bg-cyan-400'
+                          }`}
+                          style={{ width: `${set.percentComplete}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -677,8 +747,8 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
               )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

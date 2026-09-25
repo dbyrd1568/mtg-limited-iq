@@ -73,7 +73,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_feature ON public.user_activity_logs(fea
 CREATE INDEX IF NOT EXISTS idx_activity_user_feature ON public.user_activity_logs(user_id, feature_name);
 
 -- 3. IS_ADMIN SECURITY DEFINER FUNCTION
--- Sole permanent owner: dbyrd1568@gmail.com
+-- Permanent super admin owners: dbyrd1568@gmail.com and devonwbyrd@gmail.com
 CREATE OR REPLACE FUNCTION public.is_admin(check_user_id UUID DEFAULT auth.uid())
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -85,16 +85,25 @@ BEGIN
 
   -- 0. Check verified JWT email for permanent super admin
   caller_email := lower(auth.jwt() ->> 'email');
-  IF caller_email IN ('dbyrd1568@gmail.com') THEN
+  IF caller_email IN ('dbyrd1568@gmail.com', 'devonwbyrd@gmail.com') THEN
     RETURN true;
   END IF;
 
-  -- 1. Check if user_id is in app_admins
+  -- 1. Check verified email directly from auth.users table for check_user_id
+  IF EXISTS (
+    SELECT 1 FROM auth.users u
+    WHERE u.id = check_user_id
+      AND lower(u.email) IN ('dbyrd1568@gmail.com', 'devonwbyrd@gmail.com')
+  ) THEN
+    RETURN true;
+  END IF;
+
+  -- 2. Check if user_id is in app_admins
   IF EXISTS (SELECT 1 FROM public.app_admins WHERE user_id = check_user_id) THEN
     RETURN true;
   END IF;
 
-  -- 2. Check if caller email is in app_admins
+  -- 3. Check if caller email is in app_admins
   IF caller_email IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.app_admins WHERE lower(email) = caller_email
   ) THEN
@@ -105,17 +114,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. PRE-PROVISION SOLE OWNER ADMIN & LINK TO AUTH USERS
+-- 4. PRE-PROVISION OWNER ADMINS & LINK TO AUTH USERS
 INSERT INTO public.app_admins (email, role)
 VALUES 
-  ('dbyrd1568@gmail.com', 'owner')
-ON CONFLICT (email) DO NOTHING;
+  ('dbyrd1568@gmail.com', 'owner'),
+  ('devonwbyrd@gmail.com', 'owner')
+ON CONFLICT (email) DO UPDATE SET role = 'owner';
 
 UPDATE public.app_admins a
 SET user_id = u.id
 FROM auth.users u
-WHERE lower(a.email) = lower(u.email)
-  AND a.user_id IS NULL;
+WHERE lower(a.email) = lower(u.email);
 
 -- 5. ADMIN USERS DIRECTORY RPC FUNCTION
 -- Allows verified admins to retrieve all registered users directly with verified emails from auth.users
@@ -144,6 +153,87 @@ BEGIN
   FROM auth.users u
   LEFT JOIN public.profiles p ON p.id = u.id
   ORDER BY u.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5B. ADMIN CARD EVALUATIONS RPC FUNCTION
+CREATE OR REPLACE FUNCTION public.get_admin_card_evaluations()
+RETURNS TABLE (
+  user_id UUID,
+  set_code TEXT,
+  card_name TEXT,
+  evaluation_json JSONB,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Admins only.';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    ce.user_id,
+    ce.set_code,
+    ce.card_name,
+    ce.evaluation_json,
+    ce.updated_at
+  FROM public.card_evaluations ce
+  ORDER BY ce.updated_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5C. ADMIN SPECIFIC USER CARD EVALUATIONS RPC FUNCTION
+CREATE OR REPLACE FUNCTION public.get_admin_user_card_evaluations(target_user_id UUID)
+RETURNS TABLE (
+  user_id UUID,
+  set_code TEXT,
+  card_name TEXT,
+  evaluation_json JSONB,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Admins only.';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    ce.user_id,
+    ce.set_code,
+    ce.card_name,
+    ce.evaluation_json,
+    ce.updated_at
+  FROM public.card_evaluations ce
+  WHERE ce.user_id = target_user_id
+  ORDER BY ce.updated_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5D. ADMIN USER STATS RPC FUNCTION
+CREATE OR REPLACE FUNCTION public.get_admin_user_stats()
+RETURNS TABLE (
+  user_id UUID,
+  xp INT,
+  level INT,
+  overall_accuracy INT,
+  stats_json JSONB,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Admins only.';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    us.user_id,
+    us.xp,
+    us.level,
+    us.overall_accuracy,
+    us.stats_json,
+    us.updated_at
+  FROM public.user_stats us
+  ORDER BY us.updated_at DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -189,16 +279,33 @@ CREATE POLICY "Admins can view all activity logs"
   ON public.user_activity_logs FOR SELECT
   USING (public.is_admin());
 
--- 9. EXTEND EXISTING TABLES TO GRANT ADMIN READ ACCESS
+-- 9. EXTEND EXISTING TABLES TO GRANT USER AND ADMIN ACCESS
 DO $$ BEGIN
-  DROP POLICY IF EXISTS "Admins can view all user stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users can view their own evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users can insert their own evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users can update their own evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users can delete their own evaluations" ON public.card_evaluations;
   DROP POLICY IF EXISTS "Admins can view all card evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Admins or owners can view card evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users and admins can manage card evaluations" ON public.card_evaluations;
 END $$;
 
-CREATE POLICY "Admins can view all user stats"
-  ON public.user_stats FOR SELECT
-  USING (public.is_admin() OR auth.uid() = user_id);
+CREATE POLICY "Users and admins can manage card evaluations"
+  ON public.card_evaluations FOR ALL
+  USING (public.is_admin() OR auth.uid() = user_id)
+  WITH CHECK (public.is_admin() OR auth.uid() = user_id);
 
-CREATE POLICY "Admins can view all card evaluations"
-  ON public.card_evaluations FOR SELECT
-  USING (public.is_admin() OR auth.uid() = user_id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users can insert their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users can update their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users can delete their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Admins can view all user stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Admins or owners can view user stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users and admins can manage user stats" ON public.user_stats;
+END $$;
+
+CREATE POLICY "Users and admins can manage user stats"
+  ON public.user_stats FOR ALL
+  USING (public.is_admin() OR auth.uid() = user_id)
+  WITH CHECK (public.is_admin() OR auth.uid() = user_id);

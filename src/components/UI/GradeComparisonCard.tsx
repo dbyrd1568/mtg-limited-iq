@@ -40,6 +40,15 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
   const lsvDelta = (userIndex >= 0 && lsvIndex >= 0) ? lsvIndex - userIndex : 0;
 
   const getDeltaBadge = () => {
+    const isLand = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
+    if (userGrade === 'N/A' || isLand) {
+      return (
+        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[10.5px] font-semibold">
+          N/A (Excluded from math)
+        </span>
+      );
+    }
+
     if (!userGrade) {
       return (
         <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[10.5px] font-semibold">
@@ -161,7 +170,11 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
           </div>
 
           <div className="flex items-baseline gap-1 mt-0.5">
-            {userGrade ? (
+            {userGrade === 'N/A' ? (
+              <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-slate-700 text-white shadow-2xs">
+                N/A
+              </span>
+            ) : userGrade ? (
               <>
                 <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-violet-600 text-white shadow-2xs">
                   {userGrade}

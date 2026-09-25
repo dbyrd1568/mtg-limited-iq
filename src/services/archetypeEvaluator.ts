@@ -152,7 +152,7 @@ export function calculateColorRankings(
     const topCommons: { card: Card; eval: UserCardEvaluation }[] = [];
     const topUncommons: { card: Card; eval: UserCardEvaluation }[] = [];
     const gradeDist: Record<GradeTier, number> = {
-      'A+': 0, A: 0, 'A-': 0, 'B+': 0, B: 0, 'B-': 0, 'C+': 0, C: 0, 'C-': 0, D: 0, F: 0,
+      'A+': 0, A: 0, 'A-': 0, 'B+': 0, B: 0, 'B-': 0, 'C+': 0, C: 0, 'C-': 0, D: 0, F: 0, 'N/A': 0,
     };
 
     // 17Lands average win rate accumulator
@@ -165,7 +165,9 @@ export function calculateColorRankings(
       if (evalData) {
         ratedCount++;
         totalScore += evalData.userScore;
-        gradeDist[evalData.userGrade] = (gradeDist[evalData.userGrade] || 0) + 1;
+        if (evalData.userGrade !== 'N/A') {
+          gradeDist[evalData.userGrade] = (gradeDist[evalData.userGrade] || 0) + 1;
+        }
 
         if (evalData.userScore >= 3.7) {
           bombs.push({ card, eval: evalData });

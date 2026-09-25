@@ -7,6 +7,7 @@ export interface SearchToken {
   operator: ComparisonOperator;
   value: string;
   isNegated: boolean;
+  isQuoted?: boolean;
 }
 
 export interface AdvancedSearchFilters {
@@ -132,40 +133,45 @@ export function tokenizeQuery(query: string): SearchToken[] {
     if (!valueRaw) continue;
 
     if (!fieldRaw) {
-      // 1. Auto-detect P/T pattern: e.g. "2/3", "1/1", "*/*", "0/4", "3/*", "*/2"
-      const ptMatch = valueRaw.match(/^([0-9]+|\*)\/([0-9]+|\*)$/);
-      if (ptMatch) {
-        tokens.push({
-          field: 'pt',
-          operator: ':',
-          value: valueRaw,
-          isNegated,
-        });
-        continue;
-      }
+      if (!wasQuoted) {
+        // 1. Auto-detect P/T pattern: e.g. "2/3", "1/1", "*/*", "0/4", "3/*", "*/2"
+        const ptMatch = valueRaw.match(/^([0-9]+|\*)\/([0-9]+|\*)$/);
+        if (ptMatch) {
+          tokens.push({
+            field: 'pt',
+            operator: ':',
+            value: valueRaw,
+            isNegated,
+            isQuoted: false,
+          });
+          continue;
+        }
 
-      // 2. Auto-detect bracketed mana cost pattern: e.g. "{2}{W}", "{W}", "{1}{B}{B}", "{X}{R}", "{U/R}"
-      const manaBraceMatch = valueRaw.match(/^(\{[a-zA-Z0-9/]+\})+$/);
-      if (manaBraceMatch) {
-        tokens.push({
-          field: 'mana',
-          operator: ':',
-          value: valueRaw,
-          isNegated,
-        });
-        continue;
-      }
+        // 2. Auto-detect bracketed mana cost pattern: e.g. "{2}{W}", "{W}", "{1}{B}{B}", "{X}{R}", "{U/R}"
+        const manaBraceMatch = valueRaw.match(/^(\{[a-zA-Z0-9/]+\})+$/);
+        if (manaBraceMatch) {
+          tokens.push({
+            field: 'mana',
+            operator: ':',
+            value: valueRaw,
+            isNegated,
+            isQuoted: false,
+          });
+          continue;
+        }
 
-      // 3. Auto-detect shorthand mana pattern: e.g. "2W", "1U", "3BB", "1G", "4RR", "WW", "WUBRG"
-      const shorthandManaMatch = valueRaw.match(/^([0-9]+[wubrgcWUBRGC]+|[WUBRGC]{2,})$/);
-      if (shorthandManaMatch) {
-        tokens.push({
-          field: 'mana',
-          operator: ':',
-          value: valueRaw,
-          isNegated,
-        });
-        continue;
+        // 3. Auto-detect shorthand mana pattern: e.g. "2W", "1U", "3BB", "1G", "4RR", "WW", "WUBRG"
+        const shorthandManaMatch = valueRaw.match(/^([0-9]+[wubrgcWUBRGC]+|[WUBRGC]{2,})$/);
+        if (shorthandManaMatch) {
+          tokens.push({
+            field: 'mana',
+            operator: ':',
+            value: valueRaw,
+            isNegated,
+            isQuoted: false,
+          });
+          continue;
+        }
       }
 
       // General text token
@@ -174,6 +180,7 @@ export function tokenizeQuery(query: string): SearchToken[] {
         operator: ':',
         value: valueRaw.toLowerCase(),
         isNegated,
+        isQuoted: wasQuoted,
       });
       continue;
     }
@@ -204,10 +211,34 @@ export function tokenizeQuery(query: string): SearchToken[] {
       operator,
       value: valueRaw,
       isNegated,
+      isQuoted: wasQuoted,
     });
   }
 
   return tokens;
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Checks whether an unquoted word or term appears in text at a natural word boundary.
+ * Short words (<= 2 chars) like "a", "or", "in", "to" require exact word boundaries
+ * to avoid matching inside longer words like "instant", "target", "creature", "sorcery".
+ * Longer terms (>= 3 chars) match natural word prefix/boundaries (e.g. "count" -> "counter", "fly" -> "flying").
+ */
+export function matchWordInText(fullText: string, word: string): boolean {
+  if (!word || !fullText) return false;
+  const lowerText = fullText.toLowerCase();
+  const lowerWord = word.toLowerCase();
+  const escaped = escapeRegex(lowerWord);
+
+  if (lowerWord.length <= 2) {
+    return new RegExp(`(^|[^a-zA-Z0-9])${escaped}([^a-zA-Z0-9]|$)`, 'i').test(lowerText);
+  }
+
+  return new RegExp(`(^|[^a-zA-Z0-9])${escaped}`, 'i').test(lowerText);
 }
 
 /**
@@ -336,7 +367,11 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
       // Matches full unified text across name, oracle text, card faces, type line, keywords, mana cost, collector number, or user notes
       const fullText = getFullCardSearchableText(card, userNote);
       const numberMatch = (card.collector_number || '').toLowerCase() === lowerVal;
-      matched = fullText.includes(lowerVal) || numberMatch;
+      if (token.isQuoted) {
+        matched = fullText.includes(lowerVal) || numberMatch;
+      } else {
+        matched = matchWordInText(fullText, lowerVal) || numberMatch;
+      }
       break;
     }
 
@@ -344,10 +379,13 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
       const cardName = card.name.toLowerCase();
       const faceNames = (card.card_faces || []).map((f) => (f.name || '').toLowerCase());
       const allNames = [cardName, ...faceNames];
-      if (operator === '=' || operator === ':') {
+      if (token.isQuoted) {
         matched = allNames.some((n) => n.includes(lowerVal));
-      } else if (operator === '!=') {
-        matched = !allNames.some((n) => n.includes(lowerVal));
+      } else {
+        matched = allNames.some((n) => matchWordInText(n, lowerVal));
+      }
+      if (operator === '!=') {
+        matched = !matched;
       }
       break;
     }
@@ -357,10 +395,13 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
       // Also check card faces if present
       const facesText = card.card_faces?.map((f) => f.oracle_text?.toLowerCase() || '').join(' ') || '';
       const fullOracle = `${oracle} ${facesText}`;
-      if (operator === '!=') {
-        matched = !fullOracle.includes(lowerVal);
-      } else {
+      if (token.isQuoted) {
         matched = fullOracle.includes(lowerVal);
+      } else {
+        matched = matchWordInText(fullOracle, lowerVal);
+      }
+      if (operator === '!=') {
+        matched = !matched;
       }
       break;
     }
@@ -369,10 +410,13 @@ export function matchToken(card: Card, token: SearchToken, userNote?: string): b
       const typeLine = (card.type_line || '').toLowerCase();
       const facesType = card.card_faces?.map((f) => f.type_line?.toLowerCase() || '').join(' ') || '';
       const fullType = `${typeLine} ${facesType}`;
-      if (operator === '!=') {
-        matched = !fullType.includes(lowerVal);
-      } else {
+      if (token.isQuoted) {
         matched = fullType.includes(lowerVal);
+      } else {
+        matched = matchWordInText(fullType, lowerVal);
+      }
+      if (operator === '!=') {
+        matched = !matched;
       }
       break;
     }
@@ -570,24 +614,38 @@ export function cardMatchesQuery(
     return true;
   }
 
-  // If there is only 1 positive text token, standard match applies
-  if (positiveText.length === 1) {
-    return matchToken(card, positiveText[0], userNote);
+  const quotedTokens = positiveText.filter((t) => t.isQuoted);
+  const unquotedTokens = positiveText.filter((t) => !t.isQuoted);
+
+  // 1. Quoted exact string searches:
+  // Quotes "" keep the string search together: searches for that exact combo of words in that exact order
+  if (quotedTokens.length > 0) {
+    const allQuotedMatch = quotedTokens.every((token) => matchToken(card, token, userNote));
+    if (!allQuotedMatch) {
+      return false;
+    }
   }
 
-  // Multi-word phrase inference:
-  // E.g. user typed "draw a card", "deals 2 damage", "create a 1/1"
-  // Try contiguous phrase match against card's searchable text first,
-  // then fallback to word intersection (all words present anywhere on card)
-  const fullCardText = getFullCardSearchableText(card, userNote);
-  const phrase = positiveText.map((t) => t.value).join(' ');
+  // 2. Unquoted text tokens:
+  // Unquoted terms search for any/or of those words
+  if (unquotedTokens.length > 0) {
+    if (unquotedTokens.length === 1) {
+      return matchToken(card, unquotedTokens[0], userNote);
+    }
 
-  if (fullCardText.includes(phrase)) {
-    return true;
+    // Filter out common connector/stop words ('a', 'an', 'the', 'or', 'and') when other content words exist,
+    // so connector words don't cause every card to match
+    const STOP_WORDS = new Set(['a', 'an', 'the', 'or', 'and']);
+    const contentTokens = unquotedTokens.filter((t) => !STOP_WORDS.has(t.value.toLowerCase()));
+    const effectiveUnquoted = contentTokens.length > 0 ? contentTokens : unquotedTokens;
+
+    const anyUnquotedMatch = effectiveUnquoted.some((token) => matchToken(card, token, userNote));
+    if (!anyUnquotedMatch) {
+      return false;
+    }
   }
 
-  // Fallback: all individual text terms must be present
-  return positiveText.every((t) => matchToken(card, t, userNote));
+  return true;
 }
 
 /**

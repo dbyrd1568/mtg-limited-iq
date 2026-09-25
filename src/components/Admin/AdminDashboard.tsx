@@ -13,6 +13,10 @@ import {
   ArrowLeft,
   FileSpreadsheet,
   FileCode,
+  Copy,
+  Check,
+  ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   AdminSubTab,
@@ -35,6 +39,8 @@ import {
   fetchAdminList,
   exportAdminDataAsJSON,
   exportAdminDataAsCSV,
+  getAdminSyncDiagnostics,
+  ADMIN_RLS_FIX_SQL,
 } from '../../services/admin';
 import { fetchActivityLogs } from '../../services/telemetry';
 import { isSupabaseConfigured } from '../../services/supabase';
@@ -45,6 +51,25 @@ import { AdminUsersView } from './AdminUsersView';
 import { AdminFeatureUsageView } from './AdminFeatureUsageView';
 import { AdminGradingAnalyticsView } from './AdminGradingAnalyticsView';
 import { AdminAccessControlView } from './AdminAccessControlView';
+import { AdminPrecedentApprovalsView } from './AdminPrecedentApprovalsView';
+import { fetchPrecedentProposals } from '../../services/precedentApprovalService';
+import { updateAppUrlParams } from '../../services/urlParams';
+
+export const VALID_ADMIN_SUBTABS: AdminSubTab[] = [
+  'overview',
+  'users',
+  'features',
+  'grading',
+  'access',
+  'precedents',
+];
+
+export function sanitizeAdminSubTab(subtab?: string | null): AdminSubTab {
+  if (subtab && VALID_ADMIN_SUBTABS.includes(subtab as AdminSubTab)) {
+    return subtab as AdminSubTab;
+  }
+  return 'overview';
+}
 
 interface AdminDashboardProps {
   currentUser: UserAccount | null;
@@ -59,7 +84,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onReturnHome,
   initialSubTab = 'overview',
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<AdminSubTab>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<AdminSubTab>(() => sanitizeAdminSubTab(initialSubTab));
+
+  useEffect(() => {
+    setActiveSubTab(sanitizeAdminSubTab(initialSubTab));
+  }, [initialSubTab]);
+
+  const handleSelectSubTab = (subtab: AdminSubTab) => {
+    setActiveSubTab(subtab);
+    updateAppUrlParams({ tab: 'admin', subtab });
+  };
+
   const [timeRange, setTimeRange] = useState<AdminTimeRange>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -100,6 +135,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [adminList, setAdminList] = useState<AdminAccessRecord[]>([]);
   const [recentLogs, setRecentLogs] = useState<UserActivityLog[]>([]);
   const [selectedUserForDossier, setSelectedUserForDossier] = useState<AdminUserSummary | null>(null);
+  const [pendingProposalsCount, setPendingProposalsCount] = useState<number>(0);
+  const [copiedSql, setCopiedSql] = useState(false);
 
   const loadAllData = useCallback(async () => {
     setIsLoading(true);
@@ -112,6 +149,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         accuracyData,
         adminsData,
         logsData,
+        proposalsData,
       ] = await Promise.all([
         fetchAdminOverviewKPIs(timeRange),
         fetchUserDirectory(),
@@ -120,6 +158,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         fetchGradingAccuracyReport(),
         fetchAdminList(),
         fetchActivityLogs(timeRange),
+        fetchPrecedentProposals({ status: 'pending' }).catch(() => []),
       ]);
 
       setKpis(kpisData);
@@ -129,6 +168,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setAccuracy(accuracyData);
       setAdminList(adminsData);
       setRecentLogs(logsData);
+      setPendingProposalsCount(proposalsData.length);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -300,10 +340,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
+      {/* RLS Visibility Alert & 1-Click Fix */}
+      {getAdminSyncDiagnostics().isRlsBlocked && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+          <div className="space-y-1">
+            <div className="font-bold text-sm flex items-center gap-2 text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Database Telemetry Access Repair Required</span>
+            </div>
+            <p className="text-[12px] text-amber-800/90 dark:text-amber-300/90 max-w-2xl leading-relaxed">
+              Card evaluations and player grades for other registered accounts (such as <strong>TheVintageCubeChef</strong>) are currently shielded by PostgreSQL Row-Level Security in your database. Run the 1-click SQL migration in your Supabase SQL Editor to grant admin visibility across all accounts.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(ADMIN_RLS_FIX_SQL);
+                setCopiedSql(true);
+                setTimeout(() => setCopiedSql(false), 2500);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedSql ? 'SQL Copied!' : 'Copy SQL Fix'}</span>
+            </button>
+            <a
+              href="https://supabase.com/dashboard/project/irxgoelllogcyoiumxup/sql/new"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open Supabase SQL Editor</span>
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Modern Sub-Navigation Tabs */}
       <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs overflow-x-auto no-scrollbar">
         <button
-          onClick={() => setActiveSubTab('overview')}
+          onClick={() => handleSelectSubTab('overview')}
           className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
             activeSubTab === 'overview'
               ? 'bg-violet-600 text-white shadow-xs font-bold'
@@ -315,7 +393,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveSubTab('users')}
+          onClick={() => handleSelectSubTab('users')}
           className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
             activeSubTab === 'users'
               ? 'bg-violet-600 text-white shadow-xs font-bold'
@@ -327,7 +405,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveSubTab('features')}
+          onClick={() => handleSelectSubTab('features')}
           className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
             activeSubTab === 'features'
               ? 'bg-violet-600 text-white shadow-xs font-bold'
@@ -339,7 +417,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveSubTab('grading')}
+          onClick={() => handleSelectSubTab('grading')}
           className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
             activeSubTab === 'grading'
               ? 'bg-violet-600 text-white shadow-xs font-bold'
@@ -351,7 +429,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveSubTab('access')}
+          onClick={() => handleSelectSubTab('access')}
           className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
             activeSubTab === 'access'
               ? 'bg-violet-600 text-white shadow-xs font-bold'
@@ -360,6 +438,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         >
           <Key className="w-4 h-4" />
           <span>Access Control ({adminList.length})</span>
+        </button>
+
+        <button
+          onClick={() => handleSelectSubTab('precedents')}
+          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
+            activeSubTab === 'precedents'
+              ? 'bg-violet-600 text-white shadow-xs font-bold'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span>Comp Approvals</span>
+          {pendingProposalsCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[11px] font-mono font-bold bg-amber-500 text-white shadow-xs">
+              {pendingProposalsCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -404,6 +499,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             currentUser={currentUser}
             onRefreshAdmins={loadAllData}
           />
+        )}
+
+        {activeSubTab === 'precedents' && (
+          <AdminPrecedentApprovalsView currentUser={currentUser} />
         )}
       </div>
     </div>

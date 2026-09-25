@@ -96,17 +96,38 @@ export const ManaCostRenderer: React.FC<{ manaCost?: string; size?: ManaSymbolPr
 }) => {
   if (!manaCost) return null;
 
-  // Split by {X} symbols
-  const matches = manaCost.match(/\{[^}]+\}/g);
-  if (!matches) {
-    return <span className="font-mono text-sm text-slate-300">{manaCost}</span>;
-  }
+  // Split faces by '//' or '/' outside curly braces (so hybrid mana like {W/U} remains intact)
+  const faces = manaCost.split(/\s*(?:\/{2,}|\/(?![^{]*\}))\s*/);
+
+  const slashSizeClasses: Record<NonNullable<ManaSymbolProps['size']>, string> = {
+    xs: 'text-[11px] leading-none',
+    sm: 'text-xs leading-none',
+    md: 'text-sm leading-none',
+    lg: 'text-base leading-none',
+    xl: 'text-lg leading-none',
+  };
 
   return (
     <div className={`inline-flex items-center gap-1 flex-wrap ${className}`}>
-      {matches.map((sym, idx) => (
-        <ManaSymbol key={`${sym}-${idx}`} symbol={sym} size={size} />
-      ))}
+      {faces.map((face, faceIdx) => {
+        const matches = face.match(/\{[^}]+\}/g);
+        return (
+          <React.Fragment key={faceIdx}>
+            {faceIdx > 0 && (
+              <span className={`font-mono font-bold text-slate-400 dark:text-slate-500 mx-0.5 select-none ${slashSizeClasses[size]}`}>
+                /
+              </span>
+            )}
+            {matches ? (
+              matches.map((sym, symIdx) => (
+                <ManaSymbol key={`${sym}-${faceIdx}-${symIdx}`} symbol={sym} size={size} />
+              ))
+            ) : face ? (
+              <span className="font-mono text-sm text-slate-300">{face}</span>
+            ) : null}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 };

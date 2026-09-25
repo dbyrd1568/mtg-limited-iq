@@ -830,12 +830,57 @@ console.assert(cardMatchesQuery(testDfcDraw, 'draw a card 1U'), 'Phrase + shorth
 console.assert(cardMatchesQuery(testVanillaFlyer, 'flying'), 'Keyword "flying" must match card without oracle_text');
 console.assert(cardMatchesQuery(testVanillaFlyer, 'flying 1/1 {W}'), '"flying 1/1 {W}" must match Suntail Hawk');
 
+// Exact quoted phrase vs unquoted any/or words:
+const testCancel: Card = {
+  id: 'cancel-1',
+  name: 'Cancel',
+  set: 'M21',
+  set_name: 'Core Set 2021',
+  collector_number: '46',
+  mana_cost: '{1}{U}{U}',
+  cmc: 3,
+  type_line: 'Instant',
+  oracle_text: 'Counter target spell.',
+  colors: ['U'],
+  color_identity: ['U'],
+  rarity: 'common',
+  keywords: [],
+};
+
+// 1. Quoted exact phrase: "Counter target white or black spell"
+console.assert(cardMatchesQuery(preciseRedaction, '"Counter target white or black spell"'), 'Quoted exact phrase must match Precise Redaction');
+console.assert(!cardMatchesQuery(testCancel, '"Counter target white or black spell"'), 'Quoted exact phrase must NOT match Cancel');
+console.assert(!cardMatchesQuery(testMurder, '"Counter target white or black spell"'), 'Quoted exact phrase must NOT match Murder');
+console.assert(!cardMatchesQuery(testOpt, '"Counter target white or black spell"'), 'Quoted exact phrase must NOT match Opt');
+
+// 2. Unquoted any/or words: Counter target white or black spell
+console.assert(cardMatchesQuery(preciseRedaction, 'Counter target white or black spell'), 'Unquoted words must match Precise Redaction');
+console.assert(cardMatchesQuery(testCancel, 'Counter target white or black spell'), 'Unquoted words must match Cancel (contains counter, target, spell)');
+console.assert(cardMatchesQuery(testMurder, 'Counter target white or black spell'), 'Unquoted words must match Murder (contains target)');
+console.assert(!cardMatchesQuery(testOpt, 'Counter target white or black spell'), 'Unquoted words must NOT match Opt (none of counter, target, white, black, spell)');
+
+// 3. Combined exact quoted phrase + unquoted words: "Counter target" white or black
+console.assert(cardMatchesQuery(preciseRedaction, '"Counter target" white or black'), 'Exact phrase "Counter target" + white/black must match Precise Redaction');
+console.assert(!cardMatchesQuery(testCancel, '"Counter target" white or black'), 'Exact phrase "Counter target" + white/black must NOT match Cancel (lacks white/black)');
+console.assert(!cardMatchesQuery(testMurder, '"Counter target" white or black'), 'Exact phrase "Counter target" + white/black must NOT match Murder (lacks "Counter target")');
+
+// 4. Combined syntax filter + exact quoted phrase
+console.assert(cardMatchesQuery(preciseRedaction, 't:instant "Counter target white or black spell"'), 't:instant + exact phrase must match Precise Redaction');
+console.assert(!cardMatchesQuery(preciseRedaction, 't:sorcery "Counter target white or black spell"'), 't:sorcery + exact phrase must NOT match Instant Precise Redaction');
+
 // Scryfall Precedent Query Builder verification
 const scryfallQ1 = buildScryfallPrecedentQuery('draw a card');
 console.assert(scryfallQ1.includes('o:"draw a card"'), 'Scryfall query must include o:"draw a card"');
 const scryfallQ2 = buildScryfallPrecedentQuery('flying 2/3 2W');
 console.assert(scryfallQ2.includes('pow=2 tou=3') && scryfallQ2.includes('m:{2}{W}'), 'Scryfall query must infer stats and shorthand mana');
+const scryfallExact = buildScryfallPrecedentQuery('"Counter target white or black spell"');
+console.assert(scryfallExact.includes('"Counter target white or black spell"'), 'Scryfall query must preserve exact quoted string');
+const scryfallOr = buildScryfallPrecedentQuery('Counter target white or black spell');
+console.assert(scryfallOr.includes('o:Counter or o:target') && scryfallOr.includes('o:spell'), 'Scryfall query must search any/or words for unquoted input');
 
+console.log('   ✓ Quoted exact phrase search keeping string together verified.');
+console.log('   ✓ Unquoted any/or word search verified.');
+console.log('   ✓ Combined exact quoted phrase + unquoted word conditions verified.');
 console.log('   ✓ Natural unquoted rules text inference verified.');
 console.log('   ✓ DFC card face text matching verified.');
 console.log('   ✓ Keyword-only matching without oracle text verified.');

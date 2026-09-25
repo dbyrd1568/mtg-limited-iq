@@ -426,7 +426,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
     activeCards.forEach((card) => {
       const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
       const userEval = userEvaluations[evalKey];
-      if (!userEval?.userGrade) return;
+      if (!userEval?.userGrade || userEval.userGrade === 'N/A') return;
 
       const rating = get17LandsCardRating(card, active17LData) || getOrEstimate17LandsCardRating(card, active17LData);
       if (!rating) return;

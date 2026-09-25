@@ -65,9 +65,12 @@ export function buildScryfallPrecedentQuery(input: string, targetSet?: string): 
       syntaxFilters.push(`("${word}" or o:"${word}")`);
     } else {
       // Multiple words:
-      // Search exact phrase in name OR exact phrase in oracle text OR all individual words in oracle text
+      // Search exact phrase in name OR exact phrase in oracle text OR any/or individual words in oracle text
       const phrase = freeTextTokens.join(' ');
-      const individualOracle = freeTextTokens.map((w) => `o:${w}`).join(' ');
+      const STOP_WORDS = new Set(['a', 'an', 'the', 'or', 'and']);
+      const contentTokens = freeTextTokens.filter((w) => !STOP_WORDS.has(w.toLowerCase()));
+      const wordsToOr = contentTokens.length > 0 ? contentTokens : freeTextTokens;
+      const individualOracle = wordsToOr.map((w) => `o:${w}`).join(' or ');
       syntaxFilters.push(`("${phrase}" or o:"${phrase}" or (${individualOracle}))`);
     }
   }

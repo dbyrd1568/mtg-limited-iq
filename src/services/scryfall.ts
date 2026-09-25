@@ -297,7 +297,7 @@ export function normalizeScryfallCard(rawCard: any): Card {
 
   const typeLine = rawCard.type_line || (card_faces ? card_faces[0].type_line : '');
   const oracleText = rawCard.oracle_text || (card_faces ? card_faces.map(f => f.oracle_text).join('\n//\n') : '');
-  const manaCost = rawCard.mana_cost || (card_faces ? card_faces[0].mana_cost : '');
+  const manaCost = rawCard.mana_cost || (card_faces ? card_faces.map(f => f.mana_cost).filter(Boolean).join(' // ') : '');
   const power = rawCard.power || (card_faces ? card_faces[0].power : undefined);
   const toughness = rawCard.toughness || (card_faces ? card_faces[0].toughness : undefined);
 

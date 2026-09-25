@@ -56,7 +56,7 @@ interface PrecedentSwapSearchModalProps {
   targetCard: Card;
   currentMatches: SimilarCardMatch[];
   initialSlotIndex?: number;
-  onConfirmSlotReplacement: (slotIndex: number, chosenCard: Card) => void;
+  onConfirmSlotReplacement: (slotIndex: number, chosenCard: Card) => Promise<void> | void;
   onRevertSlot?: (slotIndex: number) => void;
   isAdmin?: boolean;
 }
@@ -82,6 +82,8 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
   const [loading, setLoading] = useState<boolean>(false);
   const [activeCardView, setActiveCardView] = useState<'reference' | 'slot'>('slot');
   const [mobileTab, setMobileTab] = useState<'search' | 'preview'>('search');
+  const [replacingCardName, setReplacingCardName] = useState<string | null>(null);
+  const [swappedFeedback, setSwappedFeedback] = useState<{ [cardName: string]: number }>({});
 
   const targetCardRating = useMemo(() => {
     return targetCard ? getOrEstimate17LandsCardRating(targetCard) : null;
@@ -124,16 +126,19 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const prevIsOpenRef = useRef<boolean>(false);
+
   // Sync initial slot index & reset mobile tab to search on open
   useEffect(() => {
-    if (typeof initialSlotIndex === 'number' && initialSlotIndex >= 0 && initialSlotIndex < 4) {
-      setSelectedSlot(initialSlotIndex);
-    } else {
-      setSelectedSlot(0);
-    }
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
+      if (typeof initialSlotIndex === 'number' && initialSlotIndex >= 0 && initialSlotIndex < 4) {
+        setSelectedSlot(initialSlotIndex);
+      } else {
+        setSelectedSlot(0);
+      }
       setMobileTab('search');
     }
+    prevIsOpenRef.current = isOpen;
   }, [initialSlotIndex, isOpen]);
 
   // Focus input when opened
@@ -361,9 +366,25 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
 
   if (!isOpen) return null;
 
-  const handleSelectCard = (candidateCard: Card) => {
-    onConfirmSlotReplacement(selectedSlot, candidateCard);
-    onClose();
+  const handleSelectCard = async (candidateCard: Card, slotToUse: number = selectedSlot) => {
+    setReplacingCardName(candidateCard.name);
+    try {
+      await onConfirmSlotReplacement(slotToUse, candidateCard);
+      setSwappedFeedback((prev) => ({ ...prev, [candidateCard.name]: slotToUse }));
+      // Auto-advance active slot to next slot (0 -> 1 -> 2 -> 3 -> 0)
+      setSelectedSlot((slotToUse + 1) % 4);
+      setTimeout(() => {
+        setSwappedFeedback((prev) => {
+          const next = { ...prev };
+          delete next[candidateCard.name];
+          return next;
+        });
+      }, 2500);
+    } catch (err) {
+      console.error('Failed to substitute precedent card:', err);
+    } finally {
+      setReplacingCardName(null);
+    }
   };
 
   const handleChipClick = (chip: string) => {
@@ -506,24 +527,9 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Select Slot to Replace:
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveCardView(activeCardView === 'reference' ? 'slot' : 'reference')}
-                    className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold border transition-colors flex items-center gap-1 cursor-pointer ${
-                      activeCardView === 'reference'
-                        ? 'bg-violet-600 text-white border-violet-500 shadow-xs'
-                        : 'bg-white dark:bg-[#050818] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-violet-400'
-                    }`}
-                    title="Toggle between viewing the original reference card and the precedent being replaced"
-                  >
-                    <Sparkles className={`w-3 h-3 ${activeCardView === 'reference' ? 'text-amber-300' : 'text-violet-500 dark:text-cyan-400'}`} />
-                    <span>{activeCardView === 'reference' ? 'Viewing Reference' : 'See Reference Card'}</span>
-                  </button>
-                  <span className="text-[10px] font-mono font-bold text-violet-600 dark:text-cyan-400">
-                    Slot {selectedSlot + 1} of 4
-                  </span>
-                </div>
+                <span className="text-[10px] font-mono font-bold text-violet-600 dark:text-cyan-400">
+                  Slot {selectedSlot + 1} of 4
+                </span>
               </div>
 
               <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-200/70 dark:bg-[#050818] rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -620,7 +626,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       <CardObfuscator
                         card={targetCard}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
-                        size="md"
+                        size="lg"
                         showSublabel={false}
                       />
                     </div>
@@ -733,7 +739,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       <CardObfuscator
                         card={currentSlotCard}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
-                        size="md"
+                        size="lg"
                         showSublabel={false}
                       />
                     </div>
@@ -819,16 +825,6 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       <span>Revert Slot to Original</span>
                     </button>
                   )}
-
-                  {/* Button to view Original Reference Card */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveCardView('reference')}
-                    className="w-full py-1.5 px-3 rounded-xl text-xs font-mono font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>View Original Reference ({targetCard.name})</span>
-                  </button>
                 </div>
               ) : (
                 <div className="p-8 text-center text-xs font-mono text-slate-400 flex flex-col items-center justify-center gap-3">
@@ -865,30 +861,38 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
           }`}>
             {/* Search Toolbar (Main Screen Style) */}
             <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3 shrink-0 bg-slate-50/50 dark:bg-[#060a1d]/50">
-              {/* Mobile-only slot selector strip */}
-              <div className="flex md:hidden items-center justify-between gap-1.5 p-1 bg-slate-200/70 dark:bg-[#050818] rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono mb-1">
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 pl-1.5">
-                  Slot:
-                </span>
-                <div className="flex items-center gap-1">
+              {/* Active Target Slot Selector Strip */}
+              <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-200/70 dark:bg-[#050818] rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-mono mb-1">
+                <div className="flex items-center gap-1.5 pl-1.5 shrink-0">
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+                    Active Target Slot:
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                   {[0, 1, 2, 3].map((slotIdx) => {
                     const isCur = selectedSlot === slotIdx;
                     const match = currentMatches[slotIdx];
                     const hasCustom = match?.isCustomOverride;
+                    const cardName = match?.card?.name;
                     return (
                       <button
                         key={slotIdx}
                         type="button"
                         onClick={() => setSelectedSlot(slotIdx)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        title={cardName ? `Slot ${slotIdx + 1}: ${cardName}` : `Slot ${slotIdx + 1}: Empty`}
+                        className={`px-2.5 sm:px-3 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                           isCur
-                            ? 'bg-violet-600 text-white shadow-xs'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-800'
+                            ? 'bg-violet-600 text-white shadow-xs ring-2 ring-violet-400/40'
+                            : 'bg-white/80 dark:bg-[#090e24] text-slate-600 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800'
                         }`}
                       >
                         <span>Slot {slotIdx + 1}</span>
                         {hasCustom && (
-                          <span className={`w-1.5 h-1.5 rounded-full ${isCur ? 'bg-amber-300' : 'bg-amber-500'}`} />
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCur ? 'bg-amber-300' : 'bg-amber-500'}`}
+                            title="Custom comp override"
+                          />
                         )}
                       </button>
                     );
@@ -1081,8 +1085,8 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                 )}
               </div>
 
-              <div className="text-[11px]">
-                Click <span className="font-bold text-violet-700 dark:text-cyan-400">"Swap into Slot {selectedSlot + 1}"</span> to substitute
+              <div className="text-[11px] hidden sm:block">
+                Targeting <span className="font-bold text-violet-700 dark:text-cyan-400">Slot {selectedSlot + 1}</span> • Swaps automatically advance to next slot
               </div>
             </div>
 
@@ -1113,13 +1117,26 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       (card.card_faces && (card.card_faces[0]?.image_uris?.png || card.card_faces[0]?.image_uris?.normal)) ||
                       (card.card_faces && card.card_faces[0]?.image_uris?.small);
 
+                    const inSlotIndex = currentMatches.findIndex(
+                      (m) => m?.card?.name?.toLowerCase() === card.name.toLowerCase()
+                    );
+                    const isCurrentlySwapped = swappedFeedback[card.name] !== undefined;
+                    const swappedSlotNum = swappedFeedback[card.name];
+                    const isReplacingThis = replacingCardName === card.name;
+
                     return (
                       <div
                         key={`${card.set}_${card.id}`}
-                        className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#070b1e] hover:border-violet-400 dark:hover:border-cyan-400/60 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 group gap-3"
+                        className={`rounded-3xl border bg-white dark:bg-[#070b1e] shadow-xs hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 group gap-3 ${
+                          isCurrentlySwapped
+                            ? 'border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-400/40'
+                            : inSlotIndex >= 0
+                            ? 'border-emerald-300 dark:border-emerald-700/80 hover:border-emerald-400'
+                            : 'border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/60'
+                        }`}
                       >
                         <div className="space-y-3">
-                          {/* Top Header: Set & Similarity Score (Moved off the card image) */}
+                          {/* Top Header: Set & Similarity Score + Assigned Slot Indicator */}
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5 text-xs font-mono">
                               <SetSymbol setCode={card.set} size="sm" />
@@ -1127,9 +1144,17 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                                 {card.set}
                               </span>
                             </div>
-                            <span className="px-2.5 py-0.5 rounded-lg bg-cyan-100 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 font-mono font-bold text-xs border border-cyan-300 dark:border-cyan-800/80 shadow-xs">
-                              {similarityScore}% Match
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {inSlotIndex >= 0 && (
+                                <span className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-[10.5px] border border-emerald-300 dark:border-emerald-700 shadow-2xs flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                  <span>Slot {inSlotIndex + 1}</span>
+                                </span>
+                              )}
+                              <span className="px-2.5 py-0.5 rounded-lg bg-cyan-100 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 font-mono font-bold text-xs border border-cyan-300 dark:border-cyan-800/80 shadow-xs">
+                                {similarityScore}% Match
+                              </span>
+                            </div>
                           </div>
 
                           {/* Card Thumbnail Artwork (Enlarged & clean, no overlay badges) */}
@@ -1203,16 +1228,79 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                           )}
                         </div>
 
-                        {/* Substitution Action Button */}
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                        {/* Substitution Action Button & Direct Slot Picker */}
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5">
                           <button
                             type="button"
-                            onClick={() => handleSelectCard(card)}
-                            className="w-full py-2 px-3 rounded-xl text-xs font-mono font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                            disabled={replacingCardName !== null}
+                            onClick={() => handleSelectCard(card, selectedSlot)}
+                            className={`w-full py-2 px-3 rounded-xl text-xs font-mono font-bold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                              isCurrentlySwapped
+                                ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
+                                : inSlotIndex === selectedSlot
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                : 'bg-violet-600 hover:bg-violet-700 text-white'
+                            }`}
                           >
-                            <span>Swap into Slot {selectedSlot + 1}</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
+                            {isReplacingThis ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Swapping into Slot {selectedSlot + 1}...</span>
+                              </>
+                            ) : isCurrentlySwapped ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-white" />
+                                <span>Swapped into Slot {swappedSlotNum + 1}!</span>
+                              </>
+                            ) : inSlotIndex === selectedSlot ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-white" />
+                                <span>Active in Slot {selectedSlot + 1}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Swap into Slot {selectedSlot + 1}</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </>
+                            )}
                           </button>
+
+                          {/* Direct Slot Shortcut Buttons: S1, S2, S3, S4 */}
+                          <div className="flex items-center justify-between gap-1 text-[10px] font-mono pt-0.5">
+                            <span className="text-slate-400 text-[9px] uppercase font-semibold">Or swap to:</span>
+                            <div className="flex items-center gap-1">
+                              {[0, 1, 2, 3].map((slotIdx) => {
+                                const match = currentMatches[slotIdx];
+                                const isThisSlot = inSlotIndex === slotIdx;
+                                const isSelected = selectedSlot === slotIdx;
+                                return (
+                                  <button
+                                    key={slotIdx}
+                                    type="button"
+                                    disabled={replacingCardName !== null}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSelectCard(card, slotIdx);
+                                    }}
+                                    title={
+                                      isThisSlot
+                                        ? `Currently assigned to Slot ${slotIdx + 1}`
+                                        : `Swap directly into Slot ${slotIdx + 1}${match?.card ? ` (Replaces ${match.card.name})` : ''}`
+                                    }
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                      isThisSlot
+                                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-400 shadow-2xs font-black'
+                                        : isSelected
+                                        ? 'bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 border-violet-400'
+                                        : 'bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-cyan-300 border-slate-200 dark:border-slate-800'
+                                    }`}
+                                  >
+                                    {isThisSlot ? `✓ S${slotIdx + 1}` : `S${slotIdx + 1}`}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1251,20 +1339,25 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
             onClick={onClose}
             className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold font-mono text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           >
-            Cancel
+            Close
           </button>
 
           <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
             <span className="hidden sm:inline">Target: <strong className="text-slate-900 dark:text-white">{targetCard.name}</strong> •</span>
-            <span>Replacing:</span>
+            <span>Targeting:</span>
             <span className="font-bold text-violet-700 dark:text-cyan-300 truncate">
               Slot {selectedSlot + 1} {currentSlotCard?.name ? `(${currentSlotCard.name})` : ''}
             </span>
           </div>
 
-          <div className="hidden lg:block text-xs font-mono text-slate-400 shrink-0">
-            Click any card's "Swap into Slot {selectedSlot + 1}" button to replace
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold font-mono bg-violet-600 hover:bg-violet-700 text-white shadow-xs transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95"
+          >
+            <Check className="w-3.5 h-3.5" />
+            <span>Done</span>
+          </button>
         </div>
       </div>
     </div>

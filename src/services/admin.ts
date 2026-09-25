@@ -19,6 +19,7 @@ import { isDevEnvironment, isCloudUUID } from './environment';
 const ADMIN_STORAGE_KEY = 'mtg_admin_access_list_v1';
 export const PERMANENT_SUPER_ADMIN_EMAILS = new Set([
   'dbyrd1568@gmail.com',
+  'devonwbyrd@gmail.com',
 ]);
 export const DEFAULT_OWNER_EMAIL = 'dbyrd1568@gmail.com';
 
@@ -30,6 +31,7 @@ export function isPermanentSuperAdmin(emailOrId?: string | null): boolean {
   const clean = emailOrId.trim().toLowerCase();
   return (
     clean === 'dbyrd1568@gmail.com' ||
+    clean === 'devonwbyrd@gmail.com' ||
     clean === 'admin_owner_01'
   );
 }
@@ -96,11 +98,17 @@ export function getStoredLocalAdmins(): AdminAccessRecord[] {
       (a) => a.email?.toLowerCase() !== 'devonbyrd@gmail.com' && a.id !== 'admin_owner_02'
     );
 
-    // Ensure permanent super admin owner is always present with owner role
+    // Ensure permanent super admin owners are always present with owner role
     const initialOwners: AdminAccessRecord[] = [
       {
         id: 'admin_owner_01',
         email: 'dbyrd1568@gmail.com',
+        role: 'owner',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'admin_owner_02',
+        email: 'devonwbyrd@gmail.com',
         role: 'owner',
         createdAt: new Date().toISOString(),
       },
@@ -417,15 +425,79 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
         profiles = directProfiles;
       }
 
-      // 2. Query real user statistics
-      const { data: allStats } = await supabase
-        .from('user_stats')
-        .select('*');
+      // 2. Query real user statistics: Try RPC first, fallback to table
+      let allStats: any[] = [];
+      try {
+        const { data: rpcStats, error: rpcStatsErr } = await supabase.rpc('get_admin_user_stats');
+        if (!rpcStatsErr && rpcStats && Array.isArray(rpcStats)) {
+          allStats = rpcStats;
+        }
+      } catch {
+        // RPC might not exist yet
+      }
 
-      // 3. Query real card evaluations
-      const { data: allEvals } = await supabase
-        .from('card_evaluations')
-        .select('user_id, set_code, card_name, evaluation_json, updated_at');
+      if (allStats.length === 0) {
+        try {
+          const { data: directStats, error: statsErr } = await supabase
+            .from('user_stats')
+            .select('*');
+          if (!statsErr && directStats && Array.isArray(directStats)) {
+            allStats = directStats;
+          } else if (statsErr) {
+            console.warn('Direct user_stats query warning:', statsErr.message);
+          }
+        } catch (err) {
+          console.warn('Failed to query user_stats table:', err);
+        }
+      }
+
+      // 3. Query real card evaluations: Try RPC first, fallback to paginated table query
+      let allEvals: any[] = [];
+      let evalsRlsBlocked = false;
+
+      try {
+        const { data: rpcEvals, error: rpcErr } = await supabase.rpc('get_admin_card_evaluations');
+        if (!rpcErr && rpcEvals && Array.isArray(rpcEvals)) {
+          allEvals = rpcEvals;
+        }
+      } catch {
+        // RPC might not exist yet
+      }
+
+      if (allEvals.length === 0) {
+        try {
+          let from = 0;
+          const PAGE_SIZE = 1000;
+          let hasMore = true;
+
+          while (hasMore) {
+            const { data: chunk, error: chunkErr } = await supabase
+              .from('card_evaluations')
+              .select('user_id, set_code, card_name, evaluation_json, updated_at')
+              .range(from, from + PAGE_SIZE - 1);
+
+            if (chunkErr) {
+              console.warn('Direct card_evaluations query warning:', chunkErr.message);
+              evalsRlsBlocked = true;
+              break;
+            }
+
+            if (chunk && chunk.length > 0) {
+              allEvals.push(...chunk);
+              if (chunk.length < PAGE_SIZE) {
+                hasMore = false;
+              } else {
+                from += PAGE_SIZE;
+              }
+            } else {
+              hasMore = false;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to query card_evaluations table:', err);
+          evalsRlsBlocked = true;
+        }
+      }
 
       const statsMap = new Map<string, any>();
       if (allStats && Array.isArray(allStats)) {
@@ -506,6 +578,22 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
             evaluations: resolvedEvals,
           };
         });
+
+        // Diagnostics: detect if RLS is preventing admin from reading other users' evaluations
+        const nonAdminUsersWithZeroEvals = rawUsers.filter(
+          (u) => !isPermanentSuperAdmin(u.email) && Object.keys(u.evaluations || {}).length === 0
+        );
+        const isLikelyRlsBlocked =
+          rawUsers.length > 1 &&
+          allEvals.length === 0 &&
+          nonAdminUsersWithZeroEvals.length === rawUsers.length - 1;
+
+        lastAdminSyncDiagnostics = {
+          isRlsBlocked: Boolean(evalsRlsBlocked || isLikelyRlsBlocked),
+          totalUsersFound: rawUsers.length,
+          totalEvalsFound: allEvals.length,
+          lastCheckedAt: new Date().toISOString(),
+        };
       }
     } catch (err) {
       console.warn('Could not query real users from Supabase:', err);
@@ -581,9 +669,83 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
 }
 
 /**
+ * Diagnostics tracking for admin data sync and Supabase RLS visibility
+ */
+let lastAdminSyncDiagnostics = {
+  isRlsBlocked: false,
+  totalUsersFound: 0,
+  totalEvalsFound: 0,
+  lastCheckedAt: '',
+};
+
+export function getAdminSyncDiagnostics() {
+  return lastAdminSyncDiagnostics;
+}
+
+/**
+ * Directly fetches all card evaluations for a target user (bypassing bulk cache)
+ */
+export async function fetchEvaluationsForUser(
+  userId: string
+): Promise<Record<string, any>> {
+  if (!isSupabaseConfigured() || !isCloudUUID(userId)) {
+    return loadUserEvaluations(userId);
+  }
+
+  // 1. Try targeted RPC
+  try {
+    const { data: rpcEvals, error: rpcErr } = await supabase.rpc(
+      'get_admin_user_card_evaluations',
+      { target_user_id: userId }
+    );
+    if (!rpcErr && rpcEvals && Array.isArray(rpcEvals) && rpcEvals.length > 0) {
+      const userBucket: Record<string, any> = {};
+      rpcEvals.forEach((ev: any) => {
+        const key = `${ev.set_code.toLowerCase()}_${ev.card_name.toLowerCase()}`;
+        userBucket[key] = {
+          ...(ev.evaluation_json || {}),
+          setCode: ev.set_code,
+          cardName: ev.card_name,
+          updatedAt: ev.updated_at,
+        };
+      });
+      return userBucket;
+    }
+  } catch {
+    // RPC may not exist yet
+  }
+
+  // 2. Try direct table query
+  try {
+    const { data: rows, error } = await supabase
+      .from('card_evaluations')
+      .select('set_code, card_name, evaluation_json, updated_at')
+      .eq('user_id', userId);
+
+    if (!error && rows && Array.isArray(rows) && rows.length > 0) {
+      const userBucket: Record<string, any> = {};
+      rows.forEach((ev: any) => {
+        const key = `${ev.set_code.toLowerCase()}_${ev.card_name.toLowerCase()}`;
+        userBucket[key] = {
+          ...(ev.evaluation_json || {}),
+          setCode: ev.set_code,
+          cardName: ev.card_name,
+          updatedAt: ev.updated_at,
+        };
+      });
+      return userBucket;
+    }
+  } catch (err) {
+    console.warn('Error fetching evaluations for user:', err);
+  }
+
+  return loadUserEvaluations(userId);
+}
+
+/**
  * Computes how many cards a user has graded per MTG set
  */
-function computeUserSetGradingDetails(
+export function computeUserSetGradingDetails(
   evals: Record<string, any>
 ): UserSetGradingDetail[] {
   const setCounts: Record<string, { count: number; scores: number[]; lastAt: string }> = {};
@@ -603,7 +765,7 @@ function computeUserSetGradingDetails(
     }
   });
 
-  return POPULAR_LIMITED_SETS.map((set) => {
+  const known = POPULAR_LIMITED_SETS.map((set) => {
     const found = setCounts[set.code.toUpperCase()];
     const cardsGraded = found ? found.count : 0;
     const percentComplete = set.card_count > 0 ? Math.min(100, Math.round((cardsGraded / set.card_count) * 100)) : 0;
@@ -622,6 +784,28 @@ function computeUserSetGradingDetails(
       averageUserScore: avgScore,
     };
   });
+
+  // Include any custom or additional sets graded by user
+  const knownCodes = new Set(POPULAR_LIMITED_SETS.map((s) => s.code.toUpperCase()));
+  const extraSets: UserSetGradingDetail[] = [];
+  for (const [code, data] of Object.entries(setCounts)) {
+    if (!knownCodes.has(code) && data.count > 0) {
+      extraSets.push({
+        setCode: code,
+        setName: code,
+        cardsGraded: data.count,
+        totalCards: data.count,
+        percentComplete: 100,
+        lastGradedAt: data.lastAt,
+        averageUserScore:
+          data.scores.length > 0
+            ? Math.round((data.scores.reduce((a, b) => a + b, 0) / data.scores.length) * 10) / 10
+            : undefined,
+      });
+    }
+  }
+
+  return [...known, ...extraSets];
 }
 
 function calculateEvaluationMetrics(evals: Record<string, any>): {
@@ -1000,3 +1184,199 @@ function formatFeatureName(raw: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
 }
+
+export const ADMIN_RLS_FIX_SQL = `-- MTG LIMITED IQ: SECURE ADMIN EVALUATIONS & STATS ACCESS REPAIR
+-- Run this in Supabase Dashboard -> SQL Editor (irxgoelllogcyoiumxup)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
+
+UPDATE public.profiles p
+SET email = u.email
+FROM auth.users u
+WHERE p.id = u.id AND (p.email IS NULL OR p.email = '');
+
+UPDATE public.profiles
+SET is_admin = true
+WHERE lower(coalesce(email, '')) IN ('dbyrd1568@gmail.com', 'devonwbyrd@gmail.com');
+
+CREATE TABLE IF NOT EXISTS public.app_admins (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL DEFAULT 'admin',
+  granted_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+INSERT INTO public.app_admins (email, role)
+VALUES 
+  ('dbyrd1568@gmail.com', 'owner'),
+  ('devonwbyrd@gmail.com', 'owner')
+ON CONFLICT (email) DO UPDATE SET role = 'owner';
+
+UPDATE public.app_admins a
+SET user_id = u.id
+FROM auth.users u
+WHERE lower(a.email) = lower(u.email);
+
+CREATE OR REPLACE FUNCTION public.is_admin(check_user_id UUID DEFAULT auth.uid())
+RETURNS BOOLEAN AS $$
+DECLARE
+  caller_email TEXT;
+BEGIN
+  IF check_user_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  caller_email := lower(auth.jwt() ->> 'email');
+  IF caller_email IN ('dbyrd1568@gmail.com', 'devonwbyrd@gmail.com') THEN
+    RETURN true;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM auth.users u
+    WHERE u.id = check_user_id
+      AND lower(u.email) IN ('dbyrd1568@gmail.com', 'devonwbyrd@gmail.com')
+  ) THEN
+    RETURN true;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.app_admins WHERE user_id = check_user_id) THEN
+    RETURN true;
+  END IF;
+
+  IF caller_email IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.app_admins WHERE lower(email) = caller_email
+  ) THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.get_admin_card_evaluations()
+RETURNS TABLE (
+  user_id UUID,
+  set_code TEXT,
+  card_name TEXT,
+  evaluation_json JSONB,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Admins only.';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    ce.user_id,
+    ce.set_code,
+    ce.card_name,
+    ce.evaluation_json,
+    ce.updated_at
+  FROM public.card_evaluations ce
+  ORDER BY ce.updated_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.get_admin_user_card_evaluations(target_user_id UUID)
+RETURNS TABLE (
+  user_id UUID,
+  set_code TEXT,
+  card_name TEXT,
+  evaluation_json JSONB,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Admins only.';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    ce.user_id,
+    ce.set_code,
+    ce.card_name,
+    ce.evaluation_json,
+    ce.updated_at
+  FROM public.card_evaluations ce
+  WHERE ce.user_id = target_user_id
+  ORDER BY ce.updated_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.get_admin_user_stats()
+RETURNS TABLE (
+  user_id UUID,
+  xp INT,
+  level INT,
+  overall_accuracy INT,
+  stats_json JSONB,
+  updated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied. Admins only.';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    us.user_id,
+    us.xp,
+    us.level,
+    us.overall_accuracy,
+    us.stats_json,
+    us.updated_at
+  FROM public.user_stats us
+  ORDER BY us.updated_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+ALTER TABLE public.card_evaluations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_activity_logs ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view their own evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users can insert their own evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users can update their own evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users can delete their own evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Admins can view all card evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Admins or owners can view card evaluations" ON public.card_evaluations;
+  DROP POLICY IF EXISTS "Users and admins can manage card evaluations" ON public.card_evaluations;
+END $$;
+
+CREATE POLICY "Users and admins can manage card evaluations"
+  ON public.card_evaluations FOR ALL
+  USING (public.is_admin() OR auth.uid() = user_id)
+  WITH CHECK (public.is_admin() OR auth.uid() = user_id);
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can view their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users can insert their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users can update their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users can delete their own stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Admins can view all user stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Admins or owners can view user stats" ON public.user_stats;
+  DROP POLICY IF EXISTS "Users and admins can manage user stats" ON public.user_stats;
+END $$;
+
+CREATE POLICY "Users and admins can manage user stats"
+  ON public.user_stats FOR ALL
+  USING (public.is_admin() OR auth.uid() = user_id)
+  WITH CHECK (public.is_admin() OR auth.uid() = user_id);
+
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Users can insert activity logs" ON public.user_activity_logs;
+  DROP POLICY IF EXISTS "Admins can view all activity logs" ON public.user_activity_logs;
+END $$;
+
+CREATE POLICY "Users can insert activity logs"
+  ON public.user_activity_logs FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Admins can view all activity logs"
+  ON public.user_activity_logs FOR SELECT
+  USING (public.is_admin());
+`;

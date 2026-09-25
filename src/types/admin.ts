@@ -1,5 +1,5 @@
 export type AdminTimeRange = 'today' | '7d' | '30d' | 'all';
-export type AdminSubTab = 'overview' | 'users' | 'features' | 'grading' | 'access';
+export type AdminSubTab = 'overview' | 'users' | 'features' | 'grading' | 'access' | 'precedents';
 
 export interface UserSetGradingDetail {
   setCode: string;

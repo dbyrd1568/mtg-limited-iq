@@ -3,6 +3,7 @@ import { Card, GradeTier } from '../../types/mtg';
 import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch, generateGuaranteedFallbackResult, getCachedSimilarCards, buildCompTuningString } from '../../services/cardSimilarity';
 import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
 import { getTargetCardOverrides, savePrecedentOverride, removePrecedentOverride, clearTargetCardOverrides, PrecedentSlotOverride } from '../../services/precedentOverrides';
+import { submitPrecedentProposal, getStoredCanonicalPrecedents, getTargetCardKey } from '../../services/precedentApprovalService';
 import { checkIsAdmin } from '../../services/admin';
 import { getActiveUser } from '../../services/storage';
 import { PrecedentSwapSearchModal } from './PrecedentSwapSearchModal';
@@ -24,9 +25,9 @@ export interface SimilarCardsModalProps {
   isOpen: boolean;
   onClose: () => void;
   targetCard: Card | null;
-  currentGrade?: GradeTier;
+  currentGrade?: GradeTier | 'N/A';
   target17LandsData?: CardPerformanceMetrics;
-  onAdoptGrade?: (card: Card, grade: GradeTier) => void;
+  onAdoptGrade?: (card: Card, grade: GradeTier | 'N/A') => void;
   allCards?: Card[];
   onSelectTargetCard?: (card: Card) => void;
   onNavigatePrev?: () => void;
@@ -317,19 +318,43 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     }
   };
 
-  // Overlay user-customized slot overrides onto algorithmic matches
+  // Overlay canonical approved precedents, then overlay user personal overrides
   const presentedMatches = useMemo(() => {
     const raw = activeData?.matches?.slice(0, 4) || [];
     if (!raw.length) return [];
 
     const merged = [...raw];
+    if (targetCard) {
+      const canonicalMap = getStoredCanonicalPrecedents();
+      const targetKey = getTargetCardKey(targetCard.set, targetCard.name);
+      const canonicalSlots = canonicalMap[targetKey];
+      if (canonicalSlots) {
+        for (let slot = 0; slot < 4; slot++) {
+          const canonical = canonicalSlots[slot];
+          if (canonical) {
+            const existing = allCards?.find(
+              (c) => c.name.toLowerCase() === canonical.precedentCardName.toLowerCase()
+            );
+            if (existing) {
+              merged[slot] = {
+                card: existing,
+                similarityScore: canonical.precedentScore,
+                matchReasons: canonical.reasons || ['Canonical Approved Precedent'],
+                isCustomOverride: false,
+              };
+            }
+          }
+        }
+      }
+    }
+
     for (let slot = 0; slot < 4; slot++) {
       if (customOverrides[slot]) {
         merged[slot] = customOverrides[slot].replacementMatch;
       }
     }
     return merged;
-  }, [activeData, customOverrides]);
+  }, [activeData, customOverrides, targetCard, allCards]);
 
   // Index of currently inspected comp card match in presentedMatches
   const currentInspectIndex = useMemo(() => {
@@ -405,14 +430,28 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
       const delta = savePrecedentOverride(targetCard, slotIndex, origMatch, repMatch);
       setCustomOverrides(getTargetCardOverrides(targetCard));
+
+      const user = getActiveUser();
+      submitPrecedentProposal(
+        targetCard,
+        slotIndex,
+        origMatch,
+        repMatch,
+        delta?.inferredInsights || [],
+        delta?.mechanicBridgeFormed,
+        user
+      ).catch((err) => console.warn('Background proposal submission error:', err));
+
       if (delta && delta.inferredInsights && delta.inferredInsights.length > 0) {
         setLearningNotice(delta.inferredInsights[0]);
+      } else {
+        setLearningNotice('Comp change submitted for admin review & global learning.');
       }
+      setTimeout(() => setLearningNotice(null), 4000);
     } catch (err) {
       console.error('Failed to substitute precedent card:', err);
     } finally {
       setIsReplacingSlot(false);
-      setSwapSearchSlotIndex(null);
     }
   };
 
@@ -706,24 +745,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                 </span>
               </div>
 
-              {/* Engine Learning Notification Banner */}
-              {learningNotice && (
-                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-600/50 text-emerald-900 dark:text-emerald-200 text-xs font-mono flex items-center justify-between gap-3 animate-in fade-in">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span><strong className="font-bold">✨ Engine Learned:</strong> {learningNotice}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLearningNotice(null)}
-                    className="p-1 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 rounded text-emerald-700 dark:text-emerald-300 cursor-pointer"
-                    title="Dismiss"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
               {/* Target Card vs Similar Comps Flex Container */}
               <div className="flex flex-col lg:flex-row gap-5 items-start">
                 {/* Target Card Column (Desktop left side, 340px width) */}
@@ -820,6 +841,25 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           </button>
                         );
                       })}
+                      {Boolean(targetCard.is_land || targetCard.type_line?.toLowerCase().includes('land')) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onAdoptGrade) {
+                              onAdoptGrade(targetCard, 'N/A');
+                              setAdoptedSourceId('manual');
+                            }
+                          }}
+                          className={`py-1 rounded-md text-[11px] font-mono font-bold transition-all border cursor-pointer ${
+                            currentGrade === 'N/A'
+                              ? 'bg-slate-700 text-white border-slate-500 shadow-xs font-black ring-2 ring-slate-400'
+                              : 'bg-white dark:bg-[#070b1e] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                          }`}
+                          title="Assign N/A (Excluded from math)"
+                        >
+                          N/A
+                        </button>
+                      )}
                     </div>
 
                     {/* Next / Prev Card Navigation Controls */}
@@ -875,26 +915,6 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       <span>Comparable Historical Cards ({presentedMatches.length})</span>
                     </span>
                     <div className="flex items-center gap-2">
-                      {effectiveIsAdmin && presentedMatches.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleCopyTuningComps}
-                          className="text-[11px] font-mono font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 flex items-center gap-1 cursor-pointer bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 shadow-2xs"
-                          title="Admin: Capture '<Ref card> vs <comp1>, <comp2>, <comp3>, <comp4>' to clipboard for tuning"
-                        >
-                          {copiedTuning ? (
-                            <>
-                              <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                              <span className="text-emerald-700 dark:text-emerald-300">Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                              <span>Capture Comps</span>
-                            </>
-                          )}
-                        </button>
-                      )}
                       {hasCustomOverrides && (
                         <button
                           type="button"
@@ -911,6 +931,17 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       </span>
                     </div>
                   </div>
+
+                  {/* Learning Notice Alert Banner */}
+                  {learningNotice && (
+                    <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-700 dark:text-violet-300 text-xs flex items-center gap-2.5">
+                      <Sparkles className="w-4 h-4 shrink-0 text-violet-500" />
+                      <div className="flex-1">
+                        <span className="font-semibold mr-1">Engine Learning Submitted:</span>
+                        <span>{learningNotice}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Precedent Search & Substitute Action Banner */}
                   <div
@@ -1375,6 +1406,25 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             </button>
                           );
                         })}
+                        {Boolean(targetCard.is_land || targetCard.type_line?.toLowerCase().includes('land')) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onAdoptGrade) {
+                                onAdoptGrade(targetCard, 'N/A');
+                                setAdoptedSourceId('manual');
+                              }
+                            }}
+                            className={`py-1 rounded text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                              currentGrade === 'N/A'
+                                ? 'bg-slate-700 text-white border-slate-500 shadow-xs font-black ring-2 ring-slate-400'
+                                : 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
+                            title="Assign N/A (Excluded from math)"
+                          >
+                            N/A
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -232,7 +232,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
     });
   };
 
-  const handleQuickGradeInModal = (card: Card, grade: GradeTier) => {
+  const handleQuickGradeInModal = (card: Card, grade: GradeTier | 'N/A') => {
     if (!onSaveEvaluation) return;
     const score = GRADE_SCORES[grade];
     const key = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
@@ -342,7 +342,8 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
     ? (get17LandsCardRating(selectedCardForModal, seventeenLandsData) || undefined)
     : undefined;
 
-  const getTierBadgeStyle = (tier: GradeTier) => {
+  const getTierBadgeStyle = (tier: GradeTier | 'N/A') => {
+    if (tier === 'N/A') return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold';
     if (tier.startsWith('A')) return 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-200 dark:hover:bg-amber-500/30 font-bold';
     if (tier.startsWith('B')) return 'bg-cyan-100 text-cyan-900 border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40 hover:bg-cyan-200 dark:hover:bg-cyan-500/30 font-bold';
     if (tier.startsWith('C')) return 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold';
@@ -697,7 +698,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                 className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
               >
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-                  <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[185px]">
+                  <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[185px] relative z-20">
                     {/* Top Bar above card: Grade badge(s) in a single horizontal non-wrapping row */}
                     <div className="w-full flex items-center justify-between sm:justify-start gap-1 mb-1.5 min-h-[22px] overflow-hidden">
                       <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
@@ -1346,29 +1347,48 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                         )}
                       </div>
 
-                      <div
-                        className="grid grid-cols-11 gap-1"
-                        title="Assign draft evaluation tier: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
-                      >
-                        {GRADE_TIERS.map((tier) => {
-                          const isSelected = activeCardEval?.userGrade === tier;
-                          const color = getTierBadgeStyle(tier);
-                          return (
-                            <button
-                              key={tier}
-                              type="button"
-                              onClick={() => handleQuickGradeInModal(selectedCardForModal, tier)}
-                              className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer ${
-                                isSelected
-                                  ? 'bg-violet-600 text-white border-violet-300 font-black shadow-md ring-2 ring-violet-400/60'
-                                  : color
-                              }`}
-                            >
-                              {tier}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {(() => {
+                        const isModalCardLand = Boolean(selectedCardForModal.is_land || selectedCardForModal.type_line?.toLowerCase().includes('land'));
+                        return (
+                          <div
+                            className={`grid gap-1 ${isModalCardLand ? 'grid-cols-12' : 'grid-cols-11'}`}
+                            title="Assign draft evaluation tier: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
+                          >
+                            {GRADE_TIERS.map((tier) => {
+                              const isSelected = activeCardEval?.userGrade === tier;
+                              const color = getTierBadgeStyle(tier);
+                              return (
+                                <button
+                                  key={tier}
+                                  type="button"
+                                  onClick={() => handleQuickGradeInModal(selectedCardForModal, tier)}
+                                  className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-violet-600 text-white border-violet-300 font-black shadow-md ring-2 ring-violet-400/60'
+                                      : color
+                                  }`}
+                                >
+                                  {tier}
+                                </button>
+                              );
+                            })}
+                            {isModalCardLand && (
+                              <button
+                                type="button"
+                                onClick={() => handleQuickGradeInModal(selectedCardForModal, 'N/A')}
+                                className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer ${
+                                  activeCardEval?.userGrade === 'N/A'
+                                    ? 'bg-violet-600 text-white border-violet-300 font-black shadow-md ring-2 ring-violet-400/60'
+                                    : 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                }`}
+                                title="Mark land as N/A (Excluded from math)"
+                              >
+                                N/A
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 

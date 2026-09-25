@@ -163,10 +163,12 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   }, [isOpen, currentCard?.id]);
 
   // Rate active card and strictly advance to next unrated card
-  const handleRate = (tier: GradeTier) => {
+  const handleRate = (tier: GradeTier | 'N/A') => {
     if (!currentCard) return;
 
-    const priority = tier.startsWith('A')
+    const priority = tier === 'N/A'
+      ? 'Sideboard / Unplayable'
+      : tier.startsWith('A')
       ? '1st Pick Bomb'
       : tier.startsWith('B')
       ? 'Early Pick'
@@ -181,7 +183,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
       cardName: currentCard.name,
       setCode: currentCard.set,
       userGrade: tier,
-      userScore: GRADE_SCORES[tier] || 2.5,
+      userScore: GRADE_SCORES[tier] ?? 0,
       pickPriority: priority,
       notes: noteText.trim() || undefined,
       updatedAt: new Date().toISOString(),
@@ -392,7 +394,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-5 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
       {/* Dimension Modal Container (Full-screen mobile, bounded dialog desktop) */}
-      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl sm:h-[88vh] sm:max-h-[840px] my-auto bg-white dark:bg-[#090e24] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl lg:max-w-6xl sm:h-[90vh] sm:max-h-[880px] my-auto bg-white dark:bg-[#090e24] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Fixed Header */}
         <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d]">
           <div className="flex items-center justify-between gap-3 min-w-0">
@@ -528,22 +530,23 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
         )}
 
         {/* Fixed Content Layout (Grid split: Left Card Art, Right Grading Controls) */}
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 lg:gap-5 p-3 sm:p-5 overflow-y-auto md:overflow-hidden">
-          {/* Left: Card Visual (Fixed width column) */}
-          <div className="w-full md:w-[280px] lg:w-[305px] shrink-0 flex flex-col items-center justify-start md:justify-between min-h-0">
-            <div className="w-full flex items-center justify-between gap-2 px-1 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1 shrink-0">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 lg:gap-6 p-3 sm:p-5 overflow-y-auto md:overflow-hidden">
+          {/* Left: Card Visual (Smartly sized to fill available room without overflowing) */}
+          <div className="w-full md:w-[310px] lg:w-[325px] xl:w-[335px] shrink-0 flex flex-col items-center justify-between min-h-0 h-full">
+            <div className="w-full flex items-center justify-between gap-2 px-1 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1.5 shrink-0">
               <span className="font-semibold text-slate-700 dark:text-slate-300">
                 #{currentCard.collector_number} • <span className="capitalize font-normal text-slate-500 dark:text-slate-400">{currentCard.rarity}</span>
               </span>
               <span>CMC {currentCard.cmc}</span>
             </div>
 
-            <div className="w-full flex items-center justify-center py-2 md:flex-1 md:min-h-0">
+            <div className="w-full flex items-center justify-center my-auto py-1 md:flex-1 md:min-h-0 overflow-hidden">
               <CardObfuscator
                 card={currentCard}
                 obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
-                size="md"
+                size="lg"
                 showSublabel={false}
+                className="w-full h-full"
               />
             </div>
 
@@ -551,7 +554,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
             <button
               type="button"
               onClick={() => setIsSimilarModalOpen(true)}
-              className="w-full mt-2 py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer group shrink-0"
+              className="w-full mt-2 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer group shrink-0"
               title="Find functionally similar cards in past sets to project a historical rating"
             >
               <PlayingCardsFan className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 group-hover:text-violet-600 dark:group-hover:text-cyan-300 transition-colors shrink-0" />
@@ -615,39 +618,59 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
         </div>
 
         {/* Grade Tier Buttons & Navigation (Pinned at bottom with safe area padding) */}
-        <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d] space-y-2 pb-safe">
-          <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center flex items-center justify-center gap-1" title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
-            <span>Assign Limited Grade</span>
-          </div>
-          <div
-            className="grid grid-cols-6 sm:grid-cols-11 gap-1 sm:gap-1 max-w-4xl mx-auto"
-            title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
-          >
-            {GRADE_TIERS.map((tier) => {
-              const isSelected = currentEval?.userGrade === tier;
-              let color = 'bg-white text-slate-800 border-slate-300 dark:bg-[#050818] dark:text-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
-              if (tier.startsWith('A')) color = 'bg-amber-100 text-amber-950 border-amber-300 font-bold dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-500 hover:text-white';
-              if (tier.startsWith('B')) color = 'bg-cyan-100 text-cyan-950 border-cyan-300 font-bold dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40 hover:bg-cyan-500 hover:text-white';
-              if (tier.startsWith('C')) color = 'bg-slate-100 text-slate-900 border-slate-300 font-bold dark:bg-slate-800/50 dark:text-slate-200 dark:border-slate-700/60 hover:bg-slate-600 hover:text-white';
-              if (tier === 'D') color = 'bg-orange-100 text-orange-950 border-orange-300 font-bold dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/40 hover:bg-orange-500 hover:text-white';
-              if (tier === 'F') color = 'bg-rose-100 text-rose-950 border-rose-300 font-bold dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/40 hover:bg-rose-500 hover:text-white';
+        {(() => {
+          const isCurrentLand = Boolean(currentCard?.is_land || currentCard?.type_line?.toLowerCase().includes('land'));
+          return (
+            <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d] space-y-2 pb-safe">
 
-              return (
-                <button
-                  key={tier}
-                  type="button"
-                  onClick={() => handleRate(tier)}
-                  className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer min-h-[38px] sm:min-h-0 ${
-                    tier === 'F' ? 'col-span-2 sm:col-span-1' : ''
-                  } ${
-                    isSelected ? 'ring-2 ring-violet-400 bg-violet-600 text-white font-black shadow-xs' : color
-                  }`}
-                >
-                  {tier}
-                </button>
-              );
-            })}
-          </div>
+              <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center flex items-center justify-center gap-1" title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
+                <span>Assign Limited Grade</span>
+              </div>
+              <div
+                className={`grid gap-1 max-w-4xl mx-auto ${
+                  isCurrentLand ? 'grid-cols-6 sm:grid-cols-12' : 'grid-cols-6 sm:grid-cols-11'
+                }`}
+                title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
+              >
+                {GRADE_TIERS.map((tier) => {
+                  const isSelected = currentEval?.userGrade === tier;
+                  let color = 'bg-white text-slate-800 border-slate-300 dark:bg-[#050818] dark:text-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
+                  if (tier.startsWith('A')) color = 'bg-amber-100 text-amber-950 border-amber-300 font-bold dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-500 hover:text-white';
+                  if (tier.startsWith('B')) color = 'bg-cyan-100 text-cyan-950 border-cyan-300 font-bold dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40 hover:bg-cyan-500 hover:text-white';
+                  if (tier.startsWith('C')) color = 'bg-slate-100 text-slate-900 border-slate-300 font-bold dark:bg-slate-800/50 dark:text-slate-200 dark:border-slate-700/60 hover:bg-slate-600 hover:text-white';
+                  if (tier === 'D') color = 'bg-orange-100 text-orange-950 border-orange-300 font-bold dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/40 hover:bg-orange-500 hover:text-white';
+                  if (tier === 'F') color = 'bg-rose-100 text-rose-950 border-rose-300 font-bold dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/40 hover:bg-rose-500 hover:text-white';
+
+                  return (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => handleRate(tier)}
+                      className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer min-h-[38px] sm:min-h-0 ${
+                        tier === 'F' && !isCurrentLand ? 'col-span-2 sm:col-span-1' : ''
+                      } ${
+                        isSelected ? 'ring-2 ring-violet-400 bg-violet-600 text-white font-black shadow-xs' : color
+                      }`}
+                    >
+                      {tier}
+                    </button>
+                  );
+                })}
+                {isCurrentLand && (
+                  <button
+                    type="button"
+                    onClick={() => handleRate('N/A')}
+                    className={`py-1.5 rounded-lg text-xs font-mono font-bold transition-all border cursor-pointer min-h-[38px] sm:min-h-0 ${
+                      currentEval?.userGrade === 'N/A'
+                        ? 'ring-2 ring-slate-400 bg-slate-700 text-white font-black shadow-xs'
+                        : 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                    title="Assign N/A to land (excluded from math)"
+                  >
+                    N/A
+                  </button>
+                )}
+              </div>
 
           {/* Prev / Next Navigation & Ungraded / All Filter Toggle */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
@@ -751,6 +774,8 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
             </button>
           </div>
         </div>
+      );
+    })()}
       </div>
 
       {/* Similar Cards & Historical Comps Modal */}
@@ -776,7 +801,9 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
               : undefined
           }
           onAdoptGrade={(target, grade) => {
-            const priority = grade.startsWith('A')
+            const priority = grade === 'N/A'
+              ? 'Sideboard / Unplayable'
+              : grade.startsWith('A')
               ? '1st Pick Bomb'
               : grade.startsWith('B')
               ? 'Early Pick'

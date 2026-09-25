@@ -198,12 +198,24 @@ const AppContent: React.FC = () => {
             );
         }
 
-        // 1. Pull existing remote cloud data (with 2.5s race timeout so remote latency never hangs UI)
+        // 1. Pull existing remote cloud data with graceful race fallback
         const pullPromise = pullRemoteUserData(cloudUser.id);
-        const timeoutPromise = new Promise<{ stats: null; evaluations: {} }>((resolve) =>
-          setTimeout(() => resolve({ stats: null, evaluations: {} }), 2500)
+        const timeoutPromise = new Promise<{ stats: null; evaluations: Record<string, any> }>((resolve) =>
+          setTimeout(() => resolve({ stats: null, evaluations: loadUserEvaluations(cloudUser.id) }), 4000)
         );
         const { stats, evaluations } = await Promise.race([pullPromise, timeoutPromise]);
+
+        // Background handler for async sync completion
+        pullPromise
+          .then((refreshed) => {
+            if (refreshed.evaluations && Object.keys(refreshed.evaluations).length > 0) {
+              setUserEvaluations(refreshed.evaluations);
+            }
+            if (refreshed.stats) {
+              setUserStats(refreshed.stats);
+            }
+          })
+          .catch(() => {});
 
         // 2. Check if local guest has progress and cloud is fresh
         const localStats = loadUserStats('guest');
@@ -219,8 +231,12 @@ const AppContent: React.FC = () => {
           }
         } else {
           if (stats) setUserStats(stats);
-          if (evaluations && Object.keys(evaluations).length > 0) {
-            setUserEvaluations(evaluations);
+          const finalEvals =
+            evaluations && Object.keys(evaluations).length > 0
+              ? evaluations
+              : loadUserEvaluations(cloudUser.id);
+          if (Object.keys(finalEvals).length > 0) {
+            setUserEvaluations(finalEvals);
           }
         }
       } catch (err) {
@@ -476,10 +492,21 @@ const AppContent: React.FC = () => {
 
   // Sync URL query params whenever activeTab or currentSet changes
   useEffect(() => {
-    updateAppUrlParams({
-      tab: activeTab,
-      set: currentSet ? currentSet.code : undefined,
-    });
+    if (activeTab === 'admin') {
+      const currentSubtab = parseAppUrlParams().subtab;
+      const validAdminSubtab = ['overview', 'users', 'features', 'grading', 'access', 'precedents'].includes(currentSubtab as any)
+        ? currentSubtab
+        : 'overview';
+      updateAppUrlParams({
+        tab: 'admin',
+        subtab: validAdminSubtab,
+      });
+    } else {
+      updateAppUrlParams({
+        tab: activeTab,
+        set: currentSet ? currentSet.code : undefined,
+      });
+    }
   }, [activeTab, currentSet]);
 
   // Handle browser back/forward history navigation
@@ -676,10 +703,11 @@ const AppContent: React.FC = () => {
         onTabChange={(tab) => {
           setActiveTab(tab);
           trackFeature('tab_navigation', { tab }, currentUser);
-          if (tab === 'explorer' && currentSet) {
+          if (tab === 'admin') {
+            updateAppUrlParams({ tab: 'admin', subtab: 'overview' });
+          } else if (tab === 'explorer' && currentSet) {
             trackFeature(KNOWN_FEATURES.SET_EXPLORER, { setCode: currentSet.code, setName: currentSet.name }, currentUser);
-          }
-          if (tab === 'quiz') {
+          } else if (tab === 'quiz') {
             setQuizState('setup');
           }
         }}
@@ -701,7 +729,11 @@ const AppContent: React.FC = () => {
               currentUser={currentUser}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
               onReturnHome={() => setActiveTab('evaluation')}
-              initialSubTab={parseAppUrlParams().subtab as any}
+              initialSubTab={
+                (['overview', 'users', 'features', 'grading', 'access', 'precedents'].includes(parseAppUrlParams().subtab as any)
+                  ? (parseAppUrlParams().subtab as any)
+                  : 'overview')
+              }
             />
           ) : (
             <AdminAccessDenied
@@ -943,7 +975,11 @@ const AppContent: React.FC = () => {
         activeTab={activeTab}
         onTabChange={(tab) => {
           setActiveTab(tab);
-          updateAppUrlParams({ tab });
+          if (tab === 'admin') {
+            updateAppUrlParams({ tab: 'admin', subtab: 'overview' });
+          } else {
+            updateAppUrlParams({ tab });
+          }
         }}
         isAdmin={isAdmin}
       />

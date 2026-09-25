@@ -4,7 +4,7 @@ import { ActiveTab } from '../components/Navbar';
 export interface AppUrlParams {
   set?: string;
   tab?: ActiveTab;
-  subtab?: 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'take' | 'stats' | 'overview' | 'users' | 'features' | 'grading' | 'access';
+  subtab?: 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'take' | 'stats' | 'overview' | 'users' | 'features' | 'grading' | 'access' | 'precedents';
   quiz_subtab?: 'take' | 'stats';
   card?: string; // Collector number (e.g. '12' or '#012'), card name, or ID
   blind?: boolean;
@@ -31,7 +31,7 @@ export function normalizeTab(tabParam?: string | null): ActiveTab | undefined {
 /**
  * Normalizes subtab query inside Card Grading Hub or Admin
  */
-export function normalizeSubtab(subParam?: string | null): 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'overview' | 'users' | 'features' | 'grading' | 'access' | undefined {
+export function normalizeSubtab(subParam?: string | null): 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'overview' | 'users' | 'features' | 'grading' | 'access' | 'precedents' | undefined {
   if (!subParam) return undefined;
   const s = subParam.toLowerCase().trim();
   if (s === 'overview' || s === 'home') return 'overview';
@@ -39,6 +39,7 @@ export function normalizeSubtab(subParam?: string | null): 'grade' | 'forecast' 
   if (s === 'features' || s === 'telemetry') return 'features';
   if (s === 'grading' || s === 'sets') return 'grading';
   if (s === 'access' || s === 'whitelist' || s === 'security') return 'access';
+  if (s === 'precedents' || s === 'comps' || s === 'approvals') return 'precedents';
   if (s === 'grade' || s === 'cards') return 'grade';
   if (s === 'forecast' || s === 'archetype' || s === 'tierlist' || s === 'meta') return 'forecast';
   if (s === 'calibration' || s === 'analytics' || s === 'curve') return 'calibration';
