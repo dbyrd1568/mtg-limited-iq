@@ -197,13 +197,22 @@ async function triggerEvaluationBatchSync(userId: string): Promise<void> {
   });
 
   try {
-    const { error } = await supabase.from('card_evaluations').upsert(batch, {
-      onConflict: 'user_id,set_code,card_name',
-    });
+    const BATCH_SIZE = 100;
+    let anyError: any = null;
+    for (let i = 0; i < batch.length; i += BATCH_SIZE) {
+      const chunk = batch.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase.from('card_evaluations').upsert(chunk, {
+        onConflict: 'user_id,set_code,card_name',
+      });
+      if (error) {
+        anyError = error;
+        console.warn('Batch chunk sync warning:', error);
+      }
+    }
 
-    if (error) {
-      console.warn('Failed to sync evaluations to Supabase:', error);
-      setSyncStatus('error', error.message);
+    if (anyError) {
+      console.warn('Failed to sync all evaluations to Supabase:', anyError);
+      setSyncStatus('error', anyError.message);
     } else {
       setSyncStatus('synced');
     }
@@ -461,14 +470,22 @@ export async function migrateLocalDataToCloud(
 
       const batch = Array.from(deduplicatedMap.values());
       if (batch.length > 0) {
-        const { error: evalErr } = await supabase.from('card_evaluations').upsert(batch, {
-          onConflict: 'user_id,set_code,card_name',
-        });
+        const BATCH_SIZE = 100;
+        let anyErr: any = null;
+        for (let i = 0; i < batch.length; i += BATCH_SIZE) {
+          const chunk = batch.slice(i, i + BATCH_SIZE);
+          const { error: evalErr } = await supabase.from('card_evaluations').upsert(chunk, {
+            onConflict: 'user_id,set_code,card_name',
+          });
+          if (evalErr) {
+            anyErr = evalErr;
+            console.warn('Chunk migration warning:', evalErr.message);
+          }
+        }
 
-        if (evalErr) {
-          console.warn('Failed to upsert merged evaluations:', evalErr);
-          setSyncStatus('error', evalErr.message);
-          return;
+        if (anyErr) {
+          console.warn('Failed to upsert some merged evaluations:', anyErr);
+          setSyncStatus('error', anyErr.message);
         }
       }
 
