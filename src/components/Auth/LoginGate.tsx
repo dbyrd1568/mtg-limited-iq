@@ -156,10 +156,18 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
         onAuthenticated(user);
       }
     } else {
-      const { user, error } = await signUpWithPassword(email.trim(), password, displayName.trim());
+      const { user, error, requiresEmailConfirmation } = await signUpWithPassword(email.trim(), password, displayName.trim());
       setIsLoading(false);
       if (error) {
         setStatusMessage({ type: 'error', text: error.message });
+        return;
+      }
+      if (requiresEmailConfirmation) {
+        setStatusMessage({
+          type: 'success',
+          text: `Activation link sent to ${email.trim()}! Please check your inbox and click the activation link before signing in to grade.`,
+        });
+        setAuthMode('signin');
         return;
       }
       if (user) {
@@ -167,8 +175,9 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
       } else {
         setStatusMessage({
           type: 'success',
-          text: 'Account created! If confirmation is required, check your email for the confirmation link.',
+          text: 'Account created! Please check your email to activate your account before logging in to grade.',
         });
+        setAuthMode('signin');
       }
     }
   };

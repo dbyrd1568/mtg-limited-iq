@@ -19,6 +19,8 @@ export interface AdminUserSummary {
   avatarUrl?: string;
   avatarColor: string;
   provider: string;
+  authMethod?: 'google' | 'discord' | 'apple' | 'email_password' | 'magic_link' | 'local';
+  authMethodLabel?: string;
   createdAt: string;
   lastLoginAt: string;
   totalQuizzes: number;

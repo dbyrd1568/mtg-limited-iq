@@ -622,7 +622,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 Draft Power Chain
               </span>
             </div>
-            {colorless && (
+            {colorless && colorless.totalCards > 0 && (
               <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1.5 self-start sm:self-auto bg-slate-50 dark:bg-[#050818] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
                 <span>Colorless ({colorless.ratedCards} of {colorless.totalCards} rated):</span>
                 {colorless.ratedCards > 0 ? (
@@ -758,7 +758,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {report.colorRankings.map((col, idx) => {
+          {report.colorRankings.filter((col) => col.color !== 'C' || col.totalCards > 0).map((col, idx) => {
             const mTheme = MONOCOLOR_THEMES[col.color] || {
               bgGradient: 'bg-white dark:bg-[#090e24]',
               borderColor: 'border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700',
@@ -1005,6 +1005,28 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                     <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-heading tracking-wide">
                       {arch.name}
                     </h4>
+
+                    {/* Guild Identity Pill */}
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+                      {arch.guildName || arch.code} • {arch.code}
+                    </span>
+
+                    {/* Metagame Pace Badge */}
+                    {arch.pace && (
+                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${
+                        arch.pace === 'Aggro'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700'
+                          : arch.pace === 'Aggro-Tempo'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                          : arch.pace === 'Control'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                          : arch.pace === 'Synergy / Combo'
+                          ? 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 border-fuchsia-300 dark:border-fuchsia-700'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                      }`}>
+                        ⚡ {arch.pace}
+                      </span>
+                    )}
 
                     {arch.isDevelopedForSet ? (
                       <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 shrink-0">
@@ -1411,15 +1433,33 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   ))}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-lg font-black text-slate-900 dark:text-white font-heading">
                       {activeDossierArchetype.name} Strategy Dossier
                     </h3>
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      {activeDossierArchetype.guildName || activeDossierArchetype.code} • {activeDossierArchetype.code}
+                    </span>
+                    {activeDossierArchetype.pace && (
+                      <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                        activeDossierArchetype.pace === 'Aggro'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700'
+                          : activeDossierArchetype.pace === 'Aggro-Tempo'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                          : activeDossierArchetype.pace === 'Control'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                          : activeDossierArchetype.pace === 'Synergy / Combo'
+                          ? 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 border-fuchsia-300 dark:border-fuchsia-700'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                      }`}>
+                        ⚡ {activeDossierArchetype.pace}
+                      </span>
+                    )}
                     <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-cyan-300 border border-violet-200 dark:border-violet-700/50">
                       {setCode}
                     </span>
                   </div>
-                  <p className="text-xs text-violet-600 dark:text-cyan-400 font-semibold">
+                  <p className="text-xs text-violet-600 dark:text-cyan-400 font-semibold mt-0.5">
                     {activeDossierArchetype.headline || activeDossierArchetype.theme}
                   </p>
                 </div>
@@ -1531,6 +1571,36 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                           className="px-2.5 py-0.5 rounded-md text-xs font-mono font-bold bg-white dark:bg-[#090d20] text-slate-800 dark:text-slate-200 border border-amber-200 dark:border-amber-500/40 shadow-xs"
                         >
                           #{mech}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Draft Strategy Guidelines & Tips */}
+              {activeDossierArchetype.draftPointers && activeDossierArchetype.draftPointers.length > 0 && (
+                <div className="p-4 rounded-2xl bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/40 space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-800 dark:text-cyan-300">
+                    <Target className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
+                    <span>Key Draft Pointers & Strategy Tips</span>
+                  </div>
+                  <ul className="space-y-1.5 pt-1">
+                    {activeDossierArchetype.draftPointers.map((tip, i) => (
+                      <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {activeDossierArchetype.keyCommons && activeDossierArchetype.keyCommons.length > 0 && (
+                    <div className="pt-2 border-t border-violet-200/60 dark:border-violet-800/40 flex items-center gap-2 flex-wrap text-xs">
+                      <span className="text-[11px] font-mono font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Crucial Commons / Glue:
+                      </span>
+                      {activeDossierArchetype.keyCommons.map((cName) => (
+                        <span key={cName} className="px-2 py-0.5 rounded-md bg-white dark:bg-[#070b1e] border border-violet-200 dark:border-violet-700/60 font-mono text-[11px] font-bold text-violet-900 dark:text-cyan-300">
+                          {cName}
                         </span>
                       ))}
                     </div>

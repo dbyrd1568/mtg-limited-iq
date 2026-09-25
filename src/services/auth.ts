@@ -168,8 +168,23 @@ export async function signInWithPassword(email: string, password: string): Promi
       email,
       password,
     });
-    if (error) return { user: null, error: new Error(error.message) };
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('email not confirmed') || msg.includes('unconfirmed')) {
+        return {
+          user: null,
+          error: new Error('Your email has not been activated yet. Please click the confirmation link in your email before logging in to grade.'),
+        };
+      }
+      return { user: null, error: new Error(error.message) };
+    }
     if (!data.user) return { user: null, error: new Error('No user returned.') };
+    if (!data.session) {
+      return {
+        user: null,
+        error: new Error('Your email has not been activated yet. Please click the confirmation link in your email before logging in to grade.'),
+      };
+    }
 
     const account = supabaseUserToUserAccount(data.user);
     setActiveUser(account);
@@ -179,7 +194,11 @@ export async function signInWithPassword(email: string, password: string): Promi
   }
 }
 
-export async function signUpWithPassword(email: string, password: string, displayName?: string): Promise<{ user: UserAccount | null; error: Error | null }> {
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  displayName?: string
+): Promise<{ user: UserAccount | null; error: Error | null; requiresEmailConfirmation?: boolean }> {
   if (!isSupabaseConfigured()) {
     const name = displayName?.trim() || (email.includes('@') ? email.split('@')[0] : email);
     const localUser: UserAccount = {
@@ -207,6 +226,12 @@ export async function signUpWithPassword(email: string, password: string, displa
     });
     if (error) return { user: null, error: new Error(error.message) };
     if (!data.user) return { user: null, error: new Error('No user returned.') };
+
+    // If Supabase email confirmation is enabled, data.session is null until the email link is clicked.
+    // We strictly disallow logging in or grading without an activated email session.
+    if (!data.session) {
+      return { user: null, error: null, requiresEmailConfirmation: true };
+    }
 
     const account = supabaseUserToUserAccount(data.user);
     setActiveUser(account);

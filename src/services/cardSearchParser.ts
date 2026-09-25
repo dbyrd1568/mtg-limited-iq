@@ -277,15 +277,17 @@ function matchColors(
 
   // Handle special targets: C (colorless), M / MULTI (multicolor)
   if (upperVal === 'C' || upperVal === 'COLORLESS') {
-    if (operator === '=' || operator === ':') return cardColors.length === 0;
-    if (operator === '!=') return cardColors.length > 0;
-    return cardColors.length === 0;
+    const isColorless = cardColors.length === 0 || (cardColors.length === 1 && cardColors[0] === 'C');
+    if (operator === '=' || operator === ':') return isColorless;
+    if (operator === '!=') return !isColorless;
+    return isColorless;
   }
 
   if (upperVal === 'M' || upperVal === 'MULTI' || upperVal === 'MULTICOLOR') {
-    if (operator === '=' || operator === ':') return cardColors.length > 1;
-    if (operator === '!=') return cardColors.length <= 1;
-    return cardColors.length > 1;
+    const realColors = cardColors.filter((c) => c !== 'C');
+    if (operator === '=' || operator === ':') return realColors.length > 1;
+    if (operator === '!=') return realColors.length <= 1;
+    return realColors.length > 1;
   }
 
   // Parse target colors (e.g. "WGB", "G", "WU")

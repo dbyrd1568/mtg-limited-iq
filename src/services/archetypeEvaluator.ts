@@ -1,4 +1,4 @@
-import { Card, GradeTier, MTGColor, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation } from '../types/mtg';
+import { Card, GradeTier, MTGColor, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, ArchetypePace } from '../types/mtg';
 import {
   GRADE_SCORES,
   scoreToGradeTier,
@@ -37,10 +37,14 @@ export interface ArchetypeStrength {
   colors: [MTGColor, MTGColor];
   code: string;
   name: string;
+  guildName?: string;
   theme: string;
   headline?: string;
   description?: string;
   mechanics?: string[];
+  pace?: ArchetypePace;
+  draftPointers?: string[];
+  keyCommons?: string[];
   powerScore: number;
   letterGrade: GradeTier;
   tier: 'S' | 'A' | 'B' | 'C' | 'D';
@@ -138,12 +142,15 @@ export function calculateColorRankings(
     const userEvalKey = `${(setCode || '').toLowerCase()}_${col.toUpperCase()}`;
     const userEvaluation = userColorEvaluations ? userColorEvaluations[userEvalKey] : undefined;
 
-    // Filter cards strictly monocolored in this color (or strictly colorless)
+    // Filter cards strictly monocolored in this color (or strictly colorless non-land)
     const colorCards = cards.filter((c) => {
+      const cardColors = c.colors || [];
+      const isLand = Boolean(c.is_land || c.type_line?.toLowerCase().includes('land'));
       if (col === 'C') {
-        return (c.colors || []).length === 0 && !c.type_line?.toLowerCase().includes('land');
+        const isColorless = cardColors.length === 0 || (cardColors.length === 1 && cardColors[0] === 'C');
+        return isColorless && !isLand;
       }
-      return (c.colors || []).length === 1 && c.colors[0] === col;
+      return cardColors.length === 1 && cardColors[0] === col;
     });
 
     let totalScore = 0;
@@ -357,10 +364,14 @@ export function calculateArchetypeRankings(
       colors: guild.colors,
       code: guild.code,
       name: wotcInfo.name || guild.name,
+      guildName: wotcInfo.guildName || guild.name,
       theme: wotcInfo.headline || guild.defaultTheme,
       headline: wotcInfo.headline,
       description: wotcInfo.description,
       mechanics: wotcInfo.mechanics,
+      pace: wotcInfo.pace,
+      draftPointers: wotcInfo.draftPointers,
+      keyCommons: wotcInfo.keyCommons,
       powerScore,
       letterGrade,
       tier,
@@ -584,7 +595,9 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
       lines.push(`### Tier ${tier}`);
       archetypes.forEach((arch) => {
         const seventeenStr = arch.seventeenLandsWinRate !== undefined ? ` [17Lands Actual: Tier ${arch.seventeenLandsTier} - ${(arch.seventeenLandsWinRate * 100).toFixed(1)}% WR]` : '';
-        lines.push(`- **${arch.name} (${arch.code})**: Power ${arch.powerScore.toFixed(2)} (Grade ${arch.letterGrade}) — *${arch.theme}*${seventeenStr}`);
+        const guildStr = arch.guildName && arch.guildName !== arch.name ? ` [${arch.guildName} • ${arch.code}]` : ` [${arch.code}]`;
+        const paceStr = arch.pace ? ` [${arch.pace}]` : '';
+        lines.push(`- **${arch.name}**${guildStr}${paceStr}: Power ${arch.powerScore.toFixed(2)} (Grade ${arch.letterGrade}) — *${arch.theme}*${seventeenStr}`);
       });
     }
   });
@@ -597,7 +610,9 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
       if (archetypes.length > 0) {
         lines.push(`### Tier ${tier}`);
         archetypes.forEach((arch) => {
-          lines.push(`- **${arch.name} (${arch.code})**: Power ${arch.powerScore.toFixed(2)} (Grade ${arch.letterGrade}) — *${arch.theme}*`);
+          const guildStr = arch.guildName && arch.guildName !== arch.name ? ` [${arch.guildName} • ${arch.code}]` : ` [${arch.code}]`;
+          const paceStr = arch.pace ? ` [${arch.pace}]` : '';
+          lines.push(`- **${arch.name}**${guildStr}${paceStr}: Power ${arch.powerScore.toFixed(2)} (Grade ${arch.letterGrade}) — *${arch.theme}*`);
         });
       }
     });

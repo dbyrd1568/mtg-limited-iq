@@ -118,6 +118,13 @@ export interface UserCardEvaluation {
   updatedAt: string;
 }
 
+export type ArchetypePace =
+  | 'Aggro'
+  | 'Aggro-Tempo'
+  | 'Midrange'
+  | 'Control'
+  | 'Synergy / Combo';
+
 export type ArchetypeMetagameRole =
   | 'Premier Deck'
   | 'Solid Contender'

@@ -67,7 +67,10 @@ const AppContent: React.FC = () => {
   const isProd = isProdEnvironment();
 
   // User Accounts State (Nullable when unauthenticated)
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getActiveUser());
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    if (isProdEnvironment()) return null;
+    return getActiveUser();
+  });
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isSupabaseConfigured() && isProdEnvironment());
 
@@ -263,21 +266,25 @@ const AppContent: React.FC = () => {
           setIsAuthInitializing(false);
         }, 3000);
       } else {
-        const storedUser = getActiveUser();
-        if (storedUser) {
-          setCurrentUser(storedUser);
-          setIsAuthInitializing(false);
-          return;
-        }
         if (isProdEnvironment()) {
           clearActiveUser();
           setCurrentUser(null);
+        } else {
+          const storedUser = getActiveUser();
+          if (storedUser) {
+            setCurrentUser(storedUser);
+          }
         }
         setIsAuthInitializing(false);
       }
     }).catch(() => {
-      const storedUser = getActiveUser();
-      if (storedUser) setCurrentUser(storedUser);
+      if (isProdEnvironment()) {
+        clearActiveUser();
+        setCurrentUser(null);
+      } else {
+        const storedUser = getActiveUser();
+        if (storedUser) setCurrentUser(storedUser);
+      }
       setIsAuthInitializing(false);
     });
 
@@ -603,9 +610,11 @@ const AppContent: React.FC = () => {
     handleStartQuiz(settings);
   };
 
-  // Evaluation Handlers
+  // Evaluation Handlers (Grading is strictly disallowed without an active authenticated account)
   const handleSaveEvaluation = (evaluation: UserCardEvaluation) => {
-    saveUserEvaluation(evaluation, currentUser?.id || 'guest');
+    if (!currentUser) return;
+    if (isProdEnvironment() && !isCloudUUID(currentUser.id)) return;
+    saveUserEvaluation(evaluation, currentUser.id);
     setUserEvaluations((prev) => ({
       ...prev,
       [`${evaluation.setCode.toLowerCase()}_${evaluation.cardName.toLowerCase()}`]: evaluation,
@@ -619,7 +628,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleSaveArchetypeEvaluation = (evaluation: UserArchetypeEvaluation) => {
-    saveUserArchetypeEvaluation(evaluation, currentUser?.id || 'guest');
+    if (!currentUser) return;
+    if (isProdEnvironment() && !isCloudUUID(currentUser.id)) return;
+    saveUserArchetypeEvaluation(evaluation, currentUser.id);
     const key = `${evaluation.setCode.toLowerCase()}_${evaluation.archetypeCode.toUpperCase()}`;
     setUserArchetypeEvaluations((prev) => ({
       ...prev,
@@ -635,7 +646,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleSaveColorEvaluation = (evaluation: UserColorEvaluation) => {
-    saveUserColorEvaluation(evaluation, currentUser?.id || 'guest');
+    if (!currentUser) return;
+    if (isProdEnvironment() && !isCloudUUID(currentUser.id)) return;
+    saveUserColorEvaluation(evaluation, currentUser.id);
     const key = `${evaluation.setCode.toLowerCase()}_${evaluation.color.toUpperCase()}`;
     setUserColorEvaluations((prev) => ({
       ...prev,
@@ -650,11 +663,13 @@ const AppContent: React.FC = () => {
   };
 
   const handleClearEvaluationsForSet = (setCode: string) => {
-    const updated = clearUserEvaluationsForSet(setCode, currentUser?.id || 'guest');
+    if (!currentUser) return;
+    if (isProdEnvironment() && !isCloudUUID(currentUser.id)) return;
+    const updated = clearUserEvaluationsForSet(setCode, currentUser.id);
     setUserEvaluations(updated);
-    const updatedArch = clearUserArchetypeEvaluationsForSet(setCode, currentUser?.id || 'guest');
+    const updatedArch = clearUserArchetypeEvaluationsForSet(setCode, currentUser.id);
     setUserArchetypeEvaluations(updatedArch);
-    const updatedCol = clearUserColorEvaluationsForSet(setCode, currentUser?.id || 'guest');
+    const updatedCol = clearUserColorEvaluationsForSet(setCode, currentUser.id);
     setUserColorEvaluations(updatedCol);
   };
 

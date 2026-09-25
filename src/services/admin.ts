@@ -378,6 +378,52 @@ export async function fetchAdminOverviewKPIs(timeRange: AdminTimeRange = 'all'):
   };
 }
 
+export function detectAuthMethod(user: {
+  id?: string;
+  email?: string;
+  avatarUrl?: string;
+  provider?: string;
+}): {
+  method: 'google' | 'discord' | 'apple' | 'email_password' | 'magic_link' | 'local';
+  label: string;
+} {
+  const avatar = (user.avatarUrl || '').toLowerCase();
+  const provider = (user.provider || '').toLowerCase();
+
+  if (user.id === 'admin_owner_01' || provider === 'local') {
+    return {
+      method: 'local',
+      label: 'Local Dev',
+    };
+  }
+
+  if (avatar.includes('googleusercontent.com') || provider === 'google') {
+    return {
+      method: 'google',
+      label: 'Google SSO',
+    };
+  }
+
+  if (avatar.includes('discordapp.com') || provider === 'discord') {
+    return {
+      method: 'discord',
+      label: 'Discord SSO',
+    };
+  }
+
+  if (provider === 'apple') {
+    return {
+      method: 'apple',
+      label: 'Apple SSO',
+    };
+  }
+
+  return {
+    method: 'email_password',
+    label: 'Email & Password',
+  };
+}
+
 /**
  * Returns complete user directory with aggregated grading and quiz statistics.
  * In cloud mode, queries Supabase profiles, user_stats, and card_evaluations directly.
@@ -397,6 +443,8 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
     avatarUrl?: string;
     avatarColor?: string;
     provider?: string;
+    authMethod?: 'google' | 'discord' | 'apple' | 'email_password' | 'magic_link' | 'local';
+    authMethodLabel?: string;
     createdAt: string;
     lastLoginAt?: string;
     stats: any;
@@ -565,13 +613,22 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
           ).trim();
           const displayName = p.display_name || (userEmail ? userEmail.split('@')[0] : 'User');
 
+          const authInfo = detectAuthMethod({
+            id: p.id,
+            email: userEmail,
+            avatarUrl: p.avatar_url,
+            provider: p.provider,
+          });
+
           return {
             id: p.id,
             name: displayName,
             email: userEmail || undefined,
             avatarUrl: p.avatar_url,
             avatarColor: '#8b5cf6',
-            provider: 'supabase',
+            provider: authInfo.label,
+            authMethod: authInfo.method,
+            authMethodLabel: authInfo.label,
             createdAt: p.created_at,
             lastLoginAt: p.updated_at || p.created_at,
             stats: resolvedStats,
@@ -603,18 +660,28 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
   // Fallback to local accounts ONLY if valid cloud UUID
   if (rawUsers.length === 0) {
     const localUsers = getAllUsers().filter((u) => isCloudUUID(u.id));
-    rawUsers = localUsers.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      avatarUrl: u.avatarUrl,
-      avatarColor: u.avatarColor || '#8b5cf6',
-      provider: u.provider || 'supabase',
-      createdAt: u.createdAt,
-      lastLoginAt: u.lastLoginAt || u.createdAt,
-      stats: loadUserStats(u.id),
-      evaluations: loadUserEvaluations(u.id),
-    }));
+    rawUsers = localUsers.map((u) => {
+      const authInfo = detectAuthMethod({
+        id: u.id,
+        email: u.email,
+        avatarUrl: u.avatarUrl,
+        provider: u.provider,
+      });
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        avatarUrl: u.avatarUrl,
+        avatarColor: u.avatarColor || '#8b5cf6',
+        provider: authInfo.label,
+        authMethod: authInfo.method,
+        authMethodLabel: authInfo.label,
+        createdAt: u.createdAt,
+        lastLoginAt: u.lastLoginAt || u.createdAt,
+        stats: loadUserStats(u.id),
+        evaluations: loadUserEvaluations(u.id),
+      };
+    });
   }
 
   // Build authentic user summaries - strictly authenticated users
@@ -647,7 +714,9 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
       email: u.email,
       avatarUrl: u.avatarUrl,
       avatarColor: u.avatarColor || '#8b5cf6',
-      provider: u.provider || 'local',
+      provider: u.authMethodLabel || u.provider || 'local',
+      authMethod: u.authMethod || 'email_password',
+      authMethodLabel: u.authMethodLabel || 'Email & Password',
       createdAt: u.createdAt,
       lastLoginAt: u.lastLoginAt || u.createdAt,
       totalQuizzes: stats.totalQuizzes || 0,
