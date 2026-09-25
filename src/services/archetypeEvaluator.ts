@@ -127,6 +127,50 @@ const TIER_NUM_VAL: Record<'S' | 'A' | 'B' | 'C' | 'D', number> = {
   D: 1,
 };
 
+/**
+ * Maps an aggregate average score (across 40+ cards in a color or archetype pool)
+ * to a distinct letter grade tier.
+ *
+ * In MTG Limited, color pool GPAs suffer from regression to the mean and naturally
+ * cluster between 3.15 and 3.55. Single-card scales (which require >= 4.5 for an A)
+ * cause all colors to collapse into B-. This scale is calibrated for aggregate pools:
+ *   >= 3.65: A+  (Historic, format-warping dominance)
+ *   >= 3.52: A   (Premier top color in format)
+ *   >= 3.44: A-  (Strong tier 1 color, e.g. 3.49 Green)
+ *   >= 3.37: B+  (High-tier contender, e.g. 3.41 Red)
+ *   >= 3.30: B   (Solid middle-of-pack, e.g. 3.35 Black)
+ *   >= 3.24: B-  (Viable but below-average, e.g. 3.28 Blue)
+ *   >= 3.16: C+  (Weakest color in format, e.g. 3.22 White)
+ *   >= 3.05: C   (Struggling color)
+ *   >= 2.90: C-  (Unfavorable color)
+ *   >= 2.60: D   (Failing color pool)
+ *   < 2.60:  F
+ */
+export function aggregateScoreToGradeTier(score: number): GradeTier {
+  if (score >= 3.65) return 'A+';
+  if (score >= 3.52) return 'A';
+  if (score >= 3.44) return 'A-';
+  if (score >= 3.37) return 'B+';
+  if (score >= 3.30) return 'B';
+  if (score >= 3.24) return 'B-';
+  if (score >= 3.16) return 'C+';
+  if (score >= 3.05) return 'C';
+  if (score >= 2.90) return 'C-';
+  if (score >= 2.60) return 'D';
+  return 'F';
+}
+
+/**
+ * Maps an aggregate archetype power score to a predicted tier (S, A, B, C, D).
+ */
+export function aggregateScoreToArchetypeTier(score: number): 'S' | 'A' | 'B' | 'C' | 'D' {
+  if (score >= 3.44) return 'S';
+  if (score >= 3.36) return 'A';
+  if (score >= 3.26) return 'B';
+  if (score >= 3.16) return 'C';
+  return 'D';
+}
+
 export function calculateColorRankings(
   cards: Card[],
   userEvaluations: Record<string, UserCardEvaluation>,
@@ -197,7 +241,22 @@ export function calculateColorRankings(
     });
 
     const averageScore = ratedCount > 0 ? parseFloat((totalScore / ratedCount).toFixed(2)) : 2.5;
-    const letterGrade = scoreToGradeTier(averageScore);
+
+    // Determine color letter grade:
+    // 1. If user explicitly provided a direct color evaluation, respect their assigned grade.
+    // 2. For aggregate color pools with at least 5 rated cards, use calibrated aggregate tiering
+    //    so color pools are distinctly tiered (A, B+, B, C) rather than collapsed into B-.
+    // 3. For small sample sizes (< 5 rated cards), use the single-card scale.
+    let letterGrade: GradeTier;
+    if (userEvaluation?.userGrade) {
+      letterGrade = userEvaluation.userGrade;
+    } else if (ratedCount >= 5) {
+      letterGrade = aggregateScoreToGradeTier(averageScore);
+    } else if (ratedCount > 0) {
+      letterGrade = scoreToGradeTier(averageScore);
+    } else {
+      letterGrade = 'N/A';
+    }
 
     // Sort top picks descending by grade score
     bombs.sort((a, b) => b.eval.userScore - a.eval.userScore);
@@ -319,7 +378,11 @@ export function calculateArchetypeRankings(
 
     // Weighted Archetype formula: 30% Gold Signpost strength + 35% Color 1 mono quality + 35% Color 2 mono quality
     const powerScore = parseFloat((signpostAvg * 0.30 + c1Score * 0.35 + c2Score * 0.35).toFixed(2));
-    const letterGrade = scoreToGradeTier(powerScore);
+
+    // Determine Archetype letter grade:
+    // Respect user manual override if present; otherwise use calibrated aggregate thresholds.
+    const hasRatedInput = signpostRated > 0 || (c1Score !== 2.5 && c2Score !== 2.5);
+    const letterGrade = userEvaluation?.userGrade || (hasRatedInput ? aggregateScoreToGradeTier(powerScore) : scoreToGradeTier(powerScore));
 
     // Find key picks for this color pair (Bombs and premium commons/uncommons in C1, C2, or Gold)
     const keyPicks: { card: Card; eval: UserCardEvaluation }[] = [];
@@ -340,13 +403,13 @@ export function calculateArchetypeRankings(
 
     keyPicks.sort((a, b) => b.eval.userScore - a.eval.userScore);
 
-    // Determine User Predicted Tier
+    // Determine User Predicted Tier (S, A, B, C, D) using calibrated aggregate thresholds
     let tier: 'S' | 'A' | 'B' | 'C' | 'D' = 'C';
-    if (powerScore >= 3.6) tier = 'S';
-    else if (powerScore >= 3.2) tier = 'A';
-    else if (powerScore >= 2.8) tier = 'B';
-    else if (powerScore >= 2.4) tier = 'C';
-    else tier = 'D';
+    if (userEvaluation?.tier) {
+      tier = userEvaluation.tier;
+    } else if (hasRatedInput) {
+      tier = aggregateScoreToArchetypeTier(powerScore);
+    }
 
     // 17Lands Win Rate
     let seventeenLandsWinRate: number | undefined = undefined;
