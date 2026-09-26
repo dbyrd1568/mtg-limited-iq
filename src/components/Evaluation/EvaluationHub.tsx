@@ -45,6 +45,7 @@ interface EvaluationHubProps {
   userArchetypeEvaluations?: Record<string, UserArchetypeEvaluation>;
   userColorEvaluations?: Record<string, UserColorEvaluation>;
   onSaveArchetypeEvaluation?: (evaluation: UserArchetypeEvaluation) => void;
+  onDeleteArchetypeEvaluation?: (setCode: string, archetypeCode: string) => void;
   onSaveColorEvaluation?: (evaluation: UserColorEvaluation) => void;
   seventeenLandsData: SeventeenLandsSetData | null;
   isBlindGrading?: boolean;
@@ -76,6 +77,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   userArchetypeEvaluations,
   userColorEvaluations,
   onSaveArchetypeEvaluation,
+  onDeleteArchetypeEvaluation,
   onSaveColorEvaluation,
   seventeenLandsData,
   isBlindGrading: propIsBlindGrading,
@@ -1082,6 +1084,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           userArchetypeEvaluations={userArchetypeEvaluations}
           userColorEvaluations={userColorEvaluations}
           onSaveArchetypeEvaluation={onSaveArchetypeEvaluation}
+          onDeleteArchetypeEvaluation={onDeleteArchetypeEvaluation}
           onSaveColorEvaluation={onSaveColorEvaluation}
           seventeenLandsData={effective17LandsData}
           isBlindGrading={isBlindGrading}

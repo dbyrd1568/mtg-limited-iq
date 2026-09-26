@@ -24,6 +24,7 @@ import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCod
 import {
   saveUserArchetypeEvaluation,
   loadUserArchetypeEvaluations,
+  deleteUserArchetypeEvaluation,
   clearUserArchetypeEvaluationsForSet,
   saveUserColorEvaluation,
   loadUserColorEvaluations,
@@ -86,7 +87,7 @@ const wuEval: UserArchetypeEvaluation = {
   archetypeCode: 'WU',
   userGrade: 'A-',
   userScore: 4.3,
-  tier: 'A',
+  isManualOverride: true,
   roleInMetagame: 'Premier Deck',
   notes: 'High synergy with vehicle tokens and aerodynamic creatures.',
   updatedAt: new Date().toISOString(),
@@ -107,7 +108,7 @@ const midUB: UserArchetypeEvaluation = {
   archetypeCode: 'UB',
   userGrade: 'A+',
   userScore: 5.0,
-  tier: 'S',
+  isManualOverride: true,
   roleInMetagame: 'Premier Deck',
   notes: 'Zombies decayed sacrifice engine is Tier 0 in MID limited.',
   updatedAt: new Date().toISOString(),
@@ -118,13 +119,22 @@ userArchEvals = loadUserArchetypeEvaluations(testUser);
 assert(Boolean(userArchEvals['mid_UB']), 'MID UB must exist');
 assert(Object.keys(userArchEvals).length === 2, 'Total saved archetype evaluations should be 2');
 
+// Test single archetype delete (Reset to Auto)
+deleteUserArchetypeEvaluation('MID', 'UB', testUser);
+userArchEvals = loadUserArchetypeEvaluations(testUser);
+assert(!userArchEvals['mid_UB'], 'MID UB should have been individually deleted by deleteUserArchetypeEvaluation');
+assert(Boolean(userArchEvals['dft_WU']), 'DFT WU should still exist after deleting MID UB');
+
+// Re-save MID UB for clear test
+saveUserArchetypeEvaluation(midUB, testUser);
+
 // Test clear for DFT
 clearUserArchetypeEvaluationsForSet('DFT', testUser);
 userArchEvals = loadUserArchetypeEvaluations(testUser);
 assert(!userArchEvals['dft_WU'], 'DFT WU should have been cleared');
 assert(Boolean(userArchEvals['mid_UB']), 'MID UB should still exist after clearing DFT');
 
-console.log('   ✓ Archetype evaluation save, retrieve, and set-scoped clear verified.');
+console.log('   ✓ Archetype evaluation save, retrieve, single delete (Reset to Auto), and set-scoped clear verified.');
 
 // -------------------------------------------------------------
 // Test 3: User Color Evaluation CRUD
@@ -244,7 +254,7 @@ const mockArchEvals: Record<string, UserArchetypeEvaluation> = {
     archetypeCode: 'WU',
     userGrade: 'A',
     userScore: 4.7,
-    tier: 'S',
+    isManualOverride: true,
     roleInMetagame: 'Premier Deck',
     notes: 'Premier archetype',
     updatedAt: new Date().toISOString(),
@@ -277,6 +287,11 @@ assert(Boolean(wuArch), 'WU archetype must be in report');
 assert(Boolean(wuArch?.userEvaluation), 'WU archetype must have userEvaluation attached');
 assert(wuArch?.userEvaluation?.userGrade === 'A', 'Attached userGrade must be A');
 assert(wuArch?.userEvaluation?.roleInMetagame === 'Premier Deck', 'Attached role must be Premier Deck');
+assert(wuArch?.letterGrade === 'A', 'Effective letterGrade must be overridden to A');
+assert(wuArch?.isOverridden === true, 'WU archetype must be marked as overridden');
+assert(wuArch?.gradeBand === 'A', 'WU archetype grade band must be A');
+assert(Boolean(report.gradeList.A), 'report.gradeList must contain grade band A');
+assert(Boolean(report.developedGradeList.A), 'report.developedGradeList must contain grade band A');
 
 const wColor = report.colorRankings.find((c) => c.color === 'W');
 assert(Boolean(wColor), 'W color must be in report');
@@ -297,7 +312,7 @@ saveUserArchetypeEvaluation(
     archetypeCode: 'GW',
     userGrade: 'A-',
     userScore: 4.3,
-    tier: 'A',
+    isManualOverride: true,
     roleInMetagame: 'Solid Contender',
     notes: 'Rabbits token swarm',
     updatedAt: new Date().toISOString(),

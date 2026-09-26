@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Card, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, GradeTier, ArchetypeMetagameRole } from '../../types/mtg';
-import { generateSetSynthesisReport, generateSetMetaSummaryMarkdown, SetSynthesisReport, ArchetypeStrength, ColorStrength } from '../../services/archetypeEvaluator';
+import { generateSetSynthesisReport, generateSetMetaSummaryMarkdown, SetSynthesisReport, ArchetypeStrength, ColorStrength, GradeBand, gradeTierToGradeBand } from '../../services/archetypeEvaluator';
 import { GRADE_TIERS, GRADE_SCORES } from '../../services/seventeenLands';
-import { Trophy, Sparkles, Copy, Check, Crown, Flame, Shield, Layers, Swords, ChevronDown, ChevronUp, Share2, Award, Zap, Activity, Info, BarChart2, CheckCircle2, TrendingUp, TrendingDown, Target, Scale, Eye, EyeOff, Clock, BookOpen, Star, Edit3, X, FileText, MessageSquare, AlertTriangle } from 'lucide-react';
+import { deleteUserArchetypeEvaluation } from '../../services/storage';
+import { Trophy, Sparkles, Copy, Check, Crown, Flame, Shield, Layers, Swords, ChevronDown, ChevronUp, Share2, Award, Zap, Activity, Info, BarChart2, CheckCircle2, TrendingUp, TrendingDown, Target, Scale, Eye, EyeOff, Clock, BookOpen, Star, Edit3, X, FileText, MessageSquare, AlertTriangle, RotateCcw } from 'lucide-react';
 import { CardObfuscator } from '../CardObfuscator';
 import { ManaSymbol, ManaCostRenderer } from '../UI/ManaSymbol';
 import confetti from 'canvas-confetti';
@@ -54,6 +55,7 @@ interface ArchetypeForecastViewProps {
   userArchetypeEvaluations?: Record<string, UserArchetypeEvaluation>;
   userColorEvaluations?: Record<string, UserColorEvaluation>;
   onSaveArchetypeEvaluation?: (evaluation: UserArchetypeEvaluation) => void;
+  onDeleteArchetypeEvaluation?: (setCode: string, archetypeCode: string) => void;
   onSaveColorEvaluation?: (evaluation: UserColorEvaluation) => void;
   seventeenLandsData?: SeventeenLandsSetData | null;
   isBlindGrading?: boolean;
@@ -68,6 +70,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
   userArchetypeEvaluations,
   userColorEvaluations,
   onSaveArchetypeEvaluation,
+  onDeleteArchetypeEvaluation,
   onSaveColorEvaluation,
   seventeenLandsData,
   isBlindGrading = false,
@@ -140,23 +143,25 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
   const handleRateArchetype = (arch: ArchetypeStrength, grade: GradeTier) => {
     const score = GRADE_SCORES[grade] || 2.5;
-    const tier: 'S' | 'A' | 'B' | 'C' | 'D' =
-      grade === 'A+' || grade === 'A' ? 'S' :
-      grade === 'A-' || grade === 'B+' ? 'A' :
-      grade === 'B' || grade === 'B-' ? 'B' :
-      grade === 'C+' || grade === 'C' || grade === 'C-' ? 'C' : 'D';
-
     const currentEval = arch.userEvaluation;
     onSaveArchetypeEvaluation?.({
       setCode,
       archetypeCode: arch.code,
       userGrade: grade,
       userScore: score,
-      tier,
+      isManualOverride: true,
       roleInMetagame: currentEval?.roleInMetagame,
       notes: currentEval?.notes,
       updatedAt: new Date().toISOString(),
     });
+  };
+
+  const handleResetArchetypeToAuto = (arch: ArchetypeStrength) => {
+    if (onDeleteArchetypeEvaluation) {
+      onDeleteArchetypeEvaluation(setCode, arch.code);
+    } else {
+      deleteUserArchetypeEvaluation(setCode, arch.code);
+    }
   };
 
   const handleRateColor = (col: ColorStrength, grade: GradeTier) => {
@@ -184,14 +189,13 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
     const currentEval = activeDossierArchetype.userEvaluation;
     const userGrade = currentEval?.userGrade || activeDossierArchetype.letterGrade;
     const userScore = currentEval?.userScore || activeDossierArchetype.powerScore;
-    const tier = currentEval?.tier || activeDossierArchetype.tier;
 
     onSaveArchetypeEvaluation?.({
       setCode,
       archetypeCode: activeDossierArchetype.code,
       userGrade,
       userScore,
-      tier,
+      isManualOverride: activeDossierArchetype.isOverridden,
       roleInMetagame: dossierRoleDraft,
       notes: dossierNotesDraft.trim() || undefined,
       updatedAt: new Date().toISOString(),
@@ -222,17 +226,17 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
     setActiveColorNotesColor(null);
   };
 
-  const getTierHeaderStyle = (tier: 'S' | 'A' | 'B' | 'C' | 'D') => {
-    switch (tier) {
-      case 'S':
-        return 'bg-gradient-to-r from-amber-100 via-orange-50 to-transparent dark:from-amber-500/20 dark:via-orange-500/15 dark:to-transparent border-amber-300 dark:border-amber-500/40 text-amber-900 dark:text-amber-300 font-bold';
+  const getGradeHeaderStyle = (band: GradeBand) => {
+    switch (band) {
       case 'A':
-        return 'bg-gradient-to-r from-cyan-100 via-blue-50 to-transparent dark:from-cyan-500/20 dark:via-blue-500/15 dark:to-transparent border-cyan-300 dark:border-cyan-500/40 text-cyan-900 dark:text-cyan-300 font-bold';
+        return 'bg-gradient-to-r from-emerald-100 via-teal-50 to-transparent dark:from-emerald-500/20 dark:via-teal-500/15 dark:to-transparent border-emerald-300 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-300 font-bold';
       case 'B':
-        return 'bg-gradient-to-r from-violet-100 via-indigo-50 to-transparent dark:from-violet-500/20 dark:via-indigo-500/15 dark:to-transparent border-violet-300 dark:border-violet-500/40 text-violet-900 dark:text-violet-300 font-bold';
+        return 'bg-gradient-to-r from-cyan-100 via-blue-50 to-transparent dark:from-cyan-500/20 dark:via-blue-500/15 dark:to-transparent border-cyan-300 dark:border-cyan-500/40 text-cyan-900 dark:text-cyan-300 font-bold';
       case 'C':
-        return 'bg-gradient-to-r from-slate-200 to-transparent dark:from-slate-700/30 dark:to-transparent border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 font-bold';
+        return 'bg-gradient-to-r from-amber-100 via-yellow-50 to-transparent dark:from-amber-500/20 dark:via-yellow-500/15 dark:to-transparent border-amber-300 dark:border-amber-500/40 text-amber-900 dark:text-amber-300 font-bold';
       case 'D':
+        return 'bg-gradient-to-r from-orange-100 via-red-50 to-transparent dark:from-orange-500/20 dark:via-red-500/15 dark:to-transparent border-orange-300 dark:border-orange-500/40 text-orange-900 dark:text-orange-300 font-bold';
+      case 'F':
         return 'bg-gradient-to-r from-rose-100 to-transparent dark:from-rose-500/20 dark:to-transparent border-rose-300 dark:border-rose-500/40 text-rose-900 dark:text-rose-300 font-bold';
     }
   };
@@ -309,10 +313,10 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             <button
               onClick={handleCopySummary}
               className="px-4 py-2 bg-slate-100 dark:bg-[#050818] hover:bg-slate-200 dark:hover:bg-[#0f1738] border border-slate-300 dark:border-slate-700 hover:border-slate-400 text-xs font-bold text-slate-800 dark:text-slate-200 rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer"
-              title="Copy formatted Markdown tier list to clipboard"
+              title="Copy formatted Markdown forecast summary to clipboard"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-600 dark:text-cyan-400" />}
-              <span>{copied ? 'Copied to Clipboard!' : 'Share / Copy Tier List'}</span>
+              <span>{copied ? 'Copied to Clipboard!' : 'Share / Copy Forecast'}</span>
             </button>
 
             {report.isFullyGraded && (
@@ -362,7 +366,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                   {report.metaCalibrationScore}% Meta Calibration Alignment
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  Measures how closely your draft tier list & color power predictions match real Arena draft win rates.
+                  Measures how closely your draft predictions match real Arena draft win rates.
                 </p>
               </div>
             </div>
@@ -478,7 +482,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               </span>
             ) : report.bestArchetype ? (
               <span className="text-xs font-mono font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40">
-                Tier {report.bestArchetype.tier}
+                Grade {report.bestArchetype.letterGrade}
               </span>
             ) : null}
           </div>
@@ -1070,7 +1074,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                           17Lands
                         </div>
                         <div className="text-sm font-black font-mono text-slate-900 dark:text-white flex items-center gap-1.5 justify-end">
-                          <span>Tier {arch.seventeenLandsTier}</span>
+                          <span>Grade {arch.seventeenLandsGrade}</span>
                           <span className="text-emerald-700 dark:text-emerald-300 text-xs">({(arch.seventeenLandsWinRate * 100).toFixed(1)}%)</span>
                         </div>
                       </div>
@@ -1078,9 +1082,9 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                       {/* 👤 YOUR PRACTICE / PREDICTED READ */}
                       <div
                         className="text-[10px] font-mono text-slate-600 dark:text-slate-400 text-right bg-slate-100/90 dark:bg-[#050818]/90 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800"
-                        title={`Archetype Power Score Formula:\n30% Gold Signpost Avg (${arch.signpostAvgScore.toFixed(2)}) + 35% ${arch.color1Name} Depth (${arch.color1AvgScore.toFixed(2)}) + 35% ${arch.color2Name} Depth (${arch.color2AvgScore.toFixed(2)}) = ${arch.powerScore.toFixed(2)} / 5.0 (Predicted Grade: ${arch.letterGrade})`}
+                        title={`Archetype Power Score Formula:\n30% Gold Signpost Avg (${arch.signpostAvgScore.toFixed(2)}) + 35% ${arch.color1Name} Depth (${arch.color1AvgScore.toFixed(2)}) + 35% ${arch.color2Name} Depth (${arch.color2AvgScore.toFixed(2)}) = ${arch.powerScore.toFixed(2)} / 5.0 (Calculated Grade: ${arch.autoGrade})`}
                       >
-                        <span>Bottom-Up: <strong className="text-violet-700 dark:text-violet-300 font-bold">{arch.letterGrade}</strong> (Power {arch.powerScore.toFixed(2)})</span>
+                        <span>Auto-Grade: <strong className="text-violet-700 dark:text-violet-300 font-bold">{arch.autoGrade}</strong> (Power {arch.powerScore.toFixed(2)})</span>
                       </div>
                     </>
                   ) : (
@@ -1092,10 +1096,10 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         className="text-[9px] uppercase font-mono font-bold text-violet-700 dark:text-cyan-300 tracking-wider text-right"
                         title={`Archetype Power Score Formula:\n30% Signpost Avg (${arch.signpostAvgScore.toFixed(2)}) + 35% ${arch.color1Name} Depth (${arch.color1AvgScore.toFixed(2)}) + 35% ${arch.color2Name} Depth (${arch.color2AvgScore.toFixed(2)}) = ${arch.powerScore.toFixed(2)} / 5.0`}
                       >
-                        Bottom-Up Read
+                        {arch.isOverridden ? 'Manual Grade' : 'Auto Grade'}
                       </div>
                       <div className="text-sm font-black font-mono text-slate-900 dark:text-white">
-                        Tier {arch.tier} ({arch.letterGrade})
+                        Grade {arch.letterGrade}
                       </div>
                       <div className="text-[9px] font-mono text-slate-500 dark:text-slate-400 mt-0.5 flex items-center justify-end gap-1.5">
                         <span>Power: {arch.powerScore.toFixed(2)}</span>
@@ -1140,29 +1144,29 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                     className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-[#050818]/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400" title={`Delta Calibration Read: Your prediction is ${arch.tierDelta === 0 ? 'an exact match with 17Lands' : (arch.tierDelta || 0) > 0 ? `higher than 17Lands by ${arch.tierDelta} tier(s)` : `lower than 17Lands by ${Math.abs(arch.tierDelta || 0)} tier(s)`}`}>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400" title={`Delta Calibration Read: Your prediction is ${arch.gradeDelta === 0 ? 'an exact match with 17Lands' : (arch.gradeDelta || 0) > 0 ? `higher than 17Lands by ${arch.gradeDelta} tier(s)` : `lower than 17Lands by ${Math.abs(arch.gradeDelta || 0)} tier(s)`}`}>
                         Calibration Read:
                       </span>
                       <span className="text-slate-700 dark:text-slate-300 text-xs font-bold">
-                        You ({arch.letterGrade}) vs 17Lands (Tier {arch.seventeenLandsTier})
+                        You ({arch.letterGrade}) vs 17Lands (Grade {arch.seventeenLandsGrade})
                       </span>
                     </div>
 
                     <div>
-                      {arch.tierDelta === 0 ? (
+                      {arch.gradeDelta === 0 ? (
                         <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/40 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          Exact Tier Match
+                          Exact Grade Match
                         </span>
-                      ) : (arch.tierDelta || 0) > 0 ? (
+                      ) : (arch.gradeDelta || 0) > 0 ? (
                         <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-500/40 flex items-center gap-1">
                           <TrendingUp className="w-2.5 h-2.5" />
-                          Overpredicted (+{arch.tierDelta})
+                          Overpredicted (+{arch.gradeDelta})
                         </span>
                       ) : (
                         <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-500/20 px-2 py-0.5 rounded border border-rose-300 dark:border-rose-500/40 flex items-center gap-1">
                           <TrendingDown className="w-2.5 h-2.5" />
-                          Underpredicted ({arch.tierDelta})
+                          Underpredicted ({arch.gradeDelta})
                         </span>
                       )}
                     </div>
@@ -1269,24 +1273,44 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
               {/* User Archetype Direct Rating & Strategy Dossier Row */}
               <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800/80 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <Star className="w-3 h-3 text-amber-500" />
-                    <span>Your Direct Grade:</span>
-                    <strong className="text-violet-700 dark:text-cyan-300 font-bold ml-1">
-                      {arch.userEvaluation?.userGrade || 'Unassigned'}
-                    </strong>
-                  </span>
-                  {arch.userEvaluation?.roleInMetagame && (
-                    <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
-                      Role: <span className="font-bold text-violet-600 dark:text-cyan-300">{arch.userEvaluation.roleInMetagame}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <Star className="w-3 h-3 text-amber-500" />
+                      <span>{arch.isOverridden ? 'Manual Override:' : 'Archetype Grade:'}</span>
+                      <strong className="text-violet-700 dark:text-cyan-300 font-bold ml-1">
+                        {arch.letterGrade}
+                      </strong>
                     </span>
-                  )}
+                    {arch.isOverridden && (
+                      <span className="text-[9px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-300 dark:border-amber-500/40">
+                        Auto: {arch.autoGrade}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {arch.isOverridden && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetArchetypeToAuto(arch)}
+                        className="text-[10px] font-mono font-bold text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 underline cursor-pointer flex items-center gap-1"
+                        title="Reset to calculated auto-grade"
+                      >
+                        <RotateCcw className="w-2.5 h-2.5" />
+                        Reset to Auto
+                      </button>
+                    )}
+                    {arch.userEvaluation?.roleInMetagame && (
+                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                        Role: <span className="font-bold text-violet-600 dark:text-cyan-300">{arch.userEvaluation.roleInMetagame}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Quick Grade Strip */}
                 <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin">
                   {GRADE_TIERS.map((tier) => {
-                    const isSelected = arch.userEvaluation?.userGrade === tier;
+                    const isSelected = arch.letterGrade === tier;
                     return (
                       <button
                         key={tier}
@@ -1324,30 +1348,30 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
           );
         };
 
-        const renderTierList = (
-          tierMap: Record<'S' | 'A' | 'B' | 'C' | 'D', ArchetypeStrength[]>,
+        const renderGradeList = (
+          gradeMap: Record<GradeBand, ArchetypeStrength[]>,
           isOtherSection: boolean = false
         ) => {
-          const activeTiers = (['S', 'A', 'B', 'C', 'D'] as const).filter((tier) => tierMap[tier].length > 0);
+          const activeBands = (['A', 'B', 'C', 'D', 'F'] as const).filter((band) => gradeMap[band].length > 0);
 
-          if (activeTiers.length === 0) {
+          if (activeBands.length === 0) {
             return (
               <div className="p-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
-                No color pairs in this tier list.
+                No color pairs in this list.
               </div>
             );
           }
 
           return (
             <div className="space-y-4">
-              {activeTiers.map((tier) => {
-                const list = tierMap[tier];
+              {activeBands.map((band) => {
+                const list = gradeMap[band];
                 return (
-                  <div key={tier} className="space-y-2.5">
+                  <div key={band} className="space-y-2.5">
                     <div
-                      className={`px-4 py-1.5 rounded-xl border flex items-center justify-between text-xs font-bold font-mono tracking-wider ${getTierHeaderStyle(tier)}`}
+                      className={`px-4 py-1.5 rounded-xl border flex items-center justify-between text-xs font-bold font-mono tracking-wider ${getGradeHeaderStyle(band)}`}
                     >
-                      <span>{isOtherSection ? `OFF-ARCHETYPE TIER ${tier}` : `YOUR PREDICTED TIER ${tier} ARCHETYPES`}</span>
+                      <span>{isOtherSection ? `OFF-ARCHETYPE GRADE ${band}` : `GRADE ${band} ARCHETYPES`}</span>
                       <span>{list.length} Color Pairs</span>
                     </div>
 
@@ -1371,7 +1395,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
                     {report.otherArchetypes.length > 0
                       ? `Designed Set Archetypes (${report.developedArchetypes.length} Color Pairs)`
-                      : `10 Draft Archetypes Tier List`}
+                      : `10 Draft Archetypes Forecast`}
                   </h3>
                   <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40">
                     {report.otherArchetypes.length > 0 ? `Built for ${report.setCode}` : `All 10 Pairs Supported`}
@@ -1382,7 +1406,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                 </span>
               </div>
 
-              {renderTierList(report.developedTierList, false)}
+              {renderGradeList(report.developedGradeList, false)}
             </div>
 
             {/* Secondary Section: Other Color Pairs (Off-Meta / Rogue / Splash) */}
@@ -1413,7 +1437,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   </button>
                 </div>
 
-                {showOtherArchetypes && renderTierList(report.otherTierList, true)}
+                {showOtherArchetypes && renderGradeList(report.otherGradeList, true)}
               </div>
             )}
           </div>
@@ -1479,16 +1503,38 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Star className="w-4 h-4 text-amber-500" />
-                    <span>Assigned Grade & Tier</span>
+                    <span>Archetype Grade</span>
                   </span>
-                  <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300">
-                    {activeDossierArchetype.userEvaluation?.userGrade ? `Graded: ${activeDossierArchetype.userEvaluation.userGrade}` : 'Not yet graded'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300">
+                      {activeDossierArchetype.isOverridden
+                        ? `Manual: Grade ${activeDossierArchetype.letterGrade} (Auto: ${activeDossierArchetype.autoGrade})`
+                        : `Auto-Grade: ${activeDossierArchetype.letterGrade}`}
+                    </span>
+                    {activeDossierArchetype.isOverridden && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleResetArchetypeToAuto(activeDossierArchetype);
+                          setActiveDossierArchetype((prev) => prev ? {
+                            ...prev,
+                            letterGrade: prev.autoGrade,
+                            isOverridden: false,
+                            userEvaluation: undefined,
+                          } : null);
+                        }}
+                        className="text-[10px] font-mono font-bold text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 underline cursor-pointer flex items-center gap-1"
+                      >
+                        <RotateCcw className="w-2.5 h-2.5" />
+                        Reset to Auto
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
                   {GRADE_TIERS.map((tier) => {
-                    const isSelected = (activeDossierArchetype.userEvaluation?.userGrade || activeDossierArchetype.letterGrade) === tier;
+                    const isSelected = activeDossierArchetype.letterGrade === tier;
                     return (
                       <button
                         key={tier}
@@ -1497,6 +1543,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                           handleRateArchetype(activeDossierArchetype, tier);
                           setActiveDossierArchetype((prev) => prev ? {
                             ...prev,
+                            letterGrade: tier,
+                            isOverridden: true,
                             userEvaluation: {
                               ...(prev.userEvaluation || {
                                 setCode,
@@ -1505,7 +1553,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                               }),
                               userGrade: tier,
                               userScore: GRADE_SCORES[tier] || 2.5,
-                              tier: tier === 'A+' || tier === 'A' ? 'S' : tier === 'A-' || tier === 'B+' ? 'A' : tier === 'B' || tier === 'B-' ? 'B' : tier === 'C+' || tier === 'C' || tier === 'C-' ? 'C' : 'D',
+                              isManualOverride: true,
                             }
                           } : null);
                         }}

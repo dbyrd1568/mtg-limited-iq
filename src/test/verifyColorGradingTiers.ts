@@ -4,7 +4,7 @@ import {
   calculateColorRankings,
   calculateArchetypeRankings,
   aggregateScoreToGradeTier,
-  aggregateScoreToArchetypeTier,
+  gradeTierToGradeBand,
 } from '../services/archetypeEvaluator';
 
 console.log('=== STARTING COLOR & ARCHETYPE TIERING VERIFICATION TESTS ===\n');
@@ -28,15 +28,21 @@ assert.strictEqual(aggregateScoreToGradeTier(2.70), 'D',  '2.70 must be D');
 console.log('   ✓ aggregateScoreToGradeTier correctly maps aggregate GPAs to distinct letter tiers.\n');
 
 // -------------------------------------------------------------
-// Test 2: Verify Calibrated Archetype Tiers (S, A, B, C, D)
+// Test 2: Verify Calibrated Grade Bands (A, B, C, D, F)
 // -------------------------------------------------------------
-console.log('Test 2: Verifying aggregateScoreToArchetypeTier thresholds...');
-assert.strictEqual(aggregateScoreToArchetypeTier(3.48), 'S', '3.48 must be Tier S');
-assert.strictEqual(aggregateScoreToArchetypeTier(3.38), 'A', '3.38 must be Tier A');
-assert.strictEqual(aggregateScoreToArchetypeTier(3.28), 'B', '3.28 must be Tier B');
-assert.strictEqual(aggregateScoreToArchetypeTier(3.18), 'C', '3.18 must be Tier C');
-assert.strictEqual(aggregateScoreToArchetypeTier(3.05), 'D', '3.05 must be Tier D');
-console.log('   ✓ aggregateScoreToArchetypeTier correctly maps power scores across tiers.\n');
+console.log('Test 2: Verifying gradeTierToGradeBand mappings...');
+assert.strictEqual(gradeTierToGradeBand('A+'), 'A', 'A+ must be in Grade Band A');
+assert.strictEqual(gradeTierToGradeBand('A'),  'A', 'A must be in Grade Band A');
+assert.strictEqual(gradeTierToGradeBand('A-'), 'A', 'A- must be in Grade Band A');
+assert.strictEqual(gradeTierToGradeBand('B+'), 'B', 'B+ must be in Grade Band B');
+assert.strictEqual(gradeTierToGradeBand('B'),  'B', 'B must be in Grade Band B');
+assert.strictEqual(gradeTierToGradeBand('B-'), 'B', 'B- must be in Grade Band B');
+assert.strictEqual(gradeTierToGradeBand('C+'), 'C', 'C+ must be in Grade Band C');
+assert.strictEqual(gradeTierToGradeBand('C'),  'C', 'C must be in Grade Band C');
+assert.strictEqual(gradeTierToGradeBand('C-'), 'C', 'C- must be in Grade Band C');
+assert.strictEqual(gradeTierToGradeBand('D'),  'D', 'D must be in Grade Band D');
+assert.strictEqual(gradeTierToGradeBand('F'),  'F', 'F must be in Grade Band F');
+console.log('   ✓ gradeTierToGradeBand correctly maps letter grades to standard grade bands.\n');
 
 // -------------------------------------------------------------
 // Test 3: Realistic Set Simulation with 5 Colors

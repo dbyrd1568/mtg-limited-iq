@@ -495,6 +495,20 @@ export function clearUserArchetypeEvaluationsForSet(setCode: string, userId?: st
   }
 }
 
+export function deleteUserArchetypeEvaluation(setCode: string, archetypeCode: string, userId?: string): Record<string, UserArchetypeEvaluation> {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const current = loadUserArchetypeEvaluations(activeId);
+    const key = `${setCode.toLowerCase()}_${archetypeCode.toUpperCase()}`;
+    delete current[key];
+    localStorage.setItem(`mtg_archetype_evaluations_${activeId}`, JSON.stringify(current));
+    return current;
+  } catch (e) {
+    console.error('Failed to delete archetype evaluation:', e);
+    return {};
+  }
+}
+
 // ==================== USER-SCOPED COLOR EVALUATIONS ====================
 
 export function loadUserColorEvaluations(userId?: string): Record<string, UserColorEvaluation> {

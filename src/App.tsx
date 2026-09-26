@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS, deduplicateCards } from './services/scryfall';
 import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData, get17LandsCardRating } from './services/seventeenLands';
-import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
+import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, deleteUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
 
 import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
@@ -645,6 +645,17 @@ const AppContent: React.FC = () => {
     }, currentUser);
   };
 
+  const handleDeleteArchetypeEvaluation = (setCode: string, archetypeCode: string) => {
+    if (!currentUser) return;
+    deleteUserArchetypeEvaluation(setCode, archetypeCode, currentUser.id);
+    const key = `${setCode.toLowerCase()}_${archetypeCode.toUpperCase()}`;
+    setUserArchetypeEvaluations((prev) => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+  };
+
   const handleSaveColorEvaluation = (evaluation: UserColorEvaluation) => {
     if (!currentUser) return;
     if (isProdEnvironment() && !isCloudUUID(currentUser.id)) return;
@@ -929,6 +940,7 @@ const AppContent: React.FC = () => {
                 userArchetypeEvaluations={userArchetypeEvaluations}
                 userColorEvaluations={userColorEvaluations}
                 onSaveArchetypeEvaluation={handleSaveArchetypeEvaluation}
+                onDeleteArchetypeEvaluation={handleDeleteArchetypeEvaluation}
                 onSaveColorEvaluation={handleSaveColorEvaluation}
                 seventeenLandsData={seventeenLandsData}
                 isBlindGrading={isBlindGrading}

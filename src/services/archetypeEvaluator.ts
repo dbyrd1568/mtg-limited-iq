@@ -3,6 +3,7 @@ import {
   GRADE_SCORES,
   scoreToGradeTier,
   winRateToGradeTier,
+  gradeTierToIndex,
   isAuthentic17LandsDataSet,
   isSetUnderTwoWeeksOld,
   is17LandsEligibleForSet,
@@ -10,6 +11,16 @@ import {
 } from './seventeenLands';
 
 export { isAuthentic17LandsDataSet, isSetUnderTwoWeeksOld, is17LandsEligibleForSet };
+
+export type GradeBand = 'A' | 'B' | 'C' | 'D' | 'F';
+
+export function gradeTierToGradeBand(grade: GradeTier): GradeBand {
+  if (grade.startsWith('A')) return 'A';
+  if (grade.startsWith('B')) return 'B';
+  if (grade.startsWith('C')) return 'C';
+  if (grade === 'D') return 'D';
+  return 'F';
+}
 
 export interface ColorStrength {
   color: MTGColor | 'C';
@@ -46,8 +57,10 @@ export interface ArchetypeStrength {
   draftPointers?: string[];
   keyCommons?: string[];
   powerScore: number;
+  autoGrade: GradeTier;
   letterGrade: GradeTier;
-  tier: 'S' | 'A' | 'B' | 'C' | 'D';
+  gradeBand: GradeBand;
+  isOverridden: boolean;
   signposts: { card: Card; eval?: UserCardEvaluation }[];
   signpostAvgScore: number;
   color1AvgScore: number;
@@ -60,9 +73,9 @@ export interface ArchetypeStrength {
   userEvaluation?: UserArchetypeEvaluation;
   // 17Lands Data (when data is released)
   seventeenLandsWinRate?: number;
-  seventeenLandsTier?: 'S' | 'A' | 'B' | 'C' | 'D';
+  seventeenLandsGrade?: GradeTier;
   seventeenLandsRank?: number;
-  tierDelta?: number; // 0 = exact match, positive = you rated higher than 17lands, negative = you rated lower
+  gradeDelta?: number; // (User/effective grade index vs 17lands grade index)
 }
 
 export interface SetSynthesisReport {
@@ -80,9 +93,13 @@ export interface SetSynthesisReport {
   archetypeRankings: ArchetypeStrength[];
   developedArchetypes: ArchetypeStrength[];
   otherArchetypes: ArchetypeStrength[];
-  tierList: Record<'S' | 'A' | 'B' | 'C' | 'D', ArchetypeStrength[]>;
-  developedTierList: Record<'S' | 'A' | 'B' | 'C' | 'D', ArchetypeStrength[]>;
-  otherTierList: Record<'S' | 'A' | 'B' | 'C' | 'D', ArchetypeStrength[]>;
+  gradeList: Record<GradeBand, ArchetypeStrength[]>;
+  developedGradeList: Record<GradeBand, ArchetypeStrength[]>;
+  otherGradeList: Record<GradeBand, ArchetypeStrength[]>;
+  // Backwards compatibility aliases
+  tierList: Record<any, ArchetypeStrength[]>;
+  developedTierList: Record<any, ArchetypeStrength[]>;
+  otherTierList: Record<any, ArchetypeStrength[]>;
   // 17Lands Meta Verification
   has17LandsData: boolean;
   seventeenLandsBestColor?: ColorStrength | null;
@@ -108,23 +125,6 @@ const COLOR_METADATA: Record<MTGColor | 'C', { name: string; symbol: string; bad
   R: { name: 'Red', symbol: 'R', badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-400/40' },
   G: { name: 'Green', symbol: 'G', badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/40' },
   C: { name: 'Colorless', symbol: 'C', badgeClass: 'bg-slate-800 text-slate-300 border-slate-700' },
-};
-
-function winRateToArchetypeTier(winRate: number): 'S' | 'A' | 'B' | 'C' | 'D' {
-  const wr = winRate > 1 ? winRate / 100 : winRate;
-  if (wr >= 0.575) return 'S';
-  if (wr >= 0.555) return 'A';
-  if (wr >= 0.535) return 'B';
-  if (wr >= 0.510) return 'C';
-  return 'D';
-}
-
-const TIER_NUM_VAL: Record<'S' | 'A' | 'B' | 'C' | 'D', number> = {
-  S: 5,
-  A: 4,
-  B: 3,
-  C: 2,
-  D: 1,
 };
 
 /**
@@ -158,17 +158,6 @@ export function aggregateScoreToGradeTier(score: number): GradeTier {
   if (score >= 2.90) return 'C-';
   if (score >= 2.60) return 'D';
   return 'F';
-}
-
-/**
- * Maps an aggregate archetype power score to a predicted tier (S, A, B, C, D).
- */
-export function aggregateScoreToArchetypeTier(score: number): 'S' | 'A' | 'B' | 'C' | 'D' {
-  if (score >= 3.44) return 'S';
-  if (score >= 3.36) return 'A';
-  if (score >= 3.26) return 'B';
-  if (score >= 3.16) return 'C';
-  return 'D';
 }
 
 export function calculateColorRankings(
@@ -379,10 +368,14 @@ export function calculateArchetypeRankings(
     // Weighted Archetype formula: 30% Gold Signpost strength + 35% Color 1 mono quality + 35% Color 2 mono quality
     const powerScore = parseFloat((signpostAvg * 0.30 + c1Score * 0.35 + c2Score * 0.35).toFixed(2));
 
-    // Determine Archetype letter grade:
-    // Respect user manual override if present; otherwise use calibrated aggregate thresholds.
+    // Auto-calculate Archetype letter grade from bottom-up power score
     const hasRatedInput = signpostRated > 0 || (c1Score !== 2.5 && c2Score !== 2.5);
-    const letterGrade = userEvaluation?.userGrade || (hasRatedInput ? aggregateScoreToGradeTier(powerScore) : scoreToGradeTier(powerScore));
+    const autoGrade: GradeTier = hasRatedInput ? aggregateScoreToGradeTier(powerScore) : scoreToGradeTier(powerScore);
+
+    // If user provided a manual override, respect it
+    const isOverridden = Boolean(userEvaluation?.userGrade);
+    const letterGrade: GradeTier = userEvaluation?.userGrade || autoGrade;
+    const gradeBand = gradeTierToGradeBand(letterGrade);
 
     // Find key picks for this color pair (Bombs and premium commons/uncommons in C1, C2, or Gold)
     const keyPicks: { card: Card; eval: UserCardEvaluation }[] = [];
@@ -403,22 +396,18 @@ export function calculateArchetypeRankings(
 
     keyPicks.sort((a, b) => b.eval.userScore - a.eval.userScore);
 
-    // Determine User Predicted Tier (S, A, B, C, D) using calibrated aggregate thresholds
-    let tier: 'S' | 'A' | 'B' | 'C' | 'D' = 'C';
-    if (userEvaluation?.tier) {
-      tier = userEvaluation.tier;
-    } else if (hasRatedInput) {
-      tier = aggregateScoreToArchetypeTier(powerScore);
-    }
-
-    // 17Lands Win Rate
+    // 17Lands Win Rate & Grade
     let seventeenLandsWinRate: number | undefined = undefined;
-    let seventeenLandsTier: 'S' | 'A' | 'B' | 'C' | 'D' | undefined = undefined;
+    let seventeenLandsGrade: GradeTier | undefined = undefined;
+    let gradeDelta: number | undefined = undefined;
 
     if (has17Lands && c1Wr !== undefined && c2Wr !== undefined) {
       const signpostWr = landSignpostCount > 0 ? landSignpostWrSum / landSignpostCount : (c1Wr + c2Wr) / 2;
       seventeenLandsWinRate = parseFloat((signpostWr * 0.30 + c1Wr * 0.35 + c2Wr * 0.35).toFixed(3));
-      seventeenLandsTier = winRateToArchetypeTier(seventeenLandsWinRate);
+      seventeenLandsGrade = winRateToGradeTier(seventeenLandsWinRate);
+      if (letterGrade && seventeenLandsGrade) {
+        gradeDelta = gradeTierToIndex(seventeenLandsGrade) - gradeTierToIndex(letterGrade);
+      }
     }
 
     const wotcInfo = getWOTCArchetypeInfo(setCode || '', guild.code, cards);
@@ -436,8 +425,10 @@ export function calculateArchetypeRankings(
       draftPointers: wotcInfo.draftPointers,
       keyCommons: wotcInfo.keyCommons,
       powerScore,
+      autoGrade,
       letterGrade,
-      tier,
+      gradeBand,
+      isOverridden,
       signposts: signpostList,
       signpostAvgScore: parseFloat(signpostAvg.toFixed(2)),
       color1AvgScore: c1Score,
@@ -449,7 +440,8 @@ export function calculateArchetypeRankings(
       isDevelopedForSet: developedCodes.has(guild.code),
       userEvaluation,
       seventeenLandsWinRate,
-      seventeenLandsTier,
+      seventeenLandsGrade,
+      gradeDelta,
     };
   });
 
@@ -463,16 +455,11 @@ export function calculateArchetypeRankings(
     });
   }
 
-  // Sort descending by User Predicted power score
-  results.sort((a, b) => b.powerScore - a.powerScore);
-
-  // Calculate Tier Delta
-  results.forEach((arch) => {
-    if (arch.seventeenLandsTier) {
-      const userVal = TIER_NUM_VAL[arch.tier];
-      const realVal = TIER_NUM_VAL[arch.seventeenLandsTier];
-      arch.tierDelta = userVal - realVal;
-    }
+  // Sort descending by effective score (user evaluation score if overridden, otherwise power score)
+  results.sort((a, b) => {
+    const aScore = a.userEvaluation?.userScore || a.powerScore;
+    const bScore = b.userEvaluation?.userScore || b.powerScore;
+    return bScore - aScore;
   });
 
   return results;
@@ -506,40 +493,40 @@ export function generateSetSynthesisReport(
   const developedArchetypes = archetypeRankings.filter((a) => a.isDevelopedForSet);
   const otherArchetypes = archetypeRankings.filter((a) => !a.isDevelopedForSet);
 
-  // Group by Tier for all archetypes
-  const tierList: Record<'S' | 'A' | 'B' | 'C' | 'D', ArchetypeStrength[]> = {
-    S: [],
+  // Group by Grade Band for all archetypes
+  const gradeList: Record<GradeBand, ArchetypeStrength[]> = {
     A: [],
     B: [],
     C: [],
     D: [],
+    F: [],
   };
   archetypeRankings.forEach((arch) => {
-    tierList[arch.tier].push(arch);
+    gradeList[arch.gradeBand].push(arch);
   });
 
-  // Group by Tier for Developed Archetypes
-  const developedTierList: Record<'S' | 'A' | 'B' | 'C' | 'D', ArchetypeStrength[]> = {
-    S: [],
+  // Group by Grade Band for Developed Archetypes
+  const developedGradeList: Record<GradeBand, ArchetypeStrength[]> = {
     A: [],
     B: [],
     C: [],
     D: [],
+    F: [],
   };
   developedArchetypes.forEach((arch) => {
-    developedTierList[arch.tier].push(arch);
+    developedGradeList[arch.gradeBand].push(arch);
   });
 
-  // Group by Tier for Other / Off-Meta Archetypes
-  const otherTierList: Record<'S' | 'A' | 'B' | 'C' | 'D', ArchetypeStrength[]> = {
-    S: [],
+  // Group by Grade Band for Other / Off-Meta Archetypes
+  const otherGradeList: Record<GradeBand, ArchetypeStrength[]> = {
     A: [],
     B: [],
     C: [],
     D: [],
+    F: [],
   };
   otherArchetypes.forEach((arch) => {
-    otherTierList[arch.tier].push(arch);
+    otherGradeList[arch.gradeBand].push(arch);
   });
 
   const monocolorRankings = colorRankings.filter((c) => c.color !== 'C');
@@ -601,9 +588,13 @@ export function generateSetSynthesisReport(
     archetypeRankings,
     developedArchetypes,
     otherArchetypes,
-    tierList,
-    developedTierList,
-    otherTierList,
+    gradeList,
+    developedGradeList,
+    otherGradeList,
+    // Backwards compatibility aliases
+    tierList: gradeList,
+    developedTierList: developedGradeList,
+    otherTierList: otherGradeList,
     has17LandsData: has17Lands,
     seventeenLandsBestColor,
     seventeenLandsWorstColor,
@@ -641,7 +632,7 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
     }
   });
   lines.push(`**Colors:** ${chainPips}`);
-  lines.push(`**Tiers:**  ${chainGrades}\n`);
+  lines.push(`**Grades:** ${chainGrades}\n`);
 
   report.colorRankings.forEach((col, idx) => {
     const seventeenStr = col.seventeenLandsAvgWinRate !== undefined ? ` • 17Lands: ${(col.seventeenLandsAvgWinRate * 100).toFixed(1)}% WR (#${col.seventeenLandsRank})` : '';
@@ -651,16 +642,17 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
   const developedCount = report.developedArchetypes.length;
   const isAsymmetricSet = developedCount > 0 && developedCount < 10;
 
-  lines.push(`\n## 🎯 ${isAsymmetricSet ? `Designed Set Archetypes (${developedCount} Pairs)` : '2-Color Archetype Tier List'}`);
-  (['S', 'A', 'B', 'C', 'D'] as const).forEach((tier) => {
-    const archetypes = (isAsymmetricSet ? report.developedTierList : report.tierList)[tier];
+  lines.push(`\n## 🎯 ${isAsymmetricSet ? `Designed Set Archetypes (${developedCount} Pairs)` : '2-Color Archetypes'}`);
+  (['A', 'B', 'C', 'D', 'F'] as const).forEach((band) => {
+    const archetypes = (isAsymmetricSet ? report.developedGradeList : report.gradeList)[band];
     if (archetypes.length > 0) {
-      lines.push(`### Tier ${tier}`);
+      lines.push(`### Grade ${band} Archetypes`);
       archetypes.forEach((arch) => {
-        const seventeenStr = arch.seventeenLandsWinRate !== undefined ? ` [17Lands Actual: Tier ${arch.seventeenLandsTier} - ${(arch.seventeenLandsWinRate * 100).toFixed(1)}% WR]` : '';
+        const seventeenStr = arch.seventeenLandsWinRate !== undefined ? ` [17Lands Actual: Grade ${arch.seventeenLandsGrade} - ${(arch.seventeenLandsWinRate * 100).toFixed(1)}% WR]` : '';
         const guildStr = arch.guildName && arch.guildName !== arch.name ? ` [${arch.guildName} • ${arch.code}]` : ` [${arch.code}]`;
         const paceStr = arch.pace ? ` [${arch.pace}]` : '';
-        lines.push(`- **${arch.name}**${guildStr}${paceStr}: Power ${arch.powerScore.toFixed(2)} (Grade ${arch.letterGrade}) — *${arch.theme}*${seventeenStr}`);
+        const overrideStr = arch.isOverridden ? ' (Manual Grade)' : '';
+        lines.push(`- **${arch.name}**${guildStr}${paceStr}: Grade **${arch.letterGrade}**${overrideStr} (Power ${arch.powerScore.toFixed(2)}) — *${arch.theme}*${seventeenStr}`);
       });
     }
   });
@@ -668,14 +660,15 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
   if (isAsymmetricSet && report.otherArchetypes.length > 0) {
     lines.push(`\n## 🧩 Other Color Pairs (${report.otherArchetypes.length} Pairs)`);
     lines.push(`*Off-archetype pairs not specifically supported with signposts in ${report.setName}*`);
-    (['S', 'A', 'B', 'C', 'D'] as const).forEach((tier) => {
-      const archetypes = report.otherTierList[tier];
+    (['A', 'B', 'C', 'D', 'F'] as const).forEach((band) => {
+      const archetypes = report.otherGradeList[band];
       if (archetypes.length > 0) {
-        lines.push(`### Tier ${tier}`);
+        lines.push(`### Grade ${band} Archetypes`);
         archetypes.forEach((arch) => {
           const guildStr = arch.guildName && arch.guildName !== arch.name ? ` [${arch.guildName} • ${arch.code}]` : ` [${arch.code}]`;
           const paceStr = arch.pace ? ` [${arch.pace}]` : '';
-          lines.push(`- **${arch.name}**${guildStr}${paceStr}: Power ${arch.powerScore.toFixed(2)} (Grade ${arch.letterGrade}) — *${arch.theme}*`);
+          const overrideStr = arch.isOverridden ? ' (Manual Grade)' : '';
+          lines.push(`- **${arch.name}**${guildStr}${paceStr}: Grade **${arch.letterGrade}**${overrideStr} (Power ${arch.powerScore.toFixed(2)}) — *${arch.theme}*`);
         });
       }
     });

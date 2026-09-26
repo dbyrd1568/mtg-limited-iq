@@ -137,7 +137,7 @@ export interface UserArchetypeEvaluation {
   archetypeCode: string; // 'WU', 'UB', etc.
   userGrade: GradeTier;
   userScore: number; // 0.0 to 5.0
-  tier?: 'S' | 'A' | 'B' | 'C' | 'D';
+  isManualOverride?: boolean;
   roleInMetagame?: ArchetypeMetagameRole;
   notes?: string;
   updatedAt: string;
