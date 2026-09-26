@@ -141,6 +141,31 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
     .filter((c) => c.color !== 'C' && Boolean(c.userEvaluation?.userGrade))
     .sort((a, b) => (b.userEvaluation?.userScore || 0) - (a.userEvaluation?.userScore || 0))[0];
 
+  const userTopColorScore = userTopColor?.userEvaluation?.userScore;
+  const topColorScore = userTopColorScore !== undefined ? userTopColorScore : report.bestColor?.averageScore;
+  const topColorPool = userTopColorScore !== undefined
+    ? report.colorRankings.filter((c) => c.color !== 'C' && Boolean(c.userEvaluation?.userGrade))
+    : report.colorRankings.filter((c) => c.color !== 'C' && c.ratedCards > 0);
+  const tiedTopColors = topColorScore !== undefined
+    ? topColorPool.filter((c) => {
+        const s = userTopColorScore !== undefined ? c.userEvaluation?.userScore : c.averageScore;
+        return s !== undefined && Math.abs(s - topColorScore) < 0.001;
+      })
+    : [];
+
+  const topArchPool = userTopArchetype
+    ? report.archetypeRankings.filter((a) => Boolean(a.userEvaluation?.userGrade))
+    : (report.developedArchetypes.length > 0 ? report.developedArchetypes : report.archetypeRankings);
+  const topArchScore = userTopArchetype
+    ? userTopArchetype.userEvaluation?.userScore
+    : (report.bestArchetype?.userEvaluation?.userScore || report.bestArchetype?.powerScore);
+  const tiedTopArchetypes = topArchScore !== undefined
+    ? topArchPool.filter((a) => {
+        const s = a.userEvaluation?.userScore || a.powerScore;
+        return Math.abs(s - topArchScore) < 0.001;
+      })
+    : [];
+
   const handleRateArchetype = (arch: ArchetypeStrength, grade: GradeTier) => {
     const score = GRADE_SCORES[grade] || 2.5;
     const currentEval = arch.userEvaluation;
@@ -420,9 +445,11 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             </span>
           </div>
 
-          <div className="flex items-baseline gap-2 pt-0.5">
+          <div className="flex items-baseline gap-2 pt-0.5 flex-wrap">
             <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-heading">
-              {report.bestColor?.name || 'N/A'}
+              {tiedTopColors.length > 1
+                ? `${tiedTopColors.map((c) => c.name).join(' & ')} (Tie)`
+                : (report.bestColor?.name || 'N/A')}
             </span>
             {report.bestColor && (
               <span className={`text-xs font-mono font-bold px-1.5 py-0.2 rounded border ${report.bestColor.badgeClass}`}>
@@ -472,9 +499,11 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             </span>
           </div>
 
-          <div className="flex items-baseline gap-2 pt-0.5">
+          <div className="flex items-baseline gap-2 pt-0.5 flex-wrap">
             <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-heading">
-              {userTopArchetype ? userTopArchetype.name : (report.bestArchetype?.name || 'N/A')}
+              {tiedTopArchetypes.length > 1
+                ? `${tiedTopArchetypes.map((a) => a.name).join(' & ')} (Tie)`
+                : (userTopArchetype ? userTopArchetype.name : (report.bestArchetype?.name || 'N/A'))}
             </span>
             {userTopArchetype?.userEvaluation?.userGrade ? (
               <span className="text-xs font-mono font-bold px-2 py-0.2 rounded bg-violet-600 text-white shadow-xs border border-violet-400 dark:border-cyan-400">

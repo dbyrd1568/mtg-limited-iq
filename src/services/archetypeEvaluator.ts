@@ -129,34 +129,37 @@ const COLOR_METADATA: Record<MTGColor | 'C', { name: string; symbol: string; bad
 
 /**
  * Maps an aggregate average score (across 40+ cards in a color or archetype pool)
- * to a distinct letter grade tier.
+ * to a standard letter grade tier.
  *
- * In MTG Limited, color pool GPAs suffer from regression to the mean and naturally
- * cluster between 3.15 and 3.55. Single-card scales (which require >= 4.5 for an A)
- * cause all colors to collapse into B-. This scale is calibrated for aggregate pools:
- *   >= 3.65: A+  (Historic, format-warping dominance)
- *   >= 3.52: A   (Premier top color in format)
- *   >= 3.44: A-  (Strong tier 1 color, e.g. 3.49 Green)
- *   >= 3.37: B+  (High-tier contender, e.g. 3.41 Red)
- *   >= 3.30: B   (Solid middle-of-pack, e.g. 3.35 Black)
- *   >= 3.24: B-  (Viable but below-average, e.g. 3.28 Blue)
- *   >= 3.16: C+  (Weakest color in format, e.g. 3.22 White)
- *   >= 3.05: C   (Struggling color)
- *   >= 2.90: C-  (Unfavorable color)
- *   >= 2.60: D   (Failing color pool)
- *   < 2.60:  F
+ * In MTG Limited, color pool and archetype GPAs naturally cluster between ~3.00 and ~3.65.
+ * This scale uses calibrated, uniform ~0.15 GPA intervals:
+ * - Allows colors and archetypes of similar quality to naturally tie (e.g. multiple B+ or B).
+ * - Avoids artificial micro-tiering / forced quotas where every color is forced into a different grade.
+ * - Prevents single-card scale compression where all colors collapse into B-.
+ *
+ *   >= 3.75: A+  (Dominant, historically overpowered pool)
+ *   >= 3.60: A   (Powerhouse format pillar)
+ *   >= 3.45: A-  (Clear top tier / premier pool)
+ *   >= 3.30: B+  (Strong contender, high quality)
+ *   >= 3.15: B   (Solid, reliable, average Limited pool)
+ *   >= 3.00: B-  (Viable but below average / synergy reliant)
+ *   >= 2.85: C+  (Shallow / unfavorable commons)
+ *   >= 2.70: C   (Struggling pool)
+ *   >= 2.50: C-  (Trap / severely deficient)
+ *   >= 2.00: D   (Failing)
+ *   <  2.00: F
  */
 export function aggregateScoreToGradeTier(score: number): GradeTier {
-  if (score >= 3.65) return 'A+';
-  if (score >= 3.52) return 'A';
-  if (score >= 3.44) return 'A-';
-  if (score >= 3.37) return 'B+';
-  if (score >= 3.30) return 'B';
-  if (score >= 3.24) return 'B-';
-  if (score >= 3.16) return 'C+';
-  if (score >= 3.05) return 'C';
-  if (score >= 2.90) return 'C-';
-  if (score >= 2.60) return 'D';
+  if (score >= 3.75) return 'A+';
+  if (score >= 3.60) return 'A';
+  if (score >= 3.45) return 'A-';
+  if (score >= 3.30) return 'B+';
+  if (score >= 3.15) return 'B';
+  if (score >= 3.00) return 'B-';
+  if (score >= 2.85) return 'C+';
+  if (score >= 2.70) return 'C';
+  if (score >= 2.50) return 'C-';
+  if (score >= 2.00) return 'D';
   return 'F';
 }
 
@@ -275,28 +278,44 @@ export function calculateColorRankings(
     };
   });
 
-  // Calculate 17Lands rankings across WUBRG (only for colors with real data)
+  // Calculate 17Lands rankings across WUBRG (only for colors with real data), preserving ties
   if (has17Lands) {
     const sortedBy17Lands = [...results.filter((c) => c.color !== 'C' && c.seventeenLandsAvgWinRate !== undefined)].sort(
       (a, b) => (b.seventeenLandsAvgWinRate || 0) - (a.seventeenLandsAvgWinRate || 0)
     );
+    let current17Rank = 1;
     sortedBy17Lands.forEach((c, idx) => {
-      c.seventeenLandsRank = idx + 1;
+      if (idx > 0 && c.seventeenLandsAvgWinRate !== sortedBy17Lands[idx - 1].seventeenLandsAvgWinRate) {
+        current17Rank = idx + 1;
+      }
+      c.seventeenLandsRank = current17Rank;
     });
   }
 
-  // Sort by user's average score descending; unrated colors placed at the end
+  // Sort by effective score descending (userEvaluation score if set, else averageScore); unrated colors placed at the end
   results.sort((a, b) => {
-    if (a.ratedCards === 0 && b.ratedCards === 0) return 0;
-    if (a.ratedCards === 0) return 1;
-    if (b.ratedCards === 0) return -1;
-    return b.averageScore - a.averageScore;
+    const aHasData = a.ratedCards > 0 || Boolean(a.userEvaluation);
+    const bHasData = b.ratedCards > 0 || Boolean(b.userEvaluation);
+    if (!aHasData && !bHasData) return 0;
+    if (!aHasData) return 1;
+    if (!bHasData) return -1;
+    const aScore = a.userEvaluation?.userScore ?? a.averageScore;
+    const bScore = b.userEvaluation?.userScore ?? b.averageScore;
+    return bScore - aScore;
   });
 
-  // Compute rank delta (User rank vs 17Lands rank) only for colors you've actually rated
+  // Compute rank delta (User rank vs 17Lands rank), properly honoring ties
+  let currentUserRank = 1;
   results.forEach((c, userIdx) => {
-    if (c.seventeenLandsRank !== undefined && c.ratedCards > 0) {
-      c.rankDelta = c.seventeenLandsRank - (userIdx + 1); // e.g. you picked #1, 17Lands is #3 -> delta +2
+    if (userIdx > 0) {
+      const prevScore = results[userIdx - 1].userEvaluation?.userScore ?? results[userIdx - 1].averageScore;
+      const currScore = c.userEvaluation?.userScore ?? c.averageScore;
+      if (currScore !== prevScore) {
+        currentUserRank = userIdx + 1;
+      }
+    }
+    if (c.seventeenLandsRank !== undefined && (c.ratedCards > 0 || c.userEvaluation)) {
+      c.rankDelta = c.seventeenLandsRank - currentUserRank;
     }
   });
 
@@ -445,13 +464,17 @@ export function calculateArchetypeRankings(
     };
   });
 
-  // Calculate 17Lands real ranking (1 to 10) for archetypes with authentic win rate data
+  // Calculate 17Lands real ranking (1 to 10) for archetypes with authentic win rate data, preserving ties
   if (has17Lands) {
     const sorted17 = [...results.filter((a) => a.seventeenLandsWinRate !== undefined)].sort(
       (a, b) => (b.seventeenLandsWinRate || 0) - (a.seventeenLandsWinRate || 0)
     );
+    let current17Rank = 1;
     sorted17.forEach((arch, idx) => {
-      arch.seventeenLandsRank = idx + 1;
+      if (idx > 0 && arch.seventeenLandsWinRate !== sorted17[idx - 1].seventeenLandsWinRate) {
+        current17Rank = idx + 1;
+      }
+      arch.seventeenLandsRank = current17Rank;
     });
   }
 
@@ -556,8 +579,16 @@ export function generateSetSynthesisReport(
     // Only compute prediction calibration score if user has graded a meaningful sample (>= 15 cards)
     if (ratedCount >= 15) {
       let totalPenalty = 0;
+      let currentArchRank = 1;
       archetypeRankings.forEach((arch, userRankIdx) => {
-        const userRank = userRankIdx + 1;
+        if (userRankIdx > 0) {
+          const prevScore = archetypeRankings[userRankIdx - 1].userEvaluation?.userScore || archetypeRankings[userRankIdx - 1].powerScore;
+          const currScore = arch.userEvaluation?.userScore || arch.powerScore;
+          if (currScore !== prevScore) {
+            currentArchRank = userRankIdx + 1;
+          }
+        }
+        const userRank = currentArchRank;
         const realRank = arch.seventeenLandsRank || userRank;
         totalPenalty += Math.abs(userRank - realRank);
       });
