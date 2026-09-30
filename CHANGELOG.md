@@ -3,6 +3,12 @@
 All notable changes to this project will be documented here.
 
 
+## [1.7.9](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.7.8...v1.7.9) (2026-09-30)
+
+### ✨ Features
+
+* **ui:** add dynamic rarity-colored set symbols and refine set selector chips ([c9fdd9b](https://github.com/dbyrd1568/mtg-limited-iq/commit/c9fdd9b0dabc03d1ed30b08d3e164a635f4f0fca))
+
 ## [1.3.0](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.2.2...v1.3.0) (2026-09-13)
 
 ### ✨ Features
