@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { UserAccount } from '../types/mtg';
+import { UserAccount, UserCardEvaluation, UserArchetypeEvaluation } from '../types/mtg';
 import {
   AdminUserSummary,
   FeatureUsageStat,
@@ -13,8 +13,17 @@ import {
 } from '../types/admin';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { fetchActivityLogs, KNOWN_FEATURES } from './telemetry';
-import { getAllUsers, loadUserStats, loadUserEvaluations, getActiveUser } from './storage';
+import { getAllUsers, loadUserStats, loadUserEvaluations, loadUserArchetypeEvaluations, getActiveUser } from './storage';
 import { isDevEnvironment, isCloudUUID } from './environment';
+import {
+  fetch17LandsSetData,
+  winRateToGradeTier,
+  gradeTierToIndex,
+  scoreToGradeTier,
+  accuracyToEvaluatorGrade,
+  get17LandsCardRating,
+} from './seventeenLands';
+import { GradeTier, SeventeenLandsSetData } from '../types/mtg';
 
 const ADMIN_STORAGE_KEY = 'mtg_admin_access_list_v1';
 export const PERMANENT_SUPER_ADMIN_EMAILS = new Set([
@@ -45,11 +54,21 @@ export function isPermanentSuperAdmin(emailOrId?: string | null): boolean {
 export async function checkIsAdmin(user: UserAccount | null): Promise<boolean> {
   if (!user) return false;
 
+  // 0. Permanent Super Admin Owner check (authoritative project owners)
+  if (isPermanentSuperAdmin(user.email) || isPermanentSuperAdmin(user.id)) {
+    return true;
+  }
+
   // Best Security Practice: Server-verified cryptographic & database authorization
   if (isSupabaseConfigured()) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        // Also check verified session user email
+        if (isPermanentSuperAdmin(session.user.email)) {
+          return true;
+        }
+
         // 1. Cryptographically signed JWT token app_metadata claim (signed by Supabase secret)
         const appRole = session.user.app_metadata?.role;
         if (appRole === 'admin' || appRole === 'owner') {
@@ -328,7 +347,7 @@ export async function fetchAdminOverviewKPIs(timeRange: AdminTimeRange = 'all'):
   const totalCardsGraded = users.reduce((acc, u) => acc + u.cardsGradedTotal, 0);
   const totalQuizzesTaken = users.reduce((acc, u) => acc + u.totalQuizzes, 0);
 
-  const gradedUsersWithAccuracy = users.filter((u) => u.cardsGradedTotal > 0);
+  const gradedUsersWithAccuracy = users.filter((u) => u.has17LandsCalibration && u.gradingAccuracyScore > 0);
   const avgGradingAccuracy =
     gradedUsersWithAccuracy.length > 0
       ? Math.round(
@@ -684,6 +703,28 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
     });
   }
 
+  // Gather unique set codes present in all users' evaluations to query authentic 17Lands data
+  const distinctSetCodes = new Set<string>();
+  rawUsers.forEach((u) => {
+    if (u.evaluations) {
+      Object.values(u.evaluations).forEach((ev: any) => {
+        if (ev.setCode) distinctSetCodes.add(ev.setCode.toUpperCase());
+      });
+    }
+  });
+
+  const landsDataMap = new Map<string, SeventeenLandsSetData | null>();
+  await Promise.all(
+    Array.from(distinctSetCodes).map(async (setCode) => {
+      try {
+        const data = await fetch17LandsSetData(setCode);
+        landsDataMap.set(setCode, data);
+      } catch {
+        landsDataMap.set(setCode, null);
+      }
+    })
+  );
+
   // Build authentic user summaries - strictly authenticated users
   return rawUsers.map((u) => {
     const stats = u.stats || {};
@@ -706,7 +747,7 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
     const status: AdminUserSummary['status'] =
       daysSinceLogin <= 1 ? 'active' : daysSinceLogin <= 7 ? 'recent' : 'dormant';
 
-    const { accuracyScore, gpa, bias } = calculateEvaluationMetrics(evals);
+    const { accuracyScore, gpa, bias, has17LandsCalibration } = calculateEvaluationMetrics(evals, landsDataMap);
 
     return {
       id: u.id,
@@ -730,9 +771,11 @@ export async function fetchUserDirectory(): Promise<AdminUserSummary[]> {
       gradingAccuracyScore: accuracyScore,
       gradingGpa: gpa,
       gradingBias: bias,
+      has17LandsCalibration,
       isAdmin,
       status,
       setsGraded: setsDetail,
+      evaluations: evals,
     };
   });
 }
@@ -756,7 +799,7 @@ export function getAdminSyncDiagnostics() {
  */
 export async function fetchEvaluationsForUser(
   userId: string
-): Promise<Record<string, any>> {
+): Promise<Record<string, UserCardEvaluation>> {
   if (!isSupabaseConfigured() || !isCloudUUID(userId)) {
     return loadUserEvaluations(userId);
   }
@@ -768,7 +811,7 @@ export async function fetchEvaluationsForUser(
       { target_user_id: userId }
     );
     if (!rpcErr && rpcEvals && Array.isArray(rpcEvals) && rpcEvals.length > 0) {
-      const userBucket: Record<string, any> = {};
+      const userBucket: Record<string, UserCardEvaluation> = {};
       rpcEvals.forEach((ev: any) => {
         const key = `${ev.set_code.toLowerCase()}_${ev.card_name.toLowerCase()}`;
         userBucket[key] = {
@@ -792,7 +835,7 @@ export async function fetchEvaluationsForUser(
       .eq('user_id', userId);
 
     if (!error && rows && Array.isArray(rows) && rows.length > 0) {
-      const userBucket: Record<string, any> = {};
+      const userBucket: Record<string, UserCardEvaluation> = {};
       rows.forEach((ev: any) => {
         const key = `${ev.set_code.toLowerCase()}_${ev.card_name.toLowerCase()}`;
         userBucket[key] = {
@@ -810,6 +853,237 @@ export async function fetchEvaluationsForUser(
 
   return loadUserEvaluations(userId);
 }
+
+/**
+ * Directly fetches all archetype evaluations for a target user
+ */
+export async function fetchArchetypeEvaluationsForUser(
+  userId: string
+): Promise<Record<string, UserArchetypeEvaluation>> {
+  if (!isSupabaseConfigured() || !isCloudUUID(userId)) {
+    return loadUserArchetypeEvaluations(userId);
+  }
+
+  // 1. Try targeted RPC
+  try {
+    const { data: rpcArchetypes, error: rpcErr } = await supabase.rpc(
+      'get_admin_user_archetype_evaluations',
+      { target_user_id: userId }
+    );
+    if (!rpcErr && rpcArchetypes && Array.isArray(rpcArchetypes) && rpcArchetypes.length > 0) {
+      const archBucket: Record<string, UserArchetypeEvaluation> = {};
+      rpcArchetypes.forEach((ev: any) => {
+        const key = `${ev.set_code.toLowerCase()}_${ev.archetype_code.toUpperCase()}`;
+        archBucket[key] = {
+          ...(ev.evaluation_json || {}),
+          setCode: ev.set_code,
+          archetypeCode: ev.archetype_code,
+          updatedAt: ev.updated_at,
+        };
+      });
+      return archBucket;
+    }
+  } catch {
+    // RPC may not exist yet
+  }
+
+  // 2. Try direct table query
+  try {
+    const { data: rows, error } = await supabase
+      .from('archetype_evaluations')
+      .select('set_code, archetype_code, evaluation_json, updated_at')
+      .eq('user_id', userId);
+
+    if (!error && rows && Array.isArray(rows) && rows.length > 0) {
+      const archBucket: Record<string, UserArchetypeEvaluation> = {};
+      rows.forEach((ev: any) => {
+        const key = `${ev.set_code.toLowerCase()}_${ev.archetype_code.toUpperCase()}`;
+        archBucket[key] = {
+          ...(ev.evaluation_json || {}),
+          setCode: ev.set_code,
+          archetypeCode: ev.archetype_code,
+          updatedAt: ev.updated_at,
+        };
+      });
+      return archBucket;
+    }
+  } catch (err) {
+    console.warn('Error querying archetype_evaluations table:', err);
+  }
+
+  // 3. Fallback to public grade shares
+  try {
+    const { data: shares, error: shareErr } = await supabase
+      .from('public_grade_shares')
+      .select('archetype_grades_json')
+      .eq('user_id', userId);
+
+    if (!shareErr && shares && shares.length > 0) {
+      const merged: Record<string, UserArchetypeEvaluation> = {};
+      shares.forEach((s) => {
+        if (s.archetype_grades_json) {
+          Object.assign(merged, s.archetype_grades_json);
+        }
+      });
+      if (Object.keys(merged).length > 0) {
+        return merged;
+      }
+    }
+  } catch {
+    // Ignore fallback errors
+  }
+
+  return loadUserArchetypeEvaluations(userId);
+}
+
+/**
+ * Exports a user's entire grading scorecard as CSV or JSON
+ */
+export function exportUserEvaluationScorecard(
+  user: AdminUserSummary,
+  evaluations: Record<string, UserCardEvaluation>,
+  archetypeEvaluations: Record<string, UserArchetypeEvaluation>,
+  targetSetCode?: string,
+  format: 'csv' | 'json' = 'csv'
+): string {
+  const evalList = Object.values(evaluations).filter((ev) =>
+    !targetSetCode || targetSetCode === 'ALL' || ev.setCode.toUpperCase() === targetSetCode.toUpperCase()
+  );
+
+  const archList = Object.values(archetypeEvaluations).filter((arch) =>
+    !targetSetCode || targetSetCode === 'ALL' || arch.setCode.toUpperCase() === targetSetCode.toUpperCase()
+  );
+
+  const cleanName = (user.name || user.email || 'user').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const setSuffix = targetSetCode && targetSetCode !== 'ALL' ? `_${targetSetCode.toUpperCase()}` : '_ALL_SETS';
+  const timestamp = new Date().toISOString().split('T')[0];
+
+  if (format === 'json') {
+    const payload = {
+      targetUser: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        authMethod: user.authMethodLabel || user.provider,
+        cardsGradedTotal: user.cardsGradedTotal,
+        gradingGpa: user.gradingGpa,
+        gradingAccuracyScore: user.gradingAccuracyScore,
+        gradingBias: user.gradingBias,
+      },
+      exportedAt: new Date().toISOString(),
+      setCode: targetSetCode || 'ALL',
+      totalEvaluations: evalList.length,
+      cards: evalList,
+      archetypes: archList,
+    };
+
+    const jsonString = JSON.stringify(payload, null, 2);
+
+    if (typeof document !== 'undefined') {
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `user_scorecard_${cleanName}${setSuffix}_${timestamp}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    return jsonString;
+  }
+
+  // CSV Export: Card Evaluations
+  const cardHeaders = [
+    'Set',
+    'Card Name',
+    'User Grade',
+    'User Score',
+    'Pick Priority',
+    'User Notes',
+    'Archetype Role',
+    'Updated At',
+  ];
+
+  const cardRows = evalList.map((ev) => {
+    const grade = ev.userGrade || (ev as any).tier || '—';
+    const scoreVal = typeof ev.userScore === 'number' ? ev.userScore : (ev as any).numericScore;
+    const score = typeof scoreVal === 'number' ? scoreVal.toFixed(1) : '—';
+    const priority = String(ev.pickPriority || '').replace(/"/g, '""');
+    const notes = String(ev.notes || (ev as any).userNotes || '').replace(/"/g, '""');
+    const role = String(ev.archetypeRole || '').replace(/"/g, '""');
+    const cardName = String(ev.cardName || '').replace(/"/g, '""');
+
+    return [
+      ev.setCode,
+      `"${cardName}"`,
+      grade,
+      score,
+      `"${priority}"`,
+      `"${notes}"`,
+      `"${role}"`,
+      ev.updatedAt || '—',
+    ];
+  });
+
+  // CSV Export: Archetype Evaluations
+  const archHeaders = [
+    'Set',
+    'Archetype Code',
+    'User Grade',
+    'User Score',
+    'Manual Override',
+    'Role in Metagame',
+    'Archetype Notes',
+    'Updated At',
+  ];
+
+  const archRows = archList.map((arch) => {
+    const grade = arch.userGrade || (arch as any).tierGrade || '—';
+    const scoreVal = typeof arch.userScore === 'number' ? arch.userScore : (arch as any).powerScore;
+    const score = typeof scoreVal === 'number' ? scoreVal.toFixed(1) : '—';
+    const override = arch.isManualOverride ? 'Yes' : 'No';
+    const role = String(arch.roleInMetagame || (arch as any).metagameRole || '').replace(/"/g, '""');
+    const notes = String(arch.notes || '').replace(/"/g, '""');
+
+    return [
+      arch.setCode,
+      arch.archetypeCode,
+      grade,
+      score,
+      override,
+      `"${role}"`,
+      `"${notes}"`,
+      arch.updatedAt || '—',
+    ];
+  });
+
+  const lines = [
+    cardHeaders.join(','),
+    ...cardRows.map((r) => r.join(',')),
+    '',
+    '--- ARCHETYPE EVALUATIONS ---',
+    archHeaders.join(','),
+    ...archRows.map((r) => r.join(',')),
+  ];
+
+  const csvContent = lines.join('\n');
+
+  if (typeof document !== 'undefined') {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `user_scorecard_${cleanName}${setSuffix}_${timestamp}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return csvContent;
+}
+
+/**
+ * Backward compatibility alias for exportUserEvaluationScorecard
+ */
+export const exportUserEvaluationDossier = exportUserEvaluationScorecard;
 
 /**
  * Computes how many cards a user has graded per MTG set
@@ -877,34 +1151,81 @@ export function computeUserSetGradingDetails(
   return [...known, ...extraSets];
 }
 
-function calculateEvaluationMetrics(evals: Record<string, any>): {
+function calculateEvaluationMetrics(
+  evals: Record<string, any>,
+  landsDataMap?: Map<string, SeventeenLandsSetData | null>
+): {
   accuracyScore: number;
   gpa: number;
   bias: 'optimistic' | 'critical' | 'neutral';
+  has17LandsCalibration: boolean;
+  totalWith17Lands: number;
 } {
   const evalList = Object.values(evals);
   if (evalList.length === 0) {
-    return { accuracyScore: 0, gpa: 0, bias: 'neutral' };
+    return { accuracyScore: 0, gpa: 0, bias: 'neutral', has17LandsCalibration: false, totalWith17Lands: 0 };
   }
 
-  let totalScore = 0;
-  let overCount = 0;
-  let underCount = 0;
+  let totalWith17Lands = 0;
+  let exactCount = 0;
+  let oneStepCount = 0;
+  let optimisticCount = 0;
+  let criticalCount = 0;
 
   evalList.forEach((e) => {
-    // Standard score 0-5 mapping to GPA
-    const score = typeof e.userScore === 'number' ? e.userScore : 3.0;
-    totalScore += score;
-    if (score >= 3.5) overCount += 1;
-    if (score <= 2.0) underCount += 1;
+    const userTier = e.userGrade as GradeTier;
+    if (!userTier || userTier === 'N/A') return;
+
+    const setCode = (e.setCode || '').toUpperCase();
+    const landsData = landsDataMap?.get(setCode);
+    if (!landsData?.cards) return;
+
+    const landCard = get17LandsCardRating({ name: e.cardName, set: setCode }, landsData);
+    if (!landCard || typeof landCard.win_rate !== 'number') return;
+
+    const actualTier = (landCard.tier_grade as GradeTier) || winRateToGradeTier(landCard.win_rate);
+    const userIdx = gradeTierToIndex(userTier);
+    const actualIdx = gradeTierToIndex(actualTier);
+    if (userIdx < 0 || actualIdx < 0) return;
+
+    totalWith17Lands++;
+    const stepDelta = actualIdx - userIdx; // > 0 means User rated higher than 17Lands (optimistic)
+    const absDiff = Math.abs(stepDelta);
+
+    if (absDiff === 0) exactCount++;
+    else if (absDiff === 1) oneStepCount++;
+
+    if (stepDelta > 0) optimisticCount++;
+    else if (stepDelta < 0) criticalCount++;
   });
 
-  const avgScore = totalScore / evalList.length;
-  const gpa = Math.min(4.0, Math.max(1.0, Math.round((avgScore / 5.0) * 4.0 * 10) / 10));
-  const accuracyScore = Math.min(100, Math.max(60, Math.round(gpa * 23 + 6)));
-  const bias = overCount > underCount * 1.5 ? 'optimistic' : underCount > overCount * 1.5 ? 'critical' : 'neutral';
+  if (totalWith17Lands === 0) {
+    return {
+      accuracyScore: 0,
+      gpa: 0,
+      bias: 'neutral',
+      has17LandsCalibration: false,
+      totalWith17Lands: 0,
+    };
+  }
 
-  return { accuracyScore, gpa, bias };
+  const accuracyScore = Math.round(((exactCount + oneStepCount) / totalWith17Lands) * 100);
+  const evalRubric = accuracyToEvaluatorGrade(accuracyScore);
+  const gpa = evalRubric.gpa;
+  const bias =
+    optimisticCount > criticalCount * 1.5
+      ? 'optimistic'
+      : criticalCount > optimisticCount * 1.5
+      ? 'critical'
+      : 'neutral';
+
+  return {
+    accuracyScore,
+    gpa,
+    bias,
+    has17LandsCalibration: true,
+    totalWith17Lands,
+  };
 }
 
 /**
@@ -1045,10 +1366,31 @@ export async function fetchFeatureUsageMetrics(
 export async function fetchSetGradingAnalytics(): Promise<SetGradingAnalytics[]> {
   const users = await fetchUserDirectory();
 
+  const distinctSetCodes = new Set<string>();
+  users.forEach((u) => {
+    u.setsGraded.forEach((s) => {
+      if (s.cardsGraded > 0) distinctSetCodes.add(s.setCode.toUpperCase());
+    });
+  });
+
+  const landsDataMap = new Map<string, SeventeenLandsSetData | null>();
+  await Promise.all(
+    Array.from(distinctSetCodes).map(async (setCode) => {
+      try {
+        const data = await fetch17LandsSetData(setCode);
+        landsDataMap.set(setCode, data);
+      } catch {
+        landsDataMap.set(setCode, null);
+      }
+    })
+  );
+
   return POPULAR_LIMITED_SETS.map((set) => {
     let totalGradedInSet = 0;
     let gradersCount = 0;
     let fullyGradedCount = 0;
+    let totalScoreInSet = 0;
+    let totalScoredCards = 0;
 
     users.forEach((u) => {
       const match = u.setsGraded.find((s) => s.setCode.toUpperCase() === set.code.toUpperCase());
@@ -1058,22 +1400,52 @@ export async function fetchSetGradingAnalytics(): Promise<SetGradingAnalytics[]>
         if (match.cardsGraded >= set.card_count) {
           fullyGradedCount += 1;
         }
+
+        if (u.evaluations) {
+          Object.values(u.evaluations).forEach((e: any) => {
+            if (e.setCode?.toUpperCase() === set.code.toUpperCase() && typeof e.userScore === 'number') {
+              totalScoreInSet += e.userScore;
+              totalScoredCards++;
+            }
+          });
+        }
       }
     });
 
     const avgCards = gradersCount > 0 ? Math.round(totalGradedInSet / gradersCount) : 0;
+    const avgScore = totalScoredCards > 0 ? totalScoreInSet / totalScoredCards : 0;
+    const communityAvgTier = totalScoredCards > 0 ? scoreToGradeTier(avgScore) : '—';
 
     let setCalScore = 0;
-    if (gradersCount > 0) {
-      const userCalibrations = users
-        .filter((u) => {
-          const match = u.setsGraded.find((s) => s.setCode.toUpperCase() === set.code.toUpperCase());
-          return match && match.cardsGraded > 0 && u.gradingAccuracyScore > 0;
-        })
-        .map((u) => u.gradingAccuracyScore);
+    const landsData = landsDataMap.get(set.code.toUpperCase());
+    if (landsData?.cards && gradersCount > 0) {
+      let setExactOrClose = 0;
+      let setCardsWith17Lands = 0;
 
-      if (userCalibrations.length > 0) {
-        setCalScore = Math.round(userCalibrations.reduce((a, b) => a + b, 0) / userCalibrations.length);
+      users.forEach((u) => {
+        if (!u.evaluations) return;
+        Object.values(u.evaluations).forEach((e: any) => {
+          if (e.setCode?.toUpperCase() !== set.code.toUpperCase()) return;
+          const userTier = e.userGrade as GradeTier;
+          if (!userTier || userTier === 'N/A') return;
+
+          const landCard = get17LandsCardRating({ name: e.cardName, set: set.code }, landsData);
+          if (!landCard || typeof landCard.win_rate !== 'number') return;
+
+          const actualTier = (landCard.tier_grade as GradeTier) || winRateToGradeTier(landCard.win_rate);
+          const userIdx = gradeTierToIndex(userTier);
+          const actualIdx = gradeTierToIndex(actualTier);
+          if (userIdx < 0 || actualIdx < 0) return;
+
+          setCardsWith17Lands++;
+          if (Math.abs(actualIdx - userIdx) <= 1) {
+            setExactOrClose++;
+          }
+        });
+      });
+
+      if (setCardsWith17Lands > 0) {
+        setCalScore = Math.round((setExactOrClose / setCardsWith17Lands) * 100);
       }
     }
 
@@ -1085,7 +1457,7 @@ export async function fetchSetGradingAnalytics(): Promise<SetGradingAnalytics[]>
       uniqueGradersCount: gradersCount,
       fullyGradedUsersCount: fullyGradedCount,
       avgCardsGradedPerUser: avgCards,
-      communityAvgTier: gradersCount > 0 ? (avgCards > 150 ? 'B+' : 'B') : '—',
+      communityAvgTier,
       communityCalibrationScore: setCalScore,
     };
   }).sort((a, b) => b.totalCardsGraded - a.totalCardsGraded);
@@ -1098,9 +1470,100 @@ export async function fetchGradingAccuracyReport(): Promise<GradeAccuracyReport>
   const users = await fetchUserDirectory();
   const totalGraded = users.reduce((acc, u) => acc + u.cardsGradedTotal, 0);
 
-  if (totalGraded === 0) {
+  // Gather unique set codes across all evaluations
+  const distinctSetCodes = new Set<string>();
+  users.forEach((u) => {
+    if (u.evaluations) {
+      Object.values(u.evaluations).forEach((ev: any) => {
+        if (ev.setCode) distinctSetCodes.add(ev.setCode.toUpperCase());
+      });
+    }
+  });
+
+  const landsDataMap = new Map<string, SeventeenLandsSetData | null>();
+  await Promise.all(
+    Array.from(distinctSetCodes).map(async (setCode) => {
+      try {
+        const data = await fetch17LandsSetData(setCode);
+        landsDataMap.set(setCode, data);
+      } catch {
+        landsDataMap.set(setCode, null);
+      }
+    })
+  );
+
+  let totalWith17Lands = 0;
+  let exactMatchesCount = 0;
+  let oneStepMatchesCount = 0;
+  let twoStepMatchesCount = 0;
+  let majorDiscrepanciesCount = 0;
+  let optimisticCount = 0;
+  let criticalCount = 0;
+
+  const cardDeltaAggregator = new Map<string, {
+    cardName: string;
+    setCode: string;
+    totalDelta: number;
+    count: number;
+    grades: GradeTier[];
+    actualTier: GradeTier;
+    winRate: number;
+  }>();
+
+  users.forEach((u) => {
+    if (!u.evaluations) return;
+    Object.values(u.evaluations).forEach((e: any) => {
+      const userTier = e.userGrade as GradeTier;
+      if (!userTier || userTier === 'N/A') return;
+
+      const setCode = (e.setCode || '').toUpperCase();
+      const landsData = landsDataMap.get(setCode);
+      if (!landsData?.cards) return;
+
+      const landCard = get17LandsCardRating({ name: e.cardName, set: setCode }, landsData);
+      if (!landCard || typeof landCard.win_rate !== 'number') return;
+
+      const actualTier = (landCard.tier_grade as GradeTier) || winRateToGradeTier(landCard.win_rate);
+      const userIdx = gradeTierToIndex(userTier);
+      const actualIdx = gradeTierToIndex(actualTier);
+      if (userIdx < 0 || actualIdx < 0) return;
+
+      totalWith17Lands++;
+      const stepDelta = actualIdx - userIdx;
+      const absDiff = Math.abs(stepDelta);
+
+      if (absDiff === 0) exactMatchesCount++;
+      else if (absDiff === 1) oneStepMatchesCount++;
+      else if (absDiff === 2) twoStepMatchesCount++;
+      else majorDiscrepanciesCount++;
+
+      if (stepDelta > 0) optimisticCount++;
+      else if (stepDelta < 0) criticalCount++;
+
+      const cardKey = `${setCode}_${e.cardName}`;
+      if (!cardDeltaAggregator.has(cardKey)) {
+        cardDeltaAggregator.set(cardKey, {
+          cardName: e.cardName,
+          setCode,
+          totalDelta: 0,
+          count: 0,
+          grades: [],
+          actualTier,
+          winRate: landCard.win_rate,
+        });
+      }
+      const agg = cardDeltaAggregator.get(cardKey)!;
+      agg.totalDelta += stepDelta;
+      agg.count++;
+      agg.grades.push(userTier);
+    });
+  });
+
+  if (totalWith17Lands === 0) {
     return {
-      totalEvaluationsEvaluated: 0,
+      totalEvaluationsEvaluated: totalGraded,
+      totalEvaluationsWith17Lands: 0,
+      isCalibrationAvailable: false,
       systemCalibrationScore: 0,
       systemGpa: 0,
       exactMatchesCount: 0,
@@ -1118,45 +1581,74 @@ export async function fetchGradingAccuracyReport(): Promise<GradeAccuracyReport>
     };
   }
 
-  const usersWithEvals = users.filter((u) => u.cardsGradedTotal > 0);
-  const avgAccuracy = usersWithEvals.length > 0
-    ? Math.round(usersWithEvals.reduce((acc, u) => acc + u.gradingAccuracyScore, 0) / usersWithEvals.length)
-    : 0;
-  const avgGpa = usersWithEvals.length > 0
-    ? Math.round((usersWithEvals.reduce((acc, u) => acc + u.gradingGpa, 0) / usersWithEvals.length) * 10) / 10
-    : 0;
+  const exactMatchesPercentage = Math.round((exactMatchesCount / totalWith17Lands) * 100);
+  const oneStepMatchesPercentage = Math.round((oneStepMatchesCount / totalWith17Lands) * 100);
+  const twoStepMatchesPercentage = Math.round((twoStepMatchesCount / totalWith17Lands) * 100);
+  const majorDiscrepanciesPercentage = Math.max(0, 100 - exactMatchesPercentage - oneStepMatchesPercentage - twoStepMatchesPercentage);
 
-  let optimisticCount = 0;
-  let criticalCount = 0;
-  usersWithEvals.forEach((u) => {
-    if (u.gradingBias === 'optimistic') optimisticCount++;
-    else if (u.gradingBias === 'critical') criticalCount++;
+  const systemCalibrationScore = Math.round(((exactMatchesCount + oneStepMatchesCount) / totalWith17Lands) * 100);
+  const evalRubric = accuracyToEvaluatorGrade(systemCalibrationScore);
+  const systemGpa = evalRubric.gpa;
+
+  const totalDeltas = optimisticCount + criticalCount;
+  const optimisticBiasPercentage = totalDeltas > 0 ? Math.round((optimisticCount / totalDeltas) * 100) : 0;
+  const criticalBiasPercentage = totalDeltas > 0 ? 100 - optimisticBiasPercentage : 0;
+
+  const biggestTraps: CommunityCardInsight[] = [];
+  const biggestSleepers: CommunityCardInsight[] = [];
+
+  cardDeltaAggregator.forEach((agg) => {
+    const avgDelta = Math.round((agg.totalDelta / agg.count) * 10) / 10;
+    const gradeCounts: Record<string, number> = {};
+    agg.grades.forEach((g) => { gradeCounts[g] = (gradeCounts[g] || 0) + 1; });
+    const topGrade = Object.entries(gradeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'C';
+
+    if (avgDelta >= 2) {
+      biggestTraps.push({
+        cardName: agg.cardName,
+        setCode: agg.setCode,
+        communityGrade: topGrade,
+        seventeenLandsGrade: agg.actualTier,
+        winRate: agg.winRate,
+        stepDelta: avgDelta,
+        totalEvaluations: agg.count,
+        type: 'trap',
+      });
+    } else if (avgDelta <= -2) {
+      biggestSleepers.push({
+        cardName: agg.cardName,
+        setCode: agg.setCode,
+        communityGrade: topGrade,
+        seventeenLandsGrade: agg.actualTier,
+        winRate: agg.winRate,
+        stepDelta: avgDelta,
+        totalEvaluations: agg.count,
+        type: 'sleeper',
+      });
+    }
   });
-  const totalBiasUsers = optimisticCount + criticalCount || 1;
-  const optimisticPct = Math.round((optimisticCount / totalBiasUsers) * 100);
-  const criticalPct = 100 - optimisticPct;
 
-  const exactPct = avgAccuracy > 0 ? Math.min(100, Math.round(avgAccuracy * 0.45)) : 0;
-  const oneStepPct = avgAccuracy > 0 ? Math.min(100 - exactPct, Math.round(avgAccuracy * 0.55)) : 0;
-  const twoStepPct = avgAccuracy > 0 ? Math.min(100 - exactPct - oneStepPct, Math.round((100 - avgAccuracy) * 0.6)) : 0;
-  const majorPct = avgAccuracy > 0 ? Math.max(0, 100 - exactPct - oneStepPct - twoStepPct) : 0;
+  biggestTraps.sort((a, b) => b.stepDelta - a.stepDelta);
+  biggestSleepers.sort((a, b) => a.stepDelta - b.stepDelta);
 
   return {
     totalEvaluationsEvaluated: totalGraded,
-    systemCalibrationScore: avgAccuracy,
-    systemGpa: avgGpa,
-    exactMatchesCount: Math.round((totalGraded * exactPct) / 100),
-    exactMatchesPercentage: exactPct,
-    oneStepMatchesCount: Math.round((totalGraded * oneStepPct) / 100),
-    oneStepMatchesPercentage: oneStepPct,
-    twoStepMatchesCount: Math.round((totalGraded * twoStepPct) / 100),
-    twoStepMatchesPercentage: twoStepPct,
-    majorDiscrepanciesCount: Math.round((totalGraded * majorPct) / 100),
-    majorDiscrepanciesPercentage: majorPct,
-    optimisticBiasPercentage: optimisticPct,
-    criticalBiasPercentage: criticalPct,
-    biggestSleepers: [],
-    biggestTraps: [],
+    totalEvaluationsWith17Lands: totalWith17Lands,
+    isCalibrationAvailable: true,
+    systemCalibrationScore,
+    systemGpa,
+    exactMatchesCount,
+    exactMatchesPercentage,
+    oneStepMatchesCount,
+    oneStepMatchesPercentage,
+    twoStepMatchesCount,
+    twoStepMatchesPercentage,
+    majorDiscrepanciesCount,
+    majorDiscrepanciesPercentage,
+    optimisticBiasPercentage,
+    criticalBiasPercentage,
+    biggestSleepers: biggestSleepers.slice(0, 5),
+    biggestTraps: biggestTraps.slice(0, 5),
   };
 }
 

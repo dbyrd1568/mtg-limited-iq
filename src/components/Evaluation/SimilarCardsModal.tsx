@@ -828,7 +828,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             onClick={() => {
                               if (onAdoptGrade) {
                                 onAdoptGrade(targetCard, tier);
-                                setAdoptedSourceId('manual');
+                                setAdoptedSourceId(currentGrade === tier ? null : 'manual');
                               }
                             }}
                             className={`py-1 rounded-md text-[11px] font-mono font-bold transition-all border cursor-pointer ${
@@ -847,7 +847,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           onClick={() => {
                             if (onAdoptGrade) {
                               onAdoptGrade(targetCard, 'N/A');
-                              setAdoptedSourceId('manual');
+                              setAdoptedSourceId(currentGrade === 'N/A' ? null : 'manual');
                             }
                           }}
                           className={`py-1 rounded-md text-[11px] font-mono font-bold transition-all border cursor-pointer ${
@@ -1395,7 +1395,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                               onClick={() => {
                                 if (onAdoptGrade) {
                                   onAdoptGrade(targetCard, tier);
-                                  setAdoptedSourceId('manual');
+                                  setAdoptedSourceId(currentGrade === tier ? null : 'manual');
                                 }
                               }}
                               className={`py-1 rounded text-[10px] font-mono font-bold transition-all border cursor-pointer ${
@@ -1412,7 +1412,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             onClick={() => {
                               if (onAdoptGrade) {
                                 onAdoptGrade(targetCard, 'N/A');
-                                setAdoptedSourceId('manual');
+                                setAdoptedSourceId(currentGrade === 'N/A' ? null : 'manual');
                               }
                             }}
                             className={`py-1 rounded text-[10px] font-mono font-bold transition-all border cursor-pointer ${

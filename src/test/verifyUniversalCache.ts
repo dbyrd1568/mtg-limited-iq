@@ -5,7 +5,8 @@ import {
   isSetUpcoming,
   isSetFlashback,
   getPreloaded17LandsData,
-  get17LandsExpansionCode
+  get17LandsExpansionCode,
+  fetch17LandsSetData
 } from '../services/seventeenLands';
 import workerHandler from '../worker';
 
@@ -43,9 +44,9 @@ console.assert(get17LandsExpansionCode('RVR') === 'RAVM', 'RVR must map to RAVM 
 console.assert(get17LandsExpansionCode('hob') === 'HOB', 'Expansion codes must be uppercase');
 console.log('✓ Expansion codes normalize correctly.\n');
 
-// 3. Bundled Fallback Integrity
-console.log('Test 3: Preloaded Bundled Datasets...');
-const hobData = getPreloaded17LandsData('HOB');
+// 3. Central Telemetry Cache Integrity
+console.log('Test 3: Central Telemetry Cache Integrity...');
+const hobData = await fetch17LandsSetData('HOB');
 console.assert(hobData !== null, 'HOB preloaded data must be available');
 console.assert(Object.keys(hobData?.cards || {}).length >= 180, 'HOB must contain at least 180 cards');
 console.assert(hobData?.cards['Long-Bodied Grey Dog'] !== undefined, 'HOB must contain key cards');

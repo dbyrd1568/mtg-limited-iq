@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { UserProfileStats, UserCardEvaluation } from '../types/mtg';
-import { loadUserStats, saveUserStats, loadUserEvaluations, getActiveUser } from './storage';
+import { UserProfileStats, UserCardEvaluation, UserArchetypeEvaluation } from '../types/mtg';
+import { loadUserStats, saveUserStats, loadUserEvaluations, loadUserArchetypeEvaluations, getActiveUser } from './storage';
 import { isCloudUUID } from './auth';
 
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'local_only' | 'error';
@@ -45,6 +45,7 @@ function setSyncStatus(status: SyncStatus, errorMessage?: string | null): void {
 
 let pendingStatsSync: { userId: string; stats: UserProfileStats } | null = null;
 const evalSyncQueue: Map<string, { userId: string; evaluation: UserCardEvaluation }> = new Map();
+const archetypeSyncQueue: Map<string, { userId: string; evaluation: UserArchetypeEvaluation }> = new Map();
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
@@ -74,12 +75,20 @@ function flushPendingSyncs(): void {
       triggerEvaluationBatchSync(sampleItem.userId);
     }
   }
+
+  if (archetypeSyncQueue.size > 0) {
+    const sampleArch = archetypeSyncQueue.values().next().value;
+    if (sampleArch) {
+      triggerArchetypeEvaluationBatchSync(sampleArch.userId);
+    }
+  }
 }
 
 // ==================== DEBOUNCED SYNC ENGINE ====================
 
 let statsSyncTimer: any = null;
 let evalSyncTimer: any = null;
+let archetypeSyncTimer: any = null;
 
 export function queueStatsSync(userId: string, stats: UserProfileStats): void {
   if (!isSupabaseConfigured() || !isCloudUUID(userId)) {
@@ -238,6 +247,92 @@ export async function queueEvaluationClearForSet(userId: string, setCode: string
     }
   } catch (err) {
     console.warn('Error clearing evaluations on Supabase:', err);
+  }
+}
+
+export function queueArchetypeEvaluationSync(userId: string, evaluation: UserArchetypeEvaluation): void {
+  if (!isSupabaseConfigured() || !isCloudUUID(userId)) {
+    return;
+  }
+
+  const key = `${evaluation.setCode.toUpperCase()}_${evaluation.archetypeCode.toUpperCase()}`;
+  archetypeSyncQueue.set(key, { userId, evaluation });
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    setSyncStatus('offline');
+    return;
+  }
+
+  setSyncStatus('syncing');
+  if (archetypeSyncTimer) clearTimeout(archetypeSyncTimer);
+
+  archetypeSyncTimer = setTimeout(() => {
+    triggerArchetypeEvaluationBatchSync(userId);
+  }, 1200);
+}
+
+async function triggerArchetypeEvaluationBatchSync(userId: string): Promise<void> {
+  const itemsToSync = Array.from(archetypeSyncQueue.values()).filter((item) => item.userId === userId);
+  if (itemsToSync.length === 0) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session || session.user.id !== userId) {
+    return;
+  }
+
+  const deduplicatedMap = new Map<string, any>();
+  for (const { evaluation } of itemsToSync) {
+    if (!evaluation?.archetypeCode || !evaluation?.setCode) continue;
+    const key = `${evaluation.setCode.toUpperCase()}:::${evaluation.archetypeCode.toUpperCase()}`;
+    deduplicatedMap.set(key, {
+      user_id: userId,
+      set_code: evaluation.setCode.toUpperCase(),
+      archetype_code: evaluation.archetypeCode.toUpperCase(),
+      evaluation_json: evaluation,
+      updated_at: evaluation.updatedAt || new Date().toISOString(),
+    });
+  }
+
+  const batch = Array.from(deduplicatedMap.values());
+  if (batch.length === 0) return;
+
+  itemsToSync.forEach(({ evaluation }) => {
+    if (evaluation?.archetypeCode && evaluation?.setCode) {
+      const key = `${evaluation.setCode.toUpperCase()}_${evaluation.archetypeCode.toUpperCase()}`;
+      archetypeSyncQueue.delete(key);
+    }
+  });
+
+  try {
+    const { error } = await supabase.from('archetype_evaluations').upsert(batch, {
+      onConflict: 'user_id,set_code,archetype_code',
+    });
+    if (error) {
+      console.warn('Archetype batch chunk sync warning:', error);
+    } else {
+      setSyncStatus('synced');
+    }
+  } catch (e: any) {
+    console.warn('Network error while syncing archetype evaluations:', e);
+  }
+}
+
+export async function queueArchetypeEvaluationClearForSet(userId: string, setCode: string): Promise<void> {
+  if (!isSupabaseConfigured() || !isCloudUUID(userId)) {
+    return;
+  }
+  try {
+    const { error } = await supabase
+      .from('archetype_evaluations')
+      .delete()
+      .eq('user_id', userId)
+      .eq('set_code', setCode.toUpperCase());
+
+    if (error) {
+      console.warn('Failed to clear archetype evaluations on Supabase:', error);
+    }
+  } catch (err) {
+    console.warn('Error clearing archetype evaluations on Supabase:', err);
   }
 }
 

@@ -48,6 +48,7 @@ export function generate17LandsTiersCsv(
   const { gradedOnly = false } = options;
   const header = ['Name', 'Tier', 'Buildaround', 'Synergy', 'Comment'];
   const rows: string[] = [header.join(',')];
+  const VALID_17LANDS_TIERS = new Set(['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F', 'SB', 'TBD', '-']);
 
   for (const card of cards) {
     const evalKey = `${(card.set || '').toLowerCase()}_${card.name.toLowerCase()}`;
@@ -57,8 +58,19 @@ export function generate17LandsTiersCsv(
       continue;
     }
 
-    const name = card.name;
-    const tier = userEval?.userGrade || '';
+    const rawName = card.name.trim();
+    // 17Lands catalogs multi-faced cards (DFCs, adventures, battles) by front-face name
+    const name = rawName.includes(' // ') ? rawName.split(' // ')[0].trim() : rawName;
+    
+    const rawTier = userEval?.userGrade || '';
+    let tier: string = rawTier;
+    if (rawTier === 'N/A') {
+      // Lands and cards marked N/A are excluded from draft grading. 17Lands rejects 'N/A' as a bad row;
+      // map to 'SB' (Sideboard) so it imports cleanly into 17Lands.
+      tier = 'SB';
+    } else if (rawTier && !VALID_17LANDS_TIERS.has(rawTier)) {
+      tier = '';
+    }
 
     // Buildaround heuristic: flagged if archetype role or notes indicates buildaround
     const isBuildaround = userEval?.archetypeRole?.toLowerCase().includes('build') ||
@@ -87,6 +99,68 @@ export function generate17LandsTiersCsv(
   }
 
   return rows.join('\n');
+}
+
+/**
+ * Generates an executable JavaScript bookmarklet that, when clicked on a 17Lands tier list page,
+ * automatically uploads the user's grades directly to 17Lands' upload API and refreshes the page,
+ * placing every card in its assigned tier without needing to touch a file picker.
+ */
+export function generate17LandsAutoImportBookmarklet(csvContent: string): string {
+  const code = `(function(){
+    var m = window.location.pathname.match(/\\/(?:tier_list|card_tiers)\\/([^/?#]+)/);
+    if (!m) {
+      alert('Please open your 17Lands Tier List page (e.g. https://www.17lands.com/tier_list/...) before clicking this bookmarklet.');
+      return;
+    }
+    var reviewId = m[1];
+    var csv = ${JSON.stringify(csvContent)};
+    var formData = new FormData();
+    formData.append('file', new Blob([csv], { type: 'text/csv' }), 'grades.csv');
+    fetch('/card_tiers/data/' + reviewId + '/upload', {
+      method: 'POST',
+      body: formData
+    }).then(function(res) {
+      if (res.ok) {
+        window.location.href = '/tier_list/' + reviewId;
+      } else {
+        alert('17Lands returned an error importing tiers. Please verify you are logged in to 17Lands.');
+      }
+    }).catch(function(err) {
+      alert('Failed to send grades to 17Lands: ' + err);
+    });
+  })()`;
+  return `javascript:${encodeURIComponent(code)}`;
+}
+
+/**
+ * Generates a JavaScript snippet that can be pasted directly into the browser DevTools console
+ * on 17Lands to instantly apply all card grades to the active tier list.
+ */
+export function generate17LandsConsoleScript(csvContent: string): string {
+  return `(function() {
+  const m = window.location.pathname.match(/\\/(?:tier_list|card_tiers)\\/([^/?#]+)/);
+  if (!m) {
+    alert('Please open your 17Lands Tier List page before running this script.');
+    return;
+  }
+  const reviewId = m[1];
+  const csv = ${JSON.stringify(csvContent)};
+  const formData = new FormData();
+  formData.append('file', new Blob([csv], { type: 'text/csv' }), 'grades.csv');
+  console.log('⚡ Applying grades to 17Lands tier list:', reviewId);
+  fetch('/card_tiers/data/' + reviewId + '/upload', {
+    method: 'POST',
+    body: formData
+  }).then(res => {
+    if (res.ok) {
+      console.log('✅ Grades applied successfully! Refreshing...');
+      window.location.href = '/tier_list/' + reviewId;
+    } else {
+      alert('17Lands upload failed. Make sure you are logged in on 17Lands.');
+    }
+  }).catch(err => alert('Error: ' + err));
+})();`;
 }
 
 // ==================== FULL COMPARISON SPREADSHEET ====================

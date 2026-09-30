@@ -10,6 +10,8 @@ import {
   Flame,
   Check,
   ChevronDown,
+  FileText,
+  Eye,
 } from 'lucide-react';
 import {
   SetGradingAnalytics,
@@ -17,6 +19,7 @@ import {
   AdminUserSummary,
 } from '../../types/admin';
 import { SetSymbol } from '../UI/SetSymbol';
+import { AdminUserEvaluationInspectorModal } from './AdminUserEvaluationInspectorModal';
 
 interface AdminGradingAnalyticsViewProps {
   sets: SetGradingAnalytics[];
@@ -32,8 +35,13 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
   const [selectedUserForBreakdown, setSelectedUserForBreakdown] = useState<string>(
     users[0]?.id || ''
   );
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [inspectorSetCode, setInspectorSetCode] = useState<string | undefined>(undefined);
+  const [showAllSets, setShowAllSets] = useState(false);
 
   const activeUser = users.find((u) => u.id === selectedUserForBreakdown) || users[0];
+  const gradedSets = sets.filter((s) => s.totalCardsGraded > 0);
+  const displayedSets = showAllSets || gradedSets.length === 0 ? sets : gradedSets;
 
   return (
     <div className="space-y-8">
@@ -47,16 +55,31 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
             </span>
             <Target className="w-4.5 h-4.5 text-emerald-500" />
           </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-4xl font-black text-slate-900 dark:text-white font-heading">
-              {accuracy.systemCalibrationScore}%
-            </span>
-            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              {accuracy.systemGpa} GPA
-            </span>
-          </div>
+          {accuracy.isCalibrationAvailable ? (
+            <div className="flex items-baseline gap-3">
+              <span className="text-4xl font-black text-slate-900 dark:text-white font-heading">
+                {accuracy.systemCalibrationScore}%
+              </span>
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                {accuracy.systemGpa.toFixed(1)} GPA
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-3">
+              <span className="text-4xl font-black text-slate-400 dark:text-slate-500 font-heading">
+                —
+              </span>
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                {accuracy.totalEvaluationsEvaluated > 0 ? 'Pending 17Lands' : 'Awaiting Evaluations'}
+              </span>
+            </div>
+          )}
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Measures how accurately users predict card power compared to empirical 17Lands win rates (±1 step tolerance).
+            {accuracy.isCalibrationAvailable
+              ? `Measures how accurately users predict card power compared to empirical 17Lands win rates (±1 step tolerance across ${accuracy.totalEvaluationsWith17Lands?.toLocaleString() || accuracy.totalEvaluationsEvaluated.toLocaleString()} cards).`
+              : accuracy.totalEvaluationsEvaluated > 0
+              ? `17Lands empirical win rate data is pending for ${accuracy.totalEvaluationsEvaluated.toLocaleString()} evaluated card(s). Calibration accuracy unlocks when 17Lands publishes set match data.`
+              : 'Measures how accurately users predict card power compared to empirical 17Lands win rates (±1 step tolerance).'}
           </p>
         </div>
 
@@ -70,25 +93,33 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
               <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                 Exact Matches (0 Steps):
               </span>
-              <span className="font-mono font-bold">{accuracy.exactMatchesPercentage}%</span>
+              <span className="font-mono font-bold">
+                {accuracy.isCalibrationAvailable ? `${accuracy.exactMatchesPercentage}% (${accuracy.exactMatchesCount})` : '—'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-cyan-600 dark:text-cyan-400 font-semibold">
                 Within 1 Step (Correct):
               </span>
-              <span className="font-mono font-bold">{accuracy.oneStepMatchesPercentage}%</span>
+              <span className="font-mono font-bold">
+                {accuracy.isCalibrationAvailable ? `${accuracy.oneStepMatchesPercentage}% (${accuracy.oneStepMatchesCount})` : '—'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-amber-600 dark:text-amber-400 font-semibold">
                 2 Steps Off (Minor Miss):
               </span>
-              <span className="font-mono font-bold">{accuracy.twoStepMatchesPercentage}%</span>
+              <span className="font-mono font-bold">
+                {accuracy.isCalibrationAvailable ? `${accuracy.twoStepMatchesPercentage}% (${accuracy.twoStepMatchesCount})` : '—'}
+              </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-rose-600 dark:text-rose-400 font-semibold">
                 3+ Steps Off (Trap/Sleeper):
               </span>
-              <span className="font-mono font-bold">{accuracy.majorDiscrepanciesPercentage}%</span>
+              <span className="font-mono font-bold">
+                {accuracy.isCalibrationAvailable ? `${accuracy.majorDiscrepanciesPercentage}% (${accuracy.majorDiscrepanciesCount})` : '—'}
+              </span>
             </div>
           </div>
         </div>
@@ -102,40 +133,60 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
             <Flame className="w-4.5 h-4.5 text-amber-500" />
           </div>
 
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                Optimistic (Overrated):
-              </span>
-              <span className="font-mono font-bold">{accuracy.optimisticBiasPercentage}%</span>
+          {accuracy.isCalibrationAvailable ? (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                  Optimistic (Overrated):
+                </span>
+                <span className="font-mono font-bold">{accuracy.optimisticBiasPercentage}%</span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                <div
+                  className="bg-amber-500 h-full transition-all"
+                  style={{ width: `${accuracy.optimisticBiasPercentage}%` }}
+                />
+                <div
+                  className="bg-cyan-500 h-full transition-all"
+                  style={{ width: `${accuracy.criticalBiasPercentage}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-cyan-600 dark:text-cyan-400 font-semibold">
+                  Critical (Underrated):
+                </span>
+                <span className="font-mono font-bold">{accuracy.criticalBiasPercentage}%</span>
+              </div>
             </div>
-            <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-              <div
-                className="bg-amber-500 h-full"
-                style={{ width: `${accuracy.optimisticBiasPercentage}%` }}
-              />
-              <div
-                className="bg-cyan-500 h-full"
-                style={{ width: `${accuracy.criticalBiasPercentage}%` }}
-              />
+          ) : (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Optimistic (Overrated):</span>
+                <span className="font-mono font-bold">—</span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden" />
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Critical (Underrated):</span>
+                <span className="font-mono font-bold">—</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-cyan-600 dark:text-cyan-400 font-semibold">
-                Critical (Underrated):
-              </span>
-              <span className="font-mono font-bold">{accuracy.criticalBiasPercentage}%</span>
-            </div>
-          </div>
+          )}
 
           <p className="text-[11px] text-slate-400 pt-1">
-            Community tends slightly toward optimistic grading on splashy bomb rares.
+            {accuracy.isCalibrationAvailable
+              ? accuracy.optimisticBiasPercentage > 55
+                ? 'Community tends toward optimistic grading on splashy bomb rares.'
+                : accuracy.criticalBiasPercentage > 55
+                ? 'Community tends toward critical grading on situational playables.'
+                : 'Community grading is evenly balanced between optimistic and critical.'
+              : 'Requires 17Lands comparison data to determine community optimism or pessimism.'}
           </p>
         </div>
       </div>
 
       {/* 2. Sets Graded Leaderboard & Statistics Table */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             <div>
@@ -147,9 +198,20 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
               </p>
             </div>
           </div>
-          <span className="text-xs font-mono text-slate-400">
-            {sets.length} Tracked Limited Formats
-          </span>
+          <div className="flex items-center gap-3">
+            {gradedSets.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAllSets(!showAllSets)}
+                className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+              >
+                {showAllSets ? `Show Graded Sets Only (${gradedSets.length})` : `Show All Formats (${sets.length})`}
+              </button>
+            )}
+            <span className="text-xs font-mono text-slate-400">
+              {gradedSets.length} Graded / {sets.length} Tracked Formats
+            </span>
+          </div>
         </div>
 
         <div className="rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -167,7 +229,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {sets.map((set) => (
+                {displayedSets.map((set) => (
                   <tr
                     key={set.setCode}
                     className="hover:bg-slate-50 dark:hover:bg-slate-950/40 transition-colors"
@@ -195,22 +257,34 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                     </td>
 
                     <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">
-                      {set.uniqueGradersCount} users
+                      {set.uniqueGradersCount > 0 ? `${set.uniqueGradersCount} users` : '—'}
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-                        <Check className="w-3 h-3" />
-                        {set.fullyGradedUsersCount} users
-                      </span>
+                      {set.fullyGradedUsersCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                          <Check className="w-3 h-3" />
+                          {set.fullyGradedUsersCount} users
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-mono">—</span>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">
-                      {set.avgCardsGradedPerUser} cards
+                      {set.uniqueGradersCount > 0 ? `${set.avgCardsGradedPerUser} cards` : '—'}
                     </td>
 
                     <td className="py-3.5 px-4 sm:px-6 font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {set.communityCalibrationScore}%
+                      {set.communityCalibrationScore && set.communityCalibrationScore > 0 ? (
+                        `${set.communityCalibrationScore}%`
+                      ) : set.totalCardsGraded > 0 ? (
+                        <span className="text-amber-500/90 dark:text-amber-400/90 font-mono text-[11px] font-normal">
+                          Pending 17L
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-mono font-normal">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -252,21 +326,35 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
 
         {activeUser && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-xs"
-                style={{ backgroundColor: activeUser.avatarColor }}
+            <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-xs"
+                  style={{ backgroundColor: activeUser.avatarColor }}
+                >
+                  {activeUser.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">
+                    {activeUser.name}'s Evaluated Sets
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {activeUser.cardsGradedTotal} total cards evaluated across {activeUser.setsGradedCount} sets • Calibration GPA: {activeUser.gradingGpa}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setInspectorSetCode(undefined);
+                  setIsInspectorOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
               >
-                {activeUser.name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="text-sm font-bold text-slate-900 dark:text-white">
-                  {activeUser.name}'s Evaluated Sets
-                </div>
-                <div className="text-xs text-slate-400">
-                  {activeUser.cardsGradedTotal} total cards evaluated across {activeUser.setsGradedCount} sets • Calibration GPA: {activeUser.gradingGpa}
-                </div>
-              </div>
+                <FileText className="w-3.5 h-3.5" />
+                <span>Inspect Scorecard</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -282,7 +370,7 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                         {set.setCode}
                       </span>
                     </div>
-                    <div className="font-mono font-bold">
+                    <div className="flex items-center gap-2 font-mono font-semibold">
                       <span className="text-violet-600 dark:text-cyan-300">
                         {set.cardsGraded}
                       </span>
@@ -290,6 +378,19 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
                       <span className="ml-1 text-[11px] text-slate-500">
                         ({set.percentComplete}%)
                       </span>
+                      {set.cardsGraded > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInspectorSetCode(set.setCode);
+                            setIsInspectorOpen(true);
+                          }}
+                          className="ml-1 p-1 rounded-md bg-violet-100 hover:bg-violet-200 dark:bg-violet-950 dark:hover:bg-violet-900 text-violet-700 dark:text-cyan-300 cursor-pointer"
+                          title={`Inspect ${activeUser.name}'s grades for ${set.setCode}`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -429,6 +530,16 @@ export const AdminGradingAnalyticsView: React.FC<AdminGradingAnalyticsViewProps>
           </div>
         </div>
       </div>
+
+      {/* Admin User Evaluation Inspector Modal */}
+      {isInspectorOpen && activeUser && (
+        <AdminUserEvaluationInspectorModal
+          isOpen={isInspectorOpen}
+          onClose={() => setIsInspectorOpen(false)}
+          user={activeUser}
+          initialSetCode={inspectorSetCode}
+        />
+      )}
     </div>
   );
 };

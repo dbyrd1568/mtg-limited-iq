@@ -134,7 +134,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
   const [adminList, setAdminList] = useState<AdminAccessRecord[]>([]);
   const [recentLogs, setRecentLogs] = useState<UserActivityLog[]>([]);
-  const [selectedUserForDossier, setSelectedUserForDossier] = useState<AdminUserSummary | null>(null);
+  const [selectedUserForScorecard, setSelectedUserForScorecard] = useState<AdminUserSummary | null>(null);
   const [pendingProposalsCount, setPendingProposalsCount] = useState<number>(0);
   const [copiedSql, setCopiedSql] = useState(false);
 
@@ -469,7 +469,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             recentLogs={recentLogs}
             onSelectTab={setActiveSubTab}
             onSelectUser={(u) => {
-              setSelectedUserForDossier(u);
+              setSelectedUserForScorecard(u);
               setActiveSubTab('users');
             }}
           />
@@ -478,8 +478,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeSubTab === 'users' && (
           <AdminUsersView
             users={users}
-            selectedUser={selectedUserForDossier}
-            onSelectUser={setSelectedUserForDossier}
+            selectedUser={selectedUserForScorecard}
+            onSelectUser={setSelectedUserForScorecard}
             currentUser={currentUser}
             onRefreshData={loadAllData}
           />

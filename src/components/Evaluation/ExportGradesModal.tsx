@@ -10,17 +10,25 @@ import {
   Sparkles,
   Info,
   CheckCircle2,
-  Table,
   Layers,
   ArrowRight,
   Bookmark,
-  Database,
   FileCode,
   ShieldCheck,
+  Link2,
+  Globe,
+  Trash2,
+  Lock,
+  Zap,
+  Upload,
+  Terminal,
+  MousePointer,
 } from 'lucide-react';
 import { Card, UserCardEvaluation, SeventeenLandsSetData, SetInfo } from '../../types/mtg';
 import {
   generate17LandsTiersCsv,
+  generate17LandsAutoImportBookmarklet,
+  generate17LandsConsoleScript,
   generateFullSpreadsheetCsv,
   generateFullSpreadsheetTsv,
   buildFullSpreadsheetData,
@@ -34,6 +42,13 @@ import {
   loadUserEvaluations,
   getActiveUser,
 } from '../../services/storage';
+import {
+  createOrUpdateGradeShare,
+  revokeGradeShare,
+  findActiveShareForSet,
+  getShareUrl,
+  PublicGradeShare,
+} from '../../services/shareGrades';
 import { SetSymbol } from '../UI/SetSymbol';
 
 interface ExportGradesModalProps {
@@ -44,6 +59,7 @@ interface ExportGradesModalProps {
   seventeenLandsData: SeventeenLandsSetData | null;
   currentSet: SetInfo | null;
   userId?: string;
+  initialTab?: 'spreadsheet' | 'seventeenlands' | 'share' | 'backup';
 }
 
 export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
@@ -54,8 +70,15 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
   seventeenLandsData,
   currentSet,
   userId,
+  initialTab = 'spreadsheet',
 }) => {
-  const [activeTab, setActiveTab] = useState<'spreadsheet' | 'seventeenlands' | 'backup'>('spreadsheet');
+  const [activeTab, setActiveTab] = useState<'spreadsheet' | 'seventeenlands' | 'share' | 'backup'>(() => initialTab);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [exportScope, setExportScope] = useState<'all' | 'graded'>('graded');
   const [copiedType, setCopiedType] = useState<string | null>(null);
 
@@ -67,10 +90,67 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
   const [inputTierUrl, setInputTierUrl] = useState<string>('');
   const [isUrlSavedNotification, setIsUrlSavedNotification] = useState<boolean>(false);
 
+  // Public Share Link State
+  const activeUser = getActiveUser();
+  const [activeShare, setActiveShare] = useState<PublicGradeShare | null>(null);
+  const [includeNotesInShare, setIncludeNotesInShare] = useState<boolean>(true);
+  const [authorDisplayName, setAuthorDisplayName] = useState<string>(() => {
+    return activeUser?.name || activeUser?.email?.split('@')[0] || 'Anonymous Drafter';
+  });
+  const [isGeneratingShare, setIsGeneratingShare] = useState<boolean>(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
   // User & Cross-Set Backup Data
   const activeUserId = userId || getActiveUser()?.id || 'guest';
   const userProfileStats = useMemo(() => loadUserStats(activeUserId), [activeUserId, isOpen]);
   const allUserEvaluations = useMemo(() => loadUserEvaluations(activeUserId), [activeUserId, isOpen]);
+
+  // Load existing share on open
+  useEffect(() => {
+    if (isOpen && setCode) {
+      const existing = findActiveShareForSet(activeUserId, setCode);
+      if (existing) {
+        setActiveShare(existing);
+        setIncludeNotesInShare(existing.includeNotes);
+        setAuthorDisplayName(existing.authorName);
+      }
+    }
+  }, [isOpen, setCode, activeUserId]);
+
+  const handleGenerateShare = async () => {
+    if (!currentSet) return;
+    setIsGeneratingShare(true);
+    setShareError(null);
+    try {
+      const { share, url } = await createOrUpdateGradeShare({
+        userId: activeUserId,
+        setCode,
+        authorName: authorDisplayName,
+        evaluations,
+        includeNotes: includeNotesInShare,
+        existingShareId: activeShare?.id,
+      });
+      setActiveShare(share);
+      await copyTextToClipboard(url);
+      setCopiedType('share_url');
+      setTimeout(() => setCopiedType(null), 3000);
+    } catch (err: any) {
+      console.error('Error generating share link:', err);
+      setShareError(err?.message || 'Failed to create share link. Please try again.');
+    } finally {
+      setIsGeneratingShare(false);
+    }
+  };
+
+  const handleRevokeShare = async () => {
+    if (!activeShare) return;
+    try {
+      await revokeGradeShare(activeShare.id, activeUserId);
+      setActiveShare(null);
+    } catch (err) {
+      console.error('Failed to revoke share:', err);
+    }
+  };
 
   const totalGradedAllSets = useMemo(() => {
     return Object.values(allUserEvaluations).filter((ev) => Boolean(ev.userGrade)).length;
@@ -167,21 +247,65 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
     }
   };
 
-  const handleDownload17LandsCsv = () => {
-    const csvContent = generate17LandsTiersCsv(cards, evaluations, {
+  const [syncTriggered, setSyncTriggered] = useState<boolean>(false);
+  const [showConsoleScript, setShowConsoleScript] = useState<boolean>(false);
+
+  const parsedReviewId = useMemo(() => {
+    const target = inputTierUrl || savedTierUrl;
+    if (!target) return null;
+    const match = target.match(/\/(?:tier_list|card_tiers)\/([^/?#]+)/);
+    return match ? match[1] : null;
+  }, [inputTierUrl, savedTierUrl]);
+
+  const directImportUrl = useMemo(() => {
+    if (parsedReviewId) {
+      return `https://www.17lands.com/tier_list/${encodeURIComponent(parsedReviewId)}/import`;
+    }
+    return null;
+  }, [parsedReviewId]);
+
+  const seventeenLandsCsvContent = useMemo(() => {
+    return generate17LandsTiersCsv(cards, evaluations, {
       gradedOnly: exportScope === 'graded',
     });
+  }, [cards, evaluations, exportScope]);
+
+  const bookmarkletHref = useMemo(() => {
+    return generate17LandsAutoImportBookmarklet(seventeenLandsCsvContent);
+  }, [seventeenLandsCsvContent]);
+
+  const consoleScriptCode = useMemo(() => {
+    return generate17LandsConsoleScript(seventeenLandsCsvContent);
+  }, [seventeenLandsCsvContent]);
+
+  const handleDownload17LandsCsv = () => {
     const filename = `17lands_tiers_${setCode.toUpperCase()}.csv`;
-    downloadFile(csvContent, filename);
+    downloadFile(seventeenLandsCsvContent, filename);
   };
 
   const handleCopy17LandsCsv = async () => {
-    const csvContent = generate17LandsTiersCsv(cards, evaluations, {
-      gradedOnly: exportScope === 'graded',
-    });
-    const ok = await copyTextToClipboard(csvContent);
+    const ok = await copyTextToClipboard(seventeenLandsCsvContent);
     if (ok) {
       setCopiedType('17lands_csv');
+      setTimeout(() => setCopiedType(null), 2500);
+    }
+  };
+
+  const handleExportAndOpen17Lands = async () => {
+    const filename = `17lands_tiers_${setCode.toUpperCase()}.csv`;
+    downloadFile(seventeenLandsCsvContent, filename);
+    await copyTextToClipboard(seventeenLandsCsvContent);
+    setCopiedType('17lands_auto');
+    setSyncTriggered(true);
+
+    const targetUrl = directImportUrl || seventeenLandsMakerUrl;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyConsoleScript = async () => {
+    const ok = await copyTextToClipboard(consoleScriptCode);
+    if (ok) {
+      setCopiedType('console_script');
       setTimeout(() => setCopiedType(null), 2500);
     }
   };
@@ -265,51 +389,54 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-5 sm:px-6 pt-3 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-[#050818]/30">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div className="px-5 sm:px-6 py-3 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-[#050818]/40">
+          <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-200/60 dark:bg-slate-900/90 rounded-xl border border-slate-300/50 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setActiveTab('spreadsheet')}
-              className={`pb-2.5 px-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              className={`py-2 px-1 text-center font-bold text-xs rounded-lg transition-all cursor-pointer truncate ${
                 activeTab === 'spreadsheet'
-                  ? 'border-violet-600 text-violet-700 dark:text-cyan-300 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                  ? 'bg-white dark:bg-violet-600 text-violet-700 dark:text-white shadow-xs border border-slate-200/80 dark:border-transparent'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Table className="w-4 h-4" />
-              <span>Full Comparison Spreadsheet</span>
+              Spreadsheet
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('seventeenlands')}
-              className={`pb-2.5 px-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              className={`py-2 px-1 text-center font-bold text-xs rounded-lg transition-all cursor-pointer truncate ${
                 activeTab === 'seventeenlands'
-                  ? 'border-violet-600 text-violet-700 dark:text-cyan-300 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                  ? 'bg-white dark:bg-violet-600 text-violet-700 dark:text-white shadow-xs border border-slate-200/80 dark:border-transparent'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Share2 className="w-4 h-4" />
-              <span>Send to 17Lands Tier List</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono font-bold">
-                17L Sync
-              </span>
+              17Lands Sync
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('share')}
+              className={`py-2 px-1 text-center font-bold text-xs rounded-lg transition-all cursor-pointer truncate ${
+                activeTab === 'share'
+                  ? 'bg-white dark:bg-violet-600 text-violet-700 dark:text-white shadow-xs border border-slate-200/80 dark:border-transparent'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Public Link
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('backup')}
-              className={`pb-2.5 px-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              className={`py-2 px-1 text-center font-bold text-xs rounded-lg transition-all cursor-pointer truncate ${
                 activeTab === 'backup'
-                  ? 'border-violet-600 text-violet-700 dark:text-cyan-300 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                  ? 'bg-white dark:bg-violet-600 text-violet-700 dark:text-white shadow-xs border border-slate-200/80 dark:border-transparent'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Database className="w-4 h-4" />
-              <span>Personal Backup (JSON)</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 font-mono font-bold">
-                JSON
-              </span>
+              JSON Backup
             </button>
           </div>
         </div>
@@ -518,26 +645,26 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
               </div>
             ) : (
             <div className="space-y-6">
-              {/* Introduction Banner */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/50 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-300 font-bold font-heading text-sm">
-                  <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              {/* Introduction & Technical Clarification Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/30 dark:to-violet-950/20 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
+                <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300 font-bold font-heading text-sm">
+                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <span>17Lands Public Tier List Sync</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  17Lands has a built-in Tier List Maker where drafters maintain card tiers and share public links with the community. You can export your grades from MTG Limited IQ and import them directly into 17Lands in 3 simple steps:
+                  17Lands is protected by secure user session authentication on <code>17lands.com</code>; external websites cannot remotely write card grades to your account via standard URLs. To place all graded cards into their exact spots, use the <strong>Automated CSV Export</strong> below or the <strong>⚡ 1-Click Instant Auto-Apply</strong>.
                 </p>
               </div>
 
-              {/* Step 1: Download 17Lands Formatted CSV */}
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+              {/* Method 1: Automated CSV Download & Open 17Lands */}
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-violet-600 text-white font-bold text-xs flex items-center justify-center font-mono shrink-0">
                       1
                     </span>
                     <span className="font-bold text-sm text-slate-900 dark:text-white font-heading">
-                      Download 17Lands Template CSV
+                      Auto-Export CSV & Open 17Lands Tier Maker
                     </span>
                   </div>
                   <span className="text-[11px] font-mono text-slate-400">
@@ -546,64 +673,139 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  The CSV follows 17Lands' template header: <code>Name,Tier,Buildaround,Synergy,Comment</code>.
+                  Clicking below automatically downloads your <code>17lands_tiers_{setCode.toUpperCase()}.csv</code>, copies the formatted tiers to your clipboard, and launches 17Lands.
                 </p>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <button
                     type="button"
-                    onClick={handleDownload17LandsCsv}
-                    className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs font-heading transition-all shadow-md shadow-violet-500/20 flex items-center gap-2 cursor-pointer border border-violet-400/30"
+                    onClick={handleExportAndOpen17Lands}
+                    className="px-4 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs font-heading transition-all shadow-md shadow-violet-500/20 flex items-center gap-2 cursor-pointer border border-violet-400/30"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download 17Lands CSV</span>
+                    <span>Download CSV & Open 17Lands ({setCode.toUpperCase()})</span>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownload17LandsCsv}
+                    className="px-3.5 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Download CSV file only"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Only</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleCopy17LandsCsv}
-                    className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                    className="px-3.5 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {copiedType === '17lands_csv' ? (
-                      <Check className="w-4 h-4 text-emerald-500" />
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
                     ) : (
-                      <Copy className="w-4 h-4 text-slate-400" />
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
                     )}
-                    <span>{copiedType === '17lands_csv' ? 'Copied CSV!' : 'Copy to Clipboard'}</span>
+                    <span>{copiedType === '17lands_csv' ? 'Copied CSV!' : 'Copy CSV'}</span>
                   </button>
+                </div>
+
+                {/* Visual Guide for 17Lands Import CSV button */}
+                <div className={`p-4 rounded-xl border transition-all ${
+                  syncTriggered
+                    ? 'bg-emerald-50/90 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700/60 ring-2 ring-emerald-500/20'
+                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800'
+                } space-y-2.5`}>
+                  <div className="flex items-center gap-2">
+                    {syncTriggered ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    ) : (
+                      <MousePointer className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0" />
+                    )}
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {syncTriggered
+                        ? `✅ File downloaded! Final Step on 17Lands:`
+                        : `Next Step on 17Lands:`}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    On your 17Lands tab, click the <strong className="text-violet-600 dark:text-violet-300">[Import CSV]</strong> button in the top toolbar and select <code>17lands_tiers_{setCode.toUpperCase()}.csv</code>:
+                  </p>
+
+                  {/* Mock toolbar illustration */}
+                  <div className="p-2.5 rounded-lg bg-slate-900 text-slate-300 border border-slate-700 flex items-center gap-2 flex-wrap text-xs select-none">
+                    <span className="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px]">+ New copy</span>
+                    <span className="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px]">Download CSV</span>
+                    <span className="px-2.5 py-1 rounded bg-violet-600 text-white font-bold border border-violet-400 text-[11px] ring-2 ring-amber-400 shadow-sm flex items-center gap-1 animate-pulse">
+                      <span>👉 Import CSV 👈</span>
+                    </span>
+                    <span className="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px]">SealedDeck</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Step 2: Open 17Lands Tier Maker & Import */}
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center font-mono shrink-0">
-                    2
-                  </span>
-                  <span className="font-bold text-sm text-slate-900 dark:text-white font-heading">
-                    Upload into 17Lands Tier Maker
-                  </span>
+              {/* Method 2: ⚡ 1-Click Instant Auto-Apply (Zero File Picking) */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/5 via-violet-500/5 to-cyan-500/5 border border-amber-200 dark:border-amber-900/40 space-y-4">
+                <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold font-heading text-sm">
+                  <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>⚡ 1-Click Instant Auto-Apply (No File Dialog Required)</span>
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Go to the 17Lands Tier List tool for <strong>{setCode.toUpperCase()}</strong>, click the <em>"Import"</em> or <em>"Actions &gt; Import CSV"</em> button at the top right, and choose the CSV file you downloaded in Step 1.
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Already have your 17Lands Tier List page open in another tab? You can inject your grades directly without picking files:
                 </p>
 
-                <div>
-                  <a
-                    href={seventeenLandsMakerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs font-heading transition-all shadow-md shadow-indigo-500/20 border border-indigo-400/30 cursor-pointer"
-                  >
-                    <span>Open 17Lands Tier Maker ({setCode.toUpperCase()})</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Tool A: Draggable Bookmarklet */}
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#050818] border border-amber-200 dark:border-amber-800/40 space-y-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Option A: Bookmarklet
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      Drag this button to your browser bookmarks bar. When viewing 17Lands, click the bookmark:
+                    </p>
+                    <a
+                      href={bookmarkletHref}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        alert(`⭐ Drag this button to your browser's Bookmarks bar (Cmd+Shift+B on Mac, Ctrl+Shift+B on Windows).\n\nThen switch to your 17Lands tab and click it!`);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs font-mono transition-all shadow-xs cursor-grab active:cursor-grabbing border border-amber-600/30"
+                      title="Drag to bookmarks bar, then click while viewing 17Lands tier list"
+                    >
+                      <Zap className="w-3.5 h-3.5 fill-current" />
+                      <span>⭐ Apply {setCode.toUpperCase()} Grades</span>
+                    </a>
+                  </div>
+
+                  {/* Tool B: Console 1-Liner Script */}
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#050818] border border-amber-200 dark:border-amber-800/40 space-y-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Option B: Browser Console
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      Copy the script, open DevTools Console (<code>F12</code> or <code>Cmd+Opt+J</code>) on your 17Lands tab, paste, and press Enter:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCopyConsoleScript}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold text-xs font-mono transition-all border border-slate-700 cursor-pointer shadow-xs"
+                    >
+                      {copiedType === 'console_script' ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <Terminal className="w-3.5 h-3.5" />
+                      )}
+                      <span>{copiedType === 'console_script' ? 'Copied Script!' : 'Copy 1-Click Script'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Step 3: Save & Track Your Public 17Lands Tier List URL */}
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-cyan-600 text-white font-bold text-xs flex items-center justify-center font-mono shrink-0">
                     3
@@ -614,7 +816,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Once you've saved or published your Tier List on 17Lands, paste the public link here. We'll store it with your profile so you can quickly access or share your public 17Lands view anytime.
+                  Once your tiers are placed on 17Lands, paste your tier list URL here. We'll store it with your profile so you can quickly access or share your public 17Lands view anytime.
                 </p>
 
                 <form onSubmit={handleSaveTierUrl} className="flex items-center gap-2 flex-wrap">
@@ -633,6 +835,21 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                     Save Link
                   </button>
                 </form>
+
+                {directImportUrl && (
+                  <div className="pt-2 flex items-center gap-2">
+                    <a
+                      href={directImportUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-violet-800 text-xs font-semibold cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Open Direct 17Lands File Upload Page</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  </div>
+                )}
 
                 {isUrlSavedNotification && (
                   <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
@@ -683,7 +900,191 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
             )
           )}
 
-          {/* ==================== TAB 3: PERSONAL BACKUP (JSON) ==================== */}
+          {/* ==================== TAB 3: PUBLIC SHARE LINK ==================== */}
+          {activeTab === 'share' && (
+            cards.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-3 my-4">
+                <Link2 className="w-10 h-10 text-slate-400 mx-auto" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
+                  No Active Set Selected
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                  To generate a public share link, please select an active set from the top navigation bar.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Introduction & Security Card */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/20 border border-violet-200 dark:border-violet-800/50 space-y-2">
+                  <div className="flex items-center gap-2 text-violet-900 dark:text-cyan-300 font-bold font-heading text-sm">
+                    <ShieldCheck className="w-4 h-4 text-violet-600 dark:text-cyan-400 shrink-0" />
+                    <span>Secure Public Link</span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Generate an unguessable direct link to share your card evaluations for <strong>{setName}</strong>.
+                    Recipients see a lightweight, fast, distraction-free view with zero login required. Your email, account ID, and other sets remain strictly private.
+                  </p>
+                </div>
+
+                {/* Configuration Options */}
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
+                    Sharing Preferences
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Display Name Input */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Author Moniker</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={authorDisplayName}
+                        onChange={(e) => setAuthorDisplayName(e.target.value)}
+                        placeholder="e.g. LSV, TheDraftChamp, or Anonymous"
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500"
+                        maxLength={50}
+                      />
+                      <span className="text-[11px] text-slate-400">
+                        The public name displayed at the top of the shared page.
+                      </span>
+                    </div>
+
+                    {/* Include Notes Checkbox */}
+                    <div className="space-y-1.5 flex flex-col justify-center">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={includeNotesInShare}
+                          onChange={(e) => setIncludeNotesInShare(e.target.checked)}
+                          className="w-4 h-4 rounded text-violet-600 focus:ring-violet-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                        />
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Include Card Strategy Notes
+                        </span>
+                      </label>
+                      <span className="text-[11px] text-slate-400 pl-6">
+                        When enabled, custom card notes you entered will be visible to viewers.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Share Link Generation / Active Status */}
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Link2 className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
+                      <span className="font-bold text-sm text-slate-900 dark:text-white font-heading">
+                        {activeShare ? 'Active Share Link' : 'Generate Public Link'}
+                      </span>
+                    </div>
+                    {activeShare && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>LIVE SNAPSHOT</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {activeShare ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={getShareUrl(activeShare.id)}
+                          className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 select-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            copyTextToClipboard(getShareUrl(activeShare.id));
+                            setCopiedType('active_share_url');
+                            setTimeout(() => setCopiedType(null), 2500);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        >
+                          {copiedType === 'active_share_url' ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedType === 'active_share_url' ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
+                        <a
+                          href={getShareUrl(activeShare.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200 dark:border-slate-800"
+                        >
+                          <span>Preview Public View</span>
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={handleGenerateShare}
+                          disabled={isGeneratingShare}
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200 dark:border-slate-800"
+                        >
+                          <span>Update / Re-sync Snapshot</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleRevokeShare}
+                          className="px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-400 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-rose-200 dark:border-rose-800/40 ml-auto"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Revoke Link</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        You have graded <strong>{gradedCount}</strong> of {cards.length} cards in {setName}. Generating a share link creates a frozen snapshot accessible to anyone with the link.
+                      </p>
+
+                      {shareError && (
+                        <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
+                          {shareError}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleGenerateShare}
+                        disabled={isGeneratingShare || gradedCount === 0}
+                        className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs font-heading transition-all shadow-md shadow-violet-500/20 flex items-center gap-2 cursor-pointer border border-violet-400/30"
+                      >
+                        <Link2 className="w-4 h-4" />
+                        <span>{isGeneratingShare ? 'Generating...' : 'Create & Copy Share Link'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Security Guarantee Box */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818]/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <Lock className="w-3.5 h-3.5 text-violet-500" />
+                    <span>Security & Anti-Scraping Guarantees</span>
+                  </div>
+                  <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1 list-disc pl-4">
+                    <li>Share IDs use 128-bit unguessable UUIDv4 tokens (zero sequential ID enumeration).</li>
+                    <li>Row-Level Security (RLS) restricts database queries strictly to the shared row.</li>
+                    <li>No personal credentials, email addresses, or billing data are ever exposed.</li>
+                    <li>Notes are strictly sanitized against HTML and cross-site scripting (XSS).</li>
+                  </ul>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ==================== TAB 4: PERSONAL BACKUP (JSON) ==================== */}
           {activeTab === 'backup' && (
             <div className="space-y-6">
               {/* Overview Metrics Cards */}

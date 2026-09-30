@@ -1,3 +1,5 @@
+import { UserCardEvaluation } from './mtg';
+
 export type AdminTimeRange = 'today' | '7d' | '30d' | 'all';
 export type AdminSubTab = 'overview' | 'users' | 'features' | 'grading' | 'access' | 'precedents';
 
@@ -34,9 +36,11 @@ export interface AdminUserSummary {
   gradingAccuracyScore: number;
   gradingGpa: number;
   gradingBias: 'optimistic' | 'critical' | 'neutral';
+  has17LandsCalibration?: boolean;
   isAdmin: boolean;
   status: 'active' | 'recent' | 'dormant';
   setsGraded: UserSetGradingDetail[];
+  evaluations?: Record<string, UserCardEvaluation>;
 }
 
 export interface FeatureUsageStat {
@@ -75,6 +79,8 @@ export interface CommunityCardInsight {
 
 export interface GradeAccuracyReport {
   totalEvaluationsEvaluated: number;
+  totalEvaluationsWith17Lands?: number;
+  isCalibrationAvailable?: boolean;
   systemCalibrationScore: number; // 0-100%
   systemGpa: number; // 0.0-4.0
   exactMatchesCount: number;

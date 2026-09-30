@@ -24,11 +24,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       label: 'Quiz',
       icon: Zap,
     },
-    {
-      id: 'explorer' as ActiveTab,
-      label: 'Cards',
-      icon: Layers,
-    },
     ...(isAdmin
       ? [
           {

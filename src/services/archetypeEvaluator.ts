@@ -12,14 +12,32 @@ import {
 
 export { isAuthentic17LandsDataSet, isSetUnderTwoWeeksOld, is17LandsEligibleForSet };
 
-export type GradeBand = 'A' | 'B' | 'C' | 'D' | 'F';
+export type GradeBand = 'A' | 'B' | 'C' | 'D' | 'F' | 'N/A';
+
+export const MIN_SET_EVALUATIONS_THRESHOLD = 15;
+
+/**
+ * Calculates the minimum number of card evaluations required before synthesizing
+ * archetype and color forecast tiers.
+ * For standard full sets (>= 30 cards), enforces MIN_SET_EVALUATIONS_THRESHOLD (15 cards).
+ * For small test sets (< 30 cards), requires 50% of the cards (min 1 card).
+ */
+export function getSetEvaluationsThreshold(totalCards: number): number {
+  if (totalCards <= 0) return 0;
+  if (totalCards >= 30) {
+    return MIN_SET_EVALUATIONS_THRESHOLD;
+  }
+  return Math.max(1, Math.min(totalCards, Math.ceil(totalCards * 0.5)));
+}
 
 export function gradeTierToGradeBand(grade: GradeTier): GradeBand {
+  if (grade === 'N/A') return 'N/A';
   if (grade.startsWith('A')) return 'A';
   if (grade.startsWith('B')) return 'B';
   if (grade.startsWith('C')) return 'C';
   if (grade === 'D') return 'D';
-  return 'F';
+  if (grade === 'F') return 'F';
+  return 'N/A';
 }
 
 export interface ColorStrength {
@@ -85,6 +103,8 @@ export interface SetSynthesisReport {
   ratedCards: number;
   completionPercent: number;
   isFullyGraded: boolean;
+  isThresholdMet: boolean;
+  evaluationsThreshold: number;
   bestColor: ColorStrength | null;
   worstColor: ColorStrength | null;
   bestArchetype: ArchetypeStrength | null;
@@ -232,7 +252,9 @@ export function calculateColorRankings(
       }
     });
 
-    const averageScore = ratedCount > 0 ? parseFloat((totalScore / ratedCount).toFixed(2)) : 2.5;
+    const averageScore = ratedCount > 0
+      ? parseFloat((totalScore / ratedCount).toFixed(2))
+      : (userEvaluation?.userScore || 0);
 
     // Determine color letter grade:
     // 1. If user explicitly provided a direct color evaluation, respect their assigned grade.
@@ -335,6 +357,16 @@ export function calculateArchetypeRankings(
   const colorScoreMap = new Map<string, number>();
   const color17WrMap = new Map<string, number>();
 
+  let totalRatedInSet = 0;
+  cards.forEach((c) => {
+    const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+    if (userEvaluations[key]) {
+      totalRatedInSet++;
+    }
+  });
+  const threshold = getSetEvaluationsThreshold(cards.length);
+  const isThresholdMet = cards.length > 0 && totalRatedInSet >= threshold;
+
   colorRankings.forEach((c) => {
     colorScoreMap.set(c.color, c.averageScore);
     if (c.seventeenLandsAvgWinRate !== undefined) {
@@ -346,8 +378,12 @@ export function calculateArchetypeRankings(
     const [c1, c2] = guild.colors;
     const userEvalKey = `${(setCode || '').toLowerCase()}_${guild.code.toUpperCase()}`;
     const userEvaluation = userArchetypeEvaluations ? userArchetypeEvaluations[userEvalKey] : undefined;
-    const c1Score = colorScoreMap.get(c1) || 2.5;
-    const c2Score = colorScoreMap.get(c2) || 2.5;
+    const c1Score = colorScoreMap.get(c1) || 0;
+    const c2Score = colorScoreMap.get(c2) || 0;
+    const c1Strength = colorRankings.find((c) => c.color === c1);
+    const c2Strength = colorRankings.find((c) => c.color === c2);
+    const c1HasCards = (c1Strength?.ratedCards || 0) > 0 || Boolean(c1Strength?.userEvaluation?.userGrade);
+    const c2HasCards = (c2Strength?.ratedCards || 0) > 0 || Boolean(c2Strength?.userEvaluation?.userGrade);
     const c1Wr = color17WrMap.get(c1);
     const c2Wr = color17WrMap.get(c2);
 
@@ -382,18 +418,27 @@ export function calculateArchetypeRankings(
       }
     });
 
-    const signpostAvg = signpostRated > 0 ? signpostTotal / signpostRated : (c1Score + c2Score) / 2;
+    const hasSufficientArchetypeData = isThresholdMet && ((c1HasCards && c2HasCards) || signpostRated > 0);
 
-    // Weighted Archetype formula: 30% Gold Signpost strength + 35% Color 1 mono quality + 35% Color 2 mono quality
-    const powerScore = parseFloat((signpostAvg * 0.30 + c1Score * 0.35 + c2Score * 0.35).toFixed(2));
+    let powerScore = 0;
+    let autoGrade: GradeTier = 'N/A';
+    let signpostAvg = 0;
 
-    // Auto-calculate Archetype letter grade from bottom-up power score
-    const hasRatedInput = signpostRated > 0 || (c1Score !== 2.5 && c2Score !== 2.5);
-    const autoGrade: GradeTier = hasRatedInput ? aggregateScoreToGradeTier(powerScore) : scoreToGradeTier(powerScore);
+    if (hasSufficientArchetypeData) {
+      signpostAvg = signpostRated > 0 ? signpostTotal / signpostRated : (c1Score + c2Score) / 2;
+      // Weighted Archetype formula: 30% Gold Signpost strength + 35% Color 1 mono quality + 35% Color 2 mono quality
+      powerScore = parseFloat((signpostAvg * 0.30 + c1Score * 0.35 + c2Score * 0.35).toFixed(2));
+      autoGrade = aggregateScoreToGradeTier(powerScore);
+    } else if (signpostRated > 0) {
+      signpostAvg = signpostTotal / signpostRated;
+    }
 
     // If user provided a manual override, respect it
     const isOverridden = Boolean(userEvaluation?.userGrade);
     const letterGrade: GradeTier = userEvaluation?.userGrade || autoGrade;
+    if (isOverridden && !hasSufficientArchetypeData) {
+      powerScore = userEvaluation?.userScore || 0;
+    }
     const gradeBand = gradeTierToGradeBand(letterGrade);
 
     // Find key picks for this color pair (Bombs and premium commons/uncommons in C1, C2, or Gold)
@@ -424,7 +469,7 @@ export function calculateArchetypeRankings(
       const signpostWr = landSignpostCount > 0 ? landSignpostWrSum / landSignpostCount : (c1Wr + c2Wr) / 2;
       seventeenLandsWinRate = parseFloat((signpostWr * 0.30 + c1Wr * 0.35 + c2Wr * 0.35).toFixed(3));
       seventeenLandsGrade = winRateToGradeTier(seventeenLandsWinRate);
-      if (letterGrade && seventeenLandsGrade) {
+      if (letterGrade && letterGrade !== 'N/A' && seventeenLandsGrade) {
         gradeDelta = gradeTierToIndex(seventeenLandsGrade) - gradeTierToIndex(letterGrade);
       }
     }
@@ -506,6 +551,8 @@ export function generateSetSynthesisReport(
   });
 
   const totalCards = cards.length;
+  const evaluationsThreshold = getSetEvaluationsThreshold(totalCards);
+  const isThresholdMet = totalCards > 0 && ratedCount >= evaluationsThreshold;
   const completionPercent = totalCards > 0 ? Math.round((ratedCount / totalCards) * 100) : 0;
   const isFullyGraded = totalCards > 0 && ratedCount >= totalCards;
 
@@ -523,6 +570,7 @@ export function generateSetSynthesisReport(
     C: [],
     D: [],
     F: [],
+    'N/A': [],
   };
   archetypeRankings.forEach((arch) => {
     gradeList[arch.gradeBand].push(arch);
@@ -535,6 +583,7 @@ export function generateSetSynthesisReport(
     C: [],
     D: [],
     F: [],
+    'N/A': [],
   };
   developedArchetypes.forEach((arch) => {
     developedGradeList[arch.gradeBand].push(arch);
@@ -547,13 +596,25 @@ export function generateSetSynthesisReport(
     C: [],
     D: [],
     F: [],
+    'N/A': [],
   };
   otherArchetypes.forEach((arch) => {
     otherGradeList[arch.gradeBand].push(arch);
   });
 
   const monocolorRankings = colorRankings.filter((c) => c.color !== 'C');
-  const ratedMonocolors = monocolorRankings.filter((c) => c.ratedCards > 0);
+  const ratedMonocolors = monocolorRankings.filter((c) => (c.ratedCards > 0 || Boolean(c.userEvaluation?.userGrade)) && c.letterGrade !== 'N/A');
+
+  const ratedArchetypes = archetypeRankings.filter((a) => a.letterGrade !== 'N/A' && (a.powerScore > 0 || a.isOverridden));
+  const ratedDevelopedArchetypes = developedArchetypes.filter((a) => a.letterGrade !== 'N/A' && (a.powerScore > 0 || a.isOverridden));
+
+  const bestArchetype = ratedDevelopedArchetypes[0] || ratedArchetypes[0] || null;
+  const worstArchetype = ratedDevelopedArchetypes.length > 1
+    ? ratedDevelopedArchetypes[ratedDevelopedArchetypes.length - 1]
+    : (ratedArchetypes.length > 1 ? ratedArchetypes[ratedArchetypes.length - 1] : null);
+
+  const bestColor = ratedMonocolors[0] || null;
+  const worstColor = ratedMonocolors.length > 1 ? ratedMonocolors[ratedMonocolors.length - 1] : null;
   const has17Lands = isAuthentic17LandsDataSet(seventeenLandsData, setCode, cards);
 
   let seventeenLandsBestColor: ColorStrength | null = null;
@@ -611,10 +672,12 @@ export function generateSetSynthesisReport(
     ratedCards: ratedCount,
     completionPercent,
     isFullyGraded,
-    bestColor: ratedMonocolors[0] || null,
-    worstColor: ratedMonocolors.length > 1 ? ratedMonocolors[ratedMonocolors.length - 1] : null,
-    bestArchetype: developedArchetypes[0] || archetypeRankings[0] || null,
-    worstArchetype: developedArchetypes[developedArchetypes.length - 1] || archetypeRankings[archetypeRankings.length - 1] || null,
+    isThresholdMet,
+    evaluationsThreshold,
+    bestColor,
+    worstColor,
+    bestArchetype,
+    worstArchetype,
     colorRankings,
     archetypeRankings,
     developedArchetypes,
@@ -674,19 +737,28 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
   const isAsymmetricSet = developedCount > 0 && developedCount < 10;
 
   lines.push(`\n## 🎯 ${isAsymmetricSet ? `Designed Set Archetypes (${developedCount} Pairs)` : '2-Color Archetypes'}`);
-  (['A', 'B', 'C', 'D', 'F'] as const).forEach((band) => {
-    const archetypes = (isAsymmetricSet ? report.developedGradeList : report.gradeList)[band];
-    if (archetypes.length > 0) {
-      lines.push(`### Grade ${band} Archetypes`);
-      archetypes.forEach((arch) => {
-        const seventeenStr = arch.seventeenLandsWinRate !== undefined ? ` [17Lands Actual: Grade ${arch.seventeenLandsGrade} - ${(arch.seventeenLandsWinRate * 100).toFixed(1)}% WR]` : '';
-        const guildStr = arch.guildName && arch.guildName !== arch.name ? ` [${arch.guildName} • ${arch.code}]` : ` [${arch.code}]`;
-        const paceStr = arch.pace ? ` [${arch.pace}]` : '';
-        const overrideStr = arch.isOverridden ? ' (Manual Grade)' : '';
-        lines.push(`- **${arch.name}**${guildStr}${paceStr}: Grade **${arch.letterGrade}**${overrideStr} (Power ${arch.powerScore.toFixed(2)}) — *${arch.theme}*${seventeenStr}`);
-      });
-    }
-  });
+  if (!report.isThresholdMet) {
+    lines.push(`> ⚠️ *Only ${report.ratedCards}/${report.evaluationsThreshold} minimum card evaluations completed. Archetypes without sufficient evaluations are marked N/A.*\n`);
+  }
+
+  const hasGradedArchetypes = (['A', 'B', 'C', 'D', 'F'] as const).some((b) => (isAsymmetricSet ? report.developedGradeList : report.gradeList)[b].length > 0);
+  if (!hasGradedArchetypes) {
+    lines.push(`*Awaiting card evaluations to synthesize archetype power tiers (minimum ${report.evaluationsThreshold} card evaluations required).*`);
+  } else {
+    (['A', 'B', 'C', 'D', 'F'] as const).forEach((band) => {
+      const archetypes = (isAsymmetricSet ? report.developedGradeList : report.gradeList)[band];
+      if (archetypes.length > 0) {
+        lines.push(`### Grade ${band} Archetypes`);
+        archetypes.forEach((arch) => {
+          const seventeenStr = arch.seventeenLandsWinRate !== undefined ? ` [17Lands Actual: Grade ${arch.seventeenLandsGrade} - ${(arch.seventeenLandsWinRate * 100).toFixed(1)}% WR]` : '';
+          const guildStr = arch.guildName && arch.guildName !== arch.name ? ` [${arch.guildName} • ${arch.code}]` : ` [${arch.code}]`;
+          const paceStr = arch.pace ? ` [${arch.pace}]` : '';
+          const overrideStr = arch.isOverridden ? ' (Manual Grade)' : '';
+          lines.push(`- **${arch.name}**${guildStr}${paceStr}: Grade **${arch.letterGrade}**${overrideStr} (Power ${arch.powerScore.toFixed(2)}) — *${arch.theme}*${seventeenStr}`);
+        });
+      }
+    });
+  }
 
   if (isAsymmetricSet && report.otherArchetypes.length > 0) {
     lines.push(`\n## 🧩 Other Color Pairs (${report.otherArchetypes.length} Pairs)`);

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS, deduplicateCards } from './services/scryfall';
-import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData, get17LandsCardRating } from './services/seventeenLands';
-import { loadUserStats, loadUserEvaluations, saveUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, deleteUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
+import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData, get17LandsCardRating, canQuery17Lands } from './services/seventeenLands';
+import { loadProRatingsForSet } from './services/lsvRatings';
+import { loadSetArchetypes } from './services/wotcArchetypes';
+import { loadUserStats, loadUserEvaluations, saveUserEvaluation, deleteUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, deleteUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, deleteUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
 
 import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
@@ -27,7 +29,7 @@ import { QuizSummary } from './components/Quiz/QuizSummary';
 import { EvaluationHub } from './components/Evaluation/EvaluationHub';
 import { ExportGradesModal } from './components/Evaluation/ExportGradesModal';
 import { StatsDashboard } from './components/Stats/StatsDashboard';
-import { SetExplorer } from './components/Explorer/SetExplorer';
+import { SharedGradesView } from './components/Shared/SharedGradesView';
 import { parseAppUrlParams, updateAppUrlParams } from './services/urlParams';
 import { Brain, Flame } from 'lucide-react';
 import { PlaneswalkerSymbol } from './components/UI/PlaneswalkerSymbol';
@@ -56,6 +58,10 @@ const AppContent: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isWelcomeTourOpen, setIsWelcomeTourOpen] = useState<boolean>(false);
   const [isGlobalExportModalOpen, setIsGlobalExportModalOpen] = useState<boolean>(false);
+  const [shareId, setShareId] = useState<string | null>(() => {
+    const params = parseAppUrlParams();
+    return params.share || null;
+  });
   const [legalDoc, setLegalDoc] = useState<LegalDocType | null>(() => {
     if (typeof window === 'undefined') return null;
     const path = window.location.pathname.toLowerCase();
@@ -66,13 +72,10 @@ const AppContent: React.FC = () => {
 
   const isProd = isProdEnvironment();
 
-  // User Accounts State (Nullable when unauthenticated)
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    if (isProdEnvironment()) return null;
-    return getActiveUser();
-  });
+  // User Accounts State (Nullable when unauthenticated - Mandatory sign-in, No Guest Mode)
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isSupabaseConfigured() && isProdEnvironment());
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => isSupabaseConfigured());
 
   // Check administrator permissions whenever currentUser changes
   useEffect(() => {
@@ -266,25 +269,13 @@ const AppContent: React.FC = () => {
           setIsAuthInitializing(false);
         }, 3000);
       } else {
-        if (isProdEnvironment()) {
-          clearActiveUser();
-          setCurrentUser(null);
-        } else {
-          const storedUser = getActiveUser();
-          if (storedUser) {
-            setCurrentUser(storedUser);
-          }
-        }
+        clearActiveUser();
+        setCurrentUser(null);
         setIsAuthInitializing(false);
       }
     }).catch(() => {
-      if (isProdEnvironment()) {
-        clearActiveUser();
-        setCurrentUser(null);
-      } else {
-        const storedUser = getActiveUser();
-        if (storedUser) setCurrentUser(storedUser);
-      }
+      clearActiveUser();
+      setCurrentUser(null);
       setIsAuthInitializing(false);
     });
 
@@ -292,14 +283,12 @@ const AppContent: React.FC = () => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         await handleUserSession(session.user);
       } else if (event === 'SIGNED_OUT') {
-        if (isProdEnvironment()) {
-          clearActiveUser();
-          setCurrentUser(null);
-          setUserStats(defaultStats);
-          setUserEvaluations({});
-          setUserArchetypeEvaluations({});
-          setUserColorEvaluations({});
-        }
+        clearActiveUser();
+        setCurrentUser(null);
+        setUserStats(defaultStats);
+        setUserEvaluations({});
+        setUserArchetypeEvaluations({});
+        setUserColorEvaluations({});
       }
     });
 
@@ -392,12 +381,15 @@ const AppContent: React.FC = () => {
       }
     );
 
-    const landsPromise = set.has_17lands_data !== false
+    const landsPromise = canQuery17Lands(set)
       ? fetch17LandsSetData(set.code)
       : Promise.resolve(null);
 
+    const ratingsPromise = loadProRatingsForSet(set.code);
+    const archetypesPromise = loadSetArchetypes(set.code);
+
     try {
-      const [fetchedCards, landsData] = await Promise.all([cardsPromise, landsPromise]);
+      const [fetchedCards, landsData] = await Promise.all([cardsPromise, landsPromise, ratingsPromise, archetypesPromise]);
       const dedupedFetched = deduplicateCards(fetchedCards);
       setCards((prev) => {
         if (
@@ -627,6 +619,17 @@ const AppContent: React.FC = () => {
     }, currentUser);
   };
 
+  const handleDeleteEvaluation = (setCode: string, cardName: string) => {
+    if (!currentUser) return;
+    deleteUserEvaluation(setCode, cardName, currentUser.id);
+    const key = `${setCode.toLowerCase()}_${cardName.toLowerCase()}`;
+    setUserEvaluations((prev) => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+  };
+
   const handleSaveArchetypeEvaluation = (evaluation: UserArchetypeEvaluation) => {
     if (!currentUser) return;
     if (isProdEnvironment() && !isCloudUUID(currentUser.id)) return;
@@ -673,6 +676,17 @@ const AppContent: React.FC = () => {
     }, currentUser);
   };
 
+  const handleDeleteColorEvaluation = (setCode: string, color: string) => {
+    if (!currentUser) return;
+    deleteUserColorEvaluation(setCode, color, currentUser.id);
+    const key = `${setCode.toLowerCase()}_${color.toUpperCase()}`;
+    setUserColorEvaluations((prev) => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+  };
+
   const handleClearEvaluationsForSet = (setCode: string) => {
     if (!currentUser) return;
     if (isProdEnvironment() && !isCloudUUID(currentUser.id)) return;
@@ -689,6 +703,30 @@ const AppContent: React.FC = () => {
         (m) => m.setCode.toUpperCase() === currentSet.code.toUpperCase()
       ).length
     : 0;
+
+  // Sync URL share parameter on popstate
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const params = parseAppUrlParams();
+      setShareId(params.share || null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Public Stripped-Down Share Viewer (Zero-Authentication Bypass)
+  if (shareId) {
+    return (
+      <SharedGradesView
+        shareId={shareId}
+        onExitShare={() => {
+          setShareId(null);
+          updateAppUrlParams({ share: undefined });
+        }}
+      />
+    );
+  }
 
   // Show loading state while checking initial session
   if (isAuthInitializing) {
@@ -731,8 +769,6 @@ const AppContent: React.FC = () => {
           trackFeature('tab_navigation', { tab }, currentUser);
           if (tab === 'admin') {
             updateAppUrlParams({ tab: 'admin', subtab: 'overview' });
-          } else if (tab === 'explorer' && currentSet) {
-            trackFeature(KNOWN_FEATURES.SET_EXPLORER, { setCode: currentSet.code, setName: currentSet.name }, currentUser);
           } else if (tab === 'quiz') {
             setQuizState('setup');
           }
@@ -942,10 +978,12 @@ const AppContent: React.FC = () => {
                 onSaveArchetypeEvaluation={handleSaveArchetypeEvaluation}
                 onDeleteArchetypeEvaluation={handleDeleteArchetypeEvaluation}
                 onSaveColorEvaluation={handleSaveColorEvaluation}
+                onDeleteColorEvaluation={handleDeleteColorEvaluation}
                 seventeenLandsData={seventeenLandsData}
                 isBlindGrading={isBlindGrading}
                 onToggleBlindGrading={handleToggleBlindGrading}
                 onSaveEvaluation={handleSaveEvaluation}
+                onDeleteEvaluation={handleDeleteEvaluation}
                 onClearEvaluationsForSet={handleClearEvaluationsForSet}
                 onOpenSetSelector={() => setIsSetSelectorOpen(true)}
                 searchQuery={sharedSearchQuery}
@@ -957,38 +995,10 @@ const AppContent: React.FC = () => {
                 onSelectedRaritiesChange={setSharedSelectedRarities}
                 onSelectedRolesChange={setSharedSelectedRoles}
                 availableSets={allSets}
-              />
-            )}
-
-            {activeTab === 'explorer' && (
-              <SetExplorer
-                cards={cards}
-                currentSetCode={currentSet.code}
-                currentSetName={currentSet.name}
-                currentSet={currentSet}
-                currentUser={currentUser}
-                isAdmin={isAdmin}
-                userEvaluations={userEvaluations}
-                seventeenLandsData={seventeenLandsData}
-                isBlindGrading={isBlindGrading}
-                onToggleBlindGrading={handleToggleBlindGrading}
-                onSaveEvaluation={handleSaveEvaluation}
-                onClearEvaluationsForSet={handleClearEvaluationsForSet}
-                searchQuery={sharedSearchQuery}
-                selectedColors={sharedSelectedColors}
-                selectedRarities={sharedSelectedRarities}
-                selectedRoles={sharedSelectedRoles}
-                onSearchQueryChange={setSharedSearchQuery}
-                onSelectedColorsChange={setSharedSelectedColors}
-                onSelectedRaritiesChange={setSharedSelectedRarities}
-                onSelectedRolesChange={setSharedSelectedRoles}
-                onGradeCard={(card) => {
-                  setActiveTab('evaluation');
-                  updateAppUrlParams({
-                    tab: 'evaluation',
-                    subtab: 'grade',
-                    card: card.collector_number || card.name,
-                  });
+                onPracticeCard={(card) => {
+                  setActiveTab('quiz');
+                  setQuizState('setup');
+                  trackFeature('practice_card', { cardName: card.name, setCode: card.set }, currentUser);
                 }}
               />
             )}

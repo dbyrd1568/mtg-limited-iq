@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SetInfo } from '../types/mtg';
 import { POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS } from '../services/scryfall';
-import { Search, X, Calendar, Check, Wand2, ShieldCheck, BarChart2 } from 'lucide-react';
+import { Search, X, Calendar, Check, Wand2, BarChart2 } from 'lucide-react';
 import { get17LandsSetUrl, getSetDraftStatus } from '../services/seventeenLands';
 import { SetSymbol, SetBadge } from './UI/SetSymbol';
 
@@ -60,14 +60,6 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
     }
   };
 
-  const getSetTypeBadge = (_set: SetInfo) => {
-    return (
-      <span className="text-[10px] uppercase font-bold text-cyan-300 bg-cyan-500/15 px-2 py-0.5 rounded border border-cyan-500/30 flex items-center gap-1">
-        <ShieldCheck className="w-2.5 h-2.5" />
-        Limited Set
-      </span>
-    );
-  };
 
   const formatSetReleaseDate = (releasedAt?: string): string => {
     if (!releasedAt) return 'Limited';
@@ -205,8 +197,6 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                          {getSetTypeBadge(set)}
-                          <span>•</span>
                           <span className="flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300">
                             <Calendar className="w-3.5 h-3.5 text-violet-500" />
                             {formatSetReleaseDate(set.released_at)}

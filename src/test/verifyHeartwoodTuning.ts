@@ -1,4 +1,4 @@
-import { getWOTCArchetypeInfo, SET_DEVELOPED_ARCHETYPES } from '../services/wotcArchetypes';
+import { getWOTCArchetypeInfo, SET_DEVELOPED_ARCHETYPES, loadSetArchetypes } from '../services/wotcArchetypes';
 import { getFallbackCards } from '../services/scryfall';
 import { calculateCardSimilarity, buildScryfallQueries, extractCardFeatures, HISTORICAL_BENCHMARK_CARDS } from '../services/cardSimilarity';
 
@@ -6,6 +6,7 @@ console.log('=== Verifying Heartwood Tokens & Reality Fracture Engine Tuning ===
 
 // 1. Archetype Catalog Verification
 console.log('1. Testing FRA RG Archetype Resolution:');
+await loadSetArchetypes('FRA');
 const fraRG = getWOTCArchetypeInfo('FRA', 'RG');
 console.log(`   Archetype Name: "${fraRG.name}"`);
 console.log(`   Headline: "${fraRG.headline}"`);

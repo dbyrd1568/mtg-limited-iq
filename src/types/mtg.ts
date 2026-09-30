@@ -68,7 +68,10 @@ export interface SetInfo {
   code: string;
   name: string;
   card_count: number;
-  released_at?: string;
+  released_at?: string;                 // Tabletop Prerelease / Street Date (YYYY-MM-DD)
+  arena_released_at?: string;           // MTG Arena Digital Launch Date (YYYY-MM-DD)
+  lsv_available_at?: string;            // Target date when pro / LSV set reviews are checked (YYYY-MM-DD)
+  seventeen_lands_available_at?: string; // Query gate: 2 weeks (14 days) post-Arena release (YYYY-MM-DD)
   icon_svg_uri?: string;
   set_type?: string;
   has_17lands_data?: boolean;

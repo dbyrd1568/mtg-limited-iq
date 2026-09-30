@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Check, Link2, Sun, Moon, HelpCircle, Shield, Download, RefreshCw, Sparkles, BookOpen, RotateCcw } from 'lucide-react';
+import { ChevronDown, Sun, Moon, HelpCircle, Shield, Download, RefreshCw, Sparkles, BookOpen, RotateCcw } from 'lucide-react';
 import { SetInfo, UserProfileStats, UserAccount } from '../types/mtg';
 import { getSyncStatus, subscribeSyncStatus, SyncStatus } from '../services/cloudSync';
 import { getStoredTheme, toggleTheme, ThemeMode } from '../services/theme';
@@ -37,7 +37,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenExportModal,
 }) => {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
-  const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeMode>(getStoredTheme());
   const [avatarError, setAvatarError] = useState<boolean>(false);
   const [isHelpMenuOpen, setIsHelpMenuOpen] = useState<boolean>(false);
@@ -92,16 +91,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     setCurrentTheme(next);
   };
 
-  const handleCopyTroubleshootLink = () => {
-    try {
-      navigator.clipboard.writeText(window.location.href);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch (e) {
-      console.warn('Clipboard copy failed:', e);
-    }
-  };
-
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#060919]/95 backdrop-blur-md shadow-xs transition-colors duration-200">
       <div className="max-w-[1440px] mx-auto px-3 sm:px-6">
@@ -145,17 +134,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               Quiz
             </button>
 
-            <button
-              onClick={() => onTabChange('explorer')}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                activeTab === 'explorer'
-                  ? 'bg-violet-600 text-white shadow-xs font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              Cards
-            </button>
-
             {isAdmin && (
               <button
                 onClick={() => onTabChange('admin')}
@@ -184,20 +162,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
               ) : (
                 <Moon className="w-4 h-4 text-violet-700 fill-violet-700/20" />
-              )}
-            </button>
-
-            {/* Share / Troubleshoot Link Button (Desktop/Tablet only to save space on mobile) */}
-            <button
-              onClick={handleCopyTroubleshootLink}
-              className="hidden sm:flex p-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer shrink-0 text-slate-700 dark:text-slate-300 items-center justify-center"
-              title="Copy shareable link to clipboard"
-              aria-label="Share Link"
-            >
-              {copiedLink ? (
-                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <Link2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               )}
             </button>
 

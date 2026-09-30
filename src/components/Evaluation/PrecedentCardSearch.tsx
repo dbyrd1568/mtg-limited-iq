@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '../../types/mtg';
 import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from '../../services/scryfall';
+import { isSameOrCompanionSet, getCompanionSetCodes } from '../../services/cardSimilarity';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
 import { Search, X, Loader2, Sparkles, Check, Database } from 'lucide-react';
@@ -75,9 +76,10 @@ export function buildScryfallPrecedentQuery(input: string, targetSet?: string): 
     }
   }
 
-  // 4. Draft sets & booster prioritization (Never compare a set to itself)
-  const excludeSet = targetSet ? ` -s:${targetSet.toLowerCase()}` : '';
-  const baseFilter = `(is:booster or not:funny) -layout:art_series -t:token${excludeSet}`;
+  // 4. Draft sets & booster prioritization (Never compare a set or companion sets to itself)
+  const companionSets = targetSet ? getCompanionSetCodes(targetSet) : [];
+  const excludeSet = companionSets.length > 0 ? companionSets.map((s) => ` -s:${s.toLowerCase()}`).join('') : '';
+  const baseFilter = `(is:booster or is:premier) -is:funny -is:digital -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`;
   return `${syntaxFilters.join(' ')} ${baseFilter}`.trim();
 }
 
@@ -164,8 +166,9 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
 
         // Fallback: If expanded query didn't match, attempt literal booster query
         if (!res.ok) {
-          const excludeSet = currentTarget.set ? ` -s:${currentTarget.set.toLowerCase()}` : '';
-          const fallbackQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token${excludeSet}`;
+          const companionSets = currentTarget.set ? getCompanionSetCodes(currentTarget.set) : [];
+          const excludeSet = companionSets.length > 0 ? companionSets.map((s) => ` -s:${s.toLowerCase()}`).join('') : '';
+          const fallbackQuery = `${trimmed} (is:booster or is:premier) -is:funny -is:digital -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`;
           const fallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
           res = await fetch(fallbackUrl, {
             signal: controller.signal,
@@ -183,13 +186,20 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
           const data = await res.json();
           if (Array.isArray(data.data)) {
             const normalized: Card[] = data.data
-              .filter((rc: any) => !rc.name.startsWith('A-') && !rc.promo_types?.includes('rebalanced'))
+              .filter(
+                (rc: any) =>
+                  !rc.name.startsWith('A-') &&
+                  !rc.promo_types?.includes('rebalanced') &&
+                  rc.booster !== false &&
+                  rc.set?.toLowerCase() !== 'mbc'
+              )
               .map(normalizeScryfallCard)
-              // Exclude target card itself and NEVER compare a set to itself
+              // Exclude target card itself and NEVER compare a set or companion release to itself
               .filter(
                 (c: Card) =>
                   c.name.toLowerCase() !== currentTarget.name.toLowerCase() &&
-                  (!currentTarget.set || !c.set || c.set.toLowerCase() !== currentTarget.set.toLowerCase())
+                  !isSameOrCompanionSet(currentTarget.set, c.set) &&
+                  c.set?.toLowerCase() !== 'mbc'
               );
 
             // Prioritize cards with 17lands data and unique card names

@@ -1,12 +1,12 @@
 import { getFallbackCards, POPULAR_LIMITED_SETS, KNOWN_17LANDS_EXPANSIONS, deduplicateCards, normalizeScryfallCard, isRemovalSpell, isCounterspell, isCardDrawSpell, isInteractionSpell, isBasicLand } from '../services/scryfall';
 import { cardMatchesRoleFilter } from '../components/UI/ManaColorFilterBar';
 import { generateQuiz } from '../services/quizGenerator';
-import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl, getPreloaded17LandsData, get17LandsCardRating } from '../services/seventeenLands';
+import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl, getPreloaded17LandsData, get17LandsCardRating, fetch17LandsSetData } from '../services/seventeenLands';
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
 import { calculateMasteryRank, defaultStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
 import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint, buildCompTuningString, SimilarCardMatch, HISTORICAL_BENCHMARK_CARDS } from '../services/cardSimilarity';
-import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes, SET_DEVELOPED_ARCHETYPES } from '../services/wotcArchetypes';
+import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes, SET_DEVELOPED_ARCHETYPES, loadSetArchetypes } from '../services/wotcArchetypes';
 import { cardMatchesQuery } from '../services/cardSearchParser';
 import { buildScryfallPrecedentQuery } from '../components/Evaluation/PrecedentCardSearch';
 import {
@@ -648,6 +648,8 @@ console.log('   ✓ MTG Limited empirical evaluator grade curve & smooth GPA ver
 console.log('\n[TEST 12] WOTC Designed Archetypes & On-the-Fly Dynamic Synthesis:');
 
 // 12a. Curated Set Verification (BLB, STX, HOB, MKM, LCI)
+await loadSetArchetypes('BLB');
+await loadSetArchetypes('STX');
 const blbBirds = getWOTCArchetypeInfo('BLB', 'WU');
 console.log(`   BLB WU Curated: "${blbBirds.name}" -> ${blbBirds.headline}`);
 console.assert(blbBirds.name.includes('Birds'), 'BLB WU should be Birds');
@@ -692,7 +694,7 @@ const dynamicArchetype = getWOTCArchetypeInfo('NEW', 'UR', mockPool);
 console.log(`   On-The-Fly Synthesized NEW UR: "${dynamicArchetype.name}" -> ${dynamicArchetype.headline}`);
 console.assert(dynamicArchetype.headline.includes('Spells') || dynamicArchetype.headline.includes('Prowess') || dynamicArchetype.headline.includes('Tempo'), 'Dynamic archetype should synthesize spell tempo');
 console.assert(dynamicArchetype.description.includes('Storm-Forged Drake'), 'Dynamic archetype description should cite signpost card');
-console.assert(dynamicArchetype.description.startsWith('Wizards designed'), 'Dynamic archetype description should be formatted WOTC-style');
+console.assert(dynamicArchetype.description.includes('Blue-Red in NEW centers on'), 'Dynamic archetype description should describe archetype strategy');
 
 console.log('   ✓ Curated WOTC archetypes, 5-pair asymmetric sets, and on-the-fly synthesis verified.');
 
@@ -1167,7 +1169,7 @@ console.assert(getCalibrationPlotPanelPosition('user_alpha') === 'right', 'user_
 console.log('\n--- Test 18: Secrets of Strixhaven (SOS) & Released Sets 17Lands Bulletproofing ---');
 
 // 1. Verify bundled preloaded dataset for SOS exists and contains full set (341 cards)
-const sosPreloaded = getPreloaded17LandsData('SOS');
+const sosPreloaded = await fetch17LandsSetData('SOS');
 console.assert(sosPreloaded !== null, 'SOS must have non-null preloaded 17Lands dataset');
 const sosCardCount = Object.keys(sosPreloaded?.cards || {}).length;
 console.assert(sosCardCount === 341, `SOS preloaded dataset must contain 341 cards, got: ${sosCardCount}`);
@@ -1248,6 +1250,7 @@ console.log(`[PASS] Admin Comp Tuning String captured accurately: "${tuningOutpu
 // TEST 19: Reality Fracture (FRA) & Heartwood Token Engine Tuning
 // =========================================================================
 console.log('\n--- Test 19: Reality Fracture (FRA) & Heartwood Token Engine Tuning ---');
+await loadSetArchetypes('FRA');
 const fraRGInfo = getWOTCArchetypeInfo('FRA', 'RG');
 console.assert(
   fraRGInfo.name.toLowerCase().includes('heartwood'),

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Card } from '../../types/mtg';
-import { SimilarCardMatch, calculateCardSimilarity, buildCompTuningString } from '../../services/cardSimilarity';
+import { SimilarCardMatch, calculateCardSimilarity, buildCompTuningString, extractCardFeatures } from '../../services/cardSimilarity';
 import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from '../../services/scryfall';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
+import { ManaColorFilterBar } from '../UI/ManaColorFilterBar';
 import { SetSymbol } from '../UI/SetSymbol';
 import { CardImage } from '../UI/CardImage';
 import { CardObfuscator } from '../CardObfuscator';
@@ -33,17 +34,6 @@ const QUICK_SUGGESTION_CHIPS = [
   '{2}{W}',
   'exile target',
   'create a 1/1',
-];
-
-const COLOR_OPTIONS: { id: string; label: string; bg: string; text: string }[] = [
-  { id: 'ALL', label: 'All', bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-300' },
-  { id: 'W', label: 'W', bg: 'bg-amber-50 dark:bg-amber-950/50', text: 'text-amber-800 dark:text-amber-200' },
-  { id: 'U', label: 'U', bg: 'bg-sky-50 dark:bg-sky-950/50', text: 'text-sky-800 dark:text-sky-200' },
-  { id: 'B', label: 'B', bg: 'bg-violet-50 dark:bg-violet-950/50', text: 'text-violet-800 dark:text-violet-200' },
-  { id: 'R', label: 'R', bg: 'bg-rose-50 dark:bg-rose-950/50', text: 'text-rose-800 dark:text-rose-200' },
-  { id: 'G', label: 'G', bg: 'bg-emerald-50 dark:bg-emerald-950/50', text: 'text-emerald-800 dark:text-emerald-200' },
-  { id: 'C', label: 'C', bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400' },
-  { id: 'M', label: 'Multi', bg: 'bg-amber-100/60 dark:bg-amber-900/40', text: 'text-amber-900 dark:text-amber-300' },
 ];
 
 const RARITY_OPTIONS = ['ALL', 'common', 'uncommon', 'rare', 'mythic'];
@@ -161,13 +151,21 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
       parts.push(query.trim());
     }
 
-    if (selectedColor !== 'ALL') {
-      if (selectedColor === 'C') {
-        parts.push('c:c');
-      } else if (selectedColor === 'M') {
-        parts.push('c:m');
-      } else {
-        parts.push(`c:${selectedColor.toLowerCase()}`);
+    if (selectedColor !== 'ALL' && selectedColor) {
+      const partsArr = selectedColor.includes(',') ? selectedColor.split(',') : [selectedColor];
+      for (const p of partsArr) {
+        if (p === 'C' || p === 'COLORLESS') {
+          parts.push('c:c');
+        } else if (p === 'M' || p === 'GOLD' || p === 'MULTI') {
+          parts.push('c:m');
+        } else if (p === 'LANDS') {
+          parts.push('t:land');
+        } else {
+          const mana = p.replace(/[^WUBRGwubrg]/g, '').toLowerCase();
+          if (mana) {
+            parts.push(`c:${mana}`);
+          }
+        }
       }
     }
 
@@ -212,7 +210,13 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
       const firstType = mainType.split(' ').pop() || '';
       const colorClause = targetColors ? `c<=${targetColors.toLowerCase()}` : '';
       const typeClause = firstType ? `t:${firstType.toLowerCase()}` : '';
-      effectiveQuery = `${colorClause} ${typeClause}`.trim() || 'r:uncommon';
+
+      const tFeatures = extractCardFeatures(currentTarget);
+      let mechanicalClause = '';
+      if (tFeatures.actionSubtypes.has('targeted_discard') || tFeatures.actionSubtypes.has('hand_disruption')) {
+        mechanicalClause = '(o:"reveals their hand" or o:"discards a card" or o:"discards two cards" or o:"discard")';
+      }
+      effectiveQuery = `${colorClause} ${typeClause} ${mechanicalClause}`.trim() || 'r:uncommon';
     }
 
     setLoading(true);
@@ -231,7 +235,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
       // Fallback 1: If primary query was non-ok, attempt relaxed booster query
       if (!res.ok && trimmed) {
         const excludeSet = currentTarget.set ? ` -s:${currentTarget.set.toLowerCase()}` : '';
-        const fallbackQuery = `${trimmed} (is:booster or not:funny) -layout:art_series -t:token${excludeSet}`;
+        const fallbackQuery = `${trimmed} (is:booster or is:premier) -is:funny -is:digital -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`;
         const fallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
         res = await fetch(fallbackUrl, {
           signal: controller.signal,
@@ -247,7 +251,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
         const words = trimmed.split(/\s+/).filter((w) => w.length > 2 && !w.includes(':')).slice(0, 3);
         if (words.length > 0) {
           const wordsQuery = words.map((w) => `o:"${w}"`).join(' ');
-          const secondFallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(`${wordsQuery} (is:booster or not:funny) -layout:art_series -t:token${excludeSet}`)}&order=released&dir=desc`;
+          const secondFallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(`${wordsQuery} (is:booster or is:premier) -is:funny -is:digital -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`)}&order=released&dir=desc`;
           res = await fetch(secondFallbackUrl, {
             signal: controller.signal,
             headers: {
@@ -265,12 +269,19 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
         const data = await res.json();
         if (Array.isArray(data.data)) {
           const normalized: Card[] = data.data
-            .filter((rc: any) => !rc.name.startsWith('A-') && !rc.promo_types?.includes('rebalanced'))
+            .filter(
+              (rc: any) =>
+                !rc.name.startsWith('A-') &&
+                !rc.promo_types?.includes('rebalanced') &&
+                rc.booster !== false &&
+                rc.set?.toLowerCase() !== 'mbc'
+            )
             .map(normalizeScryfallCard)
             .filter(
               (c: Card) =>
                 c.name.toLowerCase() !== currentTarget.name.toLowerCase() &&
-                (!currentTarget.set || !c.set || c.set.toLowerCase() !== currentTarget.set.toLowerCase())
+                (!currentTarget.set || !c.set || c.set.toLowerCase() !== currentTarget.set.toLowerCase()) &&
+                c.set?.toLowerCase() !== 'mbc'
             );
 
           // Deduplicate unique card names, prioritizing 17Lands-supported sets
@@ -280,7 +291,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
           for (const c of normalized) {
             const nameLower = c.name.toLowerCase();
             const has17L = POPULAR_LIMITED_SETS.some(
-              (s) => s.code.toUpperCase() === c.set.toUpperCase() && s.has_17lands_data !== false
+              (s) => s.code.toUpperCase() === c.set.toUpperCase() && s.has_17lands_data !== false && s.set_type === 'expansion' && s.code.toUpperCase() !== 'MBC'
             );
             if (!seenNames.has(nameLower) && has17L) {
               seenNames.add(nameLower);
@@ -338,18 +349,21 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
 
   // Compute similarity and sort candidate results
   const evaluatedResults = useMemo(() => {
-    const list = results.map((card) => {
-      const sim = calculateCardSimilarity(targetCard, card);
-      const is17LSupported = POPULAR_LIMITED_SETS.some(
-        (s) => s.code.toUpperCase() === card.set.toUpperCase() && s.has_17lands_data !== false
-      );
-      return {
-        card,
-        similarityScore: sim.score,
-        reasons: sim.reasons,
-        is17LSupported,
-      };
-    });
+    const list = results
+      .filter((card) => card.set?.toUpperCase() !== 'MBC')
+      .map((card) => {
+        const sim = calculateCardSimilarity(targetCard, card);
+        const is17LSupported = POPULAR_LIMITED_SETS.some(
+          (s) => s.code.toUpperCase() === card.set.toUpperCase() && s.has_17lands_data !== false && s.set_type === 'expansion' && s.code.toUpperCase() !== 'MBC'
+        );
+        return {
+          card,
+          similarityScore: sim.score,
+          reasons: sim.reasons,
+          is17LSupported,
+        };
+      })
+      .filter((item) => !(item.similarityScore <= 0 && !item.is17LSupported));
 
     if (sortBy === 'similarity') {
       list.sort((a, b) => b.similarityScore - a.similarityScore);
@@ -856,11 +870,11 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
           {/* ========================================================= */}
           {/* RIGHT COLUMN: Robust Search & Visual Card Grid            */}
           {/* ========================================================= */}
-          <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#090e24] overflow-hidden ${
+          <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#090e24] overflow-y-auto custom-scrollbar ${
             mobileTab === 'search' ? 'flex min-h-0' : 'hidden md:flex'
           }`}>
             {/* Search Toolbar (Main Screen Style) */}
-            <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3 shrink-0 bg-slate-50/50 dark:bg-[#060a1d]/50">
+            <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3 bg-slate-50/50 dark:bg-[#060a1d]/50">
               {/* Active Target Slot Selector Strip */}
               <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-200/70 dark:bg-[#050818] rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-mono mb-1">
                 <div className="flex items-center gap-1.5 pl-1.5 shrink-0">
@@ -972,28 +986,16 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
 
               {/* Row 2: Visual Filter Pills Toolbar */}
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                {/* Color Pills */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mr-1 hidden sm:inline">
+                {/* Mana Color Filter Bar with Official Mana Pips */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">
                     Color:
                   </span>
-                  {COLOR_OPTIONS.map((c) => {
-                    const isSelected = selectedColor === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setSelectedColor(c.id)}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border ${
-                          isSelected
-                            ? 'bg-violet-600 text-white border-violet-500 shadow-2xs ring-1 ring-violet-400'
-                            : `${c.bg} ${c.text} border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600`
-                        }`}
-                      >
-                        {c.label}
-                      </button>
-                    );
-                  })}
+                  <ManaColorFilterBar
+                    selectedColor={selectedColor}
+                    onSelectColor={setSelectedColor}
+                    size="sm"
+                  />
                 </div>
 
                 {/* Rarity & Type Pills */}
@@ -1073,7 +1075,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
             </div>
 
             {/* Results Counter Bar */}
-            <div className="px-5 py-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-[#050818]/30 shrink-0">
+            <div className="px-5 py-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-[#050818]/30">
               <div className="flex items-center gap-2">
                 <span>
                   Found <span className="font-bold text-slate-800 dark:text-slate-200">{evaluatedResults.length}</span> candidates
@@ -1091,7 +1093,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
             </div>
 
             {/* Visual Card Grid */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 custom-scrollbar">
+            <div className="p-4 sm:p-5">
               {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                   {[...Array(6)].map((_, i) => (

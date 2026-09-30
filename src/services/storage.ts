@@ -1,5 +1,5 @@
 import { UserProfileStats, QuizResult, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, QuestionCategory, SetMasteryStat, UserAccount } from '../types/mtg';
-import { queueStatsSync, queueEvaluationSync, queueEvaluationClearForSet } from './cloudSync';
+import { queueStatsSync, queueEvaluationSync, queueEvaluationClearForSet, queueArchetypeEvaluationSync, queueArchetypeEvaluationClearForSet } from './cloudSync';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { isProdEnvironment, isLocalhost, isCloudUUID } from './environment';
 import { isSupabaseConfigured } from './supabase';
@@ -62,41 +62,17 @@ export function getAllUsers(): UserAccount[] {
 export function getActiveUser(): UserAccount | null {
   try {
     if (typeof localStorage === 'undefined') {
-      if (!isProdEnvironment() || isLocalhost()) {
-        const devUser: UserAccount = {
-          id: 'admin_owner_01',
-          name: 'Devon Byrd (Local Admin)',
-          email: 'dbyrd1568@gmail.com',
-          avatarColor: '#8b5cf6',
-          provider: 'local',
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
-        };
-        return devUser;
-      }
       return null;
     }
     const users = getAllUsers();
     const activeId = localStorage.getItem(ACTIVE_USER_ID_KEY);
+    if (!activeId) return null;
     const found = users.find((u) => u.id === activeId);
     if (found) {
-      if (isProdEnvironment() && found.provider === 'local' && !isCloudUUID(found.id)) {
+      if (found.provider === 'local' && !isCloudUUID(found.id) && found.id !== 'admin_owner_01') {
         return null;
       }
       return found;
-    }
-    // Local development fallback: automatically provide Devon Byrd account when on localhost / dev
-    if (!isProdEnvironment() || isLocalhost()) {
-      const devUser: UserAccount = {
-        id: 'admin_owner_01',
-        name: 'Devon Byrd (Local Admin)',
-        email: 'dbyrd1568@gmail.com',
-        avatarColor: '#8b5cf6',
-        provider: 'local',
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
-      };
-      return devUser;
     }
     return null;
   } catch (e) {
@@ -424,6 +400,20 @@ export function saveUserEvaluation(evaluation: UserCardEvaluation, userId?: stri
   }
 }
 
+export function deleteUserEvaluation(setCode: string, cardName: string, userId?: string): Record<string, UserCardEvaluation> {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const current = loadUserEvaluations(activeId);
+    const key = `${setCode.toLowerCase()}_${cardName.toLowerCase()}`;
+    delete current[key];
+    localStorage.setItem(`mtg_evaluations_${activeId}`, JSON.stringify(current));
+    return current;
+  } catch (e) {
+    console.error('Failed to delete card evaluation:', e);
+    return {};
+  }
+}
+
 export function clearUserEvaluationsForSet(setCode: string, userId?: string): Record<string, UserCardEvaluation> {
   try {
     const activeId = userId || getActiveUser()?.id || 'guest';
@@ -469,6 +459,7 @@ export function saveUserArchetypeEvaluation(evaluation: UserArchetypeEvaluation,
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(`mtg_archetype_evaluations_${activeId}`, JSON.stringify(current));
+    queueArchetypeEvaluationSync(activeId, current[key]);
   } catch (e) {
     console.error('Failed to save archetype evaluation:', e);
   }
@@ -488,6 +479,7 @@ export function clearUserArchetypeEvaluationsForSet(setCode: string, userId?: st
     }
 
     localStorage.setItem(`mtg_archetype_evaluations_${activeId}`, JSON.stringify(updated));
+    queueArchetypeEvaluationClearForSet(activeId, setCode);
     return updated;
   } catch (e) {
     console.error('Failed to clear archetype evaluations for set:', e);
@@ -534,6 +526,20 @@ export function saveUserColorEvaluation(evaluation: UserColorEvaluation, userId?
     localStorage.setItem(`mtg_color_evaluations_${activeId}`, JSON.stringify(current));
   } catch (e) {
     console.error('Failed to save color evaluation:', e);
+  }
+}
+
+export function deleteUserColorEvaluation(setCode: string, color: string, userId?: string): Record<string, UserColorEvaluation> {
+  try {
+    const activeId = userId || getActiveUser()?.id || 'guest';
+    const current = loadUserColorEvaluations(activeId);
+    const key = `${setCode.toLowerCase()}_${color.toUpperCase()}`;
+    delete current[key];
+    localStorage.setItem(`mtg_color_evaluations_${activeId}`, JSON.stringify(current));
+    return current;
+  } catch (e) {
+    console.error('Failed to delete user color evaluation:', e);
+    return {};
   }
 }
 

@@ -173,16 +173,24 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-black text-slate-900 dark:text-white font-heading">
-                {kpis.avgGradingAccuracy > 0 ? `${kpis.avgGradingAccuracy}%` : '—'}
+                {accuracy.isCalibrationAvailable && kpis.avgGradingAccuracy > 0 ? `${kpis.avgGradingAccuracy}%` : '—'}
               </span>
-              {accuracy.systemGpa > 0 && (
+              {accuracy.isCalibrationAvailable && accuracy.systemGpa > 0 ? (
                 <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  {accuracy.systemGpa} GPA
+                  {accuracy.systemGpa.toFixed(1)} GPA
                 </span>
-              )}
+              ) : kpis.totalCardsGraded > 0 ? (
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                  Pending 17L
+                </span>
+              ) : null}
             </div>
             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {kpis.totalCardsGraded > 0 ? 'vs 17Lands empirical tier benchmarks (±1 step)' : 'Awaiting card evaluations'}
+              {accuracy.isCalibrationAvailable
+                ? 'vs 17Lands empirical tier benchmarks (±1 step)'
+                : kpis.totalCardsGraded > 0
+                ? '17Lands data pending for graded set(s)'
+                : 'Awaiting card evaluations'}
             </div>
           </div>
         </div>
@@ -436,10 +444,8 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
                     <div className="text-xs font-bold font-mono text-slate-900 dark:text-slate-200">
                       {user.cardsGradedTotal} cards graded
                     </div>
-                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {user.cardsGradedTotal > 0
-                        ? `${user.gradingAccuracyScore}% grade accuracy`
-                        : 'No cards graded yet'}
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {user.setsGradedCount} sets graded • {user.totalQuizzes} quizzes
                     </div>
                   </div>
                 </div>

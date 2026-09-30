@@ -7,7 +7,7 @@ import { SimilarCardsModal } from '../Evaluation/SimilarCardsModal';
 import { ExportGradesModal } from '../Evaluation/ExportGradesModal';
 import { ManaCostRenderer, ManaSymbol } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
-import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating, getOrEstimate17LandsCardRating, get17LandsQueryStatus } from '../../services/seventeenLands';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
 import { GradeComparisonCard } from '../UI/GradeComparisonCard';
 import { PlaneswalkerSymbol } from '../UI/PlaneswalkerSymbol';
@@ -32,6 +32,7 @@ interface SetExplorerProps {
   isBlindGrading?: boolean;
   onToggleBlindGrading?: () => void;
   onSaveEvaluation?: (evaluation: UserCardEvaluation) => void;
+  onDeleteEvaluation?: (setCode: string, cardName: string) => void;
   onClearEvaluationsForSet?: (setCode: string) => void;
   onGradeCard?: (card: Card) => void;
   onPracticeCard?: (card: Card) => void;
@@ -59,6 +60,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   isBlindGrading: propIsBlindGrading,
   onToggleBlindGrading: propOnToggleBlindGrading,
   onSaveEvaluation,
+  onDeleteEvaluation,
   onClearEvaluationsForSet,
   onGradeCard,
   onPracticeCard,
@@ -102,6 +104,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   const [filterRatedStatus, setFilterRatedStatus] = useState<'ALL' | 'RATED' | 'UNRATED'>('ALL');
   const [sortBy, setSortBy] = useState<'number' | 'name' | 'cmc' | 'winrate'>('number');
   const [selectedCardForModal, setSelectedCardForModal] = useState<Card | null>(null);
+  const [modalNoteText, setModalNoteText] = useState<string>('');
   const [similarCardsModalCard, setSimilarCardsModalCard] = useState<Card | null>(null);
   const [isClearModalOpen, setIsClearModalOpen] = useState<boolean>(false);
 
@@ -232,11 +235,59 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
     });
   };
 
+  // Sync modal note text whenever the active card changes or evaluations update
+  useEffect(() => {
+    if (selectedCardForModal) {
+      const key = `${selectedCardForModal.set.toLowerCase()}_${selectedCardForModal.name.toLowerCase()}`;
+      setModalNoteText(userEvaluations[key]?.notes || '');
+    } else {
+      setModalNoteText('');
+    }
+  }, [selectedCardForModal?.id, selectedCardForModal?.set, selectedCardForModal?.name, userEvaluations]);
+
+  const handleModalNoteChange = (newText: string) => {
+    setModalNoteText(newText);
+    if (!selectedCardForModal || !onSaveEvaluation) return;
+
+    const key = `${selectedCardForModal.set.toLowerCase()}_${selectedCardForModal.name.toLowerCase()}`;
+    const existing = userEvaluations[key];
+
+    // If card hasn't been graded yet and note is empty, don't create an empty unrated entry
+    if (!existing && !newText.trim()) return;
+
+    const updated: UserCardEvaluation = {
+      cardId: selectedCardForModal.id,
+      cardName: selectedCardForModal.name,
+      setCode: selectedCardForModal.set.toUpperCase(),
+      userGrade: existing?.userGrade || 'C',
+      userScore: existing?.userScore ?? (GRADE_SCORES['C'] ?? 2.7),
+      pickPriority: existing?.pickPriority || 'Mid Pick',
+      notes: newText,
+      updatedAt: new Date().toISOString(),
+    };
+
+    onSaveEvaluation(updated);
+  };
+
+  const handleModalNoteBlur = () => {
+    if (!selectedCardForModal || !onSaveEvaluation) return;
+    const trimmed = modalNoteText.trim();
+    if (trimmed !== modalNoteText) {
+      handleModalNoteChange(trimmed);
+    }
+  };
+
   const handleQuickGradeInModal = (card: Card, grade: GradeTier | 'N/A') => {
-    if (!onSaveEvaluation) return;
-    const score = GRADE_SCORES[grade];
     const key = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
     const existing = userEvaluations[key];
+
+    if (existing && existing.userGrade === grade) {
+      onDeleteEvaluation?.(card.set, card.name);
+      return;
+    }
+
+    if (!onSaveEvaluation) return;
+    const score = GRADE_SCORES[grade];
 
     const updated: UserCardEvaluation = {
       cardId: card.id,
@@ -245,7 +296,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
       userGrade: grade,
       userScore: score,
       pickPriority: existing?.pickPriority || 'Solid Playable',
-      notes: existing?.notes || '',
+      notes: (selectedCardForModal?.id === card.id ? modalNoteText : existing?.notes) || existing?.notes || '',
       updatedAt: new Date().toISOString(),
     };
 
@@ -388,7 +439,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
             {currentSetName} ({currentSetCode.toUpperCase()})
           </h1>
           <p className="text-xs text-slate-600 dark:text-slate-300 max-w-xl">
-            Browse the card pool, explore WOTC supported draft archetypes, and assign your personal card grades.
+            Browse the card pool, explore supported draft archetypes, and assign your personal card grades.
           </p>
         </div>
 
@@ -839,7 +890,20 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                           );
                         })() : (
                           <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                            <span>17Lands: <strong className="text-amber-600 dark:text-amber-400 font-semibold">Data Pending</strong></span>
+                            {(() => {
+                              const status = get17LandsQueryStatus(currentSetCode);
+                              return (
+                                <span>
+                                  17Lands:{' '}
+                                  <strong
+                                    className="text-amber-600 dark:text-amber-400 font-semibold"
+                                    title={status.availableDateStr ? `Queries 17Lands on ${status.availableDateStr} (2 weeks post-Arena release)` : undefined}
+                                  >
+                                    {status.daysRemaining > 0 ? `Unlocks in ${status.daysRemaining}d` : 'Data Pending'}
+                                  </strong>
+                                </span>
+                              );
+                            })()}
                           </div>
                         )}
 
@@ -933,10 +997,10 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
               <BookOpen className="w-5 h-5 text-violet-600 dark:text-cyan-400 shrink-0" />
               <div>
                 <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  WOTC Supported Archetypes • {currentSetName} ({currentSetCode.toUpperCase()})
+                  Supported Draft Archetypes • {currentSetName} ({currentSetCode.toUpperCase()})
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Official design themes, mechanics, and anchor signposts designed by Wizards of the Coast. Click any card to inspect.
+                  Key design themes, mechanics, and anchor signposts for limited play. Click any card to inspect.
                 </p>
               </div>
             </div>
@@ -1003,11 +1067,11 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                       </div>
                     </div>
 
-                    {/* Official WOTC Description */}
+                    {/* Archetype Strategy Overview */}
                     <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#060a1d] border border-slate-200/70 dark:border-slate-800/70 space-y-2">
                       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                         <BookOpen className="w-3.5 h-3.5 text-violet-500" />
-                        <span>WOTC Design Strategy</span>
+                        <span>Archetype Strategy Overview</span>
                       </div>
                       <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                         {archetype.description}
@@ -1468,6 +1532,28 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                       {selectedCardForModal.oracle_text || 'No oracle rules text.'}
                     </p>
                   </div>
+
+                  {/* Strategic Notes Field */}
+                  {onSaveEvaluation && (
+                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800/80 space-y-2">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-bold">
+                          <FileText className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
+                          <span>Notes & Strategic Thoughts</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 lowercase font-normal">Auto-saved</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={modalNoteText}
+                        onChange={(e) => handleModalNoteChange(e.target.value)}
+                        onBlur={handleModalNoteBlur}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder="Write your strategic thoughts and notes on this card..."
+                        className="w-full p-2.5 bg-white dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 focus:ring-1 focus:ring-violet-400/50 resize-none transition-all leading-relaxed"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Bottom Bar: Scryfall, 17Lands & Practice Action */}

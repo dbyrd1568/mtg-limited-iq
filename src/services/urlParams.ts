@@ -12,6 +12,7 @@ export interface AppUrlParams {
   status?: 'ALL' | 'RATED' | 'UNRATED';
   category?: string;
   mode?: 'quiz' | 'practice';
+  share?: string; // Public grade share ID (UUIDv4)
 }
 
 /**
@@ -22,8 +23,7 @@ export function normalizeTab(tabParam?: string | null): ActiveTab | undefined {
   const t = tabParam.toLowerCase().trim();
   if (t === 'admin' || t === 'a' || t === 'dashboard') return 'admin';
   if (t === 'quiz' || t === 'q') return 'quiz';
-  if (t === 'evaluation' || t === 'eval' || t === 'grading' || t === 'grade' || t === 'hub') return 'evaluation';
-  if (t === 'explorer' || t === 'list' || t === 'cards' || t === 'visualizer') return 'explorer';
+  if (t === 'evaluation' || t === 'eval' || t === 'grading' || t === 'grade' || t === 'hub' || t === 'explorer' || t === 'list' || t === 'cards' || t === 'visualizer') return 'evaluation';
   if (t === 'stats' || t === 'profile' || t === 'mastery') return 'quiz';
   return undefined;
 }
@@ -41,7 +41,7 @@ export function normalizeSubtab(subParam?: string | null): 'grade' | 'forecast' 
   if (s === 'access' || s === 'whitelist' || s === 'security') return 'access';
   if (s === 'precedents' || s === 'comps' || s === 'approvals') return 'precedents';
   if (s === 'grade' || s === 'cards') return 'grade';
-  if (s === 'forecast' || s === 'archetype' || s === 'tierlist' || s === 'meta') return 'forecast';
+  if (s === 'forecast' || s === 'results' || s === 'result' || s === 'archetype' || s === 'tierlist' || s === 'meta') return 'forecast';
   if (s === 'calibration' || s === 'analytics' || s === 'curve') return 'calibration';
   if (s === 'notes' || s === 'strategy') return 'notes';
   if (s === 'methodology' || s === 'math' || s === 'guide' || s === 'how-it-works' || s === 'rubric') return 'methodology';
@@ -83,6 +83,16 @@ export function parseAppUrlParams(searchString?: string): AppUrlParams {
   const category = params.get('category') || params.get('cat') || undefined;
   const mode = (params.get('mode') === 'practice' || params.get('mode') === 'quiz') ? (params.get('mode') as 'quiz' | 'practice') : undefined;
 
+  let share = params.get('share') || params.get('sh') || undefined;
+  if (!share && typeof window !== 'undefined' && window.location.hash) {
+    try {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      share = hashParams.get('share') || hashParams.get('sh') || undefined;
+    } catch {
+      // ignore
+    }
+  }
+
   return {
     set: set ? set.toUpperCase().trim() : undefined,
     tab,
@@ -94,6 +104,7 @@ export function parseAppUrlParams(searchString?: string): AppUrlParams {
     status,
     category,
     mode,
+    share: share ? share.trim() : undefined,
   };
 }
 
@@ -112,6 +123,7 @@ export function updateAppUrlParams(updates: Partial<AppUrlParams>, replace = tru
       if (key === 'subtab') paramKey = 'subtab';
       if (key === 'set') paramKey = 'set';
       if (key === 'card') paramKey = 'card';
+      if (key === 'share') paramKey = 'share';
 
       if (value === undefined || value === null || value === '') {
         currentParams.delete(paramKey);

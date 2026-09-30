@@ -14,6 +14,7 @@ import {
   get17LandsCardRating,
   getOrEstimate17LandsCardRating,
   get17LandsCardUrl,
+  get17LandsQueryStatus,
 } from '../../services/seventeenLands';
 import { getBlindGradingForSet, setBlindGradingForSet } from '../../services/storage';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
@@ -25,7 +26,7 @@ import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
 import { deduplicateCards } from '../../services/scryfall';
 import { CalibrationScatterPlot } from './CalibrationScatterPlot';
-import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink } from 'lucide-react';
+import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink, Link2 } from 'lucide-react';
 import { ExportGradesModal } from './ExportGradesModal';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
@@ -47,10 +48,12 @@ interface EvaluationHubProps {
   onSaveArchetypeEvaluation?: (evaluation: UserArchetypeEvaluation) => void;
   onDeleteArchetypeEvaluation?: (setCode: string, archetypeCode: string) => void;
   onSaveColorEvaluation?: (evaluation: UserColorEvaluation) => void;
+  onDeleteColorEvaluation?: (setCode: string, color: string) => void;
   seventeenLandsData: SeventeenLandsSetData | null;
   isBlindGrading?: boolean;
   onToggleBlindGrading?: () => void;
   onSaveEvaluation: (evaluation: UserCardEvaluation) => void;
+  onDeleteEvaluation?: (setCode: string, cardName: string) => void;
   onClearEvaluationsForSet?: (setCode: string) => void;
   onOpenSetSelector: () => void;
   // Shared filter state (synced with Cards tab)
@@ -64,6 +67,7 @@ interface EvaluationHubProps {
   onSelectedRolesChange?: (r: string[]) => void;
   availableSets?: SetInfo[];
   isAdmin?: boolean;
+  onPracticeCard?: (card: Card) => void;
 }
 
 export const EvaluationHub: React.FC<EvaluationHubProps> = ({
@@ -79,10 +83,12 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   onSaveArchetypeEvaluation,
   onDeleteArchetypeEvaluation,
   onSaveColorEvaluation,
+  onDeleteColorEvaluation,
   seventeenLandsData,
   isBlindGrading: propIsBlindGrading,
   onToggleBlindGrading: propOnToggleBlindGrading,
   onSaveEvaluation,
+  onDeleteEvaluation,
   onClearEvaluationsForSet,
   onOpenSetSelector,
   searchQuery: propSearchQuery,
@@ -94,9 +100,11 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   onSelectedRaritiesChange,
   onSelectedRolesChange,
   availableSets,
+  onPracticeCard,
 }) => {
   const cards = useMemo(() => deduplicateCards(rawCards), [rawCards]);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [exportModalTab, setExportModalTab] = useState<'spreadsheet' | 'seventeenlands' | 'share' | 'backup'>('spreadsheet');
   // Only use authentic 17Lands data with sufficient sample size and matching setCode
   const effective17LandsData = useMemo(() => {
     if (
@@ -142,11 +150,32 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   const handleSelectedRoles = (r: string[]) => { setSelectedRoles(r); onSelectedRolesChange?.(r); };
 
   const [filterRatedStatus, setFilterRatedStatus] = useState<'ALL' | 'RATED' | 'UNRATED'>('ALL');
+  const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
+
+  const isAllGrades = selectedGrades.length === 0 || selectedGrades.includes('ALL');
+
+  const handleToggleGrade = (tier: string) => {
+    if (filterRatedStatus === 'UNRATED') {
+      setFilterRatedStatus('ALL');
+    }
+    if (tier === 'ALL') {
+      setSelectedGrades([]);
+      return;
+    }
+    setSelectedGrades((prev) => {
+      const filtered = prev.filter((g) => g !== 'ALL');
+      if (filtered.includes(tier)) {
+        return filtered.filter((g) => g !== tier);
+      } else {
+        return [...filtered, tier];
+      }
+    });
+  };
   const [comparisonSelectedColor, setComparisonSelectedColor] = useState<string>('ALL');
   const [comparisonVerdictFilter, setComparisonVerdictFilter] = useState<string>('ALL');
   const [selectedCardForModal, setSelectedCardForModal] = useState<Card | null>(null);
   const [similarCardsModalCard, setSimilarCardsModalCard] = useState<Card | null>(null);
-  const [cardListSortBy, setCardListSortBy] = useState<'number' | 'name' | 'color' | 'rarity' | 'winrate'>('number');
+  const [cardListSortBy, setCardListSortBy] = useState<'number' | 'name' | 'color' | 'rarity' | 'grade-desc' | 'grade-asc' | 'lsv-desc' | 'winrate'>('number');
   const [comparisonSortBy, setComparisonSortBy] = useState<'number' | 'delta_desc' | 'delta_asc' | 'winrate' | 'name'>('number');
   const [showMathExplainer, setShowMathExplainer] = useState<boolean>(false);
   const [showLsv, setShowLsv] = useState<boolean>(() => {
@@ -302,6 +331,14 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         }
       }
 
+      if (!isAllGrades) {
+        const userEval = userEvaluations[evalKey];
+        if (!userEval) return false;
+        if (!selectedGrades.includes(userEval.userGrade)) {
+          return false;
+        }
+      }
+
       if (!cardMatchesRoleFilter(c, selectedRoles)) return false;
 
       return true;
@@ -322,6 +359,49 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         if (diff !== 0) return diff;
         return parseInt(a.collector_number || '0') - parseInt(b.collector_number || '0');
       }
+      if (cardListSortBy === 'grade-desc' || cardListSortBy === 'grade-asc') {
+        const evalKeyA = `${a.set.toLowerCase()}_${a.name.toLowerCase()}`;
+        const evalKeyB = `${b.set.toLowerCase()}_${b.name.toLowerCase()}`;
+        const evalA = userEvaluations[evalKeyA];
+        const evalB = userEvaluations[evalKeyB];
+
+        const scoreA = evalA && typeof evalA.userScore === 'number'
+          ? evalA.userScore
+          : (evalA?.userGrade ? (GRADE_SCORES[evalA.userGrade as GradeTier] ?? -1) : -1);
+        const scoreB = evalB && typeof evalB.userScore === 'number'
+          ? evalB.userScore
+          : (evalB?.userGrade ? (GRADE_SCORES[evalB.userGrade as GradeTier] ?? -1) : -1);
+
+        const isRatedA = scoreA >= 0;
+        const isRatedB = scoreB >= 0;
+
+        // Graded cards always sort before ungraded cards in both directions
+        if (isRatedA && !isRatedB) return -1;
+        if (!isRatedA && isRatedB) return 1;
+        if (!isRatedA && !isRatedB) {
+          return parseInt(a.collector_number || '0') - parseInt(b.collector_number || '0');
+        }
+
+        const diff = cardListSortBy === 'grade-desc' ? scoreB - scoreA : scoreA - scoreB;
+        if (diff !== 0) return diff;
+        return parseInt(a.collector_number || '0') - parseInt(b.collector_number || '0');
+      }
+      if (cardListSortBy === 'lsv-desc') {
+        const lsvA = getLsvRatingForCard(a);
+        const lsvB = getLsvRatingForCard(b);
+        const scoreA = lsvA ? lsvA.score : -1;
+        const scoreB = lsvB ? lsvB.score : -1;
+
+        if (scoreA >= 0 && scoreB < 0) return -1;
+        if (scoreA < 0 && scoreB >= 0) return 1;
+        if (scoreA < 0 && scoreB < 0) {
+          return parseInt(a.collector_number || '0') - parseInt(b.collector_number || '0');
+        }
+
+        const diff = scoreB - scoreA;
+        if (diff !== 0) return diff;
+        return parseInt(a.collector_number || '0') - parseInt(b.collector_number || '0');
+      }
       if (cardListSortBy === 'winrate') {
         const wrA = get17LandsCardRating(a, effective17LandsData)?.win_rate || 0.5;
         const wrB = get17LandsCardRating(b, effective17LandsData)?.win_rate || 0.5;
@@ -331,7 +411,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     });
 
     return result;
-  }, [cards, searchQuery, selectedColors, selectedRarities, selectedRoles, filterRatedStatus, userEvaluations, cardListSortBy, effective17LandsData]);
+  }, [cards, searchQuery, selectedColors, selectedRarities, selectedRoles, selectedGrades, filterRatedStatus, userEvaluations, cardListSortBy, effective17LandsData]);
 
   const { registerTrigger, isStepCompleted } = useContextualTour();
 
@@ -435,6 +515,15 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   const ratedPercentage = cards.length > 0 ? Math.round((ratedCountInSet / cards.length) * 100) : 0;
 
   const handleQuickGrade = (card: Card, tier: GradeTier | 'N/A') => {
+    const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
+    const existingEval = userEvaluations[evalKey];
+
+    // Toggle off: if user clicks the currently assigned grade, remove it!
+    if (existingEval && existingEval.userGrade === tier) {
+      onDeleteEvaluation?.(card.set, card.name);
+      return;
+    }
+
     const priority = tier === 'N/A'
       ? 'Sideboard / Unplayable'
       : tier.startsWith('A')
@@ -446,9 +535,6 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
       : tier === 'D'
       ? 'Late Filler'
       : 'Sideboard / Unplayable';
-
-    const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
-    const existingEval = userEvaluations[evalKey];
 
     const evaluation: UserCardEvaluation = {
       cardId: card.id,
@@ -468,6 +554,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     (!selectedColors.includes('ALL') && selectedColors.length > 0) ||
     (!selectedRarities.includes('ALL') && selectedRarities.length > 0) ||
     (!selectedRoles.includes('ALL') && selectedRoles.length > 0) ||
+    selectedGrades.length > 0 ||
     filterRatedStatus !== 'ALL' ||
     searchQuery.trim() !== ''
   );
@@ -476,6 +563,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     handleSelectedColors(['ALL']);
     handleSelectedRarities(['ALL']);
     handleSelectedRoles(['ALL']);
+    setSelectedGrades([]);
     setFilterRatedStatus('ALL');
     handleSearchQuery('');
   };
@@ -515,9 +603,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   };
 
   return (
-    <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
-      {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, zero scrollbar) */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+    <div className="max-w-[1440px] mx-auto pb-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
+      {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, frozen/sticky on scroll) */}
+      <div className="sticky top-14 sm:top-16 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-slate-100/95 dark:bg-[#030614]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         {/* Left: Sub-tabs */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
           <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
@@ -539,8 +628,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   ? 'bg-violet-600 text-white shadow-xs font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
               }`}
+              title="Evaluation Results & Archetype Forecast"
             >
-              Archetypes
+              Results
             </button>
 
             <button
@@ -551,7 +641,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
               }`}
             >
-              17Lands {effective17LandsData && calibrationSummary.totalRated > 0 ? `(${calibrationSummary.calibrationScore}%)` : ''}
+              17Lands
             </button>
 
             <button
@@ -581,14 +671,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         {/* Right: Export, Clear, Blind Mode Toggle */}
         <div className="flex items-center justify-end gap-1.5 shrink-0 flex-wrap">
           <button
-            id="export-grades-btn"
+            id="share-export-grades-btn"
             type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
-            title="Export comparison spreadsheet or send grades to 17Lands"
+            onClick={() => {
+              setExportModalTab('share');
+              setIsExportModalOpen(true);
+            }}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-violet-700 dark:text-cyan-300 bg-violet-50 dark:bg-violet-950/60 hover:bg-violet-100 dark:hover:bg-violet-900/60 border border-violet-200 dark:border-violet-800/60 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
+            title="Share public link or export your grades"
           >
-            <Share2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-            <span>Export</span>
+            <Share2 className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
+            <span>Share/Export</span>
           </button>
 
           {onClearEvaluationsForSet && ratedCountInSet > 0 && (
@@ -630,6 +723,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           )}
         </div>
       </div>
+    </div>
 
       {/* SUBTAB 1: Grade Cards List & Filter */}
       {activeSubTab === 'grade' && (
@@ -667,6 +761,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     <option value="name">Card Name (A → Z)</option>
                     <option value="color">Color (WUBRG Order)</option>
                     <option value="rarity">Rarity (Mythic → Common)</option>
+                    <option value="grade-desc">Highest Grade (A+ → F)</option>
+                    <option value="grade-asc">Lowest Grade (F → A+)</option>
+                    {showLsv && <option value="lsv-desc">LSV Grade (Highest First)</option>}
                     {effective17LandsData && <option value="winrate">17Lands Win Rate</option>}
                   </select>
                 </div>
@@ -736,6 +833,30 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               {/* Mana Color Filter Bar */}
               <ManaColorFilterBar selectedColors={selectedColors} onSelectColors={handleSelectedColors} />
 
+              {/* Active Archetype Filter Pill */}
+              {(() => {
+                const isArchetype =
+                  selectedColors.some((s) => s.startsWith('GOLD_')) ||
+                  (selectedColors.length === 2 && selectedColors.every((c) => ['W', 'U', 'B', 'R', 'G'].includes(c)));
+                if (!isArchetype) return null;
+                const label = selectedColors.some((s) => s.startsWith('GOLD_'))
+                  ? `Gold ${selectedColors.find((s) => s.startsWith('GOLD_'))!.replace('GOLD_', '')}`
+                  : selectedColors.join('');
+                return (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-violet-100 dark:bg-violet-950/70 border border-violet-300 dark:border-violet-700/60 text-violet-800 dark:text-violet-200 shadow-xs">
+                    <span>Archetype: {label}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectedColors(["ALL"])}
+                      className="p-0.5 rounded-md hover:bg-violet-200 dark:hover:bg-violet-800 text-violet-600 dark:text-violet-300 cursor-pointer"
+                      title="Clear Archetype Filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* Rarity Filter Pills */}
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                 {['ALL', 'common', 'uncommon', 'rare', 'mythic'].map((rar) => {
@@ -764,6 +885,30 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       }`}
                     >
                       {rar === 'ALL' ? 'All' : rar}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Grade Tier Filter Pills */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
+                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline">
+                  Grade{selectedGrades.length > 1 ? ` (${selectedGrades.length})` : ''}:
+                </span>
+                {['ALL', ...GRADE_TIERS, 'N/A'].map((tier) => {
+                  const isSelected = tier === 'ALL' ? isAllGrades : selectedGrades.includes(tier);
+                  return (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => handleToggleGrade(tier)}
+                      className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-violet-600 text-white shadow-xs font-bold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      {tier}
                     </button>
                   );
                 })}
@@ -965,7 +1110,20 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                             );
                           })() : (
                             <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                              <span>17Lands: <strong className="text-amber-600 dark:text-amber-400 font-semibold">Data Pending</strong></span>
+                              {(() => {
+                                const status = get17LandsQueryStatus(currentSetCode);
+                                return (
+                                  <span>
+                                    17Lands:{' '}
+                                    <strong
+                                      className="text-amber-600 dark:text-amber-400 font-semibold"
+                                      title={status.availableDateStr ? `Queries 17Lands on ${status.availableDateStr} (2 weeks post-Arena release)` : undefined}
+                                    >
+                                      {status.daysRemaining > 0 ? `Unlocks in ${status.daysRemaining}d` : 'Data Pending'}
+                                    </strong>
+                                  </span>
+                                );
+                              })()}
                             </div>
                           )}
 
@@ -1086,6 +1244,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           onSaveArchetypeEvaluation={onSaveArchetypeEvaluation}
           onDeleteArchetypeEvaluation={onDeleteArchetypeEvaluation}
           onSaveColorEvaluation={onSaveColorEvaluation}
+          onDeleteColorEvaluation={onDeleteColorEvaluation}
           seventeenLandsData={effective17LandsData}
           isBlindGrading={isBlindGrading}
           setCode={currentSetCode}
@@ -1105,11 +1264,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               <div className="flex items-center justify-center gap-2">
                 <SetBadge setCode={currentSetCode} />
                 <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-                  17Lands Calibration is TBD for {currentSetName}
+                  17Lands Calibration is Pending for {currentSetName}
                 </h3>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto">
-                17Lands data is available approximately 2 weeks after release. Once match data is recorded, this tab will activate to compare your evaluations against live Game-In-Hand win rates.
+                {(() => {
+                  const status = get17LandsQueryStatus(currentSetCode);
+                  if (status.availableDateStr) {
+                    return `17Lands telemetry requires 2 weeks of draft match volume on MTG Arena to stabilize. Querying unlocks on ${status.availableDateStr} (${status.daysRemaining} days remaining).`;
+                  }
+                  return '17Lands data is available approximately 2 weeks after release on MTG Arena. Once match data is recorded, this tab will activate to compare your evaluations against live Game-In-Hand win rates.';
+                })()}
               </p>
             </div>
             <button
@@ -1939,12 +2104,21 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 return (
                   <div
                     key={card.id}
-                    className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
+                    onClick={() => handleSelectCardForModal(card)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSelectCardForModal(card);
+                      }
+                    }}
+                    className="group p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-cyan-500/60 space-y-2 shadow-xs hover:shadow-md cursor-pointer transition-all duration-200"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-400">#{card.collector_number}</span>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">{card.name}</h4>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-400 transition-colors">{card.name}</h4>
                         {card.mana_cost && <ManaCostRenderer manaCost={card.mana_cost} size="xs" />}
                       </div>
                       <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
@@ -1952,13 +2126,18 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       </span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-200 italic leading-relaxed">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-200 italic leading-relaxed group-hover:border-slate-300 dark:group-hover:border-slate-700 transition-colors">
                       "{evalData.notes}"
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono pt-0.5">
                       <span>Priority: <strong className="text-violet-700 dark:text-cyan-300">{evalData.pickPriority}</strong></span>
-                      <span>Updated: {new Date(evalData.updatedAt).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1 group-hover:text-violet-600 dark:group-hover:text-cyan-400 transition-colors">
+                        Updated: {new Date(evalData.updatedAt).toLocaleDateString()}
+                        <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity ml-1 font-sans font-medium text-violet-600 dark:text-cyan-400">
+                          (Click to edit)
+                        </span>
+                      </span>
                     </div>
                   </div>
                 );
@@ -1977,36 +2156,50 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
       )}
 
       {/* Quick Rate / Card Inspector Modal */}
-      {selectedCardForModal && (
-        <QuickRateModal
-          isOpen={Boolean(selectedCardForModal)}
-          onClose={() => handleSelectCardForModal(null)}
-          cards={filteredCards.length < cards.length ? filteredCards : cards}
-          card={selectedCardForModal}
-          onSelectCard={handleSelectCardForModal}
-          userEvaluations={userEvaluations}
-          seventeenLandsData={effective17LandsData}
-          isBlindGrading={isBlindGrading}
-          onToggleBlindGrading={handleToggleBlindGrading}
-          showLsv={showLsv}
-          show17L={show17L}
-          onToggleLsv={handleToggleLsv}
-          onToggle17L={handleToggle17L}
-          gradeDisplayMode={gradeDisplayMode}
-          onChangeGradeDisplayMode={handleSetGradeDisplayMode}
-          onSaveEvaluation={onSaveEvaluation}
-          isFiltered={filteredCards.length < cards.length}
-          filterDescription={searchQuery ? `Search: "${searchQuery}"` : 'Filters active'}
-          totalSetCardsCount={cards.length}
-          onClearFilter={() => {
-            setSearchQuery('');
-            setSelectedColors(['ALL']);
-            setSelectedRarities(['ALL']);
-            setSelectedRoles(['ALL']);
-            setFilterRatedStatus('ALL');
-          }}
-        />
-      )}
+      {selectedCardForModal && (() => {
+        // Determine card pool for modal: if outside 'grade' subtab, or if clicked card isn't in filteredCards, use full cards list
+        const isGradeTab = activeSubTab === 'grade';
+        const isInFiltered = isGradeTab && filteredCards.some(
+          (c) =>
+            c.id === selectedCardForModal.id ||
+            (c.name.toLowerCase() === selectedCardForModal.name.toLowerCase() &&
+              (c.set || '').toLowerCase() === (selectedCardForModal.set || '').toLowerCase())
+        );
+        const modalCards = isInFiltered ? filteredCards : cards;
+
+        return (
+          <QuickRateModal
+            isOpen={Boolean(selectedCardForModal)}
+            onClose={() => handleSelectCardForModal(null)}
+            cards={modalCards}
+            card={selectedCardForModal}
+            onSelectCard={handleSelectCardForModal}
+            userEvaluations={userEvaluations}
+            seventeenLandsData={effective17LandsData}
+            isBlindGrading={isBlindGrading}
+            onToggleBlindGrading={handleToggleBlindGrading}
+            showLsv={showLsv}
+            show17L={show17L}
+            onToggleLsv={handleToggleLsv}
+            onToggle17L={handleToggle17L}
+            gradeDisplayMode={gradeDisplayMode}
+            onChangeGradeDisplayMode={handleSetGradeDisplayMode}
+            onSaveEvaluation={onSaveEvaluation}
+            onDeleteEvaluation={onDeleteEvaluation}
+            isFiltered={isGradeTab && isInFiltered && filteredCards.length < cards.length}
+            filterDescription={searchQuery ? `Search: "${searchQuery}"` : 'Filters active'}
+            totalSetCardsCount={cards.length}
+            onClearFilter={() => {
+              setSearchQuery('');
+              setSelectedColors(['ALL']);
+              setSelectedRarities(['ALL']);
+              setSelectedRoles(['ALL']);
+              setFilterRatedStatus('ALL');
+            }}
+            onPracticeCard={onPracticeCard}
+          />
+        );
+      })()}
 
       {/* Clear Set Ratings Modal with Multi-Step Confirmation */}
       {isClearModalOpen && onClearEvaluationsForSet && (
@@ -2062,6 +2255,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           seventeenLandsData={seventeenLandsData}
           currentSet={currentSet || { code: currentSetCode, name: currentSetName, card_count: cards.length }}
           userId={currentUser?.id}
+          initialTab={exportModalTab}
         />
       )}
 

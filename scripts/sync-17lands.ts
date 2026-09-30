@@ -24,7 +24,29 @@
  * ==============================================================================
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+
+// Automatically load local .env if present
+try {
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (match) {
+        const key = match[1];
+        let val = (match[2] || '').trim();
+        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+        if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1);
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch {}
 
 // Grade tier conversion
 function winRateToGradeTier(winRate: number): string {
@@ -78,18 +100,34 @@ const HISTORICAL_AUDIT_SETS = [
 ];
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// Minimum new games required to trigger a flashback draft cache update (prevents redundant writes & rate limits)
+const MIN_FLASHBACK_GAME_DELTA = 1000;
 
 /**
- * Dynamically resolves active draft sets based on current date
+ * Dynamically resolves active draft sets based on database schedule, current date, and env
  */
-function resolveCurrentActiveSets(): string[] {
-  const active = [...PRIMARY_ACTIVE_SETS];
-  const now = Date.now();
+async function resolveCurrentActiveSets(supabase: ReturnType<typeof createClient>): Promise<string[]> {
+  const activeSets = new Set<string>(PRIMARY_ACTIVE_SETS);
+
+  try {
+    const { data: dbSets } = await supabase
+      .from('set_release_schedules')
+      .select('set_code, is_active_draft, is_flashback')
+      .or('is_active_draft.eq.true,is_flashback.eq.true');
+
+    if (dbSets && dbSets.length > 0) {
+      for (const row of dbSets) {
+        if (row.set_code) {
+          activeSets.add(row.set_code.toUpperCase().trim());
+        }
+      }
+    }
+  } catch {}
 
   // Reality Fracture (FRA) releases 2026-10-02; automatically becomes active upon release
   const fraReleaseTime = new Date('2026-10-02T00:00:00Z').getTime();
-  if (now >= fraReleaseTime && !active.includes('FRA')) {
-    active.push('FRA');
+  if (Date.now() >= fraReleaseTime) {
+    activeSets.add('FRA');
   }
 
   // Include any configured flashback sets from env
@@ -99,12 +137,34 @@ function resolveCurrentActiveSets(): string[] {
     .filter(Boolean);
 
   for (const fb of envFlashbacks) {
-    if (!active.includes(fb)) {
-      active.push(fb);
-    }
+    activeSets.add(fb);
   }
 
-  return active;
+  return Array.from(activeSets);
+}
+
+/**
+ * Dynamically resolves historical sets from database and base catalog
+ */
+async function resolveHistoricalAuditSets(supabase: ReturnType<typeof createClient>): Promise<string[]> {
+  const historicalSets = new Set<string>(HISTORICAL_AUDIT_SETS);
+
+  try {
+    const { data: dbSets } = await supabase
+      .from('set_release_schedules')
+      .select('set_code, is_active_draft')
+      .eq('is_active_draft', false);
+
+    if (dbSets && dbSets.length > 0) {
+      for (const row of dbSets) {
+        if (row.set_code) {
+          historicalSets.add(row.set_code.toUpperCase().trim());
+        }
+      }
+    }
+  } catch {}
+
+  return Array.from(historicalSets);
 }
 
 async function fetchSetFrom17Lands(expansion: string): Promise<any[] | null> {
@@ -230,14 +290,14 @@ async function syncSet(
   // If auditing historical sets, verify if new flashback draft games were recorded
   if (options.onlyIfChanged && existingSampleSize > 0) {
     const gameDelta = dataset.sampleSize - existingSampleSize;
-    if (gameDelta < 500) {
+    if (gameDelta < MIN_FLASHBACK_GAME_DELTA) {
       console.log(
-        `[17Lands Sync] ${upperCode}: Sample size unchanged (${dataset.sampleSize} games, delta: ${gameDelta}). No flashback draft detected.`
+        `[17Lands Sync] ${upperCode}: Sample size unchanged (${dataset.sampleSize} games, delta: ${gameDelta} < ${MIN_FLASHBACK_GAME_DELTA}). No flashback draft detected.`
       );
       return;
     }
     console.log(
-      `[17Lands Sync] 🚨 Flashback Draft detected for ${upperCode}! Game count increased from ${existingSampleSize} to ${dataset.sampleSize} (+${gameDelta} games). Updating cache!`
+      `[17Lands Sync] 🚨 Flashback Draft detected for ${upperCode}! Game count increased from ${existingSampleSize} to ${dataset.sampleSize} (+${gameDelta} games >= ${MIN_FLASHBACK_GAME_DELTA}). Updating cache!`
     );
   } else {
     console.log(`[17Lands Sync] Processed ${Object.keys(cards).length} cards for ${upperCode} (Total games: ${dataset.sampleSize})`);
@@ -245,7 +305,8 @@ async function syncSet(
 
   // Upsert to Supabase
   try {
-    const { error } = await supabase
+    let upsertSuccess = false;
+    const { error: clientError } = await supabase
       .from('seventeen_lands_cache')
       .upsert(
         {
@@ -261,8 +322,13 @@ async function syncSet(
         { onConflict: 'set_code,format' }
       );
 
-    if (error) {
-      console.error(`[17Lands Sync] Supabase upsert error for ${upperCode}:`, error.message);
+    if (clientError) {
+      console.error(`[17Lands Sync] Supabase upsert error for ${upperCode}:`, clientError.message);
+      if (clientError.message.includes('row-level security')) {
+        console.error(
+          `[17Lands Sync] ⚠️  RLS violation: Write operations require the permanent SUPABASE_SERVICE_ROLE_KEY.`
+        );
+      }
     } else {
       console.log(`[17Lands Sync] Successfully saved ${upperCode} [${draftStatus}] into Supabase seventeen_lands_cache!`);
     }
@@ -301,13 +367,14 @@ async function main() {
   const explicitSets = rawArgs.filter((a) => !a.startsWith('--') && !explicitFlashbacks.includes(a.toUpperCase()));
 
   if (isAuditHistorical) {
-    console.log(`Mode: Historical Flashback Audit (${HISTORICAL_AUDIT_SETS.length} historical sets)`);
-    console.log(`Sets: ${HISTORICAL_AUDIT_SETS.join(', ')}`);
+    const historicalSets = await resolveHistoricalAuditSets(supabase);
+    console.log(`Mode: Historical Flashback Audit (${historicalSets.length} historical sets)`);
+    console.log(`Sets: ${historicalSets.join(', ')}`);
 
-    for (let i = 0; i < HISTORICAL_AUDIT_SETS.length; i++) {
-      const setCode = HISTORICAL_AUDIT_SETS[i];
+    for (let i = 0; i < historicalSets.length; i++) {
+      const setCode = historicalSets[i];
       await syncSet(supabase, setCode, { draftStatus: 'historical', onlyIfChanged: true });
-      if (i < HISTORICAL_AUDIT_SETS.length - 1) {
+      if (i < historicalSets.length - 1) {
         console.log('Pausing 3s before next historical set...');
         await sleep(3000);
       }
@@ -323,7 +390,7 @@ async function main() {
       }
     }
   } else {
-    const targetSets = explicitSets.length > 0 ? explicitSets : resolveCurrentActiveSets();
+    const targetSets = explicitSets.length > 0 ? explicitSets : await resolveCurrentActiveSets(supabase);
     console.log(`Mode: Daily Active Draft Telemetry Sync`);
     console.log(`Active sets: ${targetSets.join(', ')}`);
 

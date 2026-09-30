@@ -1,8 +1,6 @@
 import { get, set } from 'idb-keyval';
 import { Card, GradeTier, SetDraftStatus, SeventeenLandsCardRating, SeventeenLandsSetData, UserCardEvaluation, CardEvaluationComparison, SetCalibrationSummary } from '../types/mtg';
-import { HOB_17LANDS_DATA } from './hob17LandsData';
-import { SOS_17LANDS_DATA } from './sos17LandsData';
-import { POPULAR_LIMITED_SETS } from './scryfall';
+import { POPULAR_LIMITED_SETS, compute17LandsAvailableDate } from './scryfall';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 export const GRADE_TIERS: GradeTier[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
@@ -119,19 +117,91 @@ export function get17LandsArchetypeUrl(setCode: string): string {
 }
 
 /**
- * Checks if a set is unreleased (release date in the future) or was released less than 14 days ago.
- * 17Lands telemetry takes ~2 weeks of draft match volume post-release to stabilize.
+ * Checks if a set is unreleased or was released less than 14 days ago on MTG Arena.
+ * 17Lands telemetry takes ~2 weeks of draft match volume post-Arena release to stabilize.
  */
-export function isSetUnderTwoWeeksOld(releasedAt?: string): boolean {
-  if (!releasedAt) return false;
-  const isoStr = releasedAt.includes('T') ? releasedAt : `${releasedAt}T00:00:00Z`;
+export function isSetUnderTwoWeeksOld(releasedAt?: string, arenaReleasedAt?: string): boolean {
+  const dateStr = arenaReleasedAt || releasedAt;
+  if (!dateStr) return false;
+  const isoStr = dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`;
   const releaseTime = new Date(isoStr).getTime();
   if (isNaN(releaseTime)) return false;
   const now = Date.now();
   const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
-  // If release date is in the future, (now - releaseTime) < 0 <= twoWeeksMs (returns true)
-  // If release date is within the last 14 days, (now - releaseTime) < 14 days (returns true)
   return (now - releaseTime) < twoWeeksMs;
+}
+
+/**
+ * Determines whether 17Lands data can be queried for a set:
+ * 1. Returns true if authentic 17Lands telemetry is already verified in the set catalog.
+ * 2. If seventeen_lands_available_at (2 weeks post-Arena release) is set, checks if Date.now() >= that date.
+ * 3. Fallback: calculates 14 days after arena_released_at or released_at.
+ */
+export function canQuery17Lands(
+  setCodeOrSet: string | { code?: string; has_17lands_data?: boolean; seventeen_lands_available_at?: string; arena_released_at?: string; released_at?: string }
+): boolean {
+  if (!setCodeOrSet) return false;
+  const upper = typeof setCodeOrSet === 'string' ? setCodeOrSet.toUpperCase().trim() : (setCodeOrSet.code || '').toUpperCase().trim();
+  const setInfo = typeof setCodeOrSet === 'object' && setCodeOrSet.seventeen_lands_available_at
+    ? setCodeOrSet
+    : POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
+
+  // If already verified in catalog
+  if (setInfo?.has_17lands_data === true) return true;
+
+  // Check 17Lands availability date (2 weeks / 14 days after MTG Arena release)
+  const availDateStr = setInfo?.seventeen_lands_available_at || (setInfo?.arena_released_at ? compute17LandsAvailableDate(setInfo.arena_released_at) : null);
+  if (availDateStr) {
+    const availTime = new Date(availDateStr.includes('T') ? availDateStr : `${availDateStr}T00:00:00Z`).getTime();
+    if (!isNaN(availTime)) {
+      return Date.now() >= availTime;
+    }
+  }
+
+  // Fallback check on released_at (14 days post-release)
+  if (setInfo?.released_at) {
+    const relTime = new Date(setInfo.released_at.includes('T') ? setInfo.released_at : `${setInfo.released_at}T00:00:00Z`).getTime();
+    if (!isNaN(relTime)) {
+      return (Date.now() - relTime) >= (14 * 24 * 60 * 60 * 1000);
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Returns formatted query status & availability date for 17Lands data.
+ */
+export function get17LandsQueryStatus(
+  setCodeOrSet: string | { code?: string; has_17lands_data?: boolean; seventeen_lands_available_at?: string; arena_released_at?: string; released_at?: string }
+): {
+  isEligible: boolean;
+  availableDateStr?: string;
+  daysRemaining: number;
+} {
+  const upper = typeof setCodeOrSet === 'string' ? setCodeOrSet.toUpperCase().trim() : (setCodeOrSet.code || '').toUpperCase().trim();
+  const setInfo = typeof setCodeOrSet === 'object' && setCodeOrSet.seventeen_lands_available_at
+    ? setCodeOrSet
+    : POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
+
+  const eligible = canQuery17Lands(setCodeOrSet);
+  if (eligible) {
+    return { isEligible: true, daysRemaining: 0 };
+  }
+
+  const targetDateStr = setInfo?.seventeen_lands_available_at || (setInfo?.arena_released_at ? compute17LandsAvailableDate(setInfo.arena_released_at) : (setInfo?.released_at ? compute17LandsAvailableDate(setInfo.released_at) : undefined));
+  if (!targetDateStr) {
+    return { isEligible: false, daysRemaining: 999 };
+  }
+
+  const targetTime = new Date(targetDateStr.includes('T') ? targetDateStr : `${targetDateStr}T00:00:00Z`).getTime();
+  const diffDays = Math.max(0, Math.ceil((targetTime - Date.now()) / (24 * 60 * 60 * 1000)));
+
+  return {
+    isEligible: false,
+    availableDateStr: targetDateStr,
+    daysRemaining: diffDays,
+  };
 }
 
 /**
@@ -295,10 +365,9 @@ export function getOrEstimate17LandsCardRating(
     }
   }
 
-  // 3. For unreleased sets, do not synthesize fake data
+  // 3. For sets where 17Lands is not yet queryable (under 2 weeks post-Arena release), do not synthesize fake data
   const upperSet = (card.set || '').toUpperCase();
-  const unreleasedSets = new Set(['TRK', 'MBC', 'FRA', 'SPM']);
-  if (unreleasedSets.has(upperSet)) {
+  if (!canQuery17Lands(upperSet)) {
     return null;
   }
 
@@ -398,11 +467,14 @@ export function isAuthentic17LandsDataSet(
   setCode?: string,
   cards?: Card[]
 ): boolean {
-  if (!seventeenLandsData || (seventeenLandsData.sampleSize || 0) <= 500) return false;
-  if (setCode && seventeenLandsData.setCode) {
+  if (!seventeenLandsData) return false;
+  const sample = seventeenLandsData.sampleSize || (seventeenLandsData as any).sample_size || (seventeenLandsData as any).total_games || 0;
+  if (sample <= 500) return false;
+  const dataSetCode = seventeenLandsData.setCode || (seventeenLandsData as any).set_code;
+  if (setCode && dataSetCode) {
     const target = get17LandsExpansionCode(setCode).toUpperCase();
-    const dataExp = get17LandsExpansionCode(seventeenLandsData.setCode).toUpperCase();
-    if (target !== dataExp && seventeenLandsData.setCode.toUpperCase() !== setCode.toUpperCase()) {
+    const dataExp = get17LandsExpansionCode(dataSetCode).toUpperCase();
+    if (target !== dataExp && dataSetCode.toUpperCase() !== setCode.toUpperCase()) {
       return false;
     }
   }
@@ -437,11 +509,8 @@ export function is17LandsEligibleForSet(
 
 
 
-// Full bundled 17Lands datasets for complete sets (guarantees offline & zero-latency first render)
-const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLandsCardRating>>> = {
-  'HOB': HOB_17LANDS_DATA,
-  'SOS': SOS_17LANDS_DATA,
-};
+// Central 17Lands telemetry cache (loaded dynamically from Supabase seventeen_lands_cache and IndexedDB)
+const PRELOADED_17LANDS_DATA: Record<string, Record<string, Partial<SeventeenLandsCardRating>>> = {};
 
 // Curated 17Lands benchmark cards for cross-set precedents and card similarity lookups
 const BENCHMARK_17LANDS_CARDS: Record<string, Partial<SeventeenLandsCardRating>> = {
@@ -557,7 +626,6 @@ const BENCHMARK_17LANDS_CARDS: Record<string, Partial<SeventeenLandsCardRating>>
   'Okiba Reckoner Raid': { win_rate: 0.598, avg_seen: 3.2, iwd: 0.046, tier_grade: 'A-', seen_count: 195000, game_count: 155000 },
   // TDM
   'Sage of the Fang': { win_rate: 0.568, avg_seen: 4.5, iwd: 0.021, tier_grade: 'B', seen_count: 65000, game_count: 48000 },
-  'Hero in Training': { win_rate: 0.558, avg_seen: 5.1, iwd: 0.015, tier_grade: 'B-', seen_count: 62000, game_count: 45000 },
   'Embermouth Sentinel': { win_rate: 0.541, avg_seen: 6.4, iwd: 0.005, tier_grade: 'C+', seen_count: 175000, game_count: 51000, card_id: 98150 },
   // WOE
   'Candy Trail': { win_rate: 0.5518, avg_seen: 6.48, iwd: 0.0137, tier_grade: 'B-', seen_count: 412563, game_count: 123535, card_id: 86975 },
@@ -605,6 +673,13 @@ const BENCHMARK_17LANDS_CARDS: Record<string, Partial<SeventeenLandsCardRating>>
   'Run Aground': { win_rate: 0.542, avg_seen: 5.2, iwd: 0.008, tier_grade: 'C+', seen_count: 6100, game_count: 15500 },
   'Cruel Witness': { win_rate: 0.556, avg_seen: 4.8, iwd: 0.022, tier_grade: 'B-', seen_count: 5500, game_count: 14500 },
   'Out of Sight': { win_rate: 0.564, avg_seen: 3.8, iwd: 0.028, tier_grade: 'B', seen_count: 3200, game_count: 8500 },
+  // Hand Disruption & Blightning Benchmarks
+  'Blightning': { win_rate: 0.585, avg_seen: 2.8, iwd: 0.040, tier_grade: 'A-', seen_count: 3200, game_count: 7800 },
+  'Agonizing Remorse': { win_rate: 0.572, avg_seen: 3.5, iwd: 0.030, tier_grade: 'B+', seen_count: 4200, game_count: 8100 },
+  'Pilfer': { win_rate: 0.535, avg_seen: 5.8, iwd: 0.005, tier_grade: 'C+', seen_count: 4900, game_count: 7200 },
+  'Drill Bit': { win_rate: 0.565, avg_seen: 4.1, iwd: 0.025, tier_grade: 'B', seen_count: 3900, game_count: 7500 },
+  'Hopeless Nightmare': { win_rate: 0.578, avg_seen: 3.7, iwd: 0.034, tier_grade: 'B+', seen_count: 4800, game_count: 8400 },
+  'Duress': { win_rate: 0.525, avg_seen: 6.2, iwd: -0.005, tier_grade: 'C', seen_count: 5100, game_count: 6800 },
 };
 
 /**
@@ -780,9 +855,8 @@ export async function fetch17LandsSetData(
     return inFlightSetRequests.get(upperCode)!;
   }
 
-  // 3. Known Set Ineligibility Guard: If set is curated with has_17lands_data: false, never hit network!
-  const knownSet = POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upperCode);
-  if (knownSet && knownSet.has_17lands_data === false) {
+  // 3. Known Set Ineligibility Guard: If set is not yet eligible to query (2 weeks post-Arena release), never hit network!
+  if (!canQuery17Lands(upperCode)) {
     sessionNoDataSets.add(upperCode);
     try {
       sessionStorage.setItem(`17lands_nodata_${upperCode}`, '1');
@@ -809,9 +883,10 @@ export async function fetch17LandsSetData(
       const preloadedCount = preloaded?.cards ? Object.keys(preloaded.cards).length : 0;
       const cachedCount = cached?.cards ? Object.keys(cached.cards).length : 0;
 
-      // Cache is only accepted if it has at least 50 cards and isn't inferior to bundled preloaded data
-      if (cached && (cached.sampleSize || 0) > 500 && cachedCount >= 50 && cachedCount >= preloadedCount) {
+      // Cache is only accepted if it has at least 50 cards, at least 1,000 games, and isn't inferior to bundled preloaded data
+      if (cached && (cached.sampleSize || 0) >= 1000 && cachedCount >= 50 && cachedCount >= preloadedCount) {
         sessionSetDataCache.set(upperCode, cached);
+        preloaded17LandsCache.set(upperCode, cached);
 
         // Stale-While-Revalidate:
         // - Active & Flashback sets: revalidate if cached data is older than 24 hours
@@ -990,8 +1065,18 @@ async function executeFetch17LandsSetData(
         .maybeSingle();
 
       if (!error && dbRow?.dataset && typeof dbRow.dataset === 'object') {
-        const dbData = dbRow.dataset as SeventeenLandsSetData;
+        const raw = dbRow.dataset as any;
+        const dbData: SeventeenLandsSetData = {
+          setCode: raw.setCode || raw.set_code || upperCode,
+          setName: raw.setName || raw.set_name || upperCode,
+          format: raw.format || 'PremierDraft',
+          sampleSize: raw.sampleSize || raw.sample_size || raw.total_games || 0,
+          cards: raw.cards || {},
+          updatedAt: raw.updatedAt || raw.updated_at || new Date().toISOString(),
+        };
         if (dbData.cards && Object.keys(dbData.cards).length >= 5) {
+          sessionSetDataCache.set(upperCode, dbData);
+          preloaded17LandsCache.set(upperCode, dbData);
           if (typeof indexedDB !== 'undefined') {
             try {
               await set(cacheKey, dbData);
@@ -1388,7 +1473,7 @@ export function calculateColorAccuracyAnalytics(
   userEvaluations: Record<string, UserCardEvaluation>,
   landsData: SeventeenLandsSetData | null
 ): ColorAccuracyStat[] {
-  const has17Lands = Boolean(landsData && (landsData.sampleSize || 0) > 500 && Object.keys(landsData.cards || {}).length > 0);
+  const has17Lands = Boolean(landsData && (landsData.sampleSize || 0) >= 1000 && Object.keys(landsData.cards || {}).length > 0);
   const COLOR_GROUPS = [
     { id: 'W', label: 'White', badge: '☀️ White' },
     { id: 'U', label: 'Blue', badge: '💧 Blue' },
@@ -1485,7 +1570,7 @@ export function calculateRarityAccuracyAnalytics(
   userEvaluations: Record<string, UserCardEvaluation>,
   landsData: SeventeenLandsSetData | null
 ): RarityAccuracyStat[] {
-  const has17Lands = Boolean(landsData && (landsData.sampleSize || 0) > 500 && Object.keys(landsData.cards || {}).length > 0);
+  const has17Lands = Boolean(landsData && (landsData.sampleSize || 0) >= 1000 && Object.keys(landsData.cards || {}).length > 0);
   const RARITIES = [
     { id: 'common', label: 'Commons' },
     { id: 'uncommon', label: 'Uncommons' },
@@ -1561,7 +1646,7 @@ export function calculateGradeDistribution(
   userEvaluations: Record<string, UserCardEvaluation>,
   landsData: SeventeenLandsSetData | null
 ): GradeDistributionPoint[] {
-  const has17Lands = Boolean(landsData && (landsData.sampleSize || 0) > 500 && Object.keys(landsData.cards || {}).length > 0);
+  const has17Lands = Boolean(landsData && (landsData.sampleSize || 0) >= 1000 && Object.keys(landsData.cards || {}).length > 0);
 
   const ratedCards = cards.filter((c) => userEvaluations[`${c.set.toLowerCase()}_${c.name.toLowerCase()}`]);
   const totalRated = ratedCards.length;

@@ -1,15 +1,21 @@
+import { get, set } from 'idb-keyval';
 import { Card, GradeTier } from '../types/mtg';
 import { scoreToGradeTier } from './seventeenLands';
-import { ECL_LSV_DATA } from './eclLsvData';
-import { SOS_LSV_DATA } from './sosLsvData';
-import { HOB_LSV_DATA } from './hobLsvData';
+import { POPULAR_LIMITED_SETS } from './scryfall';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 export interface LsvCardRating {
   score: number; // 0.0 to 5.0
   grade: GradeTier;
   verdict?: string; // e.g. "Bomb", "High Pick", "Solid Playable", "Filler"
+  notes?: string;
+  source?: string;
   isEstimated?: boolean;
 }
+
+// In-memory cache of live/database pro ratings per set
+const LIVE_PRO_RATINGS: Record<string, Record<string, LsvCardRating> | undefined> = {};
+const PENDING_PRO_RATING_FETCHES: Record<string, Promise<Record<string, LsvCardRating>> | undefined> = {};
 
 // Convert LSV's traditional 0.0 - 5.0 scale to standard GradeTier
 export function lsvScoreToGradeTier(score: number): GradeTier {
@@ -26,136 +32,172 @@ export function lsvScoreToGradeTier(score: number): GradeTier {
   return 'F';
 }
 
-// Benchmark LSV Pre-Release Set Review ratings
-const PRELOADED_LSV_DATA: Record<string, Record<string, number>> = {
-  'ECL': ECL_LSV_DATA,
-  'SOS': SOS_LSV_DATA,
-  'HOB': HOB_LSV_DATA,
-  'STX': {
-    'Expressive Iteration': 4.0,
-    'Rip Apart': 3.5,
-    'Killian, Ink Duelist': 4.0,
-    'Dina, Soul Steeper': 3.5,
-    'Quandrix Apprentice': 3.5,
-    'Professor Onyx': 4.5,
-    'Mila, Crafty Companion // Lukka, Wayward Bonder': 4.0,
-    'Beledros Witherbloom': 4.5,
-    'Galazeth Prismari': 4.5,
-    'Shadrix Silverquill': 4.5,
-    'Tanazir Quandrix': 4.5,
-    'Velomachus Lorehold': 4.5,
-  },
-  'BLB': {
-    'Heartfire Hero': 4.0,
-    'Fell': 4.0,
-    'Might of the Meek': 3.0,
-    'Warren Warleader': 4.5,
-    'Seedgale Foster': 2.0,
-    'Shore Up': 2.5,
-    'Gev, Scaled Scorch': 4.0,
-    'Agate Blade Assassin': 2.5,
-    'Baker\'s Bane Beastie': 2.0,
-    'Bonebind Orator': 3.0,
-    'Brambleguard Veteran': 3.5,
-    'Builder\'s Talent': 3.5,
-    'Carrot Cake': 3.0,
-    'Crumb and Get It': 2.5,
-    'Daggerfang Duo': 2.0,
-    'Daring Waverider': 2.5,
-    'Early Winter': 1.5,
-    'Finneas, Ace Archer': 4.0,
-    'Head of the Homestead': 3.0,
-    'Huskburster Swarm': 3.5,
-    'Into the Flood Maw': 3.5,
-    'Kastral, the Windcrested': 4.5,
-    'Long River\'s Pull': 3.0,
-    'Mindwhisker': 2.5,
-    'Osteomancer Adept': 4.0,
-    'Patchwork Banner': 3.5,
-    'Playful Shove': 2.5,
-    'Polliwallop': 3.0,
-    'Quirion Beastcaller': 4.0,
-    'Rabid Gnaw': 3.5,
-    'Sunspine Lynx': 3.0,
-    'Take Out the Trash': 3.5,
-    'Treeguard Duo': 3.0,
-    'Valley Questcaller': 4.0,
-    'Vinereap Mentor': 3.5,
-    'Wandertale Mentor': 3.5,
-    'Wax-Wane Witness': 2.5,
-    'Wreaking Havoc': 1.5,
-    'Ygra, Eater of All': 4.5,
-  },
-  'OTJ': {
-    'Railway Brawler': 5.0,
-    'Vault Plunderer': 3.5,
-    'Throwing Knife': 3.5,
-    'Mystic Confluence': 4.5,
-    'Holy Cow': 3.0,
-    'Take the Fall': 2.5,
-    'Desert\'s Due': 3.5,
-    'Consuming Ashes': 3.5,
-    'Geyser Drake': 3.0,
+/**
+ * Loads pro card ratings for a set:
+ * 1. Checks memory cache
+ * 2. Checks local IndexedDB cache
+ * 3. Fetches from Supabase pro_card_ratings table and updates IndexedDB
+ */
+export async function loadProRatingsForSet(setCode: string): Promise<Record<string, LsvCardRating>> {
+  if (!setCode) return {};
+  const upper = setCode.toUpperCase().trim();
+
+  if (LIVE_PRO_RATINGS[upper] && Object.keys(LIVE_PRO_RATINGS[upper]!).length > 0) {
+    return LIVE_PRO_RATINGS[upper]!;
   }
-};
+
+  if (PENDING_PRO_RATING_FETCHES[upper]) {
+    return PENDING_PRO_RATING_FETCHES[upper]!;
+  }
+
+  const fetchPromise = (async () => {
+    const idbKey = `pro_ratings_v1_${upper}`;
+
+    // 1. Try local IndexedDB cache first for instant offline readiness
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const cached = await get<Record<string, LsvCardRating>>(idbKey);
+        if (cached && Object.keys(cached).length > 0) {
+          LIVE_PRO_RATINGS[upper] = { ...cached };
+        }
+      } catch (e) {
+        // ignore IDB errors
+      }
+    }
+
+    // 2. Query Supabase if configured to get fresh / updated ratings
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('pro_card_ratings')
+          .select('card_name, score, grade, verdict, notes, source')
+          .eq('set_code', upper);
+
+        if (!error && data && data.length > 0) {
+          const freshMap: Record<string, LsvCardRating> = {};
+          for (const row of data) {
+            const sc = Number(row.score);
+            freshMap[row.card_name.trim()] = {
+              score: sc,
+              grade: (row.grade as GradeTier) || lsvScoreToGradeTier(sc),
+              verdict: row.verdict || (sc >= 4.5 ? 'Bomb' : sc >= 3.5 ? 'High Pick' : sc >= 2.5 ? 'Solid Playable' : sc >= 1.5 ? 'Filler' : 'Unplayable'),
+              notes: row.notes || undefined,
+              source: row.source || 'LSV',
+              isEstimated: false,
+            };
+          }
+
+          LIVE_PRO_RATINGS[upper] = freshMap;
+
+          if (typeof indexedDB !== 'undefined') {
+            try {
+              await set(idbKey, freshMap);
+            } catch (e) {}
+          }
+
+          return freshMap;
+        }
+      } catch (err) {
+        console.warn(`[lsvRatings] Failed to fetch pro ratings from Supabase for ${upper}:`, err);
+      }
+    }
+
+    // 3. Fall back to cached IDB data if Supabase failed or returned empty
+    if (LIVE_PRO_RATINGS[upper] && Object.keys(LIVE_PRO_RATINGS[upper]!).length > 0) {
+      return LIVE_PRO_RATINGS[upper]!;
+    }
+
+    return LIVE_PRO_RATINGS[upper] || {};
+  })();
+
+  PENDING_PRO_RATING_FETCHES[upper] = fetchPromise;
+  try {
+    const res = await fetchPromise;
+    return res;
+  } finally {
+    delete PENDING_PRO_RATING_FETCHES[upper];
+  }
+}
+
+/**
+ * Determines whether LSV ratings can be checked for a set:
+ * 1. Returns true if ratings exist in LIVE_PRO_RATINGS.
+ * 2. If lsv_available_at date is set, returns true if Date.now() >= that date.
+ * 3. Fallback: reviews drop during prerelease week (~4 days before Arena launch or ~7 days before tabletop).
+ */
+export function isLsvRatingEligible(
+  setCodeOrSet: string | { code?: string; lsv_available_at?: string; arena_released_at?: string; released_at?: string }
+): boolean {
+  if (!setCodeOrSet) return false;
+  const upper = typeof setCodeOrSet === 'string' ? setCodeOrSet.toUpperCase().trim() : (setCodeOrSet.code || '').toUpperCase().trim();
+
+  // 1. If database data exists, always eligible
+  if (LIVE_PRO_RATINGS[upper] && Object.keys(LIVE_PRO_RATINGS[upper]!).length > 0) {
+    return true;
+  }
+
+  const setInfo = typeof setCodeOrSet === 'object' && setCodeOrSet.lsv_available_at
+    ? setCodeOrSet
+    : POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
+
+  if (!setInfo) return true;
+
+  // 2. Check lsv_available_at date
+  if (setInfo.lsv_available_at) {
+    const targetTime = new Date(setInfo.lsv_available_at.includes('T') ? setInfo.lsv_available_at : `${setInfo.lsv_available_at}T00:00:00Z`).getTime();
+    if (!isNaN(targetTime)) {
+      return Date.now() >= targetTime;
+    }
+  }
+
+  // 3. Fallback: reviews drop during prerelease week (~4 days before Arena launch or ~7 days before tabletop)
+  if (setInfo.arena_released_at) {
+    const arenaTime = new Date(setInfo.arena_released_at.includes('T') ? setInfo.arena_released_at : `${setInfo.arena_released_at}T00:00:00Z`).getTime();
+    return Date.now() >= (arenaTime - 4 * 24 * 60 * 60 * 1000);
+  }
+
+  if (setInfo.released_at) {
+    const relTime = new Date(setInfo.released_at.includes('T') ? setInfo.released_at : `${setInfo.released_at}T00:00:00Z`).getTime();
+    return Date.now() >= (relTime - 7 * 24 * 60 * 60 * 1000);
+  }
+
+  return true;
+}
 
 /**
  * Get LSV pre-release rating for a card.
- * Sourced from official Limited Resources / ChannelFireball set reviews,
+ * Sourced from Supabase database pro_card_ratings, official Limited Resources / CFB reviews,
  * with empirical calibration fallback for released sets.
  */
 export function getLsvRatingForCard(card: Card, setCode?: string): LsvCardRating | null {
   const setUpper = (setCode || card.set || '').toUpperCase().trim();
   const cardName = card.name.trim();
 
-  // 1. Check exact match in preloaded set
-  if (PRELOADED_LSV_DATA[setUpper] && PRELOADED_LSV_DATA[setUpper][cardName] !== undefined) {
-    const score = PRELOADED_LSV_DATA[setUpper][cardName];
-    return {
-      score,
-      grade: lsvScoreToGradeTier(score),
-      verdict: score >= 4.5 ? 'Bomb' : score >= 3.5 ? 'High Pick' : score >= 2.5 ? 'Solid Playable' : score >= 1.5 ? 'Filler' : 'Unplayable',
-      isEstimated: false,
-    };
+  // Kick off background load if not yet populated
+  if (!LIVE_PRO_RATINGS[setUpper] && !PENDING_PRO_RATING_FETCHES[setUpper] && isSupabaseConfigured()) {
+    loadProRatingsForSet(setUpper).catch(() => {});
   }
 
-  // 2. Check front face for split/transform cards
-  if (cardName.includes(' // ')) {
-    const frontFace = cardName.split(' // ')[0].trim();
-    if (PRELOADED_LSV_DATA[setUpper] && PRELOADED_LSV_DATA[setUpper][frontFace] !== undefined) {
-      const score = PRELOADED_LSV_DATA[setUpper][frontFace];
-      return {
-        score,
-        grade: lsvScoreToGradeTier(score),
-        verdict: score >= 4.5 ? 'Bomb' : score >= 3.5 ? 'High Pick' : score >= 2.5 ? 'Solid Playable' : score >= 1.5 ? 'Filler' : 'Unplayable',
-        isEstimated: false,
-      };
+  // 1. Check live database / IDB cache first
+  const liveSet = LIVE_PRO_RATINGS[setUpper];
+  if (liveSet) {
+    if (liveSet[cardName]) return liveSet[cardName];
+    if (cardName.includes(' // ')) {
+      const frontFace = cardName.split(' // ')[0].trim();
+      if (liveSet[frontFace]) return liveSet[frontFace];
     }
-  }
-
-  // 3. Normalized / fuzzy match in preloaded set
-  if (PRELOADED_LSV_DATA[setUpper]) {
     const norm = (s: string) => s.toLowerCase().replace(/['’".,\-]/g, '').trim();
     const target = norm(cardName);
-    const entry = Object.entries(PRELOADED_LSV_DATA[setUpper]).find(([k]) => norm(k) === target);
-    if (entry) {
-      const score = entry[1];
-      return {
-        score,
-        grade: lsvScoreToGradeTier(score),
-        verdict: score >= 4.5 ? 'Bomb' : score >= 3.5 ? 'High Pick' : score >= 2.5 ? 'Solid Playable' : score >= 1.5 ? 'Filler' : 'Unplayable',
-        isEstimated: false,
-      };
-    }
+    const entry = Object.entries(liveSet).find(([k]) => norm(k) === target);
+    if (entry) return entry[1];
   }
 
-  // 4. For unreleased spoiler sets, do not fabricate ratings (reviews come out during prerelease week)
-  const unreleasedSets = new Set(['TRK', 'FRA', 'SPM']);
-  if (unreleasedSets.has(setUpper)) {
+  // 2. Automatically check if LSV set reviews are released based on the set schedule
+  if (!isLsvRatingEligible(setUpper)) {
     return null;
   }
 
-  // 5. Realistic empirical estimation for released sets where manual transcription is pending
+  // 3. Realistic empirical estimation for released sets where manual transcription is pending
   const rarity = (card.rarity || 'common').toLowerCase();
   let baseScore = 2.5;
   if (rarity === 'mythic') baseScore = 4.0;

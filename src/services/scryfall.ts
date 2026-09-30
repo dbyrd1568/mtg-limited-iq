@@ -1,5 +1,6 @@
 import { get, set } from 'idb-keyval';
 import { Card, CardFace, MTGColor, MTGRarity, SetInfo } from '../types/mtg';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
@@ -13,25 +14,185 @@ export const KNOWN_17LANDS_EXPANSIONS = new Set([
   'M20', 'WAR', 'M19', 'DOM', 'RIX', 'GRN', 'RNA', 'KTK', 'XLN', 'RVR'
 ]);
 
+/**
+ * Adds 14 days (2 weeks) to an MTG Arena release date to establish the 17Lands query eligibility date.
+ */
+export function compute17LandsAvailableDate(arenaReleasedAt: string): string {
+  const d = new Date(arenaReleasedAt.includes('T') ? arenaReleasedAt : `${arenaReleasedAt}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 14);
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Derives default Arena release date (typically Tuesday prior to Friday release, or same day).
+ */
+export function computeArenaReleaseDate(tabletopReleasedAt: string): string {
+  const d = new Date(tabletopReleasedAt.includes('T') ? tabletopReleasedAt : `${tabletopReleasedAt}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 3);
+  return d.toISOString().split('T')[0];
+}
+
 // Pre-curated list of top Limited sets with comprehensive metadata
 // Correctly tracks all sets with active 17Lands Premier Draft telemetry
 export const POPULAR_LIMITED_SETS: SetInfo[] = [
   // 2026 Sets
-  { code: 'TRK', name: 'Star Trek', card_count: 135, released_at: '2026-11-01', set_type: 'expansion', has_17lands_data: false },
-  { code: 'MBC', name: 'Mystery Booster Commander Edition', card_count: 80, released_at: '2026-08-01', set_type: 'draft_innovation', has_17lands_data: true, is_active_draft: true },
-  { code: 'FRA', name: 'Reality Fracture', card_count: 290, released_at: '2026-10-02', set_type: 'expansion', has_17lands_data: false },
-  { code: 'HOB', name: 'The Hobbit', card_count: 321, released_at: '2026-08-14', set_type: 'expansion', has_17lands_data: true, is_active_draft: true },
-  { code: 'MSH', name: 'Marvel Super Heroes', card_count: 453, released_at: '2026-06-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'SOS', name: 'Secrets of Strixhaven', card_count: 368, released_at: '2026-04-24', set_type: 'expansion', has_17lands_data: true },
-  { code: 'TMT', name: 'Teenage Mutant Ninja Turtles', card_count: 320, released_at: '2026-03-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'ECL', name: 'Lorwyn Eclipsed', card_count: 408, released_at: '2026-01-01', set_type: 'expansion', has_17lands_data: true },
+  {
+    code: 'TRK',
+    name: 'Star Trek',
+    card_count: 135,
+    released_at: '2026-11-01',
+    arena_released_at: '2026-10-27',
+    lsv_available_at: '2026-10-24',
+    seventeen_lands_available_at: '2026-11-10',
+    set_type: 'expansion',
+    has_17lands_data: false,
+  },
+  {
+    code: 'MBC',
+    name: 'Mystery Booster Commander Edition',
+    card_count: 80,
+    released_at: '2026-08-01',
+    arena_released_at: '2026-08-01',
+    lsv_available_at: '2026-07-28',
+    seventeen_lands_available_at: '2026-08-15',
+    set_type: 'draft_innovation',
+    has_17lands_data: false,
+    is_active_draft: true,
+  },
+  {
+    code: 'FRA',
+    name: 'Reality Fracture',
+    card_count: 290,
+    released_at: '2026-10-02',
+    arena_released_at: '2026-09-29',
+    lsv_available_at: '2026-09-25',
+    seventeen_lands_available_at: '2026-10-13',
+    set_type: 'expansion',
+    has_17lands_data: false,
+  },
+  {
+    code: 'HOB',
+    name: 'The Hobbit',
+    card_count: 321,
+    released_at: '2026-08-14',
+    arena_released_at: '2026-08-11',
+    lsv_available_at: '2026-08-07',
+    seventeen_lands_available_at: '2026-08-25',
+    set_type: 'expansion',
+    has_17lands_data: true,
+    is_active_draft: true,
+  },
+  {
+    code: 'MSH',
+    name: 'Marvel Super Heroes',
+    card_count: 453,
+    released_at: '2026-06-01',
+    arena_released_at: '2026-05-26',
+    lsv_available_at: '2026-05-22',
+    seventeen_lands_available_at: '2026-06-09',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
+  {
+    code: 'SOS',
+    name: 'Secrets of Strixhaven',
+    card_count: 368,
+    released_at: '2026-04-24',
+    arena_released_at: '2026-04-21',
+    lsv_available_at: '2026-04-17',
+    seventeen_lands_available_at: '2026-05-05',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
+  {
+    code: 'TMT',
+    name: 'Teenage Mutant Ninja Turtles',
+    card_count: 320,
+    released_at: '2026-03-01',
+    arena_released_at: '2026-02-24',
+    lsv_available_at: '2026-02-20',
+    seventeen_lands_available_at: '2026-03-10',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
+  {
+    code: 'ECL',
+    name: 'Lorwyn Eclipsed',
+    card_count: 408,
+    released_at: '2026-01-01',
+    arena_released_at: '2025-12-30',
+    lsv_available_at: '2025-12-26',
+    seventeen_lands_available_at: '2026-01-13',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
   // 2025 Sets
-  { code: 'TLA', name: 'Avatar: The Last Airbender', card_count: 394, released_at: '2025-11-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'SPM', name: "Marvel's Spider-Man", card_count: 286, released_at: '2025-09-26', set_type: 'expansion', has_17lands_data: false },
-  { code: 'EOE', name: 'Edge of Eternities', card_count: 400, released_at: '2025-08-01', set_type: 'expansion', has_17lands_data: true },
-  { code: 'FIN', name: 'Final Fantasy', card_count: 599, released_at: '2025-06-13', set_type: 'expansion', has_17lands_data: true },
-  { code: 'TDM', name: 'Tarkir: Dragonstorm', card_count: 427, released_at: '2025-04-11', set_type: 'expansion', has_17lands_data: true },
-  { code: 'DFT', name: 'Aetherdrift', card_count: 276, released_at: '2025-02-14', set_type: 'expansion', has_17lands_data: true },
+  {
+    code: 'TLA',
+    name: 'Avatar: The Last Airbender',
+    card_count: 394,
+    released_at: '2025-11-01',
+    arena_released_at: '2025-10-28',
+    lsv_available_at: '2025-10-24',
+    seventeen_lands_available_at: '2025-11-11',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
+  {
+    code: 'SPM',
+    name: "Marvel's Spider-Man",
+    card_count: 286,
+    released_at: '2025-09-26',
+    arena_released_at: '2025-09-23',
+    lsv_available_at: '2025-09-19',
+    seventeen_lands_available_at: '2025-10-07',
+    set_type: 'expansion',
+    has_17lands_data: false,
+  },
+  {
+    code: 'EOE',
+    name: 'Edge of Eternities',
+    card_count: 400,
+    released_at: '2025-08-01',
+    arena_released_at: '2025-07-29',
+    lsv_available_at: '2025-07-25',
+    seventeen_lands_available_at: '2025-08-12',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
+  {
+    code: 'FIN',
+    name: 'Final Fantasy',
+    card_count: 599,
+    released_at: '2025-06-13',
+    arena_released_at: '2025-06-10',
+    lsv_available_at: '2025-06-06',
+    seventeen_lands_available_at: '2025-06-24',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
+  {
+    code: 'TDM',
+    name: 'Tarkir: Dragonstorm',
+    card_count: 427,
+    released_at: '2025-04-11',
+    arena_released_at: '2025-04-08',
+    lsv_available_at: '2025-04-04',
+    seventeen_lands_available_at: '2025-04-22',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
+  {
+    code: 'DFT',
+    name: 'Aetherdrift',
+    card_count: 276,
+    released_at: '2025-02-14',
+    arena_released_at: '2025-02-11',
+    lsv_available_at: '2025-02-07',
+    seventeen_lands_available_at: '2025-02-25',
+    set_type: 'expansion',
+    has_17lands_data: true,
+  },
   // 2024 Sets
   { code: 'PIO', name: 'Pioneer Masters', card_count: 398, released_at: '2024-12-10', set_type: 'masters', has_17lands_data: true },
   { code: 'FDN', name: 'Foundations', card_count: 271, released_at: '2024-11-15', set_type: 'core', has_17lands_data: true },
@@ -354,10 +515,73 @@ export function normalizeScryfallCard(rawCard: any): Card {
   return card;
 }
 
+/**
+ * Synchronizes release schedule dates and status flags with Supabase public.set_release_schedules.
+ */
+export async function syncSetReleaseSchedules(): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const { data: dbSchedules, error } = await supabase
+      .from('set_release_schedules')
+      .select('*');
+
+    if (!error && dbSchedules && dbSchedules.length > 0) {
+      for (const sched of dbSchedules) {
+        const code = sched.set_code.toUpperCase();
+        const pop = POPULAR_LIMITED_SETS.find(p => p.code.toUpperCase() === code);
+        if (pop) {
+          if (sched.released_at) pop.released_at = sched.released_at;
+          if (sched.arena_released_at) pop.arena_released_at = sched.arena_released_at;
+          if (sched.lsv_available_at) pop.lsv_available_at = sched.lsv_available_at;
+          if (sched.seventeen_lands_available_at) pop.seventeen_lands_available_at = sched.seventeen_lands_available_at;
+          if (sched.has_17lands_data !== undefined && sched.has_17lands_data !== null) pop.has_17lands_data = sched.has_17lands_data;
+          if (sched.is_active_draft !== undefined && sched.is_active_draft !== null) pop.is_active_draft = sched.is_active_draft;
+          if (sched.is_flashback !== undefined && sched.is_flashback !== null) pop.is_flashback = sched.is_flashback;
+          if (sched.card_count) pop.card_count = Math.max(pop.card_count, sched.card_count);
+        } else {
+          POPULAR_LIMITED_SETS.unshift({
+            code,
+            name: sched.set_name || code,
+            card_count: sched.card_count || 280,
+            released_at: sched.released_at || undefined,
+            arena_released_at: sched.arena_released_at || undefined,
+            lsv_available_at: sched.lsv_available_at || undefined,
+            seventeen_lands_available_at: sched.seventeen_lands_available_at || undefined,
+            has_17lands_data: Boolean(sched.has_17lands_data),
+            is_active_draft: Boolean(sched.is_active_draft),
+            is_flashback: Boolean(sched.is_flashback),
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[scryfall] Failed to sync set release schedules from Supabase:', err);
+  }
+}
+
 export async function fetchAllSets(): Promise<SetInfo[]> {
   try {
+    // Sync live schedules in the background/inline so POPULAR_LIMITED_SETS has fresh dates
+    await syncSetReleaseSchedules();
+
     const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v7');
     if (cachedSets && cachedSets.length > 0) {
+      // Re-overlay fresh schedules onto cached sets
+      POPULAR_LIMITED_SETS.forEach((pop) => {
+        const idx = cachedSets.findIndex((m) => m.code.toUpperCase() === pop.code.toUpperCase());
+        if (idx >= 0) {
+          cachedSets[idx].has_17lands_data = Boolean(pop.has_17lands_data);
+          cachedSets[idx].card_count = Math.max(cachedSets[idx].card_count, pop.card_count);
+          if (pop.arena_released_at) cachedSets[idx].arena_released_at = pop.arena_released_at;
+          if (pop.lsv_available_at) cachedSets[idx].lsv_available_at = pop.lsv_available_at;
+          if (pop.seventeen_lands_available_at) cachedSets[idx].seventeen_lands_available_at = pop.seventeen_lands_available_at;
+          if (pop.released_at) cachedSets[idx].released_at = pop.released_at;
+          if (pop.is_active_draft !== undefined) cachedSets[idx].is_active_draft = pop.is_active_draft;
+          if (pop.is_flashback !== undefined) cachedSets[idx].is_flashback = pop.is_flashback;
+        } else {
+          cachedSets.unshift(pop);
+        }
+      });
       return cachedSets;
     }
 
@@ -399,6 +623,12 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
       if (idx >= 0) {
         merged[idx].has_17lands_data = Boolean(pop.has_17lands_data);
         merged[idx].card_count = Math.max(merged[idx].card_count, pop.card_count);
+        if (pop.arena_released_at) merged[idx].arena_released_at = pop.arena_released_at;
+        if (pop.lsv_available_at) merged[idx].lsv_available_at = pop.lsv_available_at;
+        if (pop.seventeen_lands_available_at) merged[idx].seventeen_lands_available_at = pop.seventeen_lands_available_at;
+        if (pop.released_at) merged[idx].released_at = pop.released_at;
+        if (pop.is_active_draft !== undefined) merged[idx].is_active_draft = pop.is_active_draft;
+        if (pop.is_flashback !== undefined) merged[idx].is_flashback = pop.is_flashback;
       } else {
         merged.unshift(pop);
       }

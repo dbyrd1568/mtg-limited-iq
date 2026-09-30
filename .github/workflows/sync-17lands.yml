@@ -2,8 +2,10 @@ name: 📊 Sync 17Lands Telemetry & Flashback Drafts
 
 on:
   # Daily active sync: 4:00 AM Central Time (09:00 UTC)
+  # Weekly historical audit: Sundays at 3:00 AM Central Time (08:00 UTC)
   schedule:
     - cron: '0 9 * * *'
+    - cron: '0 8 * * 0'
 
   # Manual dispatch for on-demand sync, flashback drafts, or historical audit
   workflow_dispatch:
@@ -44,8 +46,9 @@ jobs:
         run: |
           MODE="${{ github.event.inputs.mode || 'active' }}"
           CUSTOM_SETS="${{ github.event.inputs.sets || '' }}"
+          CRON_SCHEDULE="${{ github.event.schedule }}"
 
-          if [ "$MODE" = "audit-historical" ]; then
+          if [ "$MODE" = "audit-historical" ] || [ "$CRON_SCHEDULE" = "0 8 * * 0" ]; then
             echo "Running historical flashback audit..."
             npx tsx scripts/sync-17lands.ts --audit-historical
           elif [ "$MODE" = "flashback" ] && [ -n "$CUSTOM_SETS" ]; then
@@ -55,7 +58,7 @@ jobs:
             echo "Running custom sync for: $CUSTOM_SETS"
             npx tsx scripts/sync-17lands.ts $CUSTOM_SETS
           else
-            echo "Running daily active sets sync (HOB, MBC)..."
+            echo "Running daily active sets sync (HOB, MBC, FRA)..."
             npx tsx scripts/sync-17lands.ts
           fi
         env:

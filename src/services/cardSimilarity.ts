@@ -11,6 +11,251 @@ export const COMPARABLE_PREMIER_SETS = [
   'FIN', 'ECL', 'TDM', 'EOE', 'TLA', 'TMT', 'SOS', 'MSH', 'DFT', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR', 'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX', 'KHM', 'ZNR', 'IKO', 'THB', 'ELD', 'M21', 'M20', 'WAR'
 ];
 
+/**
+ * Canonical MTG companion, commander, bonus sheet, and supplemental set relationships.
+ * Any card belonging to an expansion's family (base set, commander set, bonus sheet, token set, alchemy counterpart)
+ * MUST NEVER be compared against cards from the same family.
+ */
+export const CANONICAL_COMPANION_SETS: Record<string, string[]> = {
+  // Marvel Super Heroes
+  MSH: ['MSC', 'TMSH', 'PMSH', 'AMSH'],
+  MSC: ['MSH', 'TMSH', 'PMSH', 'AMSH'],
+
+  // Secrets of Strixhaven
+  SOS: ['SOC', 'TSOS', 'PSOS', 'ASOS', 'Y26SOS'],
+  SOC: ['SOS', 'TSOS', 'PSOS', 'ASOS', 'Y26SOS'],
+
+  // Lorwyn Eclipsed
+  ECL: ['ECC', 'TECL', 'PECL', 'AECL', 'Y26ECL'],
+  ECC: ['ECL', 'TECL', 'PECL', 'AECL', 'Y26ECL'],
+
+  // Tarkir: Dragonstorm
+  TDM: ['TDC', 'TTDM', 'PTDM', 'ATDM', 'Y25TDM'],
+  TDC: ['TDM', 'TTDM', 'PTDM', 'ATDM', 'Y25TDM'],
+
+  // Edge of Eternities
+  EOE: ['EOC', 'TEOE', 'PEOE', 'AEOE', 'Y25EOE'],
+  EOC: ['EOE', 'TEOE', 'PEOE', 'AEOE', 'Y25EOE'],
+
+  // Final Fantasy
+  FIN: ['FIC', 'TFIN', 'PFIN', 'AFIN'],
+  FIC: ['FIN', 'TFIN', 'PFIN', 'AFIN'],
+
+  // Avatar: The Last Airbender
+  TLA: ['TLC', 'TTLA', 'PTLA', 'ATLA'],
+  TLC: ['TLA', 'TTLA', 'PTLA', 'ATLA'],
+
+  // Teenage Mutant Ninja Turtles
+  TMT: ['TMC', 'TTMT', 'PTMT', 'ATMT'],
+  TMC: ['TMT', 'TTMT', 'PTMT', 'ATMT'],
+
+  // Reality Fracture
+  FRA: ['FRC', 'TFRA', 'PFRA', 'AFRA'],
+  FRC: ['FRA', 'TFRA', 'PFRA', 'AFRA'],
+
+  // The Hobbit
+  HOB: ['HOC', 'THOB', 'PHOB', 'AHOB'],
+  HOC: ['HOB', 'THOB', 'PHOB', 'AHOB'],
+
+  // Aetherdrift
+  DFT: ['DFC', 'TDFT', 'PDFT', 'ADFT', 'Y25DFT'],
+  DFC: ['DFT', 'TDFT', 'PDFT', 'ADFT', 'Y25DFT'],
+
+  // Foundations
+  FDN: ['FDC', 'TFDN', 'PFDN', 'AFDN'],
+  FDC: ['FDN', 'TFDN', 'PFDN', 'AFDN'],
+
+  // Duskmourn
+  DSK: ['DSC', 'TDSK', 'PDSK', 'ADSK', 'Y25DSK'],
+  DSC: ['DSK', 'TDSK', 'PDSK', 'ADSK', 'Y25DSK'],
+
+  // Bloomburrow
+  BLB: ['BLC', 'TBLB', 'PBLB', 'ABLB', 'Y25BLB'],
+  BLC: ['BLB', 'TBLB', 'PBLB', 'ABLB', 'Y25BLB'],
+
+  // Modern Horizons 3
+  MH3: ['M3C', 'TMH3', 'PMH3', 'AMH3'],
+  M3C: ['MH3', 'TMH3', 'PMH3', 'AMH3'],
+
+  // Outlaws of Thunder Junction
+  OTJ: ['OTC', 'BIG', 'OTP', 'SPG', 'TOTJ', 'POTJ', 'Y24OTJ'],
+  OTC: ['OTJ', 'BIG', 'OTP', 'SPG', 'TOTJ', 'POTJ', 'Y24OTJ'],
+  BIG: ['OTJ', 'OTC', 'OTP', 'SPG'],
+  OTP: ['OTJ', 'OTC', 'BIG', 'SPG'],
+
+  // Murders at Karlov Manor
+  MKM: ['MKC', 'SPG', 'TMKM', 'PMKM', 'Y24MKM'],
+  MKC: ['MKM', 'SPG', 'TMKM', 'PMKM', 'Y24MKM'],
+
+  // The Lost Caverns of Ixalan
+  LCI: ['LCC', 'SPG', 'TLCI', 'PLCI', 'Y24LCI'],
+  LCC: ['LCI', 'SPG', 'TLCI', 'PLCI', 'Y24LCI'],
+
+  // Wilds of Eldraine
+  WOE: ['WOC', 'WOT', 'TWOE', 'PWOE', 'Y24WOE'],
+  WOC: ['WOE', 'WOT', 'TWOE', 'PWOE', 'Y24WOE'],
+  WOT: ['WOE', 'WOC', 'TWOE'],
+
+  // The Lord of the Rings: Tales of Middle-earth
+  LTR: ['LTC', 'TLTR', 'PLTR', 'ALTR'],
+  LTC: ['LTR', 'TLTR', 'PLTR', 'ALTR'],
+
+  // March of the Machine
+  MOM: ['MOC', 'MUL', 'TMOM', 'PMOM'],
+  MOC: ['MOM', 'MUL', 'TMOM', 'PMOM'],
+  MUL: ['MOM', 'MOC'],
+
+  // Phyrexia: All Will Be One
+  ONE: ['ONC', 'TONE', 'PONE', 'Y23ONE'],
+  ONC: ['ONE', 'TONE', 'PONE', 'Y23ONE'],
+
+  // The Brothers' War
+  BRO: ['BRC', 'BRR', 'TBRO', 'PBRO', 'Y23BRO'],
+  BRC: ['BRO', 'BRR', 'TBRO', 'PBRO', 'Y23BRO'],
+  BRR: ['BRO', 'BRC'],
+
+  // Dominaria United
+  DMU: ['DMC', 'TDMU', 'PDMU', 'Y23DMU'],
+  DMC: ['DMU', 'TDMU', 'PDMU', 'Y23DMU'],
+
+  // Streets of New Capenna
+  SNC: ['NCC', 'TSNC', 'PSNC', 'Y22SNC'],
+  NCC: ['SNC', 'TSNC', 'PSNC', 'Y22SNC'],
+
+  // Kamigawa: Neon Dynasty
+  NEO: ['NEC', 'TNEO', 'PNEO'],
+  NEC: ['NEO', 'TNEO', 'PNEO'],
+
+  // Innistrad: Crimson Vow
+  VOW: ['VOC', 'TVOW', 'PVOW'],
+  VOC: ['VOW', 'TVOW', 'PVOW'],
+
+  // Innistrad: Midnight Hunt
+  MID: ['MIC', 'TMID', 'RFID'],
+  MIC: ['MID', 'TMID'],
+
+  // Adventures in the Forgotten Realms
+  AFR: ['AFC', 'TAFR'],
+  AFC: ['AFR', 'TAFR'],
+
+  // Strixhaven: School of Mages
+  STX: ['STA', 'C21', 'TSTX'],
+  STA: ['STX', 'C21'],
+  C21: ['STX', 'STA'],
+
+  // Kaldheim
+  KHM: ['KHC', 'TKHM'],
+  KHC: ['KHM', 'TKHM'],
+
+  // Zendikar Rising
+  ZNR: ['ZNC', 'TZNR'],
+  ZNC: ['ZNR', 'TZNR'],
+
+  // Ikoria: Lair of Behemoths
+  IKO: ['IOC', 'C20', 'TIKO'],
+  IOC: ['IKO', 'C20'],
+  C20: ['IKO', 'IOC'],
+
+  // Theros Beyond Death
+  THB: ['THC', 'TTHB'],
+
+  // Throne of Eldraine
+  ELD: ['ELC', 'TELD'],
+};
+
+/**
+ * Strips known prefixes like Y26, Y25, Y24, T, P, A to get the underlying root set code.
+ */
+function getRootSetCode(setCode: string): string {
+  const clean = setCode.trim().toUpperCase();
+  // Alchemy: Y22, Y23, Y24, Y25, Y26 etc.
+  const alchemyMatch = clean.match(/^Y\d{2}([A-Z0-9]+)$/);
+  if (alchemyMatch) return alchemyMatch[1];
+  // Token / promo / art: T, P, A followed by 3-4 chars
+  if (/^[TPA][A-Z0-9]{3,4}$/.test(clean)) {
+    return clean.slice(1);
+  }
+  return clean;
+}
+
+/**
+ * Returns all set codes that belong to the same expansion family
+ * (base set, commander set, token set, promo set, alchemy counterpart).
+ */
+export function getCompanionSetCodes(setCode?: string): string[] {
+  if (!setCode) return [];
+  const clean = setCode.trim().toUpperCase();
+  if (!clean) return [];
+
+  const results = new Set<string>([clean]);
+
+  // Check explicit canonical companion map
+  if (CANONICAL_COMPANION_SETS[clean]) {
+    for (const comp of CANONICAL_COMPANION_SETS[clean]) {
+      results.add(comp);
+    }
+  }
+
+  const root = getRootSetCode(clean);
+  if (root !== clean) {
+    results.add(root);
+    if (CANONICAL_COMPANION_SETS[root]) {
+      for (const comp of CANONICAL_COMPANION_SETS[root]) {
+        results.add(comp);
+      }
+    }
+  }
+
+  // Standard 3-letter commander convention: XYZ -> XYC
+  if (root.length === 3) {
+    results.add(root.slice(0, 2) + 'C');
+  }
+
+  // Token / Promo / Art series variants
+  results.add(`T${root}`);
+  results.add(`P${root}`);
+  results.add(`A${root}`);
+
+  return Array.from(results);
+}
+
+/**
+ * Hard Rule: Never use the same set to comp a card.
+ * Returns true if two set codes represent the same expansion or companion/supplemental release.
+ */
+export function isSameOrCompanionSet(setA?: string, setB?: string): boolean {
+  if (!setA || !setB) return false;
+  const a = setA.trim().toUpperCase();
+  const b = setB.trim().toUpperCase();
+  if (!a || !b) return false;
+
+  // 1. Direct identical match
+  if (a === b) return true;
+
+  // 2. Canonical dictionary lookup
+  if (CANONICAL_COMPANION_SETS[a]?.includes(b)) return true;
+  if (CANONICAL_COMPANION_SETS[b]?.includes(a)) return true;
+
+  // 3. Normalized root match (e.g. Y26SOS vs SOS, TSOS vs SOS, etc.)
+  const rootA = getRootSetCode(a);
+  const rootB = getRootSetCode(b);
+  if (rootA === rootB) return true;
+  if (CANONICAL_COMPANION_SETS[rootA]?.includes(rootB)) return true;
+  if (CANONICAL_COMPANION_SETS[rootB]?.includes(rootA)) return true;
+
+  // 4. Standard 3-letter commander companion convention:
+  // e.g. MSH (Marvel Super Heroes) and MSC (Marvel Super Heroes Commander)
+  // e.g. BLB (Bloomburrow) and BLC (Bloomburrow Commander)
+  // Both are 3 chars, share the first 2 characters, and at least one ends in 'C'
+  if (rootA.length === 3 && rootB.length === 3) {
+    if (rootA.slice(0, 2) === rootB.slice(0, 2) && (rootA[2] === 'C' || rootB[2] === 'C')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export interface SimilarCardMatch {
   card: Card;
   similarityScore: number; // 0 to 100%
@@ -47,7 +292,7 @@ const similarityCache = new Map<string, CardSimilarityResult>();
  */
 export function getCachedSimilarCards(targetCard: Card | null | undefined): CardSimilarityResult | null {
   if (!targetCard || !targetCard.name || !targetCard.set) return null;
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v70`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v71`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -123,8 +368,9 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('The Battle of Bywater', 'LTR', '{1}{W}{W}', 3, 'Sorcery', 'Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control.', ['W'], undefined, undefined, 'rare'),
   createBenchmarkCard('Sunfall', 'MOM', '{3}{W}{W}', 5, 'Sorcery', 'Exile all creatures. Incubate X, where X is the number of creatures exiled this way.', ['W'], undefined, undefined, 'rare'),
   createBenchmarkCard('Imperial Oath', 'NEO', '{5}{W}', 6, 'Sorcery', 'Create three 2/2 white Samurai creature tokens with vigilance. Scry 3.', ['W'], undefined, undefined, 'common'),
-  createBenchmarkCard('Hero in Training', 'MSC', '{2}{W}', 3, 'Creature — Human Hero', 'When Hero in Training enters the battlefield, draw a card. If you control another Hero, you gain 2 life.', ['W'], '2', '2', 'common'),
-  createBenchmarkCard('Stone Docent', 'SOS', '{1}{W}', 2, 'Creature — Spirit Chimera', '{W}, Exile this card from your graveyard: You gain 2 life. Surveil 1.', ['W'], '3', '1', 'common'),
+  createBenchmarkCard('Priest of Ancient Lore', 'AFR', '{2}{W}', 3, 'Creature — Dwarf Cleric', 'When Priest of Ancient Lore enters the battlefield, you gain 1 life and draw a card.', ['W'], '2', '1', 'common'),
+  createBenchmarkCard('Inspiring Overseer', 'SNC', '{2}{W}', 3, 'Creature — Angel Cleric', 'Flying\nWhen Inspiring Overseer enters the battlefield, you gain 1 life and draw a card.', ['W'], '2', '1', 'common', ['Flying']),
+  createBenchmarkCard('Cathar Commando', 'MID', '{1}{W}', 2, 'Creature — Human Soldier', 'Flash\n{1}, Sacrifice Cathar Commando: Destroy target artifact or enchantment.', ['W'], '3', '1', 'common', ['Flash']),
   createBenchmarkCard('Star Pupil', 'STX', '{W}', 1, 'Creature — Human Wizard', 'Star Pupil enters the battlefield with a +1/+1 counter on it. When Star Pupil dies, put its counters on target creature you control.', ['W'], '0', '0', 'common'),
   createBenchmarkCard('Mikaeus, the Lunarch', 'ISD', '{X}{W}', 1, 'Legendary Creature — Human Cleric', 'Mikaeus, the Lunarch enters the battlefield with X +1/+1 counters on it.\n{T}: Put a +1/+1 counter on Mikaeus.\n{T}, Remove a +1/+1 counter from Mikaeus: Put a +1/+1 counter on each other creature you control.', ['W'], '0', '0', 'mythic'),
   createBenchmarkCard('Luminarch Aspirant', 'ZNR', '{1}{W}', 2, 'Creature — Human Cleric', 'At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.', ['W'], '1', '1', 'rare'),
@@ -167,6 +413,11 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Consuming Ashes', 'OTJ', '{3}{B}', 4, 'Instant', 'Exile target creature. Scry 2.', ['B']),
   createBenchmarkCard('Diregraf Horde', 'MID', '{4}{B}', 5, 'Creature — Zombie', 'When Diregraf Horde enters the battlefield, create two 2/2 black Zombie creature tokens with decayed and exile up to two target cards from graveyards.', ['B'], '3', '4'),
   createBenchmarkCard('Huskburster Swarm', 'BLB', '{7}{B}', 8, 'Creature — Insect', 'This spell costs {1} less to cast for each creature card in your graveyard. Menace.', ['B'], '6', '6', 'uncommon', ['Menace']),
+  createBenchmarkCard('Agonizing Remorse', 'THB', '{1}{B}', 2, 'Sorcery', 'Target opponent reveals their hand. You choose a nonland card from it or a card from their graveyard. Exile that card. You lose 1 life.', ['B'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Pilfer', 'FDN', '{1}{B}', 2, 'Sorcery', 'Target opponent reveals their hand. You choose a nonland card from it. That player discards that card.', ['B'], undefined, undefined, 'common'),
+  createBenchmarkCard('Drill Bit', 'RNA', '{2}{B}', 3, 'Sorcery', 'Spectacle {B}\nTarget player reveals their hand. You choose a nonland card from it. That player discards that card.', ['B'], undefined, undefined, 'uncommon', ['Spectacle']),
+  createBenchmarkCard('Hopeless Nightmare', 'WOE', '{B}', 1, 'Enchantment', 'When this enchantment enters, each opponent discards a card and loses 2 life.\nWhen this enchantment is put into a graveyard from the battlefield, scry 2.\n{2}{B}: Sacrifice this enchantment.', ['B'], undefined, undefined, 'common', ['Scry']),
+  createBenchmarkCard('Duress', 'FDN', '{B}', 1, 'Sorcery', 'Target opponent reveals their hand. You choose a noncreature, nonland card from it. That player discards that card.', ['B'], undefined, undefined, 'common'),
 
   // Red
   createBenchmarkCard('Heartfire Hero', 'BLB', '{R}', 1, 'Creature — Mouse Soldier', 'Valiant — Whenever Heartfire Hero becomes the target of a spell or ability you control for the first time each turn, put a +1/+1 counter on it. When Heartfire Hero dies, it deals damage equal to its power to each opponent.', ['R'], '1', '1', 'uncommon'),
@@ -225,10 +476,9 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Gurgling Anointer', 'BRO', '{1}{B}{B}', 3, 'Creature — Phyrexian Horror', 'Flying. Whenever you draw your second card each turn, put a +1/+1 counter on Gurgling Anointer. When Gurgling Anointer dies, return target creature card with mana value less than or equal to Gurgling Anointer\'s power from your graveyard to the battlefield.', ['B'], '1', '3', 'uncommon', ['Flying']),
   createBenchmarkCard('Faerie Vandal', 'SNC', '{1}{U}', 2, 'Creature — Faerie Rogue', 'Flash, flying. Whenever you draw your second card each turn, put a +1/+1 counter on Faerie Vandal.', ['U'], '1', '2', 'uncommon', ['Flash', 'Flying']),
   createBenchmarkCard('Astral Wingspan', 'MOM', '{4}{U}', 5, 'Enchantment — Aura', 'Convoke. Enchant creature. When Astral Wingspan enters the battlefield, draw a card. Enchanted creature gets +2/+2 and has flying.', ['U'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Lofty Dreams', 'ECL', '{3}{U}{U}', 5, 'Enchantment — Aura', 'Convoke. Enchant creature. When Lofty Dreams enters the battlefield, draw a card. Enchanted creature gets +2/+2 and has flying.', ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Malamet Brawler', 'LCI', '{1}{G}', 2, 'Creature — Cat Warrior', 'Whenever Malamet Brawler attacks, target attacking creature gains trample until end of turn.', ['G'], '2', '2', 'common'),
   createBenchmarkCard('Flesh Burrower', 'DSK', '{1}{G}', 2, 'Creature — Insect', 'Deathtouch. Whenever Flesh Burrower attacks, another target creature gains deathtouch until end of turn.', ['G'], '2', '2', 'common', ['Deathtouch']),
-  createBenchmarkCard('Dawnhand Eulogist', 'ECL', '{3}{B}', 4, 'Creature — Elf Warlock', 'Menace. When Dawnhand Eulogist enters the battlefield, mill three cards, then if an Elf card is in your graveyard, each opponent loses 2 life and you gain 2 life.', ['B'], '3', '3', 'common', ['Menace']),
+  createBenchmarkCard('Vampire Spawn', 'AFR', '{2}{B}', 3, 'Creature — Vampire', 'When Vampire Spawn enters the battlefield, each opponent loses 2 life and you gain 2 life.', ['B'], '2', '3', 'common'),
   createBenchmarkCard('Yavimaya Iconoclast', 'DMU', '{1}{G}', 2, 'Creature — Elf Warrior', 'Trample. Kicker {R}. When Yavimaya Iconoclast enters the battlefield, if it was kicked, it gets +1/+1 and gains haste until end of turn.', ['G'], '3', '2', 'uncommon', ['Trample']),
   createBenchmarkCard('Belligerent Yearling', 'LCI', '{1}{R}', 2, 'Creature — Dinosaur', 'Trample. Whenever another Dinosaur you control enters the battlefield, you may have Belligerent Yearling\'s base power become equal to that creature\'s power until end of turn.', ['R'], '3', '2', 'uncommon', ['Trample']),
   createBenchmarkCard('Elfsworn Giant', 'FDN', '{3}{G}{G}', 5, 'Creature — Giant Warrior', 'Reach. Landfall — Whenever a land you control enters the battlefield, create a 1/1 green Elf creature token.', ['G'], '5', '3', 'uncommon', ['Reach']),
@@ -252,7 +502,7 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Phantom General', 'RTR', '{3}{W}', 4, 'Creature — Spirit Soldier', 'Creature tokens you control get +1/+1.', ['W'], '2', '3', 'uncommon'),
 
   // Lands & Fetchlands
-  createBenchmarkCard('Terramorphic Expanse', 'SOS', '', 0, 'Land', '{T}, Sacrifice Terramorphic Expanse: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', [], undefined, undefined, 'common'),
+  createBenchmarkCard('Terramorphic Expanse', 'ONE', '', 0, 'Land', '{T}, Sacrifice Terramorphic Expanse: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', [], undefined, undefined, 'common'),
   createBenchmarkCard('Evolving Wilds', 'FDN', '', 0, 'Land', '{T}, Sacrifice Evolving Wilds: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', [], undefined, undefined, 'common'),
   createBenchmarkCard('Escape Tunnel', 'MKM', '', 0, 'Land', '{T}, Sacrifice Escape Tunnel: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. {1}, {T}, Sacrifice Escape Tunnel: Target creature with power 2 or less can\'t be blocked this turn.', [], undefined, undefined, 'common'),
   createBenchmarkCard('Rogue\'s Passage', 'FDN', '', 0, 'Land', '{T}: Add {C}. {4}, {T}: Target creature can\'t be blocked this turn.', [], undefined, undefined, 'uncommon'),
@@ -266,6 +516,7 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Finneas, Ace Archer', 'BLB', '{G}{W}', 2, 'Creature — Rabbit Archer', 'Vigilance, reach. Whenever Finneas attacks, other Rabbits and creatures with counters you control get +1/+1 until end of turn. If you control four or more Rabbits, draw a card.', ['G', 'W'], '2', '2', 'rare', ['Vigilance', 'Reach']),
   createBenchmarkCard('Gev, Scaled Scorch', 'BLB', '{B}{R}', 2, 'Creature — Lizard Mercenary', 'Ward — Pay 2 life. Other Lizards you control enter the battlefield with an additional +1/+1 counter on them if an opponent lost life this turn.', ['B', 'R'], '3', '2', 'rare', ['Ward']),
   createBenchmarkCard('Kastral, the Windcrested', 'BLB', '{3}{W}{U}', 5, 'Creature — Bird Soldier', 'Flying. Whenever a Bird you control deals combat damage to a player, choose one — Draw a card; or put a +1/+1 counter on each Bird you control; or return target Bird card from your graveyard to the battlefield.', ['W', 'U'], '4', '5', 'rare', ['Flying']),
+  createBenchmarkCard('Blightning', 'A25', '{1}{B}{R}', 3, 'Sorcery', "Blightning deals 3 damage to target player or planeswalker. That player or that planeswalker's controller discards two cards.", ['B', 'R'], undefined, undefined, 'uncommon'),
 
   // Lands & Bombs
   createBenchmarkCard('Oteclan Landmark', 'LCI', '{1}', 1, 'Artifact', 'When Oteclan Landmark enters the battlefield, scry 2. Craft with land {2}{W}.', ['W']),
@@ -284,7 +535,7 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Deathbloom Gardener', 'DMU', '{2}{G}', 3, 'Creature — Elf Druid', 'Deathtouch. {T}: Add one mana of any color.', ['G'], '1', '1', 'common', ['Deathtouch']),
   createBenchmarkCard('Oasis Gardener', 'OTJ', '{2}{G}', 3, 'Creature — Plant Druid', 'When Oasis Gardener enters the battlefield, you gain 2 life. {T}: Add one mana of any color.', ['G'], '2', '2', 'common'),
   createBenchmarkCard('Weaver of Blossoms', 'VOW', '{2}{G}', 3, 'Creature — Human Werewolf', 'Daybound. {T}: Add one mana of any color.', ['G'], '2', '3', 'common'),
-  createBenchmarkCard('Dragonstorm Globe', 'TDM', '{3}', 3, 'Artifact', '{T}: Add one mana of any color. {3}, {T}: Dragon spells you cast this turn cost {1} less to cast.', []),
+  createBenchmarkCard('Honored Heirloom', 'VOW', '{3}', 3, 'Artifact', '{T}: Add one mana of any color.\n{2}, {T}: Exile target card from a graveyard.', []),
   createBenchmarkCard('Starting Column', 'DFT', '{3}', 3, 'Artifact', '{T}: Add one mana of any color. {5}, {T}, Sacrifice Starting Column: Draw two cards.', []),
   createBenchmarkCard('Argothian Opportunist', 'BRO', '{2}{G}', 3, 'Creature — Human Artificer', 'When Argothian Opportunist enters the battlefield, create a tapped Powerstone token.', ['G'], '3', '2', 'common'),
   createBenchmarkCard('Zoetic Glyph', 'LCI', '{2}{U}', 3, 'Enchantment — Aura', 'Enchant artifact. Enchanted artifact is a Golem creature with base power and toughness 5/4 in addition to its other types. When Zoetic Glyph is put into a graveyard from the battlefield, discover 3.', ['U'], undefined, undefined, 'uncommon'),
@@ -584,8 +835,12 @@ export function extractCardFeatures(card: Card) {
   ) {
     actionSubtypes.add('sweeper');
     detectedCategories.add('sweeper');
-  } else if (/deals \d+ damage to (any target|target creature)/i.test(oracle)) {
+  } else if (/deals \d+ damage to (?:any target|target creature|target opponent|target player|each opponent|each player|that player)/i.test(oracle) ||
+             /deals \d+ damage to/i.test(oracle)) {
     actionSubtypes.add('burn_damage');
+    if (/deals \d+ damage to (?:target opponent|target player|each opponent|each player|that player|any target)/i.test(oracle)) {
+      actionSubtypes.add('burn_to_opponent');
+    }
   } else if (/deals damage equal to (its|target creature's) power|fights target creature/i.test(oracle)) {
     actionSubtypes.add('bite_fight');
   } else if (
@@ -733,6 +988,45 @@ export function extractCardFeatures(card: Card) {
   if (isConnive || isRecruit) {
     actionSubtypes.add('connive_recruit');
     detectedCategories.add('selection');
+  }
+
+  // Direct Damage to Player / Opponent & Burn Subtypes
+  const isDirectBurnToPlayerOrOpponent = /deals \d+ damage to (?:target opponent|target player|each opponent|each player|that player)/i.test(oracle);
+  if (isDirectBurnToPlayerOrOpponent) {
+    actionSubtypes.add('burn_to_opponent');
+    detectedCategories.add('burn');
+  }
+
+  // Hand Disruption & Targeted Discard Subtypes
+  const isTargetedDiscard = (
+    /(?:opponent|player) reveals (?:their|his or her) hand.*(?:choose|choose a nonland|you choose).*(?:discard|exile)/i.test(oracle) ||
+    /(?:look at|reveals?) (?:target opponent's|their) hand.*(?:choose|exile|discard)/i.test(oracle) ||
+    (/(?:target opponent|target player) reveals their hand/i.test(oracle) && /(?:choose|exile|discard)/i.test(oracle)) ||
+    /exile a nonland card from it until/i.test(oracle)
+  );
+  const isGenericDiscard = (
+    /\b(?:player|opponent|controller)\s+(?:or\s+[^\.]*\s+)?discards?\s+(?:a|\d+|one|two|three|\w+)?\s*cards?/i.test(oracle) ||
+    /\bdiscards?\s+(?:a|\d+|one|two|three)\s+cards?\b/i.test(oracle) ||
+    isTargetedDiscard
+  );
+
+  if (isTargetedDiscard) {
+    actionSubtypes.add('targeted_discard');
+    actionSubtypes.add('hand_disruption');
+    detectedCategories.add('discard');
+    detectedCategories.add('hand_disruption');
+  } else if (isGenericDiscard) {
+    actionSubtypes.add('hand_disruption');
+    detectedCategories.add('discard');
+    detectedCategories.add('hand_disruption');
+  }
+
+  // Hybrid Hand Disruption + Burn Spell (Blightning Archetype)
+  const isDiscardAndBurn = (actionSubtypes.has('targeted_discard') || actionSubtypes.has('hand_disruption')) &&
+    (actionSubtypes.has('burn_to_opponent') || actionSubtypes.has('burn_damage') || /deals \d+ damage/i.test(oracle));
+  if (isDiscardAndBurn) {
+    actionSubtypes.add('discard_and_burn');
+    detectedCategories.add('synergy');
   }
 
   // Draw Second Card Each Turn Synergy (e.g. Bard the Bowman, Roxxon Brutes, Gurgling Anointer, Faerie Vandal)
@@ -1723,11 +2017,13 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
  * Prioritizes EXACT color matches (e.g. c=w for mono-white) before broadening.
  */
 export function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCardFeatures>): string[] {
-  const setFilter = `(${COMPARABLE_PREMIER_SETS.map(s => `s:${s.toLowerCase()}`).join(' or ')})`;
+  const companionSets = card.set ? getCompanionSetCodes(card.set) : [];
+  const excludeSetTerms = companionSets.map(s => `-s:${s.toLowerCase()}`).join(' ');
+  const setFilter = `(${COMPARABLE_PREMIER_SETS.filter(s => !isSameOrCompanionSet(card.set, s)).map(s => `s:${s.toLowerCase()}`).join(' or ')})`;
   const baseFilter = `-is:reprint -t:basic -t:token -is:extra -is:alchemy ${setFilter}`;
 
-  // Exclude the current set and exact same card name
-  const excludeSelf = card.set ? `-s:${card.set.toLowerCase()} -!"${card.name}"` : `-!"${card.name}"`;
+  // Exclude the current set, companion sets, and exact same card name
+  const excludeSelf = excludeSetTerms ? `${excludeSetTerms} -!"${card.name}"` : `-!"${card.name}"`;
 
   // Color Query Tiers:
   // EXACT color syntax in Scryfall uses '=' (e.g. c=w for pure mono-white, c=c for colorless)
@@ -1816,6 +2112,18 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
     queries.push(`${baseFilter} ${excludeSelf} t:instant ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} (o:"counter target" o:"spell")`);
     queries.push(`${baseFilter} ${excludeSelf} (o:"counter target red or green spell" or o:"counter target white or black spell" or o:"counter target blue spell" or o:"counter target multicolored spell")`);
     queries.push(`${baseFilter} ${excludeSelf} t:instant ${exactColorQuery} (o:"counter target" (o:"or green" or o:"or black" or o:"or white" or o:"or red" or o:"or blue"))`);
+  }
+
+  // Hand Disruption & Targeted Discard Queries
+  if (features.actionSubtypes.has('targeted_discard') || features.actionSubtypes.has('hand_disruption')) {
+    if (features.actionSubtypes.has('burn_to_opponent') || features.actionSubtypes.has('burn_damage') || features.actionSubtypes.has('discard_and_burn')) {
+      queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} (o:"damage" o:"discard")`);
+      queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} (o:"deals" o:"damage" (o:"target player" or o:"target opponent"))`);
+    }
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} (o:"reveals their hand" o:"discard")`);
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} (o:"reveals" o:"discard")`);
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} (o:"reveals" or o:"discard")`);
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} c=b (o:"reveals their hand" or o:"discards a card")`);
   }
 
   // High-Power Menace & Late-Game Menace Finishers (e.g. Apex Witchstalker, Ripscale Predator, Troll of Khazad-dûm, Baleful Beholder)
@@ -2426,6 +2734,24 @@ export function extractSubstantiveOracleClauses(oracleText: string, cardName: st
         const cleanSent = sent.trim();
         if (!cleanSent) continue;
         rawClauses.push(cleanSent);
+
+        // Also extract core effect clause from triggered abilities (e.g. "Whenever [trigger], [effect]")
+        const escapedName = cardName ? cardName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+        const nameMatch = escapedName ? cleanSent.match(new RegExp(`(?:,|:)\\s*(${escapedName}\\b.*)$`, 'i')) : null;
+        if (nameMatch && nameMatch[1]) {
+          const effectPart = nameMatch[1].trim();
+          if (effectPart.length >= 10) {
+            rawClauses.push(effectPart);
+          }
+        } else {
+          const triggerMatch = cleanSent.match(/^(?:whenever|when|at\s+(?:the|each|your))\b.*?[,:]\s*([A-Z~].*?)$/i);
+          if (triggerMatch && triggerMatch[1]) {
+            const effectPart = triggerMatch[1].trim();
+            if (effectPart.length >= 10) {
+              rawClauses.push(effectPart);
+            }
+          }
+        }
       }
     }
   }
@@ -2750,6 +3076,19 @@ export function findExactOracleClauseMatch(
     }
   }
 
+  // 7. Targeted Hand Disruption Core Rules Text Match (Anchor 94%)
+  if (tFeatures.actionSubtypes.has('targeted_discard') && cFeatures.actionSubtypes.has('targeted_discard')) {
+    const tHasNonland = /choose a nonland card/i.test(target.oracle_text || '');
+    const cHasNonland = /choose a nonland card/i.test(candidate.oracle_text || '');
+    if (tHasNonland && cHasNonland) {
+      return {
+        matchType: 'template',
+        matchingClause: 'you choose a nonland card from it',
+        description: 'Matching targeted hand disruption effect',
+      };
+    }
+  }
+
   return null;
 }
 
@@ -2934,20 +3273,14 @@ export function isFunctionalOrExactReprint(target: Card, candidate: Card): { isR
  * - Non-reprint ceiling: <= 95% (100% impossible unless actual reprint)
  */
 export function calculateCardSimilarity(target: Card, candidate: Card, userId?: string): { score: number; reasons: string[] } {
-  // 0. Precedent Gatekeeper: Never compare a set to itself.
+  // 0. Precedent Gatekeeper: Never compare a set to itself or companion releases.
   // Precedents must strictly originate from different/historical sets.
-  if (
-    target.set &&
-    candidate.set &&
-    target.set.trim().toUpperCase() === candidate.set.trim().toUpperCase()
-  ) {
-    return { score: 0, reasons: ['Cards from the same set cannot be compared as historical precedents'] };
+  if (isSameOrCompanionSet(target.set, candidate.set)) {
+    return { score: 0, reasons: ['Cards from the same set or companion release cannot be compared as historical precedents'] };
   }
 
-  // 0.1 Compatibility Gatekeeper (Prerequisite — 0 points)
-  if (!areCardTypesCompatible(target, candidate)) {
-    return { score: 0, reasons: [] };
-  }
+  // 0.1 Card Type Compatibility
+  const isTypeIncompatible = !areCardTypesCompatible(target, candidate);
 
   // 0.1 Actual Reprint Gatekeeper: 100% is strictly and exclusively reserved for actual direct reprints
   if (isActualReprint(target, candidate)) {
@@ -2976,7 +3309,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
   // 0.4 Exact Oracle Text / Core Rules Clause Priority Match (Rule 2)
   const exactClauseMatch = findExactOracleClauseMatch(target, candidate, tFeatures, cFeatures);
-  if (exactClauseMatch) {
+  if (exactClauseMatch && !isTypeIncompatible) {
     return computeExactOracleMatchScore(target, candidate, tFeatures, cFeatures, exactClauseMatch);
   }
 
@@ -2987,6 +3320,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   let statlineScore = 0;
 
   const structuralReasons: string[] = [];
+  if (exactClauseMatch && isTypeIncompatible) {
+    structuralReasons.push(`Shares exact clause: "${exactClauseMatch.matchingClause}"`);
+  }
   const lexicalReasons: string[] = [];
   const baselineReasons: string[] = [];
 
@@ -3496,6 +3832,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   const CATEGORY_SCORES: Record<string, { pts: number; label: string }> = {
     removal: { pts: 12, label: 'Matching creature removal effect' },
     sweeper: { pts: 14, label: 'Matching board wipe effect' },
+    hand_disruption: { pts: 14, label: 'Matching hand disruption effect' },
+    discard: { pts: 12, label: 'Matching discard effect' },
+    burn: { pts: 11, label: 'Matching direct damage / burn' },
     damage: { pts: 11, label: 'Matching direct damage / burn' },
     counter: { pts: 11, label: 'Matching counterspell effect' },
     draw: { pts: 10, label: 'Matching card advantage effect' },
@@ -3791,6 +4130,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   // =========================================================================
   let structuralActionPoints = 0;
   const ACTION_SUBTYPE_VALUES: Record<string, { pts: number; label: string }> = {
+    discard_and_burn: { pts: 25, label: 'Both hand disruption spells with direct burn damage' },
+    targeted_discard: { pts: 24, label: 'Both targeted hand disruption spells' },
+    hand_disruption: { pts: 22, label: 'Both hand disruption / discard spells' },
+    burn_to_opponent: { pts: 20, label: 'Both direct burn to opponent' },
     activated_team_pump: { pts: 20, label: 'Both creatures with activated team-pump mana sink' },
     team_pump: { pts: 16, label: 'Both creatures with team-wide stat buff' },
     mana_sink: { pts: 14, label: 'Both creatures with late-game mana sink' },
@@ -3949,7 +4292,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
   // Multi-Action Subtype Bonus (e.g. both ETB and Cantrip)
   if (sharedSubtypesCount > 1) {
-    structuralActionPoints = Math.min(20, structuralActionPoints + (sharedSubtypesCount - 1) * 3);
+    structuralActionPoints = Math.min(25, structuralActionPoints + (sharedSubtypesCount - 1) * 3);
   }
 
   // Shared signature creature subtype synergy (e.g. Wolf, Elf - ONLY when tribal relevant)
@@ -3961,7 +4304,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       tFeatures.cleanOracle.includes(s) || cFeatures.cleanOracle.includes(s)
     );
     if (isTribalRelevant) {
-      structuralActionPoints = Math.min(20, structuralActionPoints + 3);
+      structuralActionPoints = Math.min(25, structuralActionPoints + 3);
       structuralReasons.push(`Shared tribal archetype: ${sharedSignatureSubtypes.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}`);
     }
   }
@@ -4449,6 +4792,29 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     actionMismatchPenalty = Math.max(actionMismatchPenalty, 28);
   }
 
+  // Hand Disruption vs Board Removal / Sweepers Mismatch Penalty:
+  // Discard / Hand disruption spells must never be evaluated as comparable to spot removal or sweepers.
+  const isPermanentRemoval = (f: ReturnType<typeof extractCardFeatures>) =>
+    f.detectedCategories.has('removal') ||
+    f.actionSubtypes.has('sweeper') ||
+    f.actionSubtypes.has('unconditional_removal') ||
+    f.actionSubtypes.has('conditional_removal') ||
+    f.actionSubtypes.has('power_toughness_removal') ||
+    f.actionSubtypes.has('toughness_4_plus_removal') ||
+    f.actionSubtypes.has('permanent_removal') ||
+    f.actionSubtypes.has('modal_removal') ||
+    f.actionSubtypes.has('damage_removal') ||
+    f.isAuraRemoval;
+
+  const tIsDiscard = tFeatures.actionSubtypes.has('targeted_discard') || tFeatures.actionSubtypes.has('hand_disruption');
+  const cIsDiscard = cFeatures.actionSubtypes.has('targeted_discard') || cFeatures.actionSubtypes.has('hand_disruption');
+  const tIsBoardRemoval = isPermanentRemoval(tFeatures);
+  const cIsBoardRemoval = isPermanentRemoval(cFeatures);
+  if ((tIsDiscard && !tIsBoardRemoval && cIsBoardRemoval && !cIsDiscard) ||
+      (cIsDiscard && !cIsBoardRemoval && tIsBoardRemoval && !tIsDiscard)) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 28);
+  }
+
   // Alliance / Creature-fall Triggered Growth Mismatch Penalty:
   // A conditional triggered-growth creature (undersized body requiring other creatures to enter to grow)
   // must never be scored as equivalent to a static enters-with / modular creature or baseline body!
@@ -4688,7 +5054,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
     const tDmg = tOracle.match(/deals (\d+) damage/);
     const cDmg = cOracle.match(/deals (\d+) damage/);
-    if (tDmg && cDmg) {
+    if (tFeatures.actionSubtypes.has('discard_and_burn') && cFeatures.actionSubtypes.has('discard_and_burn')) {
+      statlineScore = 10;
+      baselineReasons.push('Matching discard + burn effect (Blightning archetype)');
+    } else if (tDmg && cDmg) {
       const dmgDiff = Math.abs(parseInt(tDmg[1], 10) - parseInt(cDmg[1], 10));
       if (dmgDiff === 0) {
         statlineScore = 10;
@@ -4730,7 +5099,8 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   // Rarity Role Affinity: Prioritize same limited drafting tier (Common vs Rare)
   let rarityAdjustment = 0;
   const sharesCounterDistributor = tFeatures.actionSubtypes.has('etb_counter_distributor') && cFeatures.actionSubtypes.has('etb_counter_distributor');
-  const sharesExactMechanicArchetype = bothShareExactConverge || bothShareExactSunburst || bothShareLivingWeapon;
+  const sharesExactMechanicArchetype = bothShareExactConverge || bothShareExactSunburst || bothShareLivingWeapon ||
+    (tFeatures.actionSubtypes.has('discard_and_burn') && cFeatures.actionSubtypes.has('discard_and_burn'));
 
   if (tFeatures.rarity === 'common') {
     if (cFeatures.rarity === 'common') {
@@ -4839,7 +5209,10 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   }
 
   let cardTypeMismatchPenalty = 0;
-  if (tFeatures.isCreature && cFeatures.isCreature) {
+  if (isTypeIncompatible) {
+    cardTypeMismatchPenalty += 35;
+    baselineReasons.push('Card type mismatch');
+  } else if (tFeatures.isCreature && cFeatures.isCreature) {
     if (tFeatures.isArtifact !== cFeatures.isArtifact && !bothShareDeathCounterTransfer && !bothShareConvergeSunburst && !bothShareMultiColorScaling) {
       cardTypeMismatchPenalty += 4;
     }
@@ -4857,8 +5230,16 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       (!tFeatures.actionSubtypes.has('color_hoser_counter') && cFeatures.actionSubtypes.has('color_hoser_counter'))) {
     colorHoserMismatchPenalty += 24;
   }
+  let discardMismatchPenalty = 0;
+  const tIsHandDisruption = tFeatures.actionSubtypes.has('targeted_discard') || tFeatures.actionSubtypes.has('hand_disruption');
+  const cIsHandDisruption = cFeatures.actionSubtypes.has('targeted_discard') || cFeatures.actionSubtypes.has('hand_disruption');
+  if (tIsHandDisruption && !cIsHandDisruption && !cFeatures.actionSubtypes.has('burn_to_opponent')) {
+    discardMismatchPenalty += 24;
+  } else if (cIsHandDisruption && !tIsHandDisruption && !tFeatures.actionSubtypes.has('burn_to_opponent')) {
+    discardMismatchPenalty += 24;
+  }
 
-  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty + excessActionMismatch + tuckMismatchPenalty + colorHoserMismatchPenalty;
+  const discrepancyPenalty = keywordMismatchPenalty + riderMismatchPenalty + cardTypeMismatchPenalty + excessActionMismatch + tuckMismatchPenalty + colorHoserMismatchPenalty + discardMismatchPenalty;
   let rawScore = colorScore + cmcScore + method1LexicalScore + method2StructuralScore + statlineScore - discrepancyPenalty;
 
   // Learned Precedent Boost & Attribution (Touchstone benchmarks & bridged mechanics)
@@ -4897,7 +5278,17 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
 
   // Non-reprint ceiling: 100% is strictly reserved for true reprints / functional reprints
   const MAX_NON_REPRINT_SCORE = 95;
-  const totalScore = Math.min(MAX_NON_REPRINT_SCORE, Math.max(0, rawScore));
+  const MAX_TYPE_INCOMPATIBLE_SCORE = 28;
+
+  let totalScore: number;
+  if (isTypeIncompatible) {
+    if (rawScore <= 0) {
+      return { score: 0, reasons: [] };
+    }
+    totalScore = Math.min(MAX_TYPE_INCOMPATIBLE_SCORE, Math.max(0, rawScore));
+  } else {
+    totalScore = Math.min(MAX_NON_REPRINT_SCORE, Math.max(0, rawScore));
+  }
 
   // Deduplicate and prioritize most insightful structural, speed/tempo, and lexical reasons
   const speedOrTempoReasons = baselineReasons.filter(r => r.includes('Speed') || r.includes('speed') || r.includes('tempo'));
@@ -4915,12 +5306,11 @@ export function getCuratedBenchmarkCandidates(
   fallbackPool: Card[] = []
 ): Card[] {
   const normTargetName = (targetCard.name || '').trim().toLowerCase();
-  const targetSet = (targetCard.set || '').trim().toUpperCase();
   const isDifferentSetAndName = (c: Card) => {
     if (!c) return false;
     const name = (c.name || '').trim().toLowerCase();
     if (!name || name === normTargetName) return false;
-    if (targetSet && c.set && c.set.trim().toUpperCase() === targetSet) return false;
+    if (isSameOrCompanionSet(targetCard.set, c.set)) return false;
     return true;
   };
   const pool = [
@@ -5221,7 +5611,7 @@ export function getCuratedBenchmarkCandidates(
   return scored
     .slice(0, 24)
     .map(s => s.card)
-    .filter(c => !targetSet || !c.set || c.set.trim().toUpperCase() !== targetSet);
+    .filter(c => !isSameOrCompanionSet(targetCard.set, c.set));
 }
 
 /**
@@ -5233,12 +5623,12 @@ export function generateGuaranteedFallbackResult(
   targetCard: Card,
   fallbackPool: Card[] = []
 ): CardSimilarityResult {
-  const targetSet = (targetCard.set || '').trim().toUpperCase();
   const candidates = getCuratedBenchmarkCandidates(targetCard, fallbackPool)
-    .filter(cand => !targetSet || !cand.set || cand.set.trim().toUpperCase() !== targetSet);
+    .filter(cand => !isSameOrCompanionSet(targetCard.set, cand.set));
   const scored = candidates.map(cand => {
     const { score, reasons } = calculateCardSimilarity(targetCard, cand);
-    const boostedScore = Math.max(38, Math.min(95, score));
+    // Hard rule: Zero score from same/companion set must never be boosted
+    const boostedScore = score <= 0 ? 0 : Math.max(38, Math.min(95, score));
     const fallbackReasons = reasons.length > 0 ? reasons : [
       `Matching ${targetCard.cmc}-mana ${targetCard.colors?.length ? targetCard.colors.join('/') : 'colorless'} curve spot`,
       `Premier draft historical archetype staple`
@@ -5248,7 +5638,7 @@ export function generateGuaranteedFallbackResult(
 
   scored.sort((a, b) => b.score - a.score);
   const top4 = scored
-    .filter(s => !targetSet || !s.card.set || s.card.set.trim().toUpperCase() !== targetSet)
+    .filter(s => s.score > 0 && !isSameOrCompanionSet(targetCard.set, s.card.set))
     .slice(0, 4);
 
   const matches: SimilarCardMatch[] = top4.map(({ card, score, reasons }) => {
@@ -5284,7 +5674,7 @@ export async function findSimilarCards(
   fallbackPool: Card[] = [],
   userId?: string
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v70`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v71`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -5296,11 +5686,10 @@ export async function findSimilarCards(
     const features = extractCardFeatures(targetCard);
     const queries = buildScryfallQueries(targetCard, features);
 
-    const targetSet = (targetCard.set || '').trim().toUpperCase();
     const isExcluded = (c: Card) => {
       if (!c || !c.name) return true;
       if (c.name.toLowerCase() === targetCard.name.toLowerCase()) return true;
-      if (targetSet && c.set && c.set.trim().toUpperCase() === targetSet) return true;
+      if (isSameOrCompanionSet(targetCard.set, c.set)) return true;
       return false;
     };
 
@@ -5321,7 +5710,14 @@ export async function findSimilarCards(
           const data = await res.json();
           if (Array.isArray(data.data) && data.data.length > 0) {
             const rawCards = data.data
-              .filter((rc: any) => !rc.name.startsWith('A-') && !rc.digital && !rc.promo_types?.includes('rebalanced'))
+              .filter(
+                (rc: any) =>
+                  !rc.name.startsWith('A-') &&
+                  !rc.digital &&
+                  !rc.promo_types?.includes('rebalanced') &&
+                  rc.booster !== false &&
+                  rc.set?.toLowerCase() !== 'mbc'
+              )
               .map((rc: any) => normalizeScryfallCard(rc));
             // Filter duplicates and same-set cards
             rawCards.forEach((c: Card) => {
@@ -5353,12 +5749,14 @@ export async function findSimilarCards(
           ? 't:creature'
           : (features.isInstant ? 't:instant' : (features.isSorcery ? 't:sorcery' : (features.isAura ? 't:aura' : (features.isEnchantment ? 't:enchantment' : (features.isArtifact ? 't:artifact' : (features.isPlaneswalker ? 't:planeswalker' : (features.isLand ? 't:land' : '')))))));
         const cmcTerm = features.hasXCost ? 'm:{X}' : `m>=${Math.max(0, targetCard.cmc - 1)} m<=${targetCard.cmc + 1}`;
+        const companionSets = targetCard.set ? getCompanionSetCodes(targetCard.set) : [];
+        const excludeSetTerms = companionSets.map(s => `-s:${s.toLowerCase()}`).join(' ');
         const setTerms = COMPARABLE_PREMIER_SETS
-          .filter(s => !targetSet || s.toUpperCase() !== targetSet)
+          .filter(s => !isSameOrCompanionSet(targetCard.set, s))
           .slice(0, 16)
           .map(s => `s:${s.toLowerCase()}`)
           .join(' or ');
-        const fallbackQuery = `(${setTerms}) ${typeTerm} ${mainColor} ${cmcTerm} is:booster${targetCard.set ? ` -s:${targetCard.set.toLowerCase()}` : ''}`;
+        const fallbackQuery = `(${setTerms}) ${typeTerm} ${mainColor} ${cmcTerm} is:booster${excludeSetTerms ? ` ${excludeSetTerms}` : ''}`;
 
         const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
         const res = await fetch(url, {
@@ -5372,7 +5770,14 @@ export async function findSimilarCards(
           const data = await res.json();
           if (Array.isArray(data.data) && data.data.length > 0) {
             const rawCards = data.data
-              .filter((rc: any) => !rc.name.startsWith('A-') && !rc.digital && !rc.promo_types?.includes('rebalanced'))
+              .filter(
+                (rc: any) =>
+                  !rc.name.startsWith('A-') &&
+                  !rc.digital &&
+                  !rc.promo_types?.includes('rebalanced') &&
+                  rc.booster !== false &&
+                  rc.set?.toLowerCase() !== 'mbc'
+              )
               .map((rc: any) => normalizeScryfallCard(rc));
             rawCards.forEach((c: Card) => {
               if (!candidateCards.some(existing => existing.name.toLowerCase() === c.name.toLowerCase()) &&
@@ -5485,6 +5890,7 @@ export async function findSimilarCards(
         if (isExcluded(cand)) continue;
         if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
           const { score, reasons } = calculateCardSimilarity(targetCard, cand, userId);
+          if (score <= 0) continue;
           const boostedScore = Math.max(35, score);
           const fallbackReasons = reasons.length > 0 ? reasons : [
             `Similar ${targetCard.cmc}-mana ${targetCard.colors?.join('/') || 'colorless'} curve role`,
@@ -5495,8 +5901,8 @@ export async function findSimilarCards(
       }
     }
 
-    // Ensure all scored candidates strictly exclude target set
-    scoredCandidates = scoredCandidates.filter(sc => !isExcluded(sc.card));
+    // Ensure all scored candidates strictly exclude target set and companion sets
+    scoredCandidates = scoredCandidates.filter(sc => !isExcluded(sc.card) && sc.score > 0);
 
     if (scoredCandidates.length < 4) {
       const extraFallbacks = getCuratedBenchmarkCandidates(targetCard, fallbackPool)
@@ -5504,6 +5910,7 @@ export async function findSimilarCards(
       for (const cand of extraFallbacks) {
         if (!scoredCandidates.some(sc => sc.card.name.toLowerCase() === cand.name.toLowerCase())) {
           const { score, reasons } = calculateCardSimilarity(targetCard, cand);
+          if (score <= 0) continue;
           scoredCandidates.push({
             card: cand,
             score: Math.max(35, score),
@@ -5741,11 +6148,14 @@ export async function findSimilarCards(
       ...enrichedMatches.filter(m => !presentedMatches.some(p => p.card.name.toLowerCase() === m.card.name.toLowerCase()))
     ];
 
-    const consensus = calculateHistoricalConsensus(presentedMatches, targetCard);
+    const sanitizedPresented = presentedMatches.filter(m => !isSameOrCompanionSet(targetCard.set, m.card.set));
+    const sanitizedMatches = reorderedMatches.filter(m => !isSameOrCompanionSet(targetCard.set, m.card.set));
+
+    const consensus = calculateHistoricalConsensus(sanitizedPresented, targetCard);
 
     const result: CardSimilarityResult = {
       targetCard,
-      matches: reorderedMatches,
+      matches: sanitizedMatches,
       consensus,
     };
 

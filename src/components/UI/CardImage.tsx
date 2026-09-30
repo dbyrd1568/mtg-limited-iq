@@ -17,38 +17,12 @@ export interface CardImageProps {
   onError?: () => void;
 }
 
-// Module-level Scryfall CDN failure tracking
-let scryfallFailureCount = 0;
-let scryfallLastFailure = 0;
-let scryfallCdnOffline = false;
-let scryfallCdnOfflineSince = 0;
-
 export function markScryfallCdnOffline() {
-  const now = Date.now();
-  if (now - scryfallLastFailure > 10000) {
-    scryfallFailureCount = 1;
-  } else {
-    scryfallFailureCount++;
-  }
-  scryfallLastFailure = now;
-
-  // Only activate global circuit breaker if at least 5 different image requests fail within 10 seconds
-  if (scryfallFailureCount >= 5 && !scryfallCdnOffline) {
-    console.warn('[CardImage] Scryfall CDN failure cluster detected. Circuit breaker active: routing to Gatherer / MTG Proxy fallback.');
-    scryfallCdnOffline = true;
-    scryfallCdnOfflineSince = now;
-  }
+  // No-op: we do not globally lock out Scryfall CDN across components
 }
 
 export function isScryfallCdnOffline(): boolean {
-  if (!scryfallCdnOffline) return false;
-  // Re-probe Scryfall CDN after 3 minutes
-  if (Date.now() - scryfallCdnOfflineSince > 3 * 60 * 1000) {
-    scryfallCdnOffline = false;
-    scryfallFailureCount = 0;
-    return false;
-  }
-  return true;
+  return false;
 }
 
 /**
@@ -58,7 +32,7 @@ export function isScryfallCdnOffline(): boolean {
 export function isUnreleasedSet(setCode?: string): boolean {
   if (!setCode) return false;
   const upper = setCode.toUpperCase().trim();
-  if (['FRA', 'TRK', 'MBC'].includes(upper)) return true;
+  if (['FRA', 'TRK'].includes(upper)) return true;
   const known = POPULAR_LIMITED_SETS.find(s => s.code.toUpperCase() === upper);
   if (known && known.released_at) {
     const releaseTime = new Date(known.released_at).getTime();
@@ -71,33 +45,34 @@ export function isUnreleasedSet(setCode?: string): boolean {
 
 /**
  * Builds a prioritized cascade of fallback image URLs for any MTG card.
- * Respects the Scryfall CDN circuit breaker and skips unreleased sets on Gatherer.
+ * Prioritizes standard, fast-loading normal JPEG web images over heavy uncompressed PNGs,
+ * and includes direct Scryfall API image resolution.
  */
 export function getCardImageCandidateUrls(card: Partial<Card>, customSrc?: string): string[] {
   const urls: string[] = [];
-  const cdnOffline = isScryfallCdnOffline();
 
-  // 1. Explicitly provided customSrc (if not from a dead CDN)
+  // 1. Explicitly provided customSrc (if not from a back placeholder)
   if (customSrc && typeof customSrc === 'string' && customSrc.trim() && !customSrc.includes('back.jpg')) {
-    if (!cdnOffline || !customSrc.includes('cards.scryfall.io')) {
-      urls.push(customSrc.trim());
-    }
+    urls.push(customSrc.trim());
   }
 
-  // 2. Primary Scryfall URIs (png [transparent rounded corners] -> normal -> large -> small)
-  if (!cdnOffline) {
-    const pngUrl = card.image_uris?.png || card.card_faces?.[0]?.image_uris?.png;
-    const normalUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
-    const largeUrl = card.image_uris?.large || card.card_faces?.[0]?.image_uris?.large;
-    const smallUrl = card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small;
+  // 2. Primary Scryfall URIs: normal (fastest, standard ~80KB JPEG) -> large -> small -> png (heavy uncompressed fallback)
+  const normalUrl = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
+  const largeUrl = card.image_uris?.large || card.card_faces?.[0]?.image_uris?.large;
+  const smallUrl = card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small;
+  const pngUrl = card.image_uris?.png || card.card_faces?.[0]?.image_uris?.png;
 
-    if (pngUrl && !urls.includes(pngUrl)) urls.push(pngUrl);
-    if (normalUrl && !urls.includes(normalUrl)) urls.push(normalUrl);
-    if (largeUrl && !urls.includes(largeUrl)) urls.push(largeUrl);
-    if (smallUrl && !urls.includes(smallUrl)) urls.push(smallUrl);
+  if (normalUrl && !urls.includes(normalUrl)) urls.push(normalUrl);
+  if (largeUrl && !urls.includes(largeUrl)) urls.push(largeUrl);
+  if (smallUrl && !urls.includes(smallUrl)) urls.push(smallUrl);
+  if (pngUrl && !urls.includes(pngUrl)) urls.push(pngUrl);
+
+  // 3. Direct deterministic Scryfall image endpoint by Card ID
+  if (card.id && !urls.some((u) => u.includes(card.id!))) {
+    urls.push(`https://api.scryfall.com/cards/${card.id}?format=image&version=normal`);
   }
 
-  // 3. Official Gatherer Image (ONLY for released sets; Gatherer has no spoiled cards)
+  // 4. Official Gatherer Image (ONLY for released sets; Gatherer has no spoiled cards)
   const isUnreleased = isUnreleasedSet(card.set);
   if (!isUnreleased && card.name) {
     const rawName = card.name.trim();
@@ -298,7 +273,7 @@ export const CardProxyFallback: React.FC<{ card: Partial<Card> & { name: string 
       >
         <span className="truncate">{card.type_line || 'Card'}</span>
         <div className="flex items-center gap-1 shrink-0">
-          {card.set && <SetSymbol setCode={card.set} size="xs" />}
+          {card.set && <SetSymbol setCode={card.set} rarity={card.rarity} size="xs" />}
           <span className="capitalize text-[8px] opacity-75 font-mono">
             {card.rarity ? card.rarity[0].toUpperCase() : ''}
           </span>
@@ -375,10 +350,6 @@ export const CardImage: React.FC<CardImageProps> = ({
   const currentUrl = candidateUrls[sourceIdx];
 
   const handleImageError = useCallback(() => {
-    if (currentUrl && currentUrl.includes('cards.scryfall.io')) {
-      markScryfallCdnOffline();
-    }
-
     if (sourceIdx < candidateUrls.length - 1) {
       setSourceIdx(prev => prev + 1);
       setIsLoaded(false);
@@ -387,7 +358,7 @@ export const CardImage: React.FC<CardImageProps> = ({
       setIsLoaded(true);
       if (onError) onError();
     }
-  }, [currentUrl, sourceIdx, candidateUrls.length, onError]);
+  }, [sourceIdx, candidateUrls.length, onError]);
 
   const handleImageLoad = useCallback(() => {
     setIsLoaded(true);
@@ -420,7 +391,7 @@ export const CardImage: React.FC<CardImageProps> = ({
     }
   }, [currentUrl, onLoaded, handleImageError]);
 
-  // Watchdog Timer: Never allow any image to remain in loading state forever (max 3.5s)
+  // Watchdog Timer: Never allow any image to remain in loading state forever (max 8s)
   useEffect(() => {
     if (isLoaded || hasFailedAllSources) return;
 
@@ -437,7 +408,7 @@ export const CardImage: React.FC<CardImageProps> = ({
         setIsLoaded(true);
         if (onError) onError();
       }
-    }, 3500);
+    }, 8000);
 
     return () => clearTimeout(timer);
   }, [isLoaded, hasFailedAllSources, sourceIdx, candidateUrls.length, onLoaded, onError]);

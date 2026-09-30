@@ -20,7 +20,7 @@ const memoryStorage: Record<string, string> = {};
 };
 
 import { POPULAR_LIMITED_SETS } from '../services/scryfall';
-import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes } from '../services/wotcArchetypes';
+import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes, loadSetArchetypes } from '../services/wotcArchetypes';
 import {
   saveUserArchetypeEvaluation,
   loadUserArchetypeEvaluations,
@@ -28,7 +28,11 @@ import {
   clearUserArchetypeEvaluationsForSet,
   saveUserColorEvaluation,
   loadUserColorEvaluations,
+  deleteUserColorEvaluation,
   clearUserColorEvaluationsForSet,
+  saveUserEvaluation,
+  loadUserEvaluations,
+  deleteUserEvaluation,
   exportUserDataAsJSON,
   importUserDataFromJSON,
 } from '../services/storage';
@@ -51,6 +55,7 @@ console.log('Test 1: Verifying WOTC Archetype Descriptions for Key Sets...');
 const testSets = ['DFT', 'HOB', 'MBC', 'FRA', 'MID', 'SNC', 'KTK', 'DOM', 'WAR', 'ELD', 'BLB', 'MH3'];
 
 for (const setCode of testSets) {
+  await loadSetArchetypes(setCode);
   const archetypes = getWOTCArchetypesForSet(setCode, []);
   assert(Array.isArray(archetypes), `Set ${setCode} should return an array of archetypes`);
   assert(archetypes.length >= 5, `Set ${setCode} should have at least 5 defined archetypes (found ${archetypes.length})`);
@@ -172,13 +177,34 @@ saveUserColorEvaluation(midB, testUser);
 userColorEvals = loadUserColorEvaluations(testUser);
 assert(Object.keys(userColorEvals).length === 2, 'Total saved color evaluations should be 2');
 
-// Clear DFT colors
-clearUserColorEvaluationsForSet('DFT', testUser);
+// Test single color delete (toggle off / remove override)
+saveUserColorEvaluation(wEval, testUser);
 userColorEvals = loadUserColorEvaluations(testUser);
-assert(!userColorEvals['dft_W'], 'DFT W color should be cleared');
-assert(Boolean(userColorEvals['mid_B']), 'MID B color should be preserved');
+assert(Boolean(userColorEvals['dft_W']), 'DFT W should be re-saved');
+deleteUserColorEvaluation('DFT', 'W', testUser);
+userColorEvals = loadUserColorEvaluations(testUser);
+assert(!userColorEvals['dft_W'], 'DFT W should be deleted by deleteUserColorEvaluation');
+assert(Boolean(userColorEvals['mid_B']), 'MID B should still exist');
 
-console.log('   ✓ Monocolor evaluation save, retrieve, and set-scoped clear verified.');
+// Test card evaluation delete (toggle off)
+const cardEval: UserCardEvaluation = {
+  cardId: 'c1',
+  cardName: 'Aethertide Raider',
+  setCode: 'DFT',
+  userGrade: 'B',
+  userScore: 3.7,
+  pickPriority: 'Early Pick',
+  updatedAt: new Date().toISOString(),
+};
+saveUserEvaluation(cardEval, testUser);
+let cardEvals = loadUserEvaluations(testUser);
+assert(Boolean(cardEvals['dft_aethertide raider']), 'Card evaluation should be saved');
+deleteUserEvaluation('DFT', 'Aethertide Raider', testUser);
+cardEvals = loadUserEvaluations(testUser);
+assert(!cardEvals['dft_aethertide raider'], 'Card evaluation should be removed by deleteUserEvaluation');
+
+console.log('   ✓ Monocolor evaluation save, retrieve, single delete, and set-scoped clear verified.');
+console.log('   ✓ Card evaluation save, retrieve, and single delete (toggle off) verified.');
 
 // -------------------------------------------------------------
 // Test 4: Set Synthesis Report with User Archetype & Color Evaluations
@@ -360,5 +386,76 @@ assert(Boolean(restoredColor['blb_G']), 'Restored color blb_G must exist');
 assert(restoredColor['blb_G'].userGrade === 'B', 'Restored color grade must match B');
 
 console.log('   ✓ Export/Import JSON (v2.1) successfully preserves all archetype and color evaluations.');
+
+// -------------------------------------------------------------
+// Test 6: Minimum Evaluation Threshold & Anti-Stub Verification
+// -------------------------------------------------------------
+console.log('\nTest 6: Verifying Minimum Evaluation Threshold & Elimination of Stub Grades...');
+
+// Construct a 306-card set simulating a standard MTG draft expansion (e.g. MSH)
+const largeSetCards: Card[] = [];
+for (let i = 1; i <= 306; i++) {
+  const color = i <= 60 ? 'W' : i <= 120 ? 'U' : i <= 180 ? 'B' : i <= 240 ? 'R' : i <= 300 ? 'G' : 'C';
+  largeSetCards.push({
+    id: `msh_${i}`,
+    name: `MSH Card ${i}`,
+    set: 'MSH',
+    set_name: 'Marvel Super Heroes',
+    collector_number: `${i}`,
+    colors: color === 'C' ? [] : [color as any],
+    color_identity: color === 'C' ? [] : [color as any],
+    mana_cost: '{2}{W}',
+    cmc: 3,
+    type_line: 'Creature',
+    rarity: 'common',
+    keywords: [],
+  });
+}
+
+// User has evaluated ONLY 1 card in this 306-card set
+const singleCardEvals: Record<string, UserCardEvaluation> = {
+  'msh_msh card 1': {
+    cardId: 'msh_1',
+    cardName: 'MSH Card 1',
+    setCode: 'MSH',
+    userGrade: 'B+',
+    userScore: 4.0,
+    pickPriority: 'Early Pick',
+    updatedAt: new Date().toISOString(),
+  },
+};
+
+const underThresholdReport = generateSetSynthesisReport(
+  largeSetCards,
+  singleCardEvals,
+  'MSH',
+  'Mock Standard Set',
+  null,
+  {},
+  {}
+);
+
+assert(underThresholdReport.totalCards === 306, 'Total cards must be 306');
+assert(underThresholdReport.ratedCards === 1, 'Only 1 card evaluated');
+assert(underThresholdReport.evaluationsThreshold === 15, 'Threshold for 306-card set must be 15');
+assert(underThresholdReport.isThresholdMet === false, 'isThresholdMet must be false for 1/306');
+assert(underThresholdReport.bestArchetype === null, 'bestArchetype must be null when below threshold');
+assert(underThresholdReport.worstArchetype === null, 'worstArchetype must be null when below threshold');
+
+// All 10 archetypes must be N/A with 0 power score (no fake Tier B- or Tier C stub scores)
+underThresholdReport.archetypeRankings.forEach((arch) => {
+  assert(arch.autoGrade === 'N/A', `${arch.code} autoGrade must be N/A`);
+  assert(arch.letterGrade === 'N/A', `${arch.code} letterGrade must be N/A`);
+  assert(arch.powerScore === 0, `${arch.code} powerScore must be 0`);
+  assert(arch.gradeBand === 'N/A', `${arch.code} gradeBand must be N/A`);
+});
+
+// Unrated colors must be N/A with 0 average score (not 2.5)
+const blueColor = underThresholdReport.colorRankings.find((c) => c.color === 'U');
+assert(Boolean(blueColor), 'Blue color must exist');
+assert(blueColor?.letterGrade === 'N/A', 'Unrated Blue must be Grade N/A');
+assert(blueColor?.averageScore === 0, 'Unrated Blue must have averageScore 0, NOT 2.5');
+
+console.log('   ✓ Single evaluated card yields N/A across all archetypes and zero stub data.');
 
 console.log('\n🎉 ALL ARCHETYPE & COLOR GRADING VERIFICATION TESTS PASSED!');
