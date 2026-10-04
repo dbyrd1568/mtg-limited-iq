@@ -832,55 +832,18 @@ const AppContent: React.FC = () => {
                   />
                 ) : (
                   <div className="space-y-4">
-                    {/* Quiz Subtab Navigation Header */}
-                    <div className="max-w-[1440px] mx-auto px-3 sm:px-6 pt-4">
-                      <div className="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-slate-200 dark:border-slate-800/80">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 via-indigo-600 to-amber-500 dark:from-violet-500 dark:via-indigo-500 dark:to-cyan-400 flex items-center justify-center text-white shadow-md shadow-violet-500/20 shrink-0 p-1.5 border border-white/20">
-                            <PlaneswalkerSymbol className="w-full h-full text-white drop-shadow-xs" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-heading">
-                                Card Quiz & Tactical Mastery
-                              </h1>
-                              <SetBadge setCode={currentSet.code} iconSvgUri={currentSet.icon_svg_uri} size="xs" className="px-2 py-0.5 text-[11px]" />
-                            </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                              Drill {currentSet.name} heuristics, analyze category proficiency, and master missed cards.
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Right side: Streak, Level, and Subtabs */}
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          {/* Streak & Level badges (moved from Navbar to Card Quiz) */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <div
-                              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/50 text-amber-700 dark:text-amber-400 text-xs font-semibold whitespace-nowrap shadow-xs"
-                              title={`Current Streak: ${userStats?.currentStreak || 0}`}
-                            >
-                              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                              <span>{userStats?.currentStreak || 0} Streak</span>
-                            </div>
-
-                            <div
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium whitespace-nowrap shadow-xs"
-                              title={`Level ${userStats?.level || 1} (${userStats?.xp || 0} Total XP) • Gain XP by taking quizzes and grading cards`}
-                            >
-                              <span className="font-mono font-bold text-violet-600 dark:text-violet-400">Lv.{userStats?.level || 1}</span>
-                              <span className="text-slate-500 dark:text-slate-400 text-[11px]">({userStats?.xp || 0} XP)</span>
-                            </div>
-                          </div>
-
-                          {/* Subtabs Pill Switcher (Take Quiz | Threats / Removal | Mastery Stats) */}
-                          <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs">
+                    {/* UNIFIED TOP-DOCKED CONTROL BAR (Matching Grading Hub layout) */}
+                    <div className="sticky top-14 sm:top-16 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-slate-100/95 dark:bg-[#030614]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+                        {/* Left: Sub-tabs pill container */}
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+                          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
                             <button
                               onClick={() => {
                                 setQuizSubTab('take');
                                 updateAppUrlParams({ tab: 'quiz', subtab: undefined });
                               }}
-                              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                                 quizSubTab === 'take'
                                   ? 'bg-violet-600 text-white shadow-xs font-bold'
                                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -894,9 +857,9 @@ const AppContent: React.FC = () => {
                                 setQuizSubTab('threats');
                                 updateAppUrlParams({ tab: 'quiz', subtab: 'threats' });
                               }}
-                              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                                 quizSubTab === 'threats'
-                                  ? 'bg-rose-600 text-white shadow-xs font-bold'
+                                  ? 'bg-violet-600 text-white shadow-xs font-bold'
                                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
                               }`}
                             >
@@ -909,7 +872,7 @@ const AppContent: React.FC = () => {
                                 setQuizSubTab('stats');
                                 updateAppUrlParams({ tab: 'quiz', subtab: 'stats' });
                               }}
-                              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                                 quizSubTab === 'stats'
                                   ? 'bg-violet-600 text-white shadow-xs font-bold'
                                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -917,6 +880,25 @@ const AppContent: React.FC = () => {
                             >
                               Mastery Stats
                             </button>
+                          </div>
+                        </div>
+
+                        {/* Right: Streak & Level Badges aligned like the action buttons in Grading */}
+                        <div className="flex items-center justify-end gap-1.5 shrink-0 flex-wrap">
+                          <div
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/50 flex items-center gap-1.5 whitespace-nowrap shadow-2xs"
+                            title={`Current Streak: ${userStats?.currentStreak || 0}`}
+                          >
+                            <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                            <span>{userStats?.currentStreak || 0} Streak</span>
+                          </div>
+
+                          <div
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800 flex items-center gap-1.5 whitespace-nowrap shadow-2xs"
+                            title={`Level ${userStats?.level || 1} (${userStats?.xp || 0} Total XP) • Gain XP by taking quizzes and grading cards`}
+                          >
+                            <span className="font-mono font-bold text-violet-600 dark:text-violet-400">Lv.{userStats?.level || 1}</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[11px]">({userStats?.xp || 0} XP)</span>
                           </div>
                         </div>
                       </div>

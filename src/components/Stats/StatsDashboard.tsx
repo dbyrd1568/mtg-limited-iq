@@ -174,19 +174,22 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
   return (
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* Header & KPI Summary */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
+      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2.5 py-0.5 rounded border border-slate-200 dark:border-cyan-500/30">
-                Level {userStats.level} Drafter
+              <span className="text-xs font-mono uppercase font-bold text-violet-700 dark:text-cyan-300 bg-violet-100 dark:bg-cyan-500/15 border border-violet-200 dark:border-cyan-400/30 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5" />
+                Category Analytics & Mastery
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">{userStats.xp} Total XP</span>
+              <span className="text-xs font-mono text-slate-500 dark:text-slate-400 font-bold">
+                Level {userStats.level} ({userStats.xp} XP)
+              </span>
             </div>
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-heading mt-0.5">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white font-heading tracking-tight">
               Quiz Mastery & Category Analytics
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed">
               Track your quiz accuracy, category proficiencies, and missed card drills across draft sets.
             </p>
           </div>

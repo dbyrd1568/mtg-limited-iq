@@ -131,21 +131,22 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
   return (
     <div className="space-y-4">
       {/* 1. Header Tactical Banner */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-violet-900/20 via-slate-900/40 to-rose-900/20 dark:from-violet-950/40 dark:via-[#090e24] dark:to-rose-950/30 border border-violet-500/30 dark:border-violet-500/20 shadow-xs">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-rose-500/20 text-rose-500 dark:text-rose-400">
-                <ShieldAlert className="w-5 h-5" />
+              <span className="text-xs font-mono uppercase font-bold text-violet-700 dark:text-cyan-300 bg-violet-100 dark:bg-cyan-500/15 border border-violet-200 dark:border-cyan-400/30 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5" />
+                Removal & Blowout Protection
               </span>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                Removal to Play Around • Threat Matrix
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 border border-violet-300 dark:border-violet-700">
-                {currentSetCode.toUpperCase()}
+              <span className="text-xs font-mono text-slate-500 dark:text-slate-400 hidden sm:inline">
+                Open Mana Threat Matrix
               </span>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white font-heading tracking-tight">
+              Removal to Play Around
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed">
               In Limited, running an attacker or combat trick into open mana is the #1 tempo blowout.
               Use this matrix to read opponent untapped lands, anticipate instant-speed removal, and know when it is safe to strike.
             </p>
