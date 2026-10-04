@@ -3,6 +3,12 @@
 All notable changes to this project will be documented here.
 
 
+## [1.7.11](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.7.10...v1.7.11) (2026-10-04)
+
+### ✨ Features
+
+* **quiz:** add Threat Matrix sub-tab to Quiz view ([30626fa](https://github.com/dbyrd1568/mtg-limited-iq/commit/30626faa13effebe7d35d5592ce4931dd5e211e4))
+
 ## [1.7.10](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.7.9...v1.7.10) (2026-10-04)
 
 ### ✨ Features
