@@ -3,6 +3,12 @@
 All notable changes to this project will be documented here.
 
 
+## [1.7.12](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.7.11...v1.7.12) (2026-10-04)
+
+### 💄 Styles
+
+* **quiz:** align quiz and threat matrix toolbar and banner layout with grading hub ([cd7016c](https://github.com/dbyrd1568/mtg-limited-iq/commit/cd7016c06a1cd9a0bb30ccb30a8e7ec4d3955c38))
+
 ## [1.7.11](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.7.10...v1.7.11) (2026-10-04)
 
 ### ✨ Features
