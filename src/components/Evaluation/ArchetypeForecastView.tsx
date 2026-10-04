@@ -456,7 +456,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               ) : (
                 <span className="text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  17Lands Data: TBD (Unreleased Set)
+                  17Lands Data: TBD
                 </span>
               )}
 
@@ -577,7 +577,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             <div className="flex items-center gap-2.5">
               <Clock className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="text-slate-600 dark:text-slate-400">
-                <strong className="text-slate-900 dark:text-white">17Lands Metagame: TBD</strong> — {report.setName} is an unreleased set. 17Lands data is available approximately 2 weeks after release.
+                <strong className="text-slate-900 dark:text-white">17Lands Metagame: TBD</strong> — 17Lands data is available approximately 2 weeks after release.
               </span>
             </div>
           </div>
@@ -1188,9 +1188,9 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               </div>
             ) : (
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
-                <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  <span>17Lands Win Rates</span>
-                  <span className="text-amber-600 dark:text-amber-400 font-bold">• 17Lands GIH Win Rate Hierarchy: TBD (Unreleased Set)</span>
+                <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <span>17Lands Win Rates:</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-bold">TBD</span>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#050818]/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-500 shrink-0" />
@@ -1304,7 +1304,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         </span>
                       </div>
                       <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                        Unreleased Set
+                        Data Pending
                       </span>
                     </div>
                   )
@@ -1578,7 +1578,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                       </span>
                     </div>
                     <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      Unreleased Set
+                      Data Pending
                     </span>
                   </div>
                 )

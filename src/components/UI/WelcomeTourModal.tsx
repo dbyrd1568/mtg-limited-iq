@@ -28,7 +28,7 @@ import { PlaneswalkerSymbol } from './PlaneswalkerSymbol';
 interface WelcomeTourModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigateTab?: (tab: 'evaluation' | 'quiz' | 'explorer') => void;
+  onNavigateTab?: (tab: 'evaluation' | 'quiz') => void;
   onOpenSetSelector?: () => void;
 }
 
@@ -37,7 +37,7 @@ interface TourStep {
   badge: string;
   tagline: string;
   description: string;
-  targetTab?: 'evaluation' | 'quiz' | 'explorer';
+  targetTab?: 'evaluation' | 'quiz';
   icon: React.ComponentType<{ className?: string }>;
   accentColor: string;
   visualNode?: React.ReactNode;
@@ -74,7 +74,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
     onClose();
   };
 
-  const handleFinishTour = (targetTab?: 'evaluation' | 'quiz' | 'explorer') => {
+  const handleFinishTour = (targetTab?: 'evaluation' | 'quiz') => {
     handleDismiss();
     if (targetTab && onNavigateTab) {
       onNavigateTab(targetTab);
@@ -94,33 +94,32 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
         <div className="p-3.5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2 flex-wrap">
             <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold">
-              <span className="px-2.5 py-1 rounded-xl bg-violet-600 text-white shadow-xs">Grading Hub</span>
-              <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Quiz Drills</span>
-              <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Cards Visualizer</span>
+              <span className="px-2.5 py-1 rounded-xl bg-violet-600 text-white shadow-xs">Grading</span>
+              <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Quiz</span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-mono text-violet-600 dark:text-cyan-400 font-bold bg-violet-50 dark:bg-violet-950/40 px-2 py-1 rounded-lg border border-violet-200 dark:border-violet-700/50">
-              <span>Choose Set ▾</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-violet-600 dark:text-cyan-300 font-bold bg-violet-50 dark:bg-violet-950/40 px-2.5 py-1 rounded-lg border border-violet-200 dark:border-violet-700/50">
+              <span>Set Switcher ▾</span>
             </div>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-            Switch sets anytime in the top-right navbar. All tabs share your active set, filters, and personal grades.
+            The <strong>Grading</strong> workbench provides card evaluation, archetype forecasts, and calibration stats. The <strong>Quiz</strong> workbench tests instant tactical reflexes.
           </p>
         </div>
       ),
       bullets: [
         {
-          title: 'Three Core Workbenches',
-          text: 'Grading (rate cards, compare benchmarks & calibrate), Cards (explore set catalog & syntax search), and Quiz (fast-paced tactical drills).',
+          title: 'Core Draft Workbenches',
+          text: 'Grading (rate cards, inspect precedent comps, forecast archetypes & calibrate accuracy) and Quiz (fast-paced tactical drills & missed cards vault).',
           icon: Layers,
         },
         {
-          title: 'Set Selector in Navbar',
-          text: 'Click "Choose Set" in the top-right navbar anytime to switch between current Standard formats and historical draft sets.',
+          title: 'Active Set Switcher',
+          text: 'Click the set badge in the navbar anytime to switch between current formats (like Reality Fracture) and historical draft sets.',
           icon: Sparkles,
         },
         {
           title: 'Dense & Feature-Rich',
-          text: 'The UI packs deep empirical stats, dual-column card bodies, and direct 1-click rating. Step through this guide to master the tools!',
+          text: 'The UI packs deep empirical stats, multi-creator pro reviews, and direct 1-click rating. Step through this guide to master the tools!',
           icon: Sliders,
         },
       ],
@@ -146,9 +145,11 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       visualNode: (
         <div className="p-3.5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
-            <div className="flex items-center gap-1 font-mono text-[10px]">
+            <div className="flex items-center gap-1 font-mono text-[10px] flex-wrap">
               <span className="px-1.5 py-0.5 rounded-md bg-violet-950 text-white font-bold border border-violet-400">Me: A-</span>
               <span className="px-1.5 py-0.5 rounded-md bg-amber-950 text-white font-bold border border-amber-400">LSV: 4.0</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-pink-950 text-white font-bold border border-pink-400">LLU: 3.5</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-sky-950 text-white font-bold border border-sky-400">DS: 4.0</span>
               <span className="px-1.5 py-0.5 rounded-md bg-emerald-950 text-white font-bold border border-emerald-400">17L: B+</span>
             </div>
             <span className="text-[10px] font-mono text-slate-400">#042 • 2U</span>
@@ -181,13 +182,13 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       ),
       bullets: [
         {
-          title: 'Three Rating Badges (Me, LSV, 17L)',
-          text: 'Top badges display your assigned grade (Me), pro pre-release tiers (LSV), and 17Lands win rate grades (17L). Use the "Sources" toggle in the filter bar to hide or show them.',
+          title: 'Multi-Creator & Telemetry Badges (Me, LSV, LLU, DS, 17L)',
+          text: 'Top badges display your grade (Me), pro reviews (LSV, Limited Level-Ups, DraftSim), and 17Lands win rate grades. Toggle any source on/off via the "Sources" dropdown in the filter bar.',
           icon: ShieldCheck,
         },
         {
           title: '1-Click Quick Rate Strip',
-          text: 'Assign letter grades directly from the card list using the 11 buttons (A+ down to F) at the bottom of every card — no modal required.',
+          text: 'Assign letter grades directly from the card list using the 11 buttons (A+ down to F, plus N/A for lands) on every card — no modal required.',
           icon: Zap,
         },
         {
@@ -207,7 +208,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       badge: 'Statistical Twins',
       tagline: 'Stuck on an unrated or previewed card? Compare it against historical statistical twins.',
       description:
-        'When evaluating a new card or unfamiliar format, historical precedents show you how mechanically identical cards performed in the past.',
+        'When evaluating a new card or unfamiliar format, historical precedents show you how mechanically similar cards performed in the past.',
       targetTab: 'evaluation',
       icon: PlayingCardsFan,
       accentColor: 'from-cyan-500 to-blue-600',
@@ -245,13 +246,13 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       ),
       bullets: [
         {
-          title: 'Click the Similar Cards Icon (🂠)',
-          text: 'Found on the lower-right of every card tile (just above the F rating button). Click it to launch the Precedent Engine.',
+          title: 'Launch via the "Comps" Button (🂠)',
+          text: 'Found directly above the Quick Rate Strip on every card tile. Click "Comps" to open the Precedent Engine.',
           icon: PlayingCardsFan,
         },
         {
-          title: 'Algorithmic Mechanical Comps',
-          text: 'The engine compares mana cost, colors, card types, and structural mechanics (e.g. ETB value, hard removal, combat tricks, evasion, counters).',
+          title: 'Multi-Pillar Similarity & Oracle Matching',
+          text: 'The engine evaluates exact oracle text matching first, followed by mana cost, color identity, type lines, and structural mechanics (ETB value, removal, evasion, etc.).',
           icon: Compass,
         },
         {
@@ -260,8 +261,8 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
           icon: TrendingUp,
         },
         {
-          title: '1-Click Grade Adoption',
-          text: 'Adopt the consensus grade or a specific predecessor rating with a single click using "Use Grade (X)" or "Use Grade Average (X)".',
+          title: '1-Click Grade Adoption & Custom Search',
+          text: 'Adopt the consensus grade with one click, or search any card in MTG history to manually substitute comps.',
           icon: Check,
         },
       ],
@@ -280,52 +281,52 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
           <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 space-y-1">
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
               <EyeOff className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>Grading Mode</span>
+              <span>Grading Mode (Blind)</span>
             </div>
             <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              17Lands data and LSV ratings are hidden so you rate cards blind with zero confirmation bias.
+              17Lands data and pro creator reviews (LSV, LLU, DS) are masked so you rate cards blind with zero confirmation bias.
             </p>
           </div>
           <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 space-y-1">
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
               <Eye className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Compare Mode</span>
+              <span>Compare Mode (Active)</span>
             </div>
             <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              Reveals empirical GIH WR %, ALSA pick order, and Traps (🔥) vs Sleepers (🧊) disparity banners.
+              Reveals empirical GIH WR %, ALSA, IWD, all pro scores, and Traps (🔥) vs Sleepers (🧊) disparity banners.
             </p>
           </div>
         </div>
       ),
       bullets: [
         {
-          title: 'Grading Mode (EyeOff)',
-          text: 'Keeps 17Lands and LSV stats hidden while you rate cards so you evaluate with pure intuition.',
+          title: 'Grading Mode (Blind)',
+          text: 'Keeps 17Lands telemetry and all pro reviews hidden while you rate cards so you evaluate with pure intuition.',
           icon: EyeOff,
         },
         {
-          title: 'Compare Mode (Eye)',
-          text: 'Unmasks 17Lands Premier Draft GIH Win Rate, ALSA (Average Last Seen At), and IWD (Improvement When Drawn).',
+          title: 'Compare Mode (Active)',
+          text: 'Unmasks 17Lands Premier Draft GIH Win Rate, ALSA, IWD, and full pro creator ratings (LSV, LLU, DS).',
           icon: Eye,
         },
         {
-          title: 'Traps (🔥) vs. Sleepers (🧊) Verdicts',
-          text: 'Cards feature automatic disparity banners: Exact Match, Within Tolerance, Trap Card (overrated by you), or Sleeper Card (underrated hidden gem).',
+          title: 'Traps (🔥) vs. Sleepers (🧊) Disparity Banners',
+          text: 'Instant verdicts highlight where your grades diverge from data: Exact Match, Within Tolerance, Trap Card (overrated), or Sleeper Card (underrated).',
           icon: Flame,
         },
         {
-          title: 'Calibration & Curve Analytics',
-          text: 'Check the Calibration subtab in the Grading Hub to view your personal accuracy curve, rarity breakdown, and evaluation biases.',
+          title: 'Calibration & OLS Regression Scatter Plot',
+          text: 'Check the Calibration subtab in the Grading workbench to view your personal accuracy curve, linear regression scatter plot, and bias metrics.',
           icon: BarChart2,
         },
       ],
     },
     {
-      title: '4. Filters, Syntax Search & Tactical Quizzes',
+      title: '4. Archetypes, Syntax Search & Tactical Quizzes',
       badge: 'Power User Tools',
-      tagline: 'Filter with surgical precision and drill tactical reflexes before drafting.',
+      tagline: 'Analyze archetype themes, search with surgical precision, and drill tactical reflexes.',
       description:
-        'Take your format mastery from theory into practice with targeted filters and flashcard drills.',
+        'Take your format mastery from card grading into strategic archetypes and fast-paced flashcard drills.',
       targetTab: 'quiz',
       icon: Brain,
       accentColor: 'from-emerald-500 to-teal-500',
@@ -347,24 +348,24 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       ),
       bullets: [
         {
-          title: 'Tactical Role Filters',
-          text: 'Filter in 1-click by Creatures, Instants, Combat Tricks, or Removal spells to analyze format interaction density.',
-          icon: Sliders,
-        },
-        {
-          title: 'Official Scryfall Syntax Search',
-          text: 'Search with precision syntax: "o:flying", "t:equipment", "mv<=2", "c:wurg", or plain English card names and text.',
-          icon: Sparkles,
-        },
-        {
-          title: 'WOTC Supported Archetypes',
-          text: 'View curated draft themes for all 10 color pairs with their anchor signpost uncommons and strategic game plans.',
+          title: 'Archetype Forecast Subtab',
+          text: 'Explore official WOTC archetype themes for all 10 two-color pairs, including anchor signpost cards, strategic play styles, and win rate hierarchies.',
           icon: Compass,
         },
         {
-          title: 'Tactical Quiz Drills & Missed Cards',
-          text: 'Drill open-mana blowouts, instant-speed tricks, and P1P1 picks. Use the Missed Cards Vault to re-test tricky cards.',
+          title: 'Official Scryfall Syntax & Tactical Filters',
+          text: 'Search with precision syntax ("o:flying", "t:equipment", "mv<=2") or 1-click filter buttons for Combat Tricks, Removal, Instants, and Creatures.',
+          icon: Sparkles,
+        },
+        {
+          title: 'Tactical Quiz Drills (Timed & Practice)',
+          text: 'Sharpen your instant-speed combat reflexes and pick decisions before entering Arena or paper draft queues.',
           icon: Brain,
+        },
+        {
+          title: 'Mastery Stats & Missed Cards Vault',
+          text: 'The Quiz workbench tracks your accuracy by color and card type, and saves incorrect cards to your Missed Cards Vault for targeted review.',
+          icon: CheckCircle2,
         },
       ],
       quickAction: onOpenSetSelector

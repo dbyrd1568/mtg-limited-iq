@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Card, MTGColor, MTGRarity, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, GradeTier, SetCalibrationSummary, SetInfo, UserAccount } from '../../types/mtg';
+import { Card, MTGColor, MTGRarity, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, GradeTier, SetCalibrationSummary, SetInfo, UserAccount, ProCreatorSource, PRO_CREATORS } from '../../types/mtg';
 import {
   GRADE_TIERS,
   GRADE_SCORES,
@@ -16,8 +16,8 @@ import {
   get17LandsCardUrl,
   get17LandsQueryStatus,
 } from '../../services/seventeenLands';
-import { getBlindGradingForSet, setBlindGradingForSet } from '../../services/storage';
-import { getLsvRatingForCard } from '../../services/lsvRatings';
+import { getBlindGradingForSet, setBlindGradingForSet, getPreferredCreators } from '../../services/storage';
+import { getLsvRatingForCard, getProRatingForCard } from '../../services/lsvRatings';
 import { CardObfuscator } from '../CardObfuscator';
 import { QuickRateModal } from './QuickRateModal';
 import { SimilarCardsModal } from './SimilarCardsModal';
@@ -25,16 +25,29 @@ import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
 import { deduplicateCards } from '../../services/scryfall';
-import { CalibrationScatterPlot } from './CalibrationScatterPlot';
-import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink, Link2 } from 'lucide-react';
+import { CalibrationScatterPlot, BenchmarkTarget } from './CalibrationScatterPlot';
+import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink, Link2, ArrowUp, ArrowDown, ArrowUpDown, Clock } from 'lucide-react';
 import { ExportGradesModal } from './ExportGradesModal';
-import { ManaCostRenderer } from '../UI/ManaSymbol';
+import { ManaCostRenderer, ManaSymbol } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
 import { SetBadge, SetSymbol } from '../UI/SetSymbol';
 import { ManaColorFilterBar, cardMatchesColorFilter, cardMatchesRoleFilter, DEFAULT_ROLE_FILTERS } from '../UI/ManaColorFilterBar';
 import { CardSearchBar } from '../Search/CardSearchBar';
 import { cardMatchesQuery } from '../../services/cardSearchParser';
 import { useContextualTour } from '../../context/ContextualTourContext';
+
+export type ComparisonSortColumn =
+  | 'number'
+  | 'name'
+  | 'rarity'
+  | 'me'
+  | 'lsv'
+  | 'llu'
+  | 'ds'
+  | '17l'
+  | 'winrate'
+  | 'alsa'
+  | 'verdict';
 
 interface EvaluationHubProps {
   cards: Card[];
@@ -136,6 +149,22 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   const [selectedColors, setSelectedColors] = useState<string[]>(propSelectedColors ?? ['ALL']);
   const [selectedRarities, setSelectedRarities] = useState<string[]>(propSelectedRarities ?? ['ALL']);
   const [selectedRoles, setSelectedRoles] = useState<string[]>(propSelectedRoles ?? ['ALL']);
+  const [preferredCreators, setPreferredCreatorsState] = useState<ProCreatorSource[]>(() =>
+    getPreferredCreators()
+  );
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<ProCreatorSource[]>;
+      if (custom.detail && Array.isArray(custom.detail)) {
+        setPreferredCreatorsState(custom.detail);
+      } else {
+        setPreferredCreatorsState(getPreferredCreators());
+      }
+    };
+    window.addEventListener('mtg_preferred_creators_changed', handler);
+    return () => window.removeEventListener('mtg_preferred_creators_changed', handler);
+  }, []);
 
   // Keep local state in sync with prop changes (tab switch carries filters over)
   useEffect(() => { if (propSearchQuery !== undefined) setSearchQuery(propSearchQuery); }, [propSearchQuery]);
@@ -175,12 +204,90 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   const [comparisonVerdictFilter, setComparisonVerdictFilter] = useState<string>('ALL');
   const [selectedCardForModal, setSelectedCardForModal] = useState<Card | null>(null);
   const [similarCardsModalCard, setSimilarCardsModalCard] = useState<Card | null>(null);
-  const [cardListSortBy, setCardListSortBy] = useState<'number' | 'name' | 'color' | 'rarity' | 'grade-desc' | 'grade-asc' | 'lsv-desc' | 'winrate'>('number');
-  const [comparisonSortBy, setComparisonSortBy] = useState<'number' | 'delta_desc' | 'delta_asc' | 'winrate' | 'name'>('number');
+  const [cardListSortBy, setCardListSortBy] = useState<'number' | 'name' | 'color' | 'rarity' | 'grade-desc' | 'grade-asc' | 'lsv-desc' | 'llu-desc' | 'ds-desc' | 'winrate'>('number');
+  const [comparisonSortColumn, setComparisonSortColumn] = useState<ComparisonSortColumn>('number');
+  const [comparisonSortDirection, setComparisonSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showMathExplainer, setShowMathExplainer] = useState<boolean>(false);
+
+  const handleToggleComparisonSort = (col: ComparisonSortColumn) => {
+    if (comparisonSortColumn === col) {
+      setComparisonSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setComparisonSortColumn(col);
+      if (col === 'number' || col === 'name' || col === 'rarity' || col === 'alsa') {
+        setComparisonSortDirection('asc');
+      } else {
+        setComparisonSortDirection('desc');
+      }
+    }
+  };
+
+  const renderSortableHeader = (
+    col: ComparisonSortColumn,
+    label: string,
+    align: 'left' | 'center' | 'right' = 'left',
+    className: string = ''
+  ) => {
+    const isActive = comparisonSortColumn === col;
+    return (
+      <th
+        key={col}
+        onClick={() => handleToggleComparisonSort(col)}
+        className={`py-2 px-3 cursor-pointer select-none group transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60 ${
+          align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+        } ${isActive ? 'text-violet-700 dark:text-cyan-300 font-bold bg-violet-100/40 dark:bg-violet-950/30' : ''} ${className}`}
+        title={`Sort by ${label} (${
+          isActive
+            ? comparisonSortDirection === 'asc'
+              ? 'ascending, click for descending'
+              : 'descending, click for ascending'
+            : 'click to sort'
+        })`}
+      >
+        <button
+          type="button"
+          className={`inline-flex items-center gap-1 w-full whitespace-nowrap cursor-pointer focus:outline-hidden ${
+            align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+          }`}
+        >
+          <span>{label}</span>
+          {isActive ? (
+            comparisonSortDirection === 'asc' ? (
+              <ArrowUp className="w-3 h-3 text-violet-600 dark:text-cyan-400 shrink-0" />
+            ) : (
+              <ArrowDown className="w-3 h-3 text-violet-600 dark:text-cyan-400 shrink-0" />
+            )
+          ) : (
+            <ArrowUpDown className="w-3 h-3 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          )}
+        </button>
+      </th>
+    );
+  };
+  const [showMe, setShowMe] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mtg_show_me');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
   const [showLsv, setShowLsv] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mtg_show_lsv');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [showLlu, setShowLlu] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mtg_show_llu');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [showDs, setShowDs] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mtg_show_ds') ?? localStorage.getItem('mtg_show_lol');
       if (saved !== null) return saved === 'true';
     }
     return true;
@@ -193,11 +300,41 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     return true;
   });
 
+  const handleToggleMe = () => {
+    setShowMe((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mtg_show_me', String(next));
+      }
+      return next;
+    });
+  };
+
   const handleToggleLsv = () => {
     setShowLsv((prev) => {
       const next = !prev;
       if (typeof window !== 'undefined') {
         localStorage.setItem('mtg_show_lsv', String(next));
+      }
+      return next;
+    });
+  };
+
+  const handleToggleLlu = () => {
+    setShowLlu((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mtg_show_llu', String(next));
+      }
+      return next;
+    });
+  };
+
+  const handleToggleDs = () => {
+    setShowDs((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mtg_show_ds', String(next));
       }
       return next;
     });
@@ -294,15 +431,69 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     }
   };
 
-  // Compute calibration summary using effective 17lands data
+  const [activeBenchmarkTarget, setActiveBenchmarkTarget] = useState<BenchmarkTarget>('17L');
+
+  // Compute total count of cards the user has rated (excluding lands and N/A)
+  const userRatedCount = useMemo(() => {
+    return cards.filter((c) => {
+      const isLand = Boolean(c.is_land || c.type_line?.toLowerCase().includes('land'));
+      if (isLand) return false;
+      const key = `${c.set.toLowerCase()}_${c.name.toLowerCase()}`;
+      return Boolean(userEvaluations[key]?.userGrade && userEvaluations[key]?.userGrade !== 'N/A');
+    }).length;
+  }, [cards, userEvaluations]);
+
+  const benchmarkGetter = useMemo(() => {
+    return (card: Card) => {
+      if (activeBenchmarkTarget === 'LSV') {
+        return getLsvRatingForCard(card) || getProRatingForCard(card, 'LSV', card.set);
+      }
+      if (activeBenchmarkTarget === 'LLU') {
+        return getProRatingForCard(card, 'LLU', card.set);
+      }
+      if (activeBenchmarkTarget === 'DS') {
+        return getProRatingForCard(card, 'DS', card.set);
+      }
+      return null;
+    };
+  }, [activeBenchmarkTarget]);
+
+  const benchmarkDisplayName = useMemo(() => {
+    switch (activeBenchmarkTarget) {
+      case '17L':
+        return '17Lands';
+      case 'LSV':
+        return 'LSV';
+      case 'LLU':
+        return 'Lords of Limited';
+      case 'DS':
+        return 'Draftsim';
+      default:
+        return '17Lands';
+    }
+  }, [activeBenchmarkTarget]);
+
+  // Compute calibration summary using effective 17lands data or the active independent benchmark target
   const calibrationSummary: SetCalibrationSummary = useMemo(() => {
-    return calculateSetCalibration(cards, userEvaluations, effective17LandsData);
-  }, [cards, userEvaluations, effective17LandsData]);
+    return calculateSetCalibration(
+      cards,
+      userEvaluations,
+      activeBenchmarkTarget === '17L' ? effective17LandsData : null,
+      benchmarkGetter,
+      benchmarkDisplayName
+    );
+  }, [cards, userEvaluations, effective17LandsData, benchmarkGetter, benchmarkDisplayName, activeBenchmarkTarget]);
 
   // Compute advanced color analytics
   const colorAnalytics = useMemo(() => {
-    return calculateColorAccuracyAnalytics(cards, userEvaluations, effective17LandsData);
-  }, [cards, userEvaluations, effective17LandsData]);
+    return calculateColorAccuracyAnalytics(
+      cards,
+      userEvaluations,
+      activeBenchmarkTarget === '17L' ? effective17LandsData : null,
+      benchmarkGetter,
+      activeBenchmarkTarget !== '17L'
+    );
+  }, [cards, userEvaluations, effective17LandsData, benchmarkGetter, activeBenchmarkTarget]);
 
   // Compute grade distribution curve
   const gradeDistribution = useMemo(() => {
@@ -386,11 +577,12 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         if (diff !== 0) return diff;
         return parseInt(a.collector_number || '0') - parseInt(b.collector_number || '0');
       }
-      if (cardListSortBy === 'lsv-desc') {
-        const lsvA = getLsvRatingForCard(a);
-        const lsvB = getLsvRatingForCard(b);
-        const scoreA = lsvA ? lsvA.score : -1;
-        const scoreB = lsvB ? lsvB.score : -1;
+      if (cardListSortBy === 'lsv-desc' || cardListSortBy === 'llu-desc' || cardListSortBy === 'ds-desc') {
+        const creatorKey: ProCreatorSource = cardListSortBy === 'llu-desc' ? 'LLU' : cardListSortBy === 'ds-desc' ? 'DS' : 'LSV';
+        const ratingA = getProRatingForCard(a, creatorKey, a.set);
+        const ratingB = getProRatingForCard(b, creatorKey, b.set);
+        const scoreA = ratingA ? ratingA.score : -1;
+        const scoreB = ratingB ? ratingB.score : -1;
 
         if (scoreA >= 0 && scoreB < 0) return -1;
         if (scoreA < 0 && scoreB >= 0) return 1;
@@ -446,19 +638,35 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
       const isLand = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
       const isNA = isLand || userEval?.userGrade === 'N/A';
 
-      if (userEval && actualTier && !isNA) {
+      // Benchmark tier based on activeBenchmarkTarget
+      let benchmarkTier: GradeTier | null = null;
+      if (activeBenchmarkTarget === '17L') {
+        benchmarkTier = actualTier;
+      } else if (activeBenchmarkTarget === 'LSV') {
+        const proRating = getLsvRatingForCard(card) || getProRatingForCard(card, 'LSV', card.set);
+        benchmarkTier = proRating?.grade || null;
+      } else if (activeBenchmarkTarget === 'LLU') {
+        const proRating = getProRatingForCard(card, 'LLU', card.set);
+        benchmarkTier = proRating?.grade || null;
+      } else if (activeBenchmarkTarget === 'DS') {
+        const proRating = getProRatingForCard(card, 'DS', card.set);
+        benchmarkTier = proRating?.grade || null;
+      }
+
+      if (userEval && benchmarkTier && !isNA) {
         const userIndex = gradeTierToIndex(userEval.userGrade);
-        const seventeenIndex = gradeTierToIndex(actualTier);
-        tierGap = seventeenIndex - userIndex;
+        const benchmarkIndex = gradeTierToIndex(benchmarkTier);
+        tierGap = benchmarkIndex - userIndex;
       }
 
       return {
         card,
         userEval,
         landData,
-        tierGap: isNA ? 0 : tierGap,
+        tierGap: (isNA || !benchmarkTier) ? 0 : tierGap,
         userGrade: userEval?.userGrade,
         actualTier,
+        benchmarkTier,
         winRate: landData?.win_rate,
         isRated: Boolean(userEval),
         isNA,
@@ -467,17 +675,120 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
     });
 
     list.sort((a, b) => {
-      if (comparisonSortBy === 'number') {
-        return parseInt(a.card.collector_number || '0') - parseInt(b.card.collector_number || '0');
+      let diff = 0;
+
+      switch (comparisonSortColumn) {
+        case 'number': {
+          const numA = parseInt(a.card.collector_number || '0', 10);
+          const numB = parseInt(b.card.collector_number || '0', 10);
+          diff = comparisonSortDirection === 'asc' ? numA - numB : numB - numA;
+          break;
+        }
+        case 'name': {
+          diff = comparisonSortDirection === 'asc'
+            ? a.card.name.localeCompare(b.card.name)
+            : b.card.name.localeCompare(a.card.name);
+          break;
+        }
+        case 'rarity': {
+          const rA = getRaritySortIndex(a.card.rarity);
+          const rB = getRaritySortIndex(b.card.rarity);
+          diff = comparisonSortDirection === 'asc' ? rA - rB : rB - rA;
+          break;
+        }
+        case 'me': {
+          const scoreA = a.userEval && typeof a.userEval.userScore === 'number'
+            ? a.userEval.userScore
+            : (a.userGrade ? (GRADE_SCORES[a.userGrade as GradeTier] ?? -1) : -1);
+          const scoreB = b.userEval && typeof b.userEval.userScore === 'number'
+            ? b.userEval.userScore
+            : (b.userGrade ? (GRADE_SCORES[b.userGrade as GradeTier] ?? -1) : -1);
+
+          if (scoreA >= 0 && scoreB < 0) return -1;
+          if (scoreA < 0 && scoreB >= 0) return 1;
+          if (scoreA < 0 && scoreB < 0) {
+            return parseInt(a.card.collector_number || '0', 10) - parseInt(b.card.collector_number || '0', 10);
+          }
+          diff = comparisonSortDirection === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+          break;
+        }
+        case 'lsv':
+        case 'llu':
+        case 'ds': {
+          const creatorKey: ProCreatorSource = comparisonSortColumn === 'lsv' ? 'LSV' : comparisonSortColumn === 'llu' ? 'LLU' : 'DS';
+          const ratingA = comparisonSortColumn === 'lsv' ? getLsvRatingForCard(a.card) : getProRatingForCard(a.card, creatorKey, a.card.set);
+          const ratingB = comparisonSortColumn === 'lsv' ? getLsvRatingForCard(b.card) : getProRatingForCard(b.card, creatorKey, b.card.set);
+          const scoreA = ratingA ? ratingA.score : -1;
+          const scoreB = ratingB ? ratingB.score : -1;
+
+          if (scoreA >= 0 && scoreB < 0) return -1;
+          if (scoreA < 0 && scoreB >= 0) return 1;
+          if (scoreA < 0 && scoreB < 0) {
+            return parseInt(a.card.collector_number || '0', 10) - parseInt(b.card.collector_number || '0', 10);
+          }
+          diff = comparisonSortDirection === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+          break;
+        }
+        case '17l': {
+          const scoreA = a.actualTier ? (GRADE_SCORES[a.actualTier] ?? -1) : -1;
+          const scoreB = b.actualTier ? (GRADE_SCORES[b.actualTier] ?? -1) : -1;
+
+          if (scoreA >= 0 && scoreB < 0) return -1;
+          if (scoreA < 0 && scoreB >= 0) return 1;
+          if (scoreA < 0 && scoreB < 0) {
+            return parseInt(a.card.collector_number || '0', 10) - parseInt(b.card.collector_number || '0', 10);
+          }
+          diff = comparisonSortDirection === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+          break;
+        }
+        case 'winrate': {
+          const wrA = a.winRate !== undefined ? a.winRate : (a.landData?.win_rate ?? -1);
+          const wrB = b.winRate !== undefined ? b.winRate : (b.landData?.win_rate ?? -1);
+
+          if (wrA >= 0 && wrB < 0) return -1;
+          if (wrA < 0 && wrB >= 0) return 1;
+          if (wrA < 0 && wrB < 0) {
+            return parseInt(a.card.collector_number || '0', 10) - parseInt(b.card.collector_number || '0', 10);
+          }
+          diff = comparisonSortDirection === 'desc' ? wrB - wrA : wrA - wrB;
+          break;
+        }
+        case 'alsa': {
+          const alsaA = a.landData?.avg_seen;
+          const alsaB = b.landData?.avg_seen;
+
+          if (alsaA !== undefined && alsaB === undefined) return -1;
+          if (alsaA === undefined && alsaB !== undefined) return 1;
+          if (alsaA === undefined && alsaB === undefined) {
+            return parseInt(a.card.collector_number || '0', 10) - parseInt(b.card.collector_number || '0', 10);
+          }
+          const valA = alsaA ?? 999;
+          const valB = alsaB ?? 999;
+          diff = comparisonSortDirection === 'asc' ? valA - valB : valB - valA;
+          break;
+        }
+        case 'verdict': {
+          const hasVerdictA = a.isRated && !a.isNA;
+          const hasVerdictB = b.isRated && !b.isNA;
+
+          if (hasVerdictA && !hasVerdictB) return -1;
+          if (!hasVerdictA && hasVerdictB) return 1;
+          if (!hasVerdictA && !hasVerdictB) {
+            return parseInt(a.card.collector_number || '0', 10) - parseInt(b.card.collector_number || '0', 10);
+          }
+          diff = comparisonSortDirection === 'desc' ? b.tierGap - a.tierGap : a.tierGap - b.tierGap;
+          break;
+        }
+        default:
+          diff = 0;
       }
-      if (comparisonSortBy === 'delta_desc') return b.tierGap - a.tierGap;
-      if (comparisonSortBy === 'delta_asc') return a.tierGap - b.tierGap;
-      if (comparisonSortBy === 'winrate') return (b.winRate || 0) - (a.winRate || 0);
-      return a.card.name.localeCompare(b.card.name);
+
+      if (diff !== 0) return diff;
+      return parseInt(a.card.collector_number || '0', 10) - parseInt(b.card.collector_number || '0', 10);
     });
 
     return list;
-  }, [cards, userEvaluations, effective17LandsData, comparisonSortBy]);
+  }, [cards, userEvaluations, effective17LandsData, comparisonSortColumn, comparisonSortDirection, preferredCreators, activeBenchmarkTarget]);
 
   const filteredComparisonList = useMemo(() => {
     return comparisonList.filter((item) => {
@@ -641,7 +952,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
               }`}
             >
-              17Lands
+              {effective17LandsData ? '17Lands' : 'Benchmarks'}
             </button>
 
             <button
@@ -671,7 +982,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         {/* Right: Export, Clear, Blind Mode Toggle */}
         <div className="flex items-center justify-end gap-1.5 shrink-0 flex-wrap">
           <button
-            id="share-export-grades-btn"
+            id="export-grades-btn"
             type="button"
             onClick={() => {
               setExportModalTab('share');
@@ -696,31 +1007,31 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             </button>
           )}
 
-          {effective17LandsData ? (
-            <button
-              id="mode-toggle-btn"
-              type="button"
-              onClick={handleToggleBlindGrading}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
-                isBlindGrading
-                  ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60'
-              }`}
-              title={isBlindGrading ? 'Grading Mode: Benchmarks hidden. Click to switch to Compare Mode' : 'Compare Mode: 17Lands data visible. Click to switch to Grading Mode'}
-            >
-              {isBlindGrading ? <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-              <span>{isBlindGrading ? 'Blind' : 'Compare'}</span>
-            </button>
-          ) : (
-            <div
-              id="mode-toggle-btn"
-              className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#050818] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800 shrink-0 whitespace-nowrap flex items-center gap-1"
-              title="17Lands data is available approximately 2 weeks after release"
-            >
-              <EyeOff className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />
-              <span>17L: TBD</span>
-            </div>
-          )}
+          <button
+            id="mode-toggle-btn"
+            type="button"
+            onClick={handleToggleBlindGrading}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap ${
+              isBlindGrading
+                ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/60'
+            }`}
+            title={
+              isBlindGrading
+                ? 'Grading Mode: Benchmarks hidden. Click to switch to Compare Mode'
+                : 'Compare Mode: Creator & 17Lands data visible. Click to switch to Blind Grading Mode'
+            }
+          >
+            {isBlindGrading ? (
+              <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            ) : (
+              <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            )}
+            <span>{isBlindGrading ? 'Blind' : 'Compare'}</span>
+            {!effective17LandsData && (
+              <span className="text-[10px] font-mono opacity-70 ml-0.5">(17L: TBD)</span>
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -764,6 +1075,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     <option value="grade-desc">Highest Grade (A+ → F)</option>
                     <option value="grade-asc">Lowest Grade (F → A+)</option>
                     {showLsv && <option value="lsv-desc">LSV Grade (Highest First)</option>}
+                    {showLlu && <option value="llu-desc">LLU Grade (Highest First)</option>}
+                    {showDs && <option value="ds-desc">DS Grade (Highest First)</option>}
                     {effective17LandsData && <option value="winrate">17Lands Win Rate</option>}
                   </select>
                 </div>
@@ -789,11 +1102,26 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   ))}
                 </div>
 
-                {/* Benchmark Data Toggles (LSV, 17Lands) */}
+                {/* Benchmark Data Toggles (Me, LSV, LLU, DS, 17Lands) */}
                 <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden lg:inline">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline">
                     Benchmarks:
                   </span>
+
+                  {/* Me (Togglable) */}
+                  <button
+                    type="button"
+                    onClick={handleToggleMe}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      showMe
+                        ? 'bg-violet-600 text-white shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
+                    }`}
+                    title="Toggle Personal Grade (Me)"
+                  >
+                    {showMe && <Check className="w-3 h-3 text-white" />}
+                    <span>Me</span>
+                  </button>
 
                   {/* LSV (Togglable) */}
                   <button
@@ -810,6 +1138,36 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     <span>LSV</span>
                   </button>
 
+                  {/* LLU (Togglable) */}
+                  <button
+                    type="button"
+                    onClick={handleToggleLlu}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      showLlu
+                        ? 'bg-pink-500/15 text-pink-800 dark:text-pink-300 border border-pink-400/50 shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
+                    }`}
+                    title="Toggle Limited Level Ups (Alex Nikolic) rating"
+                  >
+                    {showLlu && <Check className="w-3 h-3 text-pink-600 dark:text-pink-400" />}
+                    <span>LLU</span>
+                  </button>
+
+                  {/* DS (Togglable) */}
+                  <button
+                    type="button"
+                    onClick={handleToggleDs}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      showDs
+                        ? 'bg-sky-500/15 text-sky-800 dark:text-sky-300 border border-sky-400/50 shadow-2xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-transparent border border-transparent'
+                    }`}
+                    title="Toggle Draftsim (Draftsim.com) rating"
+                  >
+                    {showDs && <Check className="w-3 h-3 text-sky-600 dark:text-sky-400" />}
+                    <span>DS</span>
+                  </button>
+
                   {/* 17L (Togglable) */}
                   <button
                     type="button"
@@ -822,7 +1180,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     title="Toggle 17Lands draft telemetry"
                   >
                     {show17L && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
-                    <span>17Lands</span>
+                    <span className="hidden sm:inline">17Lands</span>
+                    <span className="sm:hidden">17L</span>
                   </button>
                 </div>
               </div>
@@ -980,62 +1339,104 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   onClick={() => handleSelectCardForModal(card)}
                   className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
                 >
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-                    <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[185px] relative z-20">
-                      {/* Top Bar above card: Grade badge(s) in a single horizontal non-wrapping row */}
-                      <div className="w-full flex items-center justify-center sm:justify-start gap-1 mb-1.5 min-h-[22px] overflow-hidden">
-                        <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
-                          {(() => {
-                            const actualTier: GradeTier | null = landData
-                              ? ((landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate))
-                              : null;
-                            const hasUserGrade = Boolean(userEval?.userGrade);
-                            const lsvRating = getLsvRatingForCard(card);
+                  {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
+                  <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {(() => {
+                        const actualTier: GradeTier | null = landData
+                          ? ((landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate))
+                          : null;
+                        const hasUserGrade = Boolean(userEval?.userGrade);
 
-                            return (
-                              <>
-                                {/* 1. Me Badge (Always Visible) */}
+                        return (
+                          <>
+                            {/* 1. Me Badge */}
+                            {showMe && (
+                              <div
+                                className="px-2 py-0.5 rounded-lg bg-violet-950/95 text-white border border-violet-400/80 shadow-xs flex items-center gap-1.5 font-mono shrink-0 whitespace-nowrap"
+                                title="Your assigned grade"
+                              >
+                                <span className="text-[9px] uppercase tracking-wider font-extrabold text-violet-300">Me</span>
+                                <span className="text-xs font-black">{hasUserGrade ? userEval!.userGrade : '—'}</span>
+                              </div>
+                            )}
+
+                            {/* 2. Pro Creator Badges */}
+                            {preferredCreators.map((c) => {
+                              const isShown = c === 'LSV' ? showLsv : c === 'LLU' ? showLlu : showDs;
+                              if (!isShown) return null;
+                              const meta = PRO_CREATORS[c] || PRO_CREATORS.LSV;
+                              const rating = getProRatingForCard(card, c, card.set);
+                              return (
                                 <div
-                                  className="px-1.5 py-0.5 rounded-md bg-violet-950/95 text-white border border-violet-400 shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap"
-                                  title="Your assigned grade"
+                                  key={c}
+                                  className={`px-2 py-0.5 rounded-lg text-white shadow-xs flex items-center gap-1.5 font-mono shrink-0 whitespace-nowrap ${
+                                    c === 'LLU'
+                                      ? 'bg-pink-950/95 border border-pink-400/80'
+                                      : c === 'DS'
+                                      ? 'bg-sky-950/95 border border-sky-400/80'
+                                      : 'bg-amber-950/95 border border-amber-400/80'
+                                  }`}
+                                  title={
+                                    isBlindGrading && !hasUserGrade
+                                      ? 'Rate the card or switch to Compare Mode to view creator rating'
+                                      : isBlindGrading
+                                      ? `${meta.shortName} Rating (hidden in grading mode)`
+                                      : rating
+                                      ? `${meta.shortName} Rating: ${rating.score.toFixed(1)} / 5.0 (${rating.grade}) - ${rating.verdict || 'Playable'}`
+                                      : `${meta.shortName} Review pending (set not yet rated)`
+                                  }
                                 >
-                                  <span className="text-[8px] uppercase tracking-wider font-extrabold text-violet-300">Me</span>
-                                  <span className="text-[11px] font-black">{hasUserGrade ? userEval!.userGrade : '—'}</span>
+                                  <span className={`text-[9px] uppercase tracking-wider font-extrabold ${
+                                    c === 'LLU' ? 'text-pink-300' : c === 'DS' ? 'text-sky-300' : 'text-amber-300'
+                                  }`}>
+                                    {meta.shortName}
+                                  </span>
+                                  <span className={`text-xs font-black ${
+                                    c === 'LLU' ? 'text-pink-200' : c === 'DS' ? 'text-sky-200' : 'text-amber-200'
+                                  }`}>
+                                    {isBlindGrading && !hasUserGrade ? '—' : (rating ? rating.grade : '—')}
+                                  </span>
                                 </div>
+                              );
+                            })}
 
-                                {/* 2. LSV Badge (Togglable) */}
-                                {showLsv && (
-                                  <div
-                                    className="px-1.5 py-0.5 rounded-md bg-amber-950/95 text-white border border-amber-400 shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap"
-                                    title={!hasUserGrade ? 'Rate the card to see how you compare' : (isBlindGrading ? 'LSV Rating (hidden in grading mode)' : lsvRating ? `LSV Rating: ${lsvRating.score.toFixed(1)} / 5.0 (${lsvRating.grade}) - ${lsvRating.verdict || 'Playable'}` : 'LSV Review pending (set not yet rated)')}
-                                  >
-                                    <span className="text-[8px] uppercase tracking-wider font-extrabold text-amber-300">LSV</span>
-                                    <span className="text-[11px] font-black text-amber-200">{!hasUserGrade || isBlindGrading ? '—' : (lsvRating ? lsvRating.grade : '—')}</span>
-                                  </div>
-                                )}
+                            {/* 3. 17L Badge (Togglable) */}
+                            {show17L && (
+                              <div
+                                className={`px-2 py-0.5 rounded-lg shadow-xs flex items-center gap-1.5 font-mono shrink-0 whitespace-nowrap ${
+                                  actualTier
+                                    ? 'bg-emerald-950/95 text-white border border-emerald-400/80'
+                                    : 'bg-slate-900/90 text-slate-400 border border-slate-700/80'
+                                }`}
+                                title={isBlindGrading && !hasUserGrade ? 'Rate the card or switch to Compare Mode' : (actualTier ? (isBlindGrading ? '17Lands grade (hidden in grading mode)' : `17Lands: ${actualTier}`) : '17Lands data is available approximately 2 weeks after release')}
+                              >
+                                <span className={`text-[9px] uppercase tracking-wider font-extrabold ${actualTier ? 'text-emerald-300' : 'text-slate-500'}`}>17L</span>
+                                <span className={`text-xs font-black ${actualTier ? 'text-emerald-200' : 'text-amber-500/80'}`}>
+                                  {isBlindGrading && !hasUserGrade ? '—' : (actualTier || 'TBD')}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
 
-                                {/* 3. 17L Badge (Togglable) */}
-                                {show17L && (
-                                  <div
-                                    className={`px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap ${
-                                      actualTier
-                                        ? 'bg-emerald-950/95 text-white border border-emerald-400'
-                                        : 'bg-slate-900/90 text-slate-400 border border-slate-700/80'
-                                    }`}
-                                    title={!hasUserGrade ? 'Rate the card to see how you compare' : (actualTier ? (isBlindGrading ? '17Lands grade (hidden in grading mode)' : `17Lands: ${actualTier}`) : '17Lands data is available approximately 2 weeks after release')}
-                                  >
-                                    <span className={`text-[8px] uppercase tracking-wider font-extrabold ${actualTier ? 'text-emerald-300' : 'text-slate-500'}`}>17L</span>
-                                    <span className={`text-[11px] font-black ${actualTier ? 'text-emerald-200' : 'text-amber-500/80'}`}>
-                                      {!hasUserGrade || isBlindGrading ? '—' : (actualTier || 'TBD')}
-                                    </span>
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
+                    <a
+                      href={get17LandsCardUrl(card.set, card, landData)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1 -mr-1 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors shrink-0"
+                      title="Open on 17Lands.com"
+                      aria-label={`Open ${card.name} on 17Lands.com`}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
 
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3.5">
+                    <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[185px] relative z-20">
                       <CardObfuscator
                         card={card}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
@@ -1051,8 +1452,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       </p>
 
                       {/* Evaluation Verdict & 17Lands Stats */}
-                      {!userEval?.userGrade ? (
-                        /* Card is Ungraded: Simple invite */
+                      {isBlindGrading && !userEval?.userGrade ? (
+                        /* Card is Ungraded in Blind Mode: Simple invite */
                         <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-dashed border-slate-200 dark:border-slate-800 text-center">
                           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                             Rate the card to see how you compare
@@ -1063,20 +1464,20 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <div
                           onClick={handleToggleBlindGrading}
                           className="mt-2 px-3 py-2 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 border border-amber-200/60 dark:border-amber-500/30 text-xs font-mono flex items-center justify-between gap-4 cursor-pointer transition-colors"
-                          title="Click to switch to Compare Mode and reveal 17Lands benchmarks"
+                          title="Click to switch to Compare Mode and reveal benchmarks"
                         >
                           <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 shrink-0 whitespace-nowrap">
                             <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                             <span>Grading Mode</span>
                           </span>
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 text-right leading-tight">
-                            Compare Mode reveals 17Lands data
+                            Compare Mode reveals creator & 17L data
                           </span>
                         </div>
                       ) : (
-                        /* Graded in Compare Mode: Clean single-panel display */
+                        /* Compare Mode: Clean single-panel display */
                         <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
-                          {landData ? (() => {
+                          {landData && userEval?.userGrade ? (() => {
                             const actualTier: GradeTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
                             const gap = gradeTierToIndex(actualTier) - gradeTierToIndex(userEval.userGrade);
                             const verdict = formatTierGapVerdict(gap);
@@ -1108,7 +1509,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                                 </div>
                               </>
                             );
-                          })() : (
+                          })() : landData ? (
+                            <div className="flex items-center justify-between gap-1 text-[11px] text-slate-700 dark:text-slate-300 font-mono">
+                              <span>
+                                GIH WR: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{((landData.win_rate || 0) * 100).toFixed(1)}%</strong>
+                              </span>
+                              <span className="text-slate-300 dark:text-slate-700">•</span>
+                              <span>
+                                ALSA: <strong className="font-bold text-slate-900 dark:text-white">{typeof landData.avg_seen === 'number' ? landData.avg_seen.toFixed(1) : '-'}</strong>
+                              </span>
+                            </div>
+                          ) : (
                             <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                               {(() => {
                                 const status = get17LandsQueryStatus(currentSetCode);
@@ -1127,16 +1538,22 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                             </div>
                           )}
 
-                          {/* LSV Reference: Score & Verdict (grade already in top badge) */}
-                          {showLsv && (() => {
-                            const lsvRating = getLsvRatingForCard(card);
+                          {/* Pro Creator Reference(s): Score & Verdict */}
+                          {preferredCreators.map((c) => {
+                            const isShown = c === 'LSV' ? showLsv : c === 'LLU' ? showLlu : showDs;
+                            if (!isShown) return null;
+                            const meta = PRO_CREATORS[c] || PRO_CREATORS.LSV;
+                            const rating = getProRatingForCard(card, c, card.set);
                             return (
-                              <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 font-mono">
-                                <span>LSV: <strong>{lsvRating ? `${lsvRating.score.toFixed(1)} / 5.0` : 'Pending'}</strong></span>
-                                <span className="italic truncate font-sans">{lsvRating?.verdict || 'Review pending'}</span>
+                              <div
+                                key={c}
+                                className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 font-mono"
+                              >
+                                <span>{meta.shortName}: <strong>{rating ? `${rating.score.toFixed(1)} / 5.0` : 'Pending'}</strong></span>
+                                <span className="italic truncate font-sans">{rating?.verdict || 'Review pending'}</span>
                               </div>
                             );
-                          })()}
+                          })}
                         </div>
                       )}
 
@@ -1181,7 +1598,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       const isCardLand = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
                       return (
                         <div
-                          className={`grid gap-1 sm:gap-0.5 ${isCardLand ? 'grid-cols-6 sm:grid-cols-12' : 'grid-cols-6 sm:grid-cols-11'}`}
+                          className={`grid gap-1 sm:gap-1 ${isCardLand ? 'grid-cols-6 sm:grid-cols-12' : 'grid-cols-6 sm:grid-cols-11'}`}
                           title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
                         >
                           {GRADE_TIERS.map((tier) => {
@@ -1194,7 +1611,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                                   e.stopPropagation();
                                   handleQuickGrade(card, tier);
                                 }}
-                                className={`py-1.5 sm:py-1 rounded-md text-xs sm:text-[10px] font-mono font-bold transition-all cursor-pointer border min-h-[36px] sm:min-h-0 ${
+                                className={`py-1.5 px-0.5 rounded-lg text-xs sm:text-[11px] font-mono font-bold transition-all cursor-pointer border min-h-[34px] sm:min-h-[28px] flex items-center justify-center ${
                                   tier === 'F' && !isCardLand ? 'col-span-2 sm:col-span-1' : ''
                                 } ${
                                   isSelected
@@ -1213,7 +1630,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                                 e.stopPropagation();
                                 handleQuickGrade(card, 'N/A');
                               }}
-                              className={`py-1.5 sm:py-1 rounded-md text-xs sm:text-[10px] font-mono font-bold transition-all cursor-pointer border min-h-[36px] sm:min-h-0 ${
+                              className={`py-1.5 px-0.5 rounded-lg text-xs sm:text-[11px] font-mono font-bold transition-all cursor-pointer border min-h-[34px] sm:min-h-[28px] flex items-center justify-center ${
                                 userEval?.userGrade === 'N/A'
                                   ? 'bg-slate-700 text-white border-slate-500 shadow-xs font-black ring-1 ring-slate-400'
                                   : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-200/80 dark:hover:bg-slate-700'
@@ -1253,117 +1670,164 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
         />
       )}
 
-      {/* SUBTAB 3: In-Depth Grade vs 17Lands Analytics */}
+      {/* SUBTAB 3: In-Depth Grade vs 17Lands & Creator Benchmarks Analytics */}
       {activeSubTab === 'calibration' && (
-        !effective17LandsData ? (
-          <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 text-center space-y-4 shadow-xs max-w-xl mx-auto my-6">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
-              <EyeOff className="w-6 h-6" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-center gap-2">
-                <SetBadge setCode={currentSetCode} />
-                <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-                  17Lands Calibration is Pending for {currentSetName}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto">
-                {(() => {
-                  const status = get17LandsQueryStatus(currentSetCode);
-                  if (status.availableDateStr) {
-                    return `17Lands telemetry requires 2 weeks of draft match volume on MTG Arena to stabilize. Querying unlocks on ${status.availableDateStr} (${status.daysRemaining} days remaining).`;
-                  }
-                  return '17Lands data is available approximately 2 weeks after release on MTG Arena. Once match data is recorded, this tab will activate to compare your evaluations against live Game-In-Hand win rates.';
-                })()}
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveSubTab('grade')}
-              className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-            >
-              Back to Card Grading
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Overall Evaluator Report Card Banner */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-[#090e24] dark:via-[#060919] dark:to-[#040612] border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-                {/* Left: Overall Grade Badge & Title */}
-                <div className="flex items-start gap-4">
-                  <div className="flex flex-col items-center justify-center p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#050818] border-2 border-violet-500/40 dark:border-cyan-500/50 shadow-md min-w-[90px] sm:min-w-[105px] text-center">
-                    <span className="text-3xl sm:text-4xl font-black font-mono text-violet-700 dark:text-cyan-300 tracking-tight">
-                      {calibrationSummary.overallGrade}
-                    </span>
-                    <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">
-                      {calibrationSummary.gpa.toFixed(2)} / 4.0 GPA
+        <div className="space-y-6">
+          {/* Status Banner when awaiting 17Lands data */}
+          {activeBenchmarkTarget === '17L' && !effective17LandsData && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <SetBadge setCode={currentSetCode} size="xs" />
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {userRatedCount > 0
+                        ? `You have evaluated ${userRatedCount} cards in ${currentSetCode.toUpperCase()}! 17Lands telemetry awaiting Arena release.`
+                        : '17Lands Match Telemetry Pending'}
                     </span>
                   </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                    {(() => {
+                      const status = get17LandsQueryStatus(currentSetCode);
+                      if (status.availableDateStr) {
+                        return `Arena draft volume unlocks on ${status.availableDateStr} (${status.daysRemaining}d remaining). In the meantime, switch benchmarks to compare against Pro Graders (LSV, Lords of Limited, Draftsim).`;
+                      }
+                      return `17Lands empirical data unlocks ~2 weeks after Arena release. In the meantime, switch benchmarks to compare your grades against Pro Graders (LSV, Lords of Limited, Draftsim).`;
+                    })()}
+                  </p>
+                </div>
+              </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                        Overall Evaluator Report Card
+              {userRatedCount > 0 && (
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Compare against:</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveBenchmarkTarget('LSV')}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-violet-600 hover:bg-violet-500 text-white cursor-pointer shadow-xs transition-colors"
+                  >
+                    Me vs LSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveBenchmarkTarget('LLU')}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-violet-600 hover:bg-violet-500 text-white cursor-pointer shadow-xs transition-colors"
+                  >
+                    Me vs LLU
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveBenchmarkTarget('DS')}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-violet-600 hover:bg-violet-500 text-white cursor-pointer shadow-xs transition-colors"
+                  >
+                    Me vs Draftsim
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Overall Evaluator Report Card Banner (only shown when benchmark data is available) */}
+          {!(activeBenchmarkTarget === '17L' && !effective17LandsData) && (
+            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-[#090e24] dark:via-[#060919] dark:to-[#040612] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              {/* Left: Overall Accuracy Scores & Difference Explainer */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                    Evaluation Accuracy ({activeBenchmarkTarget === '17L' ? 'vs 17Lands' : `vs ${benchmarkDisplayName}`})
+                  </span>
+                </div>
+
+                {/* Score Cards: Strict % and Weighted % */}
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                  {/* Strict Accuracy */}
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#050818] border-2 border-emerald-500/40 dark:border-emerald-500/50 shadow-md min-w-[170px]">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl sm:text-4xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                        {calibrationSummary.totalRated > 0 ? `${calibrationSummary.calibrationScore}%` : '—'}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+                        Strict
                       </span>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-heading">
-                      {calibrationSummary.overallTitle}
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
-                      {calibrationSummary.overallDescription}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right: Summary Accuracy Stats & Math Button */}
-                <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-3 shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                        {calibrationSummary.calibrationScore}%
-                      </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                        {calibrationSummary.correctCount} of {calibrationSummary.totalRated} Correct (±1 Step)
-                      </div>
-                      {calibrationSummary.weightedScore !== undefined && calibrationSummary.weightedScore !== calibrationSummary.calibrationScore && (
-                        <div className="text-[10px] text-violet-600 dark:text-cyan-400 font-mono font-semibold mt-0.5">
-                          {calibrationSummary.weightedScore}% Weighted (+50% credit for ±2 steps)
-                        </div>
-                      )}
+                    <div className="text-[11px] font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
+                      Exact or ±1 Sub-tier
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                      {calibrationSummary.totalRated > 0
+                        ? `${calibrationSummary.correctCount} of ${calibrationSummary.totalRated} Correct`
+                        : `Awaiting 17L Data (${userRatedCount} Graded)`}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => setIsExportModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/50 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-violet-800/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
-                      title="Export full comparison spreadsheet or send grades to 17Lands"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>Export Spreadsheet ↗</span>
-                    </button>
-
-                    <button
-                      onClick={() => setShowMathExplainer(!showMathExplainer)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/20 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-cyan-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs"
-                    >
-                      <Calculator className="w-3.5 h-3.5" />
-                      <span>{showMathExplainer ? 'Hide Math Breakdown' : 'Quick Math Summary'}</span>
-                      {showMathExplainer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </button>
-
-                    <button
-                      onClick={() => setActiveSubTab('methodology')}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
-                      title="Read full guide on 17Lands metrics, normal distribution, and scoring rubrics"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>Full Methodology Guide ↗</span>
-                    </button>
+                  {/* Weighted Accuracy */}
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#050818] border-2 border-violet-500/40 dark:border-cyan-500/50 shadow-md min-w-[170px]">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl sm:text-4xl font-black font-mono text-violet-700 dark:text-cyan-300">
+                        {calibrationSummary.totalRated > 0
+                          ? `${calibrationSummary.weightedScore !== undefined ? calibrationSummary.weightedScore : calibrationSummary.calibrationScore}%`
+                          : '—'}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+                        Weighted
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
+                      +50% Credit (±2 Sub-tiers)
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                      {calibrationSummary.totalRated > 0
+                        ? 'Partial Credit for Near-Misses'
+                        : `Awaiting 17L Data (${userRatedCount} Graded)`}
+                    </div>
                   </div>
                 </div>
+
+                {/* Explaining the Difference */}
+                <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <strong className="text-slate-900 dark:text-white">Difference between scores: </strong>
+                  <strong>Strict Accuracy ({calibrationSummary.totalRated > 0 ? `${calibrationSummary.calibrationScore}%` : 'Pending'})</strong> counts only exact tier matches or evaluations within single-step tolerance (±1 sub-tier, e.g. <span className="font-mono font-semibold">B vs B+</span>).
+                  {' '}<strong>Weighted Accuracy ({calibrationSummary.totalRated > 0 ? `${calibrationSummary.weightedScore !== undefined ? calibrationSummary.weightedScore : calibrationSummary.calibrationScore}%` : 'Pending'})</strong> adds <strong>50% partial credit</strong> for close evaluations within ±2 sub-tiers (e.g. <span className="font-mono font-semibold">B- vs B+</span>), acknowledging near-misses without penalizing them as total failures.
+                </p>
               </div>
+
+              {/* Right: Actions */}
+              <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-2.5 shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/50 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-violet-800/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                    title="Export full comparison spreadsheet or send grades to 17Lands"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Export Spreadsheet ↗</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowMathExplainer(!showMathExplainer)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/20 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-cyan-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    <Calculator className="w-3.5 h-3.5" />
+                    <span>{showMathExplainer ? 'Hide Math Breakdown' : 'Quick Math Summary'}</span>
+                    {showMathExplainer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSubTab('methodology')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                    title="Read full guide on 17Lands metrics, normal distribution, and scoring rubrics"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Full Methodology Guide ↗</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
               {/* Step Precision Matrix */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-slate-800/80">
@@ -1540,60 +2004,191 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
               )}
             </div>
+          )}
 
-            {/* View Mode Toggle Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800/80">
-              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#090e24] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+            {/* Benchmark Target Switcher & View Mode Toggle Controls */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-2.5 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800/80">
+              {/* Independent Benchmark Sub-Tabs */}
+              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#090e24] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex-wrap">
+                <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 px-2 uppercase tracking-wider flex items-center gap-1">
+                  <Target className="w-3.5 h-3.5 text-violet-500" />
+                  Benchmark:
+                </span>
                 <button
                   type="button"
-                  onClick={() => handleSetAnalyticsViewMode('both')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    analyticsViewMode === 'both'
+                  onClick={() => setActiveBenchmarkTarget('17L')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeBenchmarkTarget === '17L'
                       ? 'bg-violet-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
-                  title="Show both the calibration scatter plot and detailed data ledger"
+                  title="Benchmark against 17Lands empirical win rates (default)"
                 >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Dashboard (All)</span>
+                  <span>17Lands (Data)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSetAnalyticsViewMode('plot')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    analyticsViewMode === 'plot'
+                  onClick={() => setActiveBenchmarkTarget('LSV')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeBenchmarkTarget === 'LSV'
                       ? 'bg-violet-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
-                  title="View only the 2D calibration scatter plot comparing expected vs actual win rates"
+                  title="Independent comparison: You vs LSV"
                 >
-                  <Target className="w-3.5 h-3.5" />
-                  <span>Scatter Plot Graph</span>
+                  <span>Me vs LSV</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSetAnalyticsViewMode('ledger')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    analyticsViewMode === 'ledger'
+                  onClick={() => setActiveBenchmarkTarget('LLU')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeBenchmarkTarget === 'LLU'
                       ? 'bg-violet-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
-                  title="View color accuracy breakdown, distribution curve, and card-by-card comparison ledger"
+                  title="Independent comparison: You vs Lords of Limited"
                 >
-                  <BarChart2 className="w-3.5 h-3.5" />
-                  <span>Ledger & Breakdown</span>
+                  <span>Me vs Lords of Limited</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveBenchmarkTarget('DS')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeBenchmarkTarget === 'DS'
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Independent comparison: You vs Draftsim"
+                >
+                  <span>Me vs Draftsim</span>
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-2 font-mono">
-                <span>Active Set: <strong className="text-violet-700 dark:text-cyan-300">{currentSetCode.toUpperCase()}</strong></span>
-                <span>•</span>
-                <span>{calibrationSummary.totalRated} Graded</span>
+              {/* View Mode Controls & Set Indicator */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#090e24] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleSetAnalyticsViewMode('both')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      analyticsViewMode === 'both'
+                        ? 'bg-violet-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                    title="Show both the calibration scatter plot and detailed data ledger"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Dashboard (All)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetAnalyticsViewMode('plot')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      analyticsViewMode === 'plot'
+                        ? 'bg-violet-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                    title="View only the 2D calibration scatter plot comparing expected vs actual win rates"
+                  >
+                    <Target className="w-3.5 h-3.5" />
+                    <span>Scatter Plot</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetAnalyticsViewMode('ledger')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      analyticsViewMode === 'ledger'
+                        ? 'bg-violet-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                    title="View color accuracy breakdown, distribution curve, and card-by-card comparison ledger"
+                  >
+                    <BarChart2 className="w-3.5 h-3.5" />
+                    <span>Ledger</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-2 font-mono">
+                  <span>Active Set: <strong className="text-violet-700 dark:text-cyan-300">{currentSetCode.toUpperCase()}</strong></span>
+                  <span>•</span>
+                  <span>{calibrationSummary.totalRated > 0 ? `${calibrationSummary.totalRated} Compared` : `${userRatedCount} Graded`}</span>
+                </div>
               </div>
             </div>
 
-            {/* 2D Calibration Scatter Plot Graph */}
-            {(analyticsViewMode === 'both' || analyticsViewMode === 'plot') && (
+            {/* When 17Lands is selected but data is not yet available, do not continue showing data below */}
+            {activeBenchmarkTarget === '17L' && !effective17LandsData ? (
+              <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-center max-w-2xl mx-auto space-y-5 shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xs">
+                  <EyeOff className="w-8 h-8" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <SetBadge setCode={currentSetCode} size="sm" />
+                    <h4 className="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                      17Lands Match Telemetry Pending
+                    </h4>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-lg mx-auto">
+                    {userRatedCount > 0 ? (
+                      <>
+                        You have evaluated <strong className="text-violet-700 dark:text-cyan-300 font-bold">{userRatedCount} cards</strong> in {currentSetCode.toUpperCase()}! 17Lands empirical game-in-hand win rate data unlocks ~2 weeks after set release on MTG Arena.
+                      </>
+                    ) : (
+                      <>
+                        17Lands empirical win rate data for {currentSetCode.toUpperCase()} unlocks ~2 weeks after set release on MTG Arena.
+                      </>
+                    )}
+                  </p>
+                  {(() => {
+                    const status = get17LandsQueryStatus(currentSetCode);
+                    if (status.availableDateStr) {
+                      return (
+                        <p className="text-xs font-mono text-amber-600 dark:text-amber-400 font-semibold">
+                          Arena draft volume unlocks on {status.availableDateStr} ({status.daysRemaining} days remaining).
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80 space-y-3">
+                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400 font-semibold">
+                    Compare your evaluations against independent pro reviewers in the meantime:
+                  </p>
+                  <div className="flex items-center justify-center gap-2.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setActiveBenchmarkTarget('LSV')}
+                      className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Target className="w-3.5 h-3.5" />
+                      <span>Compare Me vs LSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveBenchmarkTarget('LLU')}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Target className="w-3.5 h-3.5" />
+                      <span>Compare Me vs Lords of Limited</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveBenchmarkTarget('DS')}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Target className="w-3.5 h-3.5" />
+                      <span>Compare Me vs Draftsim</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* 2D Calibration Scatter Plot Graph */}
+                {(analyticsViewMode === 'both' || analyticsViewMode === 'plot') && (
               <CalibrationScatterPlot
                 cards={cards}
                 currentSetCode={currentSetCode}
@@ -1603,6 +2198,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 onSelectCard={handleSelectCardForModal}
                 availableSets={availableSets}
                 userId={currentUser?.id}
+                benchmarkTarget={activeBenchmarkTarget}
+                onBenchmarkTargetChange={setActiveBenchmarkTarget}
               />
             )}
 
@@ -1626,12 +2223,15 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   <div
                     key={stat.color}
                     className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2 flex flex-col justify-between"
-                    title={`Color Accuracy for ${stat.badge}: ${stat.correctCount} of ${stat.totalRated} cards exact or within 1 step = ${stat.accuracyRate}% Accuracy (Avg step delta: ${stat.avgDelta > 0 ? `+${stat.avgDelta} steps over` : stat.avgDelta < 0 ? `${stat.avgDelta} steps under` : '0.0'})`}
+                    title={`Color Accuracy for ${stat.label}: ${stat.correctCount} of ${stat.totalRated} cards exact or within 1 step = ${stat.accuracyRate}% Accuracy (Avg step delta: ${stat.avgDelta > 0 ? `+${stat.avgDelta} steps over` : stat.avgDelta < 0 ? `${stat.avgDelta} steps under` : '0.0'})`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        {stat.badge}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <ManaSymbol symbol={stat.color === 'COLORLESS' ? 'C' : stat.color} size="sm" />
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          {stat.label}
+                        </span>
+                      </div>
                       <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">{stat.accuracyRate}%</span>
                     </div>
 
@@ -1753,17 +2353,23 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           <span>Your Grade: <strong className="text-amber-700 dark:text-amber-300">{comp.userEvaluation?.userGrade}</strong></span>
                           <span>•</span>
-                          <a
-                            href={get17LandsCardUrl(comp.card.set || currentSetCode, comp.card, comp.seventeenLandsData)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline font-bold"
-                            title={`Open ${comp.card.name} on 17lands.com`}
-                          >
-                            <span>17Lands: {comp.seventeenLandsData?.tier_grade || 'C'} ({((comp.seventeenLandsData?.win_rate || 0.5) * 100).toFixed(1)}%)</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
+                          {comp.seventeenLandsData ? (
+                            <a
+                              href={get17LandsCardUrl(comp.card.set || currentSetCode, comp.card, comp.seventeenLandsData)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline font-bold"
+                              title={`Open ${comp.card.name} on 17lands.com`}
+                            >
+                              <span>17Lands: {comp.seventeenLandsData?.tier_grade || 'C'} ({((comp.seventeenLandsData?.win_rate || 0.5) * 100).toFixed(1)}%)</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          ) : (
+                            <span className="text-rose-600 dark:text-rose-400 font-bold">
+                              {benchmarkDisplayName}: {benchmarkGetter(comp.card)?.grade || 'C'}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span className="text-xs font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-500/10 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-500/30 shrink-0">
@@ -1804,17 +2410,23 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           <span>Your Grade: <strong className="text-amber-700 dark:text-amber-300">{comp.userEvaluation?.userGrade}</strong></span>
                           <span>•</span>
-                          <a
-                            href={get17LandsCardUrl(comp.card.set || currentSetCode, comp.card, comp.seventeenLandsData)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-bold"
-                            title={`Open ${comp.card.name} on 17lands.com`}
-                          >
-                            <span>17Lands: {comp.seventeenLandsData?.tier_grade || 'B'} ({((comp.seventeenLandsData?.win_rate || 0.55) * 100).toFixed(1)}%)</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
+                          {comp.seventeenLandsData ? (
+                            <a
+                              href={get17LandsCardUrl(comp.card.set || currentSetCode, comp.card, comp.seventeenLandsData)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-bold"
+                              title={`Open ${comp.card.name} on 17lands.com`}
+                            >
+                              <span>17Lands: {comp.seventeenLandsData?.tier_grade || 'B'} ({((comp.seventeenLandsData?.win_rate || 0.55) * 100).toFixed(1)}%)</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          ) : (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              {benchmarkDisplayName}: {benchmarkGetter(comp.card)?.grade || 'B'}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30 shrink-0">
@@ -1844,15 +2456,49 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   Sort:
                 </span>
                 <select
-                  value={comparisonSortBy}
-                  onChange={(e) => setComparisonSortBy(e.target.value as any)}
+                  value={
+                    comparisonSortColumn === 'verdict'
+                      ? (comparisonSortDirection === 'desc' ? 'delta_desc' : 'delta_asc')
+                      : `${comparisonSortColumn}_${comparisonSortDirection}`
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'delta_desc') {
+                      setComparisonSortColumn('verdict');
+                      setComparisonSortDirection('desc');
+                    } else if (val === 'delta_asc') {
+                      setComparisonSortColumn('verdict');
+                      setComparisonSortDirection('asc');
+                    } else {
+                      const [col, dir] = val.split('_') as [ComparisonSortColumn, 'asc' | 'desc'];
+                      setComparisonSortColumn(col);
+                      setComparisonSortDirection(dir || 'asc');
+                    }
+                  }}
                   className="px-3 py-1.5 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
                 >
-                  <option value="number">Card Number (#001 → #300)</option>
+                  <option value="number_asc">Card Number (#001 → #300)</option>
+                  <option value="number_desc">Card Number (#300 → #001)</option>
+                  <option value="name_asc">Card Name (A → Z)</option>
+                  <option value="name_desc">Card Name (Z → A)</option>
+                  <option value="rarity_asc">Rarity (Mythic → Common)</option>
+                  <option value="rarity_desc">Rarity (Common → Mythic)</option>
+                  {showMe && <option value="me_desc">My Grade (Highest First)</option>}
+                  {showMe && <option value="me_asc">My Grade (Lowest First)</option>}
+                  {showLsv && <option value="lsv_desc">LSV Rating (Highest First)</option>}
+                  {showLsv && <option value="lsv_asc">LSV Rating (Lowest First)</option>}
+                  {showLlu && <option value="llu_desc">LLU Rating (Highest First)</option>}
+                  {showLlu && <option value="llu_asc">LLU Rating (Lowest First)</option>}
+                  {showDs && <option value="ds_desc">Draftsim Rating (Highest First)</option>}
+                  {showDs && <option value="ds_asc">Draftsim Rating (Lowest First)</option>}
+                  {show17L && <option value="17l_desc">17Lands Tier (Highest First)</option>}
+                  {show17L && <option value="17l_asc">17Lands Tier (Lowest First)</option>}
+                  <option value="winrate_desc">17Lands Win Rate (Highest First)</option>
+                  <option value="winrate_asc">17Lands Win Rate (Lowest First)</option>
+                  <option value="alsa_asc">ALSA (Earliest Picked First)</option>
+                  <option value="alsa_desc">ALSA (Latest Picked First)</option>
                   <option value="delta_desc">Biggest Over-Evaluations (Traps First)</option>
                   <option value="delta_asc">Biggest Under-Evaluations (Sleepers First)</option>
-                  <option value="winrate">17Lands Win Rate</option>
-                  <option value="name">Card Name (A-Z)</option>
                 </select>
               </div>
             </div>
@@ -1919,15 +2565,17 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase font-mono text-[10px]">
-                    <th className="py-2 px-3">#</th>
-                    <th className="py-2 px-3">Card Name</th>
-                    <th className="py-2 px-3">Rarity</th>
-                    <th className="py-2 px-3">Me</th>
-                    {showLsv && <th className="py-2 px-3">LSV</th>}
-                    {show17L && <th className="py-2 px-3">17L</th>}
-                    <th className="py-2 px-3">GIH WR</th>
-                    <th className="py-2 px-3">ALSA</th>
-                    <th className="py-2 px-3">Accuracy Verdict</th>
+                    {renderSortableHeader('number', '#')}
+                    {renderSortableHeader('name', 'Card Name')}
+                    {renderSortableHeader('rarity', 'Rarity')}
+                    {showMe && renderSortableHeader('me', 'Me')}
+                    {showLsv && renderSortableHeader('lsv', 'LSV')}
+                    {showLlu && renderSortableHeader('llu', 'LLU')}
+                    {showDs && renderSortableHeader('ds', 'DS')}
+                    {show17L && renderSortableHeader('17l', '17L')}
+                    {renderSortableHeader('winrate', 'GIH WR')}
+                    {renderSortableHeader('alsa', 'ALSA')}
+                    {renderSortableHeader('verdict', 'Accuracy Verdict')}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-900 font-sans">
@@ -1955,19 +2603,21 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <td className="py-2 px-3 capitalize font-mono text-slate-500 dark:text-slate-400">
                           {row.card.rarity}
                         </td>
-                        <td className="py-2 px-3">
-                          {row.userGrade === 'N/A' ? (
-                            <span className="font-mono font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700">
-                              N/A
-                            </span>
-                          ) : row.userGrade ? (
-                            <span className="font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 px-2 py-0.5 rounded border border-violet-300 dark:border-violet-800/80">
-                              {row.userGrade}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-600 font-mono italic">Ungraded</span>
-                          )}
-                        </td>
+                        {showMe && (
+                          <td className="py-2 px-3">
+                            {row.userGrade === 'N/A' ? (
+                              <span className="font-mono font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700">
+                                N/A
+                              </span>
+                            ) : row.userGrade ? (
+                              <span className="font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 px-2 py-0.5 rounded border border-violet-300 dark:border-violet-800/80">
+                                {row.userGrade}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-600 font-mono italic">Ungraded</span>
+                            )}
+                          </td>
+                        )}
                         {showLsv && (() => {
                           const lsvRating = getLsvRatingForCard(row.card);
                           return (
@@ -1989,6 +2639,58 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                                 >
                                   <span>{lsvRating.grade}</span>
                                   <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80 font-normal">({lsvRating.score.toFixed(1)})</span>
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })()}
+                        {showLlu && (() => {
+                          const lluRating = getProRatingForCard(row.card, 'LLU', row.card.set);
+                          return (
+                            <td className="py-2 px-3 font-mono">
+                              {!row.userGrade ? (
+                                <span className="text-slate-400 dark:text-slate-600 font-mono">—</span>
+                              ) : isBlindGrading ? (
+                                <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-950/60 px-2 py-0.5 rounded border border-pink-300 dark:border-pink-800/80 flex items-center gap-1 w-fit">
+                                  —
+                                </span>
+                              ) : !lluRating ? (
+                                <span className="text-slate-400 dark:text-slate-500 font-mono text-xs italic">
+                                  Pending
+                                </span>
+                              ) : (
+                                <span
+                                  className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-950/60 px-2 py-0.5 rounded border border-pink-300 dark:border-pink-800/80 flex items-center gap-1 w-fit"
+                                  title={`LLU: ${lluRating.score.toFixed(1)} / 5.0 (${lluRating.grade}) - ${lluRating.verdict || 'Playable'}`}
+                                >
+                                  <span>{lluRating.grade}</span>
+                                  <span className="text-[10px] text-pink-600/80 dark:text-pink-400/80 font-normal">({lluRating.score.toFixed(1)})</span>
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })()}
+                        {showDs && (() => {
+                          const dsRating = getProRatingForCard(row.card, 'DS', row.card.set);
+                          return (
+                            <td className="py-2 px-3 font-mono">
+                              {!row.userGrade ? (
+                                <span className="text-slate-400 dark:text-slate-600 font-mono">—</span>
+                              ) : isBlindGrading ? (
+                                <span className="font-bold text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950/60 px-2 py-0.5 rounded border border-sky-300 dark:border-sky-800/80 flex items-center gap-1 w-fit">
+                                  —
+                                </span>
+                              ) : !dsRating ? (
+                                <span className="text-slate-400 dark:text-slate-500 font-mono text-xs italic">
+                                  Pending
+                                </span>
+                              ) : (
+                                <span
+                                  className="font-bold text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950/60 px-2 py-0.5 rounded border border-sky-300 dark:border-sky-800/80 flex items-center gap-1 w-fit"
+                                  title={`DS: ${dsRating.score.toFixed(1)} / 5.0 (${dsRating.grade}) - ${dsRating.verdict || 'Playable'}`}
+                                >
+                                  <span>{dsRating.grade}</span>
+                                  <span className="text-[10px] text-sky-600/80 dark:text-sky-400/80 font-normal">({dsRating.score.toFixed(1)})</span>
                                 </span>
                               )}
                             </td>
@@ -2061,9 +2763,13 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                               <span className={`px-2 py-0.5 rounded text-[11px] border ${verdict.color}`}>
                                 {verdict.text}
                               </span>
+                            ) : verdict && row.userGrade ? (
+                              <span className={`px-2 py-0.5 rounded text-[11px] border ${verdict.color}`} title="Accuracy vs Creator benchmark">
+                                {verdict.text} <span className="opacity-75 font-normal">(vs Creator)</span>
+                              </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-semibold">
-                                TBD (Unreleased)
+                                TBD (Pending)
                               </span>
                             )
                           ) : (
@@ -2079,8 +2785,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           </div>
               </>
             )}
+          </>
+        )}
         </div>
-        )
       )}
 
       {/* SUBTAB 3: Notes & Draft Playbook */}
@@ -2178,9 +2885,15 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             seventeenLandsData={effective17LandsData}
             isBlindGrading={isBlindGrading}
             onToggleBlindGrading={handleToggleBlindGrading}
+            showMe={showMe}
             showLsv={showLsv}
+            showLlu={showLlu}
+            showDs={showDs}
             show17L={show17L}
+            onToggleMe={handleToggleMe}
             onToggleLsv={handleToggleLsv}
+            onToggleLlu={handleToggleLlu}
+            onToggleDs={handleToggleDs}
             onToggle17L={handleToggle17L}
             gradeDisplayMode={gradeDisplayMode}
             onChangeGradeDisplayMode={handleSetGradeDisplayMode}

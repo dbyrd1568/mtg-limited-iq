@@ -1,7 +1,8 @@
-import React from 'react';
-import { Card, GradeTier, SeventeenLandsCardRating, UserCardEvaluation } from '../../types/mtg';
+import React, { useState, useEffect } from 'react';
+import { Card, GradeTier, SeventeenLandsCardRating, UserCardEvaluation, ProCreatorSource, PRO_CREATORS } from '../../types/mtg';
 import { GRADE_TIERS, gradeTierToIndex, winRateToGradeTier, get17LandsCardUrl } from '../../services/seventeenLands';
-import { getLsvRatingForCard } from '../../services/lsvRatings';
+import { getProRatingForCard } from '../../services/lsvRatings';
+import { getPreferredCreators } from '../../services/storage';
 import { Scale, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, Sparkles, BarChart2, Award, ExternalLink } from 'lucide-react';
 
 interface GradeComparisonCardProps {
@@ -9,8 +10,13 @@ interface GradeComparisonCardProps {
   userEval?: UserCardEvaluation | null;
   landData?: SeventeenLandsCardRating | null;
   isBlindGrading?: boolean;
+  showMe?: boolean;
   showLsv?: boolean;
+  showLlu?: boolean;
+  showDs?: boolean;
+  showLol?: boolean; // legacy alias
   show17L?: boolean;
+  preferredCreators?: ProCreatorSource[];
   className?: string;
 }
 
@@ -19,11 +25,37 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
   userEval,
   landData,
   isBlindGrading = false,
+  showMe = true,
   showLsv = true,
+  showLlu = true,
+  showDs: explicitShowDs,
+  showLol: legacyShowLol,
   show17L = true,
+  preferredCreators: explicitCreators,
   className = '',
 }) => {
-  const lsvRating = getLsvRatingForCard(card);
+  const showDs = explicitShowDs !== undefined ? explicitShowDs : legacyShowLol !== undefined ? legacyShowLol : true;
+  const [activeCreators, setActiveCreators] = useState<ProCreatorSource[]>(() =>
+    explicitCreators || getPreferredCreators()
+  );
+
+  useEffect(() => {
+    if (explicitCreators) {
+      setActiveCreators(explicitCreators);
+      return;
+    }
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<ProCreatorSource[]>;
+      if (custom.detail && Array.isArray(custom.detail)) {
+        setActiveCreators(custom.detail);
+      } else {
+        setActiveCreators(getPreferredCreators());
+      }
+    };
+    window.addEventListener('mtg_preferred_creators_changed', handler);
+    return () => window.removeEventListener('mtg_preferred_creators_changed', handler);
+  }, [explicitCreators]);
+
   const userGrade = userEval?.userGrade;
   const userIndex = userGrade ? gradeTierToIndex(userGrade) : -1;
 
@@ -34,10 +66,6 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
 
   // Gap calculation (Me vs 17Lands)
   const tierDelta = (userIndex >= 0 && actualIndex >= 0) ? actualIndex - userIndex : 0;
-
-  // Gap calculation (Me vs LSV)
-  const lsvIndex = lsvRating ? gradeTierToIndex(lsvRating.grade) : -1;
-  const lsvDelta = (userIndex >= 0 && lsvIndex >= 0) ? lsvIndex - userIndex : 0;
 
   const getDeltaBadge = () => {
     const isLand = Boolean(card.is_land || card.type_line?.toLowerCase().includes('land'));
@@ -135,8 +163,24 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
     );
   };
 
-  const visibleColumnsCount = 1 + (showLsv ? 1 : 0) + (show17L ? 1 : 0);
-  const gridColsClass = visibleColumnsCount === 3 ? 'grid-cols-3' : visibleColumnsCount === 2 ? 'grid-cols-2' : 'grid-cols-1';
+  const isCreatorVisible = (creator: ProCreatorSource) => {
+    if (creator === 'LSV') return showLsv;
+    if (creator === 'LLU') return showLlu;
+    if (creator === 'DS') return showDs;
+    return true;
+  };
+  const creatorsToShow = activeCreators.filter(isCreatorVisible);
+  const visibleColumnsCount = (showMe ? 1 : 0) + creatorsToShow.length + (show17L ? 1 : 0);
+  const gridColsClass =
+    visibleColumnsCount >= 5
+      ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+      : visibleColumnsCount === 4
+      ? 'grid-cols-2 sm:grid-cols-4'
+      : visibleColumnsCount === 3
+      ? 'grid-cols-3'
+      : visibleColumnsCount === 2
+      ? 'grid-cols-2'
+      : 'grid-cols-1';
 
   return (
     <div className={`p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5 ${className}`}>
@@ -153,77 +197,89 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
         </div>
       </div>
 
-      {/* Dynamic Compact 3-Column Provider Row */}
+      {/* Dynamic 5-Column Grid: Me + Pro Creators (LSV, LLU, DS) + 17Lands */}
       <div className={`grid gap-1.5 sm:gap-2 ${gridColsClass}`}>
-        {/* 1. ME Column (Always Visible) */}
-        <div className="p-1.5 sm:p-2 rounded-lg bg-violet-50/70 dark:bg-violet-950/25 border border-violet-200 dark:border-violet-800/50 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[10px] font-bold text-violet-800 dark:text-violet-300 font-mono">
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
-              <span>You</span>
-            </div>
-            {userEval?.pickPriority && (
-              <span className="hidden sm:inline text-[9px] text-violet-600 dark:text-violet-400 truncate font-normal">
-                {userEval.pickPriority}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-baseline gap-1 mt-0.5">
-            {userGrade === 'N/A' ? (
-              <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-slate-700 text-white shadow-2xs">
-                N/A
-              </span>
-            ) : userGrade ? (
-              <>
-                <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-violet-600 text-white shadow-2xs">
-                  {userGrade}
-                </span>
-                <span className="text-[10px] font-mono font-semibold text-violet-700 dark:text-violet-300">
-                  ({userEval?.userScore?.toFixed(1)})
-                </span>
-              </>
-            ) : (
-              <span className="text-sm font-semibold text-violet-500/70 font-mono leading-tight">—</span>
-            )}
-          </div>
-        </div>
-
-        {/* 2. LSV Column (Togglable) */}
-        {showLsv && (
-          <div className="p-1.5 sm:p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/50 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[10px] font-bold text-amber-800 dark:text-amber-300 font-mono">
+        {/* 1. ME Column */}
+        {showMe && (
+          <div className="p-1.5 sm:p-2 rounded-lg bg-violet-50/70 dark:bg-violet-950/25 border border-violet-200 dark:border-violet-800/50 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10px] font-bold text-violet-800 dark:text-violet-300 font-mono">
               <div className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                <span>LSV</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
+                <span>You</span>
               </div>
-              {userGrade && !isBlindGrading && lsvRating && lsvDelta !== 0 && (
-                <span className="text-[9px] font-mono text-amber-600 dark:text-amber-400 font-bold" title="Delta vs LSV">
-                  Δ {lsvDelta > 0 ? `+${lsvDelta}` : lsvDelta}
+              {userEval?.pickPriority && (
+                <span className="hidden sm:inline text-[9px] text-violet-600 dark:text-violet-400 truncate font-normal">
+                  {userEval.pickPriority}
                 </span>
               )}
             </div>
 
             <div className="flex items-baseline gap-1 mt-0.5">
-              {userGrade && !isBlindGrading && lsvRating ? (
+              {userGrade === 'N/A' ? (
+                <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-slate-700 text-white shadow-2xs">
+                  N/A
+                </span>
+              ) : userGrade ? (
                 <>
-                  <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 shadow-2xs">
-                    {lsvRating.grade}
+                  <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-violet-600 text-white shadow-2xs">
+                    {userGrade}
                   </span>
-                  <span className="text-[10px] font-mono font-semibold text-amber-700 dark:text-amber-300">
-                    ({lsvRating.score.toFixed(1)})
+                  <span className="text-[10px] font-mono font-semibold text-violet-700 dark:text-violet-300">
+                    ({userEval?.userScore?.toFixed(1)})
                   </span>
                 </>
               ) : (
-                <span className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-mono leading-tight">
-                  {isBlindGrading ? 'Hidden' : !userGrade ? '—' : 'Pending'}
-                </span>
+                <span className="text-sm font-semibold text-violet-500/70 font-mono leading-tight">—</span>
               )}
             </div>
           </div>
         )}
 
-        {/* 3. 17L Column (Togglable) */}
+        {/* 2. Pro Creator Columns (LSV, LLU, DS) */}
+        {creatorsToShow.map((creator) => {
+            const meta = PRO_CREATORS[creator] || PRO_CREATORS.LSV;
+            const rating = getProRatingForCard(card, creator, card.set);
+            const creatorIndex = rating ? gradeTierToIndex(rating.grade) : -1;
+            const creatorDelta = (userIndex >= 0 && creatorIndex >= 0) ? creatorIndex - userIndex : 0;
+
+            return (
+              <div
+                key={creator}
+                className={`p-1.5 sm:p-2 rounded-lg ${meta.badgeBg} border ${meta.badgeBorder} flex flex-col justify-between`}
+              >
+                <div className={`flex items-center justify-between text-[10px] font-bold ${meta.badgeText} font-mono`}>
+                  <div className="flex items-center gap-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor} shrink-0`} />
+                    <span>{meta.shortName}</span>
+                  </div>
+                  {userGrade && !isBlindGrading && rating && creatorDelta !== 0 && (
+                    <span className="text-[9px] font-mono opacity-80 font-bold" title={`Delta vs ${meta.shortName}`}>
+                      Δ {creatorDelta > 0 ? `+${creatorDelta}` : creatorDelta}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  {rating && (!isBlindGrading || userGrade) ? (
+                    <>
+                      <span className={`text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded ${meta.dotColor} text-white shadow-2xs`}>
+                        {rating.grade}
+                      </span>
+                      <span className={`text-[10px] font-mono font-semibold ${meta.badgeText}`}>
+                        ({rating.score.toFixed(1)})
+                      </span>
+                    </>
+                  ) : (
+                    <span className={`text-[10px] font-mono leading-tight opacity-70 ${meta.badgeText}`}>
+                      {isBlindGrading && !userGrade ? '—' : isBlindGrading ? 'Hidden' : 'Pending'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+        {/* 4. 17L Column (Always 4th Static Column) */}
         {show17L && (
           <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/50 flex flex-col justify-between">
             <div className="flex items-center justify-between text-[10px] font-bold text-emerald-800 dark:text-emerald-300 font-mono">
@@ -245,7 +301,7 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
             </div>
 
             <div className="flex items-baseline gap-1 mt-0.5">
-              {userGrade && actualGrade && !isBlindGrading ? (
+              {actualGrade && (!isBlindGrading || userGrade) ? (
                 <>
                   <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-emerald-600 text-white shadow-2xs">
                     {actualGrade}
@@ -256,7 +312,7 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
                 </>
               ) : (
                 <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-mono leading-tight">
-                  {isBlindGrading ? 'Hidden' : !userGrade ? '—' : 'Syncing'}
+                  {isBlindGrading && !userGrade ? '—' : isBlindGrading ? 'Hidden' : landData ? 'Syncing' : 'Pending'}
                 </span>
               )}
             </div>
@@ -268,3 +324,4 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
 };
 
 export default GradeComparisonCard;
+

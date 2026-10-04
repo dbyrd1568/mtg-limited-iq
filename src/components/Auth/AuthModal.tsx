@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserAccount } from '../../types/mtg';
+import { UserAccount, ProCreatorSource, PRO_CREATORS } from '../../types/mtg';
 import {
   signInWithOAuth,
   signInWithMagicLink,
@@ -13,6 +13,8 @@ import {
 import {
   updateUserAccount,
   clearActiveUser,
+  getPreferredCreators,
+  setPreferredCreators,
 } from '../../services/storage';
 import {
   getSyncStatus,
@@ -78,6 +80,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
+  const [preferredCreators, setPreferredCreatorsState] = useState<ProCreatorSource[]>(() =>
+    getPreferredCreators(currentUser?.id)
+  );
 
   useEffect(() => {
     setAvatarError(false);
@@ -93,6 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setDisplayName(currentUser?.name || '');
       setAvatarUrl(currentUser?.avatarUrl || '');
       setAvatarColor(currentUser?.avatarColor || '#8b5cf6');
+      setPreferredCreatorsState(getPreferredCreators(currentUser?.id));
       setStatusMessage(null);
       setIsEditingProfile(false);
       if (isCloudUser) {
@@ -105,6 +111,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     }
   }, [isOpen, currentUser, isCloudUser]);
+
+  const handleToggleCreator = (creator: ProCreatorSource) => {
+    let updated: ProCreatorSource[];
+    if (preferredCreators.includes(creator)) {
+      if (preferredCreators.length > 1) {
+        updated = preferredCreators.filter((c) => c !== creator);
+      } else {
+        return; // Keep at least 1 creator active
+      }
+    } else {
+      if (preferredCreators.length < 3) {
+        updated = [...preferredCreators, creator];
+      } else {
+        // Max 3: append creator if not full
+        updated = [...preferredCreators.slice(0, 2), creator];
+      }
+    }
+    const saved = setPreferredCreators(updated, currentUser?.id);
+    setPreferredCreatorsState(saved);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mtg_preferred_creators_changed', { detail: saved }));
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -437,6 +466,64 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
             ) : null}
+
+            {/* Preferred Pro Creators Selector (Strictly Max 2 for 4 Total Comparison Columns) */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#070c26] border border-slate-200 dark:border-slate-800/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
+                  <span className="text-xs font-bold text-slate-900 dark:text-white font-heading">
+                    Preferred Pro Creators
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-cyan-300 border border-violet-200 dark:border-violet-800">
+                  {preferredCreators.length} / 3 Selected
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Select up to 3 pro creators to compare alongside your personal grades and 17Lands data (5 columns total):
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {(Object.keys(PRO_CREATORS) as ProCreatorSource[]).map((creatorKey) => {
+                  const meta = PRO_CREATORS[creatorKey];
+                  const isSelected = preferredCreators.includes(creatorKey);
+                  return (
+                    <button
+                      key={creatorKey}
+                      type="button"
+                      onClick={() => handleToggleCreator(creatorKey)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                        isSelected
+                          ? 'bg-violet-50/80 dark:bg-violet-950/40 border-violet-500 dark:border-violet-400 shadow-xs ring-1 ring-violet-500/30'
+                          : 'bg-white dark:bg-[#050818] border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${meta.dotColor}`} />
+                          <span className="text-xs font-bold font-mono text-slate-900 dark:text-white">
+                            {meta.shortName}
+                          </span>
+                        </div>
+                        {isSelected && (
+                          <span className="w-4 h-4 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5" />
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-[10.5px] font-semibold text-slate-700 dark:text-slate-300 truncate">
+                          {meta.sourceLabel}
+                        </div>
+                        <div className="text-[9.5px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                          {meta.name}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="pt-1">
               <button

@@ -26,18 +26,18 @@ export const TOUR_STEP_DEFINITIONS: Record<ContextualTourStepId, TourStepDefinit
     targetSelector: '#nav-set-selector',
     preferredPlacement: 'bottom',
     description:
-      'Click here to switch MTG sets anytime. Explore current Standard formats, upcoming preview seasons, and historical booster draft formats.',
+      'Click here to switch MTG sets anytime. Explore current formats, upcoming preview seasons, and historical booster draft formats.',
   },
   grading_mode: {
     id: 'grading_mode',
-    title: 'Grading vs. 17Lands Mode',
-    badge: 'Compare & Telemetry',
+    title: 'Grading Mode vs. Compare Mode',
+    badge: 'Blind Evaluation & Telemetry',
     targetSelector: '#mode-toggle-btn',
     preferredPlacement: 'bottom',
     description:
-      'Toggle between Grading Mode (benchmarks hidden for blind evaluation) and Compare Mode (17Lands win rates, ALSA, and GIH revealed side-by-side).',
+      'Toggle between Grading Mode (benchmarks and creator scores hidden for blind evaluation) and Compare Mode (17Lands win rates, ALSA, and pro reviews revealed side-by-side).',
     secondaryNote:
-      'Note: For unreleased preview sets, 17Lands data will show automatically once players draft on MTG Arena and data accumulates (~2 weeks post-release).',
+      'Note: For upcoming or recently released sets, 17Lands telemetry begins populating ~2 weeks post-release as Arena draft games accumulate.',
   },
   enter_grade: {
     id: 'enter_grade',
@@ -46,43 +46,43 @@ export const TOUR_STEP_DEFINITIONS: Record<ContextualTourStepId, TourStepDefinit
     targetSelector: '#rate-card-bar',
     preferredPlacement: 'top',
     description:
-      'Assign letter grades (A+ through F) in 1 click using the quick rate buttons on any card, or click the card body to add notes and adjust archetype tiers.',
+      'Assign letter grades (A+ through F, or N/A for lands) in 1 click using the quick rate buttons on any card, or click the card body to inspect details and add notes.',
   },
   view_comps: {
     id: 'view_comps',
-    title: 'View Comparable Cards',
+    title: 'View Precedent Comps',
     badge: 'Precedent Engine',
     targetSelector: '#comps-action-btn',
     preferredPlacement: 'top',
     description:
-      'Click Comps on any card to consult the Precedent Engine! Compare against historically similar cards across modern sets with win-rates and empirical grade baselines.',
+      'Click Comps on any card to launch the Precedent Engine! Compare against historically similar cards across modern MTG sets with authentic win rates and grade benchmarks.',
   },
   replace_comp: {
     id: 'replace_comp',
-    title: 'Replace Comps by Searching',
+    title: 'Search & Substitute Precedents',
     badge: 'Custom Precedents',
     targetSelector: '#comp-search-bar',
     preferredPlacement: 'bottom',
     description:
-      'Customize your historical comps! Search across all of Magic history by card name, oracle text, or mana cost, or click Swap on any slot to replace it.',
+      'Customize your historical comps! Search across all of Magic history with visual card comparison, or swap any precedent slot with your preferred comparison card.',
   },
   export_grades: {
     id: 'export_grades',
     title: 'Export & Share Grades',
     badge: 'Data Portability',
-    targetSelector: '#export-grades-btn',
+    targetSelector: '#export-grades-btn, #share-export-grades-btn',
     preferredPlacement: 'bottom',
     description:
-      'Export your card ratings to a CSV spreadsheet, back up your evaluations, or publish directly to 17Lands tier list format.',
+      'Share your public grade list via link, copy formatted comparison tables with all pro reviewers and 17Lands metrics for Google Sheets, download CSV spreadsheets, or sync to 17Lands.',
   },
   quiz_overview: {
     id: 'quiz_overview',
-    title: 'How Quizzes Work',
+    title: 'Tactical Format Quizzes',
     badge: 'Tactical Drills',
     targetSelector: '#quiz-setup-header',
     preferredPlacement: 'bottom',
     description:
-      'Sharpen your draft instincts with tactical format quizzes! Test your skills on Pack 1 Pick 1 priorities, 17Lands trap vs. sleeper detection, quadrant theory, and combat tricks across Timed, Practice, or Mastery modes.',
+      'Sharpen your draft instincts with tactical quizzes! Test your skills on Pack 1 Pick 1 picks, combat tricks, and 17Lands trap detection with timed and practice modes, or drill your Missed Cards Deck.',
   },
 };
 

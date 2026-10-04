@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserProfileStats, QuestionCategory, SetMasteryStat, MissedCardRecord } from '../../types/mtg';
-import { exportUserDataAsJSON, importUserDataFromJSON } from '../../services/storage';
-import { BarChart3, Trophy, Flame, Zap, Award, BookOpen, Download, Upload, RotateCcw, CheckCircle2, XCircle, Sparkles, Shield, Swords, Hash, ArrowUpRight, Wand2, Target, AlertTriangle, Scale, GitCompare, ChevronDown, Info } from 'lucide-react';
+import { exportUserDataAsJSON, importUserDataFromJSON, normalizeUserProfileStats } from '../../services/storage';
+import { BarChart3, Trophy, Flame, Zap, Award, BookOpen, Download, Upload, RotateCcw, CheckCircle2, XCircle, Sparkles, Shield, Swords, Hash, ArrowUpRight, Wand2, Target, AlertTriangle, Scale, GitCompare, ChevronDown, Info, ShieldAlert } from 'lucide-react';
 
 interface StatsDashboardProps {
   userStats: UserProfileStats;
@@ -86,6 +86,14 @@ const CATEGORY_DETAILS: Record<QuestionCategory, CategoryDetails> = {
     whyItMatters: 'Modern draft sets are deeply synergy-driven. Identifying archetype engines allows you to assemble high-synergy 3-0 decks.',
     proTip: 'Prioritize the enablers and payoffs that bridge across overlapping color archetypes.',
   },
+  removal_to_play_around: {
+    name: 'Removal to Play Around',
+    icon: <ShieldAlert className="w-4 h-4 text-rose-400" />,
+    tag: 'Combat Threat Awareness',
+    description: 'Drills opponent open mana recognition, speed timing (Instant vs Sorcery), and blowout prevention.',
+    whyItMatters: 'Walking your best creatures into instant-speed removal during combat is the quickest way to lose a won game in Limited.',
+    proTip: 'Always check opponent untapped colors against the set\'s common instant-speed removal before casting combat tricks or attacking.',
+  },
   card_evaluation: {
     name: '17Lands Head-to-Head Duel',
     icon: <GitCompare className="w-4 h-4 text-rose-400" />,
@@ -97,12 +105,13 @@ const CATEGORY_DETAILS: Record<QuestionCategory, CategoryDetails> = {
 };
 
 export const StatsDashboard: React.FC<StatsDashboardProps> = ({
-  userStats,
+  userStats: rawUserStats,
   onDrillMissedCards,
   onRefreshStats,
   onGoToGradingHub,
   onSelectCardName,
 }) => {
+  const userStats = useMemo(() => normalizeUserProfileStats(rawUserStats), [rawUserStats]);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [activeTooltipCategory, setActiveTooltipCategory] = useState<QuestionCategory | null>(null);
 
@@ -257,7 +266,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
             {(Object.keys(CATEGORY_DETAILS) as QuestionCategory[]).map((cat) => {
               const details = CATEGORY_DETAILS[cat];
-              const stat = userStats.categories[cat] || { attempted: 0, correct: 0 };
+              const stat = userStats.categories?.[cat] || { attempted: 0, correct: 0 };
               const acc = stat.attempted > 0 ? Math.round((stat.correct / stat.attempted) * 100) : 0;
               const isTooltipOpen = activeTooltipCategory === cat;
 

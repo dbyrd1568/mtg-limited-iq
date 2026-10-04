@@ -184,6 +184,8 @@ export interface SetCalibrationSummary {
   biggestSleepers: CardEvaluationComparison[];
   biggestTraps: CardEvaluationComparison[];
   bias: 'none' | 'overly_optimistic' | 'overly_critical';
+  isCreatorBenchmark?: boolean;
+  benchmarkName?: string;
 }
 
 // Obfuscation Mask Types
@@ -215,6 +217,7 @@ export type QuestionCategory =
   | 'mana_cost_and_splash'    // Mana Cost & Splashability (Single vs Double Pips)
   | 'power_toughness'         // Power / Toughness Combat Sizing & Math
   | 'archetype_engine'        // Archetype Synergy Mechanic & Engine
+  | 'removal_to_play_around'  // Removal to Play Around & Open Mana Blowout Anticipation
   | 'card_evaluation';        // 17Lands Head-to-Head Win Rate Duel
 
 export type QuizMode = 'quiz' | 'flashcard' | 'spaced_repetition';
@@ -318,6 +321,56 @@ export interface UserProfileStats {
   lastActive: string;
 }
 
+export type ProCreatorSource = 'LSV' | 'LLU' | 'DS';
+
+export interface ProCreatorMeta {
+  id: ProCreatorSource;
+  name: string;
+  shortName: string;
+  sourceLabel: string;
+  description: string;
+  badgeBg: string;
+  badgeBorder: string;
+  badgeText: string;
+  dotColor: string;
+}
+
+export const PRO_CREATORS: Record<ProCreatorSource, ProCreatorMeta> = {
+  LSV: {
+    id: 'LSV',
+    name: 'Luis Scott-Vargas',
+    shortName: 'LSV',
+    sourceLabel: 'Limited Resources',
+    description: 'Hall of Famer & Limited Resources set review grades',
+    badgeBg: 'bg-amber-500/10 dark:bg-amber-950/25',
+    badgeBorder: 'border-amber-300 dark:border-amber-800/50',
+    badgeText: 'text-amber-800 dark:text-amber-300',
+    dotColor: 'bg-amber-500',
+  },
+  LLU: {
+    id: 'LLU',
+    name: 'Limited Level Ups',
+    shortName: 'LLU',
+    sourceLabel: 'Alex Nikolic',
+    description: 'Chord_o_Calls set reviews & 17Lands tier list grades',
+    badgeBg: 'bg-pink-500/10 dark:bg-pink-950/25',
+    badgeBorder: 'border-pink-300 dark:border-pink-800/50',
+    badgeText: 'text-pink-800 dark:text-pink-300',
+    dotColor: 'bg-pink-500',
+  },
+  DS: {
+    id: 'DS',
+    name: 'Draftsim',
+    shortName: 'DS',
+    sourceLabel: 'Draftsim.com',
+    description: 'Draftsim.com set reviews & tier list card ratings',
+    badgeBg: 'bg-sky-500/10 dark:bg-sky-950/25',
+    badgeBorder: 'border-sky-300 dark:border-sky-800/50',
+    badgeText: 'text-sky-800 dark:text-sky-300',
+    dotColor: 'bg-sky-500',
+  },
+};
+
 export interface UserAccount {
   id: string;
   name: string;
@@ -328,6 +381,7 @@ export interface UserAccount {
   createdAt: string;
   lastLoginAt: string;
   isAdmin?: boolean;
+  preferredCreators?: ProCreatorSource[];
 }
 
 

@@ -29,23 +29,75 @@ const TEXT_SIZE_MAP = {
 export function getManaSymbolSvgUrl(rawSymbol: string): string {
   // Strip curly braces and whitespace
   const clean = rawSymbol.replace(/[{}]/g, '').trim().toUpperCase();
+  const normalized = clean === 'COLORLESS' ? 'C' : clean;
 
   // Strip slashes for hybrid, twobrid, and phyrexian mana (e.g. "2/G" -> "2G", "W/U" -> "WU", "G/P" -> "GP")
-  const formatted = clean.replace(/\//g, '');
+  const formatted = normalized.replace(/\//g, '');
 
   return `https://svgs.scryfall.io/card-symbols/${formatted}.svg`;
 }
 
 export const ManaSymbol: React.FC<ManaSymbolProps> = ({ symbol, size = 'md', className = '' }) => {
   const [imgError, setImgError] = useState(false);
-  const cleanSym = symbol.replace(/[{}]/g, '').toUpperCase();
+  const cleanSym = symbol.replace(/[{}]/g, '').trim().toUpperCase();
   const sizeClass = SIZE_MAP[size];
   const textSizeClass = TEXT_SIZE_MAP[size];
-  const svgUrl = getManaSymbolSvgUrl(symbol);
+
+  // Official MTG Gold / Multicolor Pip
+  if (cleanSym === 'M' || cleanSym === 'MULTI' || cleanSym === 'GOLD') {
+    return (
+      <div
+        className={`${sizeClass} rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] select-none shrink-0 ${className}`}
+        title="{M} Multicolor"
+      >
+        <svg viewBox="0 0 100 100" className="w-full h-full">
+          <defs>
+            <radialGradient id="goldOuterPip" cx="50%" cy="50%" r="50%">
+              <stop offset="60%" stopColor="#cca03b" />
+              <stop offset="85%" stopColor="#f3d878" />
+              <stop offset="100%" stopColor="#875e18" />
+            </radialGradient>
+            <radialGradient id="goldInnerPip" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#1a1409" />
+              <stop offset="70%" stopColor="#3d2c0e" />
+              <stop offset="100%" stopColor="#cca03b" />
+            </radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#goldOuterPip)" stroke="#422906" strokeWidth="4" />
+          <circle cx="50" cy="50" r="26" fill="url(#goldInnerPip)" stroke="#f3d878" strokeWidth="3" />
+        </svg>
+      </div>
+    );
+  }
+
+  // Official MTG Land Symbol
+  if (cleanSym === 'LAND' || cleanSym === 'LANDS') {
+    return (
+      <div
+        className={`${sizeClass} rounded-full overflow-hidden flex items-center justify-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] select-none shrink-0 ${className}`}
+        title="{L} Land"
+      >
+        <svg viewBox="0 0 100 100" className="w-full h-full">
+          <defs>
+            <radialGradient id="landOuterPip" cx="50%" cy="50%" r="50%">
+              <stop offset="60%" stopColor="#8d949c" />
+              <stop offset="85%" stopColor="#b4bcc6" />
+              <stop offset="100%" stopColor="#4b525a" />
+            </radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="url(#landOuterPip)" stroke="#272b30" strokeWidth="4" />
+          <path d="M 16,70 C 22,68 30,52 38,38 C 42,30 46,38 52,50 C 56,42 62,26 68,26 C 74,26 80,55 84,70 Z" fill="#0d1013" />
+        </svg>
+      </div>
+    );
+  }
+
+  const normalizedSymbol = cleanSym === 'COLORLESS' ? 'C' : cleanSym;
+  const svgUrl = getManaSymbolSvgUrl(normalizedSymbol);
 
   // Fallback styling if SVG fails to load (e.g. offline)
   const getFallbackSymbolStyle = () => {
-    switch (cleanSym) {
+    switch (normalizedSymbol) {
       case 'W':
         return 'bg-[#f8f6d8] text-[#554a32] border-[#e6e2b8] font-bold';
       case 'U':
@@ -69,10 +121,10 @@ export const ManaSymbol: React.FC<ManaSymbolProps> = ({ symbol, size = 'md', cla
     return (
       <img
         src={svgUrl}
-        alt={cleanSym}
+        alt={normalizedSymbol}
         onError={() => setImgError(true)}
         className={`${sizeClass} inline-block object-contain align-middle drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] select-none shrink-0 ${className}`}
-        title={`{${cleanSym}}`}
+        title={`{${normalizedSymbol}}`}
         loading="lazy"
       />
     );

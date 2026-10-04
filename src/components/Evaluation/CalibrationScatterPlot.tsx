@@ -31,13 +31,22 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Target,
+  EyeOff,
+  Clock,
+  Pin,
+  X,
+  ExternalLink,
+  MousePointerClick,
 } from 'lucide-react';
+import { getProRatingForCard } from '../../services/lsvRatings';
 
 // The visual grade spectrum exactly as shown on the reference chart axes:
 // F, D-, D, D+, C-, C, C+, B-, B, B+, A-, A, A+
 export const CHART_TIERS: string[] = [
   'F', 'D-', 'D', 'D+', 'C-', 'C', 'C+', 'B-', 'B', 'B+', 'A-', 'A', 'A+'
 ];
+
+export type BenchmarkTarget = '17L' | 'LSV' | 'LLU' | 'DS';
 
 export interface CalibrationScatterPoint {
   card: Card;
@@ -73,6 +82,8 @@ interface CalibrationScatterPlotProps {
   onSelectCard?: (card: Card) => void;
   availableSets?: SetInfo[];
   userId?: string;
+  benchmarkTarget?: BenchmarkTarget;
+  onBenchmarkTargetChange?: (target: BenchmarkTarget) => void;
 }
 
 /**
@@ -340,7 +351,43 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
   onSelectCard,
   availableSets = POPULAR_LIMITED_SETS,
   userId,
+  benchmarkTarget: propBenchmarkTarget,
+  onBenchmarkTargetChange,
 }) => {
+  // Benchmark target state (defaulting to '17L')
+  const [internalBenchmark, setInternalBenchmark] = useState<BenchmarkTarget>(propBenchmarkTarget || '17L');
+  const activeBenchmark = propBenchmarkTarget || internalBenchmark;
+
+  // Sync internal benchmark if prop changes
+  useEffect(() => {
+    if (propBenchmarkTarget) {
+      setInternalBenchmark(propBenchmarkTarget);
+    }
+  }, [propBenchmarkTarget]);
+
+  const handleBenchmarkChange = useCallback((target: BenchmarkTarget) => {
+    setInternalBenchmark(target);
+    setPinnedPoint(null);
+    if (onBenchmarkTargetChange) {
+      onBenchmarkTargetChange(target);
+    }
+  }, [onBenchmarkTargetChange]);
+
+  const benchmarkDisplayName = useMemo(() => {
+    switch (activeBenchmark) {
+      case '17L':
+        return '17Lands';
+      case 'LSV':
+        return 'LSV';
+      case 'LLU':
+        return 'Limited Level Ups';
+      case 'DS':
+        return 'Draftsim';
+      default:
+        return '17Lands';
+    }
+  }, [activeBenchmark]);
+
   // Selected set state (defaults to current set, can be switched by the user)
   const [selectedSetCode, setSelectedSetCode] = useState<string>(currentSetCode.toUpperCase());
   const [activeCards, setActiveCards] = useState<Card[]>(propCards);
@@ -351,10 +398,14 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
   const [rarityFilter, setRarityFilter] = useState<'ALL' | 'common' | 'uncommon' | 'rare' | 'mythic'>('ALL');
   const [discrepancyFilter, setDiscrepancyFilter] = useState<'ALL' | 'EXACT' | 'TOLERANCE' | 'TRAPS' | 'SLEEPERS'>('ALL');
   const [hoveredPoint, setHoveredPoint] = useState<CalibrationScatterPoint | null>(null);
+  const [pinnedPoint, setPinnedPoint] = useState<{
+    point: CalibrationScatterPoint;
+    pos: { x: number; y: number; placement: 'top' | 'bottom' };
+  } | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number; placement: 'top' | 'bottom' } | null>(null);
   const [hoveredIntercept, setHoveredIntercept] = useState<boolean>(false);
   const [hoveredTrendline, setHoveredTrendline] = useState<boolean>(false);
-  const [activeInfoPopup, setActiveInfoPopup] = useState<'intercept' | 'rsq' | null>(null);
+  const [activeInfoPopup, setActiveInfoPopup] = useState<'intercept' | 'rsq' | 'tendency' | null>(null);
   const [showTrendline, setShowTrendline] = useState<boolean>(true);
   const [panelPosition, setPanelPosition] = useState<'right' | 'left'>(() => getCalibrationPlotPanelPosition(userId));
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -386,6 +437,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
   const handleSetChange = useCallback(async (newSetCode: string) => {
     setSelectedSetCode(newSetCode);
     setHoveredPoint(null);
+    setPinnedPoint(null);
     if (newSetCode.toUpperCase() === currentSetCode.toUpperCase()) {
       setActiveCards(deduplicateCards(propCards));
       setActive17LData(propSeventeenLandsData || null);
@@ -411,7 +463,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
   const userRatedSets = useMemo(() => {
     const counts: Record<string, number> = {};
     Object.values(userEvaluations).forEach((ev) => {
-      if (ev.setCode && ev.userGrade) {
+      if (ev.setCode && ev.userGrade && ev.userGrade !== 'N/A') {
         const code = ev.setCode.toUpperCase();
         counts[code] = (counts[code] || 0) + 1;
       }
@@ -419,7 +471,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
     return counts;
   }, [userEvaluations]);
 
-  // Compute all scatter points for the active set
+  // Compute all scatter points for the active set against the selected benchmark
   const allPoints = useMemo<CalibrationScatterPoint[]>(() => {
     const points: CalibrationScatterPoint[] = [];
 
@@ -428,19 +480,34 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
       const userEval = userEvaluations[evalKey];
       if (!userEval?.userGrade || userEval.userGrade === 'N/A') return;
 
-      const rating = get17LandsCardRating(card, active17LData) || getOrEstimate17LandsCardRating(card, active17LData);
-      if (!rating) return;
+      let actualGrade: GradeTier | null = null;
+      let actualWinRate: number | undefined = undefined;
+      let actualAlsa: number | undefined = undefined;
 
-      const actualGrade: GradeTier = (rating.tier_grade as GradeTier) || winRateToGradeTier(rating.win_rate || 0.53);
+      if (activeBenchmark === '17L') {
+        const rating = get17LandsCardRating(card, active17LData) || getOrEstimate17LandsCardRating(card, active17LData);
+        if (rating && (rating.tier_grade || typeof rating.win_rate === 'number')) {
+          actualGrade = (rating.tier_grade as GradeTier) || winRateToGradeTier(rating.win_rate || 0.53);
+          actualWinRate = rating.win_rate;
+          actualAlsa = rating.avg_seen;
+        }
+      } else {
+        const proRating = getProRatingForCard(card, activeBenchmark, card.set || selectedSetCode);
+        if (proRating && proRating.grade) {
+          actualGrade = proRating.grade;
+        }
+      }
+
+      if (!actualGrade) return;
+
       const userGrade: GradeTier = userEval.userGrade;
-
       const uIdx = tierToChartIndex(userGrade);
       const aIdx = tierToChartIndex(actualGrade);
 
       // Delta in sub-tier steps
       const userStepIndex = gradeTierToIndex(userGrade);
       const actualStepIndex = gradeTierToIndex(actualGrade);
-      const stepDelta = userStepIndex - actualStepIndex; // > 0 means User > 17Lands (Trap), < 0 means Sleeper
+      const stepDelta = userStepIndex - actualStepIndex; // > 0 means User > Benchmark (Trap), < 0 means Sleeper
 
       let verdict: CalibrationScatterPoint['verdict'] = 'exact';
       if (stepDelta === 0) verdict = 'exact';
@@ -463,8 +530,8 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
         userGradeIndex: uIdx,
         actualGrade,
         actualGradeIndex: aIdx,
-        actualWinRate: rating.win_rate,
-        actualAlsa: rating.avg_seen,
+        actualWinRate,
+        actualAlsa,
         stepDelta,
         verdict,
         plotX: Math.max(0, Math.min(12, uIdx + dx)),
@@ -474,7 +541,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
     });
 
     return points;
-  }, [activeCards, active17LData, userEvaluations]);
+  }, [activeCards, active17LData, userEvaluations, activeBenchmark, selectedSetCode]);
 
   // Rarity count breakdown for current plotted set
   const rarityCounts = useMemo(() => {
@@ -509,6 +576,24 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
       return true;
     });
   }, [allPoints, rarityFilter, discrepancyFilter]);
+
+  // Close pinned preview card when pressing Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && pinnedPoint) {
+        setPinnedPoint(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pinnedPoint]);
+
+  // If active pinned point is filtered out, clear it
+  useEffect(() => {
+    if (pinnedPoint && !filteredPoints.some((pt) => pt.card.id === pinnedPoint.point.card.id)) {
+      setPinnedPoint(null);
+    }
+  }, [filteredPoints, pinnedPoint]);
 
   // Aggregate statistics & OLS linear regression for the current plotted set
   const stats = useMemo(() => {
@@ -650,16 +735,48 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               Grade Calibration Scatter Plot
             </h3>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700">
-              Expected vs. Actual GIH WR
+              {activeBenchmark === '17L'
+                ? 'Me vs. 17Lands (Actual GIH WR)'
+                : activeBenchmark === 'LSV'
+                ? 'Me vs. Luis Scott-Vargas (LSV)'
+                : activeBenchmark === 'LLU'
+                ? 'Me vs. Lords of Limited (LLU)'
+                : 'Me vs. Draftsim (DS)'}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Visualizing evaluation accuracy against 17Lands empirical draft win rates. Points on the diagonal represent perfect calibration.
+            {activeBenchmark === '17L'
+              ? 'Visualizing evaluation accuracy against 17Lands empirical draft win rates. Points on the diagonal represent perfect calibration.'
+              : `Visualizing grade calibration against ${activeBenchmark === 'LSV' ? 'Luis Scott-Vargas (LSV)' : activeBenchmark === 'LLU' ? 'Limited Level Ups (LLU)' : 'Draftsim (DS)'}. Points on the diagonal represent identical card grades.`}
           </p>
         </div>
 
-        {/* Set Chooser & Action Bar */}
+        {/* Benchmark Selector Tabs, Set Chooser & Action Bar */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* Independent Benchmark Tabs */}
+          <div className="flex items-center gap-1 bg-white dark:bg-[#090e24] p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            {[
+              { id: '17L', label: '17Lands', title: '17Lands Draft Win Rates' },
+              { id: 'LSV', label: 'LSV', title: 'Luis Scott-Vargas' },
+              { id: 'LLU', label: 'LLU', title: 'Limited Level Ups' },
+              { id: 'DS', label: 'Draftsim', title: 'Draftsim' },
+            ].map((bm) => (
+              <button
+                key={bm.id}
+                type="button"
+                onClick={() => handleBenchmarkChange(bm.id as BenchmarkTarget)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeBenchmark === bm.id
+                    ? 'bg-violet-600 text-white shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title={`Compare against ${bm.title}`}
+              >
+                Me vs {bm.label}
+              </button>
+            ))}
+          </div>
+
           {/* By Set Selector */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-[#090e24] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
             <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">Set:</span>
@@ -736,7 +853,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
             <strong className="text-violet-600 dark:text-cyan-300 font-bold">{stats.correlation.toFixed(2)}</strong>
           </div>
           <span className="text-slate-300 dark:text-slate-700 hidden md:inline">|</span>
-          <div className="hidden md:inline cursor-help" title={`Coefficient of Determination (RSQ / R² = ${stats.rSquared.toFixed(3)}): ${(stats.rSquared * 100).toFixed(1)}% of actual 17Lands win rate variance is explained by your evaluations`}>
+          <div className="hidden md:inline cursor-help" title={`Coefficient of Determination (RSQ / R² = ${stats.rSquared.toFixed(3)}): ${(stats.rSquared * 100).toFixed(1)}% of variance is explained by your evaluations`}>
             <span className="text-slate-500 text-[11px]">RSQ (R²): </span>
             <strong className="text-cyan-600 dark:text-cyan-300 font-bold">{(stats.rSquared * 100).toFixed(1)}%</strong>
           </div>
@@ -760,16 +877,79 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
             <p className="text-xs font-mono text-slate-500 dark:text-slate-400">Loading {selectedSetCode} data...</p>
           </div>
         ) : allPoints.length === 0 ? (
-          <div className="py-20 text-center max-w-md space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center mx-auto">
-              <BarChart2 className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-              No rated cards found for {selectedSetCode}
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Rate cards in {selectedSetCode} under the <strong>Grade</strong> tab, or pick another set with completed evaluations from the dropdown up top!
-            </p>
+          <div className="py-16 text-center max-w-lg space-y-4 mx-auto p-6 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 shadow-sm">
+            {(userRatedSets[selectedSetCode.toUpperCase()] || 0) > 0 && activeBenchmark === '17L' ? (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xs">
+                  <EyeOff className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white font-heading">
+                    17Lands Telemetry Awaiting Arena Release
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    You have evaluated <strong className="text-emerald-600 dark:text-emerald-400">{userRatedSets[selectedSetCode.toUpperCase()]} cards</strong> in {selectedSetCode}! 17Lands empirical game-in-hand win rate data unlocks ~2 weeks after set release on MTG Arena.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-2">
+                  <p className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400">
+                    Compare your grades against independent pro reviewers in the meantime:
+                  </p>
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleBenchmarkChange('LSV')}
+                      className="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Target className="w-3.5 h-3.5" />
+                      <span>Compare Me vs LSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBenchmarkChange('LLU')}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"
+                    >
+                      <span>Me vs LLU</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBenchmarkChange('DS')}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"
+                    >
+                      <span>Me vs Draftsim</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (userRatedSets[selectedSetCode.toUpperCase()] || 0) > 0 ? (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center mx-auto">
+                  <BarChart2 className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white font-heading">
+                    No {activeBenchmark === 'LSV' ? 'LSV' : activeBenchmark === 'LLU' ? 'Lords of Limited' : 'Draftsim'} Ratings for {selectedSetCode}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    You have graded <strong className="text-emerald-600 dark:text-emerald-400">{userRatedSets[selectedSetCode.toUpperCase()]} cards</strong> in {selectedSetCode}, but reviews from {activeBenchmark === 'LSV' ? 'LSV' : activeBenchmark === 'LLU' ? 'Lords of Limited' : 'Draftsim'} are not available for this set.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center mx-auto">
+                  <BarChart2 className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white font-heading">
+                    No Evaluations Found for {selectedSetCode}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    You haven't graded any cards in {selectedSetCode} yet. Grade cards under the <strong>Grade</strong> tab, or pick another set with completed evaluations from the dropdown up top!
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -778,6 +958,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
             <svg
               viewBox={`0 0 ${VIEW_SIZE} ${VIEW_SIZE}`}
               className="w-full h-full drop-shadow-sm font-sans"
+              onClick={() => setPinnedPoint(null)}
             >
               <defs>
                 {/* Subtle drop shadow for points */}
@@ -951,7 +1132,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                 textAnchor="middle"
                 className="text-[14px] font-serif font-bold fill-slate-900 dark:fill-white tracking-wide"
               >
-                Expected Game in Hand Win Rate
+                Your Evaluated Grade
               </text>
 
               {/* Y-Axis Ticks & Labels (Left) */}
@@ -988,7 +1169,13 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                 textAnchor="middle"
                 className="text-[14px] font-serif font-bold fill-slate-900 dark:fill-white tracking-wide"
               >
-                Actual Game in Hand Win Rate
+                {activeBenchmark === '17L'
+                  ? '17Lands Rating (GIH Win Rate)'
+                  : activeBenchmark === 'LSV'
+                  ? 'LSV Expert Rating'
+                  : activeBenchmark === 'LLU'
+                  ? 'Limited Level Ups Rating'
+                  : 'Draftsim Rating'}
               </text>
 
               {/* 5.1 Y-Intercept Indicator Pin on Y-Axis (Marks where trendline strikes x = 'F') */}
@@ -1070,12 +1257,14 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                 const cx = toSvgX(pt.plotX);
                 const cy = toSvgY(pt.plotY);
                 const isHovered = hoveredPoint?.card.id === pt.card.id;
+                const isPinned = pinnedPoint?.point.card.id === pt.card.id;
 
                 return (
                   <g
                     key={`${pt.card.id}_${pt.card.name}`}
                     className="cursor-pointer transition-transform duration-150"
                     onMouseEnter={(e) => {
+                      if (pinnedPoint) return;
                       setHoveredPoint(pt);
                       const rect = e.currentTarget.getBoundingClientRect();
                       const parent = plotAreaRef.current?.getBoundingClientRect();
@@ -1093,11 +1282,49 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                         });
                       }
                     }}
-                    onMouseLeave={() => setHoveredPoint(null)}
-                    onClick={() => onSelectCard && onSelectCard(pt.card)}
+                    onMouseLeave={() => {
+                      if (!pinnedPoint) {
+                        setHoveredPoint(null);
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isPinned) {
+                        setPinnedPoint(null);
+                      } else {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const parent = plotAreaRef.current?.getBoundingClientRect();
+                        if (parent) {
+                          const pointX = rect.left - parent.left + rect.width / 2;
+                          const pointY = rect.top - parent.top + rect.height / 2;
+                          const placement: 'top' | 'bottom' = pointY < 185 ? 'bottom' : 'top';
+                          const clampedX = Math.max(185, Math.min(parent.width - 185, pointX));
+                          const targetY = placement === 'top' ? pointY - 14 : pointY + 14;
+
+                          setPinnedPoint({
+                            point: pt,
+                            pos: { x: clampedX, y: targetY, placement },
+                          });
+                          setHoveredPoint(null);
+                        }
+                      }
+                    }}
                   >
-                    {/* Outer glow ring on hover */}
-                    {isHovered && (
+                    {/* Outer glow ring when pinned */}
+                    {isPinned && (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={13}
+                        fill="none"
+                        stroke="#06b6d4"
+                        strokeWidth="2.75"
+                        className="animate-pulse dark:stroke-cyan-400"
+                      />
+                    )}
+
+                    {/* Outer glow ring on hover (when not pinned) */}
+                    {!isPinned && isHovered && (
                       <circle
                         cx={cx}
                         cy={cy}
@@ -1113,10 +1340,10 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                     <circle
                       cx={cx}
                       cy={cy}
-                      r={isHovered ? 8 : 6.5}
+                      r={isPinned ? 8.5 : isHovered ? 8 : 6.5}
                       fill={pt.dotColor.fill}
-                      stroke="#0f172a"
-                      strokeWidth={isHovered ? 2.5 : 1.75}
+                      stroke={isPinned ? '#06b6d4' : '#0f172a'}
+                      strokeWidth={isPinned ? 2.5 : isHovered ? 2.5 : 1.75}
                       filter="url(#pointShadow)"
                       className="transition-all duration-150"
                     />
@@ -1125,84 +1352,148 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               })}
             </svg>
 
-            {/* Floating Tooltip with Card Image Preview */}
-            {hoveredPoint && tooltipPos && (
-              <div
-                style={{
-                  left: `${tooltipPos.x}px`,
-                  top: `${tooltipPos.y}px`,
-                  transform: tooltipPos.placement === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0%)',
-                }}
-                className="absolute z-50 pointer-events-none p-3 rounded-2xl bg-slate-900/95 dark:bg-[#090e24]/95 text-white shadow-2xl border border-slate-700/80 dark:border-cyan-500/50 backdrop-blur-md w-[360px] max-w-[94vw] animate-in fade-in zoom-in-95 duration-150 font-sans"
-              >
-                <div className="flex gap-3 items-center">
-                  {/* Card Art Thumbnail */}
-                  <div className="w-[96px] aspect-[63/88] rounded-xl overflow-hidden shadow-lg border border-slate-700/80 shrink-0 bg-slate-950">
-                    <CardImage card={hoveredPoint.card} alt={hoveredPoint.cardName} />
-                  </div>
+            {/* Floating Tooltip / Pinned Preview Card with Card Image */}
+            {(() => {
+              const activePoint = pinnedPoint ? pinnedPoint.point : hoveredPoint;
+              const activePos = pinnedPoint ? pinnedPoint.pos : tooltipPos;
+              const isCardPinned = Boolean(pinnedPoint);
 
-                  {/* Card Metadata & Calibration Stats */}
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <div className="flex items-start justify-between gap-1 pb-1 border-b border-slate-700/60">
-                      <div className="min-w-0">
-                        <h5 className="text-xs font-bold truncate">{hoveredPoint.cardName}</h5>
-                        <span className="text-[10px] font-mono text-slate-400 capitalize">
-                          #{hoveredPoint.collectorNumber} • {hoveredPoint.rarity}
-                        </span>
-                      </div>
-                      {hoveredPoint.card.mana_cost && (
-                        <div className="shrink-0 pt-0.5">
-                          <ManaCostRenderer manaCost={hoveredPoint.card.mana_cost} size="xs" />
-                        </div>
-                      )}
+              if (!activePoint || !activePos) return null;
+
+              return (
+                <div
+                  style={{
+                    left: `${activePos.x}px`,
+                    top: `${activePos.y}px`,
+                    transform: activePos.placement === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0%)',
+                  }}
+                  className={`absolute z-50 p-3 rounded-2xl bg-slate-900/95 dark:bg-[#090e24]/95 text-white shadow-2xl backdrop-blur-md w-[360px] max-w-[94vw] animate-in fade-in zoom-in-95 duration-150 font-sans ${
+                    isCardPinned
+                      ? 'pointer-events-auto border-2 border-cyan-500/80 dark:border-cyan-400/80 ring-4 ring-cyan-500/20'
+                      : 'pointer-events-none border border-slate-700/80 dark:border-cyan-500/50'
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex gap-3 items-center">
+                    {/* Card Art Thumbnail */}
+                    <div
+                      className={`w-[96px] aspect-[63/88] rounded-xl overflow-hidden shadow-lg border border-slate-700/80 shrink-0 bg-slate-950 ${
+                        isCardPinned ? 'cursor-pointer hover:ring-2 hover:ring-cyan-400 transition-all' : ''
+                      }`}
+                      onClick={() => {
+                        if (isCardPinned && onSelectCard) onSelectCard(activePoint.card);
+                      }}
+                      title={isCardPinned ? 'Click to inspect full card' : undefined}
+                    >
+                      <CardImage card={activePoint.card} alt={activePoint.cardName} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
-                      <div className="p-1.5 rounded-lg bg-slate-800/80">
-                        <span className="text-[9px] uppercase block text-slate-400">Expected</span>
-                        <strong className="text-violet-300 font-black text-xs">Tier {hoveredPoint.userGrade}</strong>
+                    {/* Card Metadata & Calibration Stats */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-start justify-between gap-1 pb-1 border-b border-slate-700/60">
+                        <div className="min-w-0">
+                          <h5
+                            className={`text-xs font-bold truncate ${
+                              isCardPinned ? 'cursor-pointer hover:text-cyan-300 transition-colors' : ''
+                            }`}
+                            onClick={() => {
+                              if (isCardPinned && onSelectCard) onSelectCard(activePoint.card);
+                            }}
+                            title={isCardPinned ? 'Click to inspect full card' : undefined}
+                          >
+                            {activePoint.cardName}
+                          </h5>
+                          <span className="text-[10px] font-mono text-slate-400 capitalize">
+                            #{activePoint.collectorNumber} • {activePoint.rarity}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                          {activePoint.card.mana_cost && (
+                            <div className="shrink-0">
+                              <ManaCostRenderer manaCost={activePoint.card.mana_cost} size="xs" />
+                            </div>
+                          )}
+                          {isCardPinned && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPinnedPoint(null);
+                              }}
+                              className="p-0.5 -mr-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                              title="Unpin / Close preview (Esc)"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="p-1.5 rounded-lg bg-slate-800/80">
-                        <span className="text-[9px] uppercase block text-slate-400">Actual (17L)</span>
-                        <strong className="text-emerald-400 font-black text-xs">
-                          Tier {hoveredPoint.actualGrade}
-                        </strong>
-                        {hoveredPoint.actualWinRate && (
-                          <span className="text-[10px] block text-emerald-300">
-                            {(hoveredPoint.actualWinRate * 100).toFixed(1)}% WR
+
+                      <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
+                        <div className="p-1.5 rounded-lg bg-slate-800/80">
+                          <span className="text-[9px] uppercase block text-slate-400">Expected</span>
+                          <strong className="text-violet-300 font-black text-xs">Tier {activePoint.userGrade}</strong>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-slate-800/80">
+                          <span className="text-[9px] uppercase block text-slate-400">Actual ({activeBenchmark})</span>
+                          <strong className="text-emerald-400 font-black text-xs">
+                            Tier {activePoint.actualGrade}
+                          </strong>
+                          {activeBenchmark === '17L' && typeof activePoint.actualWinRate === 'number' && (
+                            <span className="text-[10px] block text-emerald-300">
+                              {(activePoint.actualWinRate * 100).toFixed(1)}% WR
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-0.5 text-[10px] font-mono font-bold flex items-center justify-between gap-1 flex-wrap">
+                        {activePoint.stepDelta === 0 ? (
+                          <span className="text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 shrink-0" />
+                            <span>Exact Match</span>
+                          </span>
+                        ) : Math.abs(activePoint.stepDelta) === 1 ? (
+                          <span className="text-emerald-300 flex items-center gap-1">
+                            <Check className="w-3 h-3 shrink-0" />
+                            <span>±1 Step</span>
+                          </span>
+                        ) : activePoint.stepDelta > 0 ? (
+                          <span className="text-rose-400 flex items-center gap-1 truncate">
+                            <TrendingDown className="w-3 h-3 shrink-0" />
+                            <span className="truncate">+{activePoint.stepDelta} (Trap)</span>
+                          </span>
+                        ) : (
+                          <span className="text-sky-300 flex items-center gap-1 truncate">
+                            <TrendingUp className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{activePoint.stepDelta} (Sleeper)</span>
+                          </span>
+                        )}
+
+                        {isCardPinned ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onSelectCard) onSelectCard(activePoint.card);
+                            }}
+                            className="text-cyan-300 hover:text-white text-[10px] font-mono font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 hover:border-cyan-400 shadow-xs transition-all active:scale-95 cursor-pointer"
+                          >
+                            <span>Inspect</span>
+                            <ExternalLink className="w-3 h-3 text-cyan-400" />
+                          </button>
+                        ) : (
+                          <span className="text-cyan-300/80 text-[9px] font-mono flex items-center gap-1 shrink-0">
+                            <MousePointerClick className="w-3 h-3 text-cyan-400 animate-pulse" />
+                            <span>Click dot to pin</span>
                           </span>
                         )}
                       </div>
                     </div>
-
-                    <div className="pt-0.5 text-[10px] font-mono font-bold flex items-center justify-between gap-1 flex-wrap">
-                      {hoveredPoint.stepDelta === 0 ? (
-                        <span className="text-emerald-400 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 shrink-0" />
-                          <span>Exact Match</span>
-                        </span>
-                      ) : Math.abs(hoveredPoint.stepDelta) === 1 ? (
-                        <span className="text-emerald-300 flex items-center gap-1">
-                          <Check className="w-3 h-3 shrink-0" />
-                          <span>±1 Step</span>
-                        </span>
-                      ) : hoveredPoint.stepDelta > 0 ? (
-                        <span className="text-rose-400 flex items-center gap-1 truncate">
-                          <TrendingDown className="w-3 h-3 shrink-0" />
-                          <span className="truncate">+{hoveredPoint.stepDelta} (Trap)</span>
-                        </span>
-                      ) : (
-                        <span className="text-sky-300 flex items-center gap-1 truncate">
-                          <TrendingUp className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{hoveredPoint.stepDelta} (Sleeper)</span>
-                        </span>
-                      )}
-                      <span className="text-cyan-300 text-[9px] font-mono flex items-center gap-0.5 shrink-0">Inspect ↗</span>
-                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Floating Y-Intercept Popover */}
             {hoveredIntercept && (
@@ -1252,7 +1543,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
 
                 <p className="text-[11px] text-slate-300 leading-relaxed">
                   Each unit on the axis equals <strong>1 letter sub-tier</strong> (F → D- → D → D+ ...).
-                  When you rate a card as <strong>'F'</strong>, the model predicts its true 17Lands tier is <strong>{stats.interceptGrade}</strong>.
+                  When you rate a card as <strong>'F'</strong>, the model predicts its true {benchmarkDisplayName} tier is <strong>{stats.interceptGrade}</strong>.
                 </p>
 
                 <div className="pt-1 border-t border-slate-800/70 text-[10px] text-slate-400 space-y-1">
@@ -1559,7 +1850,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                           ? 'Positive intercept: Your F ratings are strict — cards you discard perform higher in reality.'
                           : stats.intercept < -0.5
                           ? 'Negative intercept: Cards you rate as F perform strictly as unplayable.'
-                          : 'Neutral intercept: Your baseline ratings closely mirror 17Lands reality.'}
+                          : `Neutral intercept: Your baseline ratings closely mirror ${benchmarkDisplayName} reality.`}
                       </p>
                     </div>
                     {/* Downward triangle arrow */}
@@ -1570,11 +1861,11 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
             </div>
             <span className="text-slate-300 dark:text-slate-700 hidden lg:inline">|</span>
             <div className="hidden lg:flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
-              <span title="Projected 17Lands tier when you evaluate a typical common as 'C'">
+              <span title={`Projected ${benchmarkDisplayName} tier when you evaluate a typical common as 'C'`}>
                 Rated 'C' → <strong className="text-slate-700 dark:text-slate-200">{stats.cTierGrade}</strong>
               </span>
               <span>•</span>
-              <span title="Projected 17Lands tier when you evaluate a bomb rare as 'A'">
+              <span title={`Projected ${benchmarkDisplayName} tier when you evaluate a bomb rare as 'A'`}>
                 Rated 'A' → <strong className="text-slate-700 dark:text-slate-200">{stats.aTierGrade}</strong>
               </span>
             </div>
@@ -1611,7 +1902,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                   </div>
                   <div className="space-y-1.5 text-[11px] text-slate-300">
                     <p>
-                      Quantifies how much of the variance in actual 17Lands win rates is directly predicted by your evaluations.
+                      Quantifies how much of the variance in {benchmarkDisplayName === '17Lands' ? 'actual 17Lands win rates' : `${benchmarkDisplayName} ratings`} is directly predicted by your evaluations.
                     </p>
                     <div className="bg-slate-800/80 p-2 rounded-lg font-mono text-[10px] space-y-1 text-slate-300 border border-slate-700/60">
                       <div className="flex justify-between">
@@ -1626,7 +1917,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                       </div>
                     </div>
                     <p className="text-[10px] text-slate-400">
-                      A score of 1.0 (100%) indicates perfect linear agreement with 17Lands win rate ranks.
+                      A score of 1.0 (100%) indicates perfect linear agreement with {benchmarkDisplayName} {benchmarkDisplayName === '17Lands' ? 'win rate ranks' : 'ratings'}.
                     </p>
                   </div>
                   {/* Downward triangle arrow */}
@@ -1635,9 +1926,75 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               )}
             </div>
             <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
-            <span className="px-2 py-0.5 rounded-full bg-violet-100/80 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300 font-bold text-[11px] border border-violet-200 dark:border-violet-800/60">
-              {stats.biasDiagnosis}
-            </span>
+
+            {/* Interactive Bias Diagnosis & Tendency Explanation */}
+            <div
+              className="relative inline-flex items-center"
+              onMouseEnter={() => setActiveInfoPopup('tendency')}
+              onMouseLeave={() => setActiveInfoPopup(null)}
+            >
+              <button
+                type="button"
+                onClick={() => setActiveInfoPopup(activeInfoPopup === 'tendency' ? null : 'tendency')}
+                className="px-2.5 py-0.5 rounded-full bg-violet-100/90 hover:bg-violet-200 text-violet-900 dark:bg-violet-950/70 dark:text-violet-300 dark:hover:bg-violet-900/80 font-bold text-[11px] border border-violet-300 dark:border-violet-700/80 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Click to learn how to interpret your Tendency Trendline"
+              >
+                <span>{stats.biasDiagnosis}</span>
+                <Info className="w-2.5 h-2.5 opacity-70" />
+              </button>
+
+              {activeInfoPopup === 'tendency' && (
+                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 z-40 w-80 sm:w-96 p-3.5 bg-slate-900/98 dark:bg-[#070b1e]/98 text-white rounded-xl shadow-2xl border border-cyan-500/80 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-100 select-none">
+                  <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-cyan-500/30">
+                    <strong className="text-cyan-300 font-bold flex items-center gap-1.5 text-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                      Interpreting Your Tendency Line
+                    </strong>
+                    <span className="font-mono text-[10px] text-cyan-300 bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                      y = {stats.slope.toFixed(2)}x {stats.intercept >= 0 ? '+' : '-'} {Math.abs(stats.intercept).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-[11px] text-slate-300">
+                    <p className="leading-relaxed">
+                      The <strong>cyan Tendency Line</strong> reveals your systematic grading psychology versus the dashed 45° <strong>Ideal Parity (y = x)</strong> line:
+                    </p>
+
+                    <div className="space-y-2 bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60 font-mono text-[10px]">
+                      <div className="flex items-start gap-1.5">
+                        <span className="text-cyan-300 font-bold shrink-0">• Slope (m={stats.slope.toFixed(2)}):</span>
+                        <span className="text-slate-200">
+                          {stats.slope < 0.75
+                            ? 'Compressed spread: You grade cautiously toward the middle. You overrate weak filler (treating D’s like C’s) and underrate format bombs (treating A’s like B’s).'
+                            : stats.slope > 1.25
+                            ? 'Polarized spread: You grade with high contrast, separating good and bad cards more aggressively than reality.'
+                            : 'Balanced sensitivity: Your tier intervals match the benchmark 1:1.'}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-1.5">
+                        <span className="text-emerald-400 font-bold shrink-0">• Intercept (b={stats.intercept >= 0 ? `+${stats.intercept.toFixed(1)}` : stats.intercept.toFixed(1)}):</span>
+                        <span className="text-slate-200">
+                          {stats.intercept > 0.5
+                            ? `Strict / Skeptical: Cards you give an 'F' to actually perform as a ${stats.interceptGrade} in reality.`
+                            : stats.intercept < -0.5
+                            ? 'Optimistic / Generous: Cards perform lower than what you grade them.'
+                            : 'Accurate baseline: Your F ratings are true unplayables.'}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-1.5">
+                        <span className="text-sky-300 font-bold shrink-0">• Fit (R²={(stats.rSquared * 100).toFixed(1)}%):</span>
+                        <span className="text-slate-200">
+                          {stats.rSquared >= 0.5
+                            ? 'Strong predictability: Your grades reliably track format performance.'
+                            : 'High variance: Cards show individual surprises and outliers from your general rule.'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Downward triangle arrow */}
+                  <div className="absolute -bottom-1 right-8 w-2 h-2 bg-slate-900 border-r border-b border-cyan-500/80 rotate-45" />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-4 text-[11px]">
@@ -1646,10 +2003,16 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               <span>Ideal Parity (y = x)</span>
             </div>
             {showTrendline && (
-              <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400 font-bold">
+              <button
+                type="button"
+                onClick={() => setActiveInfoPopup(activeInfoPopup === 'tendency' ? null : 'tendency')}
+                className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400 font-bold hover:underline cursor-pointer"
+                title="Click to learn how to interpret your Tendency Trendline"
+              >
                 <span className="inline-block w-3.5 h-0.5 bg-cyan-500 rounded-full" />
                 <span>Tendency Trendline (R²)</span>
-              </div>
+                <Info className="w-2.5 h-2.5 opacity-70" />
+              </button>
             )}
           </div>
         </div>

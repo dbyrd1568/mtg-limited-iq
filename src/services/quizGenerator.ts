@@ -1,5 +1,6 @@
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizSettings, SeventeenLandsSetData } from '../types/mtg';
 import { is17LandsEligibleForSet } from './seventeenLands';
+import { getSetThreatCards } from './removalThreats';
 
 function shuffle<T>(array: T[]): T[] {
   const arr = [...array];
@@ -546,6 +547,118 @@ function generateCardEvaluationQuestion(
   };
 }
 
+// 10. Removal to Play Around (Open Mana & Threat Recognition)
+function generateRemovalToPlayAroundQuestion(cards: Card[]): QuizQuestion | null {
+  const threats = getSetThreatCards(cards);
+  if (threats.length === 0) return null;
+
+  // Filter for removal/interaction spells
+  const removalThreats = threats.filter((t) =>
+    t.card.is_removal ||
+    t.classification.mechanism === 'Burn' ||
+    t.classification.mechanism === 'Destroy' ||
+    t.classification.mechanism === 'Exile' ||
+    t.classification.mechanism === '-N/-N' ||
+    t.classification.mechanism === 'Fight/Bite' ||
+    t.classification.mechanism === 'Bounce' ||
+    t.classification.mechanism === 'Counterspell' ||
+    t.classification.mechanism === 'Pacifism' ||
+    t.classification.mechanism === 'Sweeper'
+  );
+
+  const pool = removalThreats.length > 0 ? removalThreats : threats;
+  const instantThreats = pool.filter((t) => t.classification.isInstantOrFlash);
+
+  // 60% of the time, drill Open Mana Instant-Speed Blowout Anticipation if instant threats exist
+  if (instantThreats.length >= 1 && Math.random() < 0.6) {
+    const target = instantThreats[Math.floor(Math.random() * instantThreats.length)];
+    const manaHint = target.card.mana_cost || 'Open Mana';
+
+    // Distractors: prefer sorcery-speed removal in the set or cards with higher CMC / different color
+    const otherCards = cards.filter((c) => c.id !== target.card.id);
+    const sorceryRemoval = otherCards.filter((c) =>
+      c.type_line?.toLowerCase().includes('sorcery') && (c.is_removal || c.oracle_text?.toLowerCase().includes('destroy') || c.oracle_text?.toLowerCase().includes('damage'))
+    );
+    const distractorCandidates = sorceryRemoval.length >= 2 ? sorceryRemoval : otherCards;
+    const distractors = getRandomElements(distractorCandidates, Math.min(3, otherCards.length));
+
+    const options: QuizOption[] = shuffle([
+      {
+        id: target.card.id,
+        label: `${target.card.name} ${target.card.mana_cost || ''}`,
+        description: `⚡ Instant: ${target.classification.shortSummary}`,
+        manaCost: target.card.mana_cost,
+        isCorrect: true,
+      },
+      ...distractors.map((d) => ({
+        id: d.id,
+        label: `${d.name} ${d.mana_cost || ''}`,
+        description: `${d.type_line?.includes('Sorcery') ? '⏱️ Sorcery: ' : ''}${d.oracle_text?.slice(0, 60) || ''}...`,
+        manaCost: d.mana_cost,
+        isCorrect: false,
+      })),
+    ]);
+
+    return {
+      id: `removal_blowout_${target.card.id}_${Date.now()}_${Math.random()}`,
+      category: 'removal_to_play_around',
+      type: 'multiple_choice',
+      title: 'Removal to Play Around (Open Mana Threat)',
+      prompt: `Your opponent passes the turn with ${manaHint} untapped as you declare your attack. Which instant-speed removal spell can blow you out?`,
+      tacticalContext: `Walking your creatures or combat tricks directly into opponent open mana is the #1 way to lose games in Limited. Always identify what instant removal is live.`,
+      card: target.card,
+      obfuscation: {
+        target: 'name_and_cost',
+        style: 'blur',
+        customOverlayText: 'Removal Threat Concealed',
+      },
+      options,
+      correctAnswer: target.card.id,
+      explanation: `${target.card.name} costs ${target.card.mana_cost} and is an Instant (${target.classification.shortSummary}). Running into it without a plan or protection gives opponent a massive 2-for-1 blowout.`,
+      manaFilterHint: target.card.mana_cost,
+    };
+  }
+
+  // 40% of the time, drill Timing & Speed: Is this card Instant or Sorcery speed?
+  const target = pool[Math.floor(Math.random() * pool.length)];
+  const isInstant = target.classification.isInstantOrFlash;
+
+  const options: QuizOption[] = [
+    {
+      id: 'instant',
+      label: '⚡ Instant Speed (Can be cast on your turn / during combat to disrupt attacks)',
+      isCorrect: isInstant,
+    },
+    {
+      id: 'sorcery',
+      label: '⏱️ Sorcery Speed (Only castable on opponent’s own main phase, cannot disrupt combat)',
+      isCorrect: !isInstant,
+    },
+  ];
+
+  return {
+    id: `removal_speed_${target.card.id}_${Date.now()}_${Math.random()}`,
+    category: 'removal_to_play_around',
+    type: 'multiple_choice',
+    title: 'Removal to Play Around (Speed & Timing)',
+    prompt: `Opponent has "${target.card.name}" (${target.card.mana_cost || 'N/A'}) in hand with untapped lands. Can they cast this on YOUR turn to disrupt your attacks, or is it Sorcery speed?`,
+    tacticalContext: `Knowing whether removal is Instant vs. Sorcery dictates whether you can safely attack, play pump spells, or develop your board with confidence.`,
+    card: target.card,
+    obfuscation: {
+      target: 'type_line',
+      style: 'blur',
+      customOverlayText: 'Card Speed Concealed',
+    },
+    options,
+    correctAnswer: isInstant ? 'instant' : 'sorcery',
+    explanation: `${target.card.name} is a ${target.card.type_line} (${target.card.mana_cost || ''}). ${target.classification.shortSummary}. ${
+      isInstant
+        ? 'Because it is Instant speed, you must play around it during combat.'
+        : 'Because it is Sorcery speed, you do NOT have to worry about it blowing you out mid-combat.'
+    }`,
+  };
+}
+
 export function generateQuiz(
   allCards: Card[],
   settings: QuizSettings,
@@ -590,6 +703,7 @@ export function generateQuiz(
     mana_cost_and_splash: () => generateManaCostAndSplashQuestion(cardPool),
     power_toughness: () => generatePowerToughnessQuestion(cardPool),
     archetype_engine: () => generateArchetypeEngineQuestion(cardPool),
+    removal_to_play_around: () => generateRemovalToPlayAroundQuestion(cardPool),
     card_evaluation: () => generateCardEvaluationQuestion(cardPool, landsData, is17LandsEligible),
   };
 
@@ -607,7 +721,7 @@ export function generateQuiz(
 
   const activeCategories = selectedCategories.length > 0
     ? selectedCategories
-    : (['p1p1_pick', 'combat_tricks', 'instant_speed', 'quadrant_role'] as QuestionCategory[]);
+    : (['p1p1_pick', 'combat_tricks', 'instant_speed', 'quadrant_role', 'removal_to_play_around'] as QuestionCategory[]);
 
   const questions: QuizQuestion[] = [];
   const targetCount = settings.questionCount > 0 ? settings.questionCount : Math.min(30, cardPool.length);

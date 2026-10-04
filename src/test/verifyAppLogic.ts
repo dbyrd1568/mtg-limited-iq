@@ -3,7 +3,7 @@ import { cardMatchesRoleFilter } from '../components/UI/ManaColorFilterBar';
 import { generateQuiz } from '../services/quizGenerator';
 import { calculateSetCalibration, accuracyToEvaluatorGrade, winRateToGradeTier, GRADE_TIERS, isSetUnderTwoWeeksOld, is17LandsEligibleForSet, get17LandsCardUrl, get17LandsArchetypeUrl, get17LandsExpansionCode, get17LandsSetUrl, getPreloaded17LandsData, get17LandsCardRating, fetch17LandsSetData } from '../services/seventeenLands';
 import { UserProfileStats, QuizResult, QuizSettings, UserCardEvaluation, Card, SeventeenLandsSetData } from '../types/mtg';
-import { calculateMasteryRank, defaultStats } from '../services/storage';
+import { calculateMasteryRank, defaultStats, normalizeUserProfileStats } from '../services/storage';
 import { isAuthentic17LandsDataSet, generateSetSynthesisReport } from '../services/archetypeEvaluator';
 import { calculateCardSimilarity, areCardTypesCompatible, isFunctionalOrExactReprint, buildCompTuningString, SimilarCardMatch, HISTORICAL_BENCHMARK_CARDS } from '../services/cardSimilarity';
 import { getWOTCArchetypeInfo, getWOTCArchetypesForSet, getDevelopedArchetypeCodes, SET_DEVELOPED_ARCHETYPES, loadSetArchetypes } from '../services/wotcArchetypes';
@@ -1279,6 +1279,42 @@ console.assert(
   `Expected ramp artifact token peer match between Improviser and Opportunist, got score: ${opportunistComp.score}`
 );
 console.log('   ✓ Heartwood token <-> Powerstone ramp token similarity comp verified.');
+
+// =========================================================================
+// TEST 20: User Profile Stats Normalization & Categories Fallback Guardrails
+// =========================================================================
+console.log('\n--- Test 20: User Profile Stats Normalization & Categories Fallback Guardrails ---');
+
+// 1. Null / undefined input
+const nullNormalized = normalizeUserProfileStats(null);
+console.assert(nullNormalized && typeof nullNormalized === 'object', 'Must normalize null stats');
+console.assert(nullNormalized.categories.p1p1_pick !== undefined, 'p1p1_pick must exist on null normalization');
+console.assert(nullNormalized.categories.p1p1_pick.attempted === 0, 'attempted must default to 0');
+console.assert(nullNormalized.categories.removal_to_play_around !== undefined, 'removal_to_play_around must exist on null normalization');
+
+// 2. Corrupted input with categories = undefined
+const corruptedStats = {
+  totalQuizzes: 5,
+  categories: undefined as any,
+};
+const fixedCorrupted = normalizeUserProfileStats(corruptedStats);
+console.assert(fixedCorrupted.categories !== undefined, 'categories must be populated when undefined');
+console.assert(fixedCorrupted.categories.p1p1_pick !== undefined, 'fixed categories.p1p1_pick must be defined');
+console.assert(fixedCorrupted.totalQuizzes === 5, 'Existing properties must be preserved');
+
+// 3. Partial categories missing p1p1_pick
+const partialCategories = {
+  totalQuizzes: 3,
+  categories: {
+    combat_tricks: { attempted: 4, correct: 3 },
+  } as any,
+};
+const fixedPartial = normalizeUserProfileStats(partialCategories);
+console.assert(fixedPartial.categories.p1p1_pick !== undefined, 'missing p1p1_pick must be backfilled');
+console.assert(fixedPartial.categories.combat_tricks.attempted === 4, 'existing category stats must be preserved');
+console.assert(fixedPartial.categories.removal_to_play_around !== undefined, 'missing removal_to_play_around must be backfilled');
+
+console.log('   ✓ normalizeUserProfileStats gracefully backfills all category buckets and preserves progress.');
 
 console.log('\n🎉 ALL LOGIC AND DATA VERIFICATION TESTS PASSED SUCCESSFULLY!');
 

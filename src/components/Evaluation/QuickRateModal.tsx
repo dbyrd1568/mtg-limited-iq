@@ -22,9 +22,17 @@ interface QuickRateModalProps {
   seventeenLandsData?: SeventeenLandsSetData | null;
   isBlindGrading?: boolean;
   onToggleBlindGrading?: () => void;
+  showMe?: boolean;
   showLsv?: boolean;
+  showLlu?: boolean;
+  showDs?: boolean;
+  showLol?: boolean; // legacy alias
   show17L?: boolean;
+  onToggleMe?: () => void;
   onToggleLsv?: () => void;
+  onToggleLlu?: () => void;
+  onToggleDs?: () => void;
+  onToggleLol?: () => void; // legacy alias
   onToggle17L?: () => void;
   gradeDisplayMode?: 'my_grade' | '17lands' | 'side_by_side';
   onChangeGradeDisplayMode?: (mode: 'my_grade' | '17lands' | 'side_by_side') => void;
@@ -49,9 +57,17 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   seventeenLandsData,
   isBlindGrading = false,
   onToggleBlindGrading,
+  showMe = true,
   showLsv = true,
+  showLlu = true,
+  showDs: explicitShowDs,
+  showLol: legacyShowLol,
   show17L = true,
+  onToggleMe,
   onToggleLsv,
+  onToggleLlu,
+  onToggleDs: explicitOnToggleDs,
+  onToggleLol: legacyOnToggleLol,
   onToggle17L,
   gradeDisplayMode = 'side_by_side',
   onChangeGradeDisplayMode,
@@ -65,6 +81,8 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   zIndex,
   readOnly = false,
 }) => {
+  const showDs = explicitShowDs !== undefined ? explicitShowDs : legacyShowLol !== undefined ? legacyShowLol : true;
+  const onToggleDs = explicitOnToggleDs || legacyOnToggleLol;
   const [sortOrder, setSortOrder] = useState<GradingSortOrder>('number');
   const [navMode, setNavMode] = useState<GraderNavMode>(() => {
     try {
@@ -473,14 +491,33 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
               </select>
             </div>
 
-            {/* Ratings Source Toggles: [✓ Me (locked)] [✓ LSV] [✓ 17L] */}
+            {/* Ratings Source Toggles: [✓ Me] [✓ LSV] [✓ LLU] [✓ LOL] [✓ 17L] */}
             <div className="flex items-center gap-1 bg-white dark:bg-[#050818] p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0 text-xs font-mono">
               <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-1 hidden md:inline">Ratings:</span>
-              <span className="px-2 py-0.5 rounded-lg bg-violet-600 text-white font-bold flex items-center gap-1 shadow-xs cursor-default text-[11px]" title="Your personal grade (always shown)">
-                <Check className="w-3 h-3" />
-                <span>Me</span>
-              </span>
 
+              {/* Me */}
+              {onToggleMe ? (
+                <button
+                  type="button"
+                  onClick={onToggleMe}
+                  className={`px-2 py-0.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer text-[11px] ${
+                    showMe
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                  title="Toggle Your Grade (Me)"
+                >
+                  {showMe && <Check className="w-3 h-3" />}
+                  <span>Me</span>
+                </button>
+              ) : (
+                <span className="px-2 py-0.5 rounded-lg bg-violet-600 text-white font-bold flex items-center gap-1 shadow-xs cursor-default text-[11px]" title="Your personal grade (always shown)">
+                  <Check className="w-3 h-3" />
+                  <span>Me</span>
+                </span>
+              )}
+
+              {/* LSV */}
               {onToggleLsv && (
                 <button
                   type="button"
@@ -490,13 +527,48 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                       ? 'bg-amber-500 text-slate-950 shadow-xs'
                       : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
-                  title="Toggle LSV Pre-Release Expert Ratings"
+                  title="Toggle LSV (Limited Resources) Expert Ratings"
                 >
                   {showLsv && <Check className="w-3 h-3" />}
                   <span>LSV</span>
                 </button>
               )}
 
+              {/* LLU */}
+              {onToggleLlu && (
+                <button
+                  type="button"
+                  onClick={onToggleLlu}
+                  className={`px-2 py-0.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer text-[11px] ${
+                    showLlu
+                      ? 'bg-pink-600 text-white shadow-xs'
+                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                  title="Toggle Limited Level Ups (Alex Nikolic) Ratings"
+                >
+                  {showLlu && <Check className="w-3 h-3" />}
+                  <span>LLU</span>
+                </button>
+              )}
+
+              {/* DS */}
+              {onToggleDs && (
+                <button
+                  type="button"
+                  onClick={onToggleDs}
+                  className={`px-2 py-0.5 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer text-[11px] ${
+                    showDs
+                      ? 'bg-sky-500 text-slate-950 shadow-xs'
+                      : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                  title="Toggle Draftsim (Draftsim.com) Ratings"
+                >
+                  {showDs && <Check className="w-3 h-3" />}
+                  <span>DS</span>
+                </button>
+              )}
+
+              {/* 17L */}
               {onToggle17L && (
                 <button
                   type="button"
@@ -620,7 +692,10 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
               userEval={currentEval}
               landData={landData}
               isBlindGrading={isBlindGrading}
+              showMe={showMe}
               showLsv={showLsv}
+              showLlu={showLlu}
+              showDs={showDs}
               show17L={show17L}
             />
 

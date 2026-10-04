@@ -67,3 +67,13 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_QNDNrOPhb_X_29OfIg_-_Q_OB7QJuhI' }}
           CLOUDFLARE_WORKER_URL: ${{ secrets.PRODUCTION_URL || 'https://mtg-limited-iq.byrd.workers.dev' }}
           FLASHBACK_SETS: ${{ vars.FLASHBACK_SETS || '' }}
+
+      - name: 🎙️ Ingest Pro Creator Ratings (LSV, LLU, LOL)
+        run: |
+          echo "Syncing Pro Creator ratings (LLU, LSV, LOL)..."
+          npx tsx scripts/sync-pro-ratings.ts
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://irxgoelllogcyoiumxup.supabase.co' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_QNDNrOPhb_X_29OfIg_-_Q_OB7QJuhI' }}
+

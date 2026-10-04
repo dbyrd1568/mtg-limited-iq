@@ -1,5 +1,10 @@
-import { Card, UserCardEvaluation, SeventeenLandsSetData, GradeTier } from '../types/mtg';
-import { getLsvRatingForCard } from './lsvRatings';
+import { Card, UserCardEvaluation, SeventeenLandsSetData, GradeTier, ProCreatorSource } from '../types/mtg';
+import {
+  getLsvRatingForCard,
+  getProRatingForCard,
+  getAvailableReviewersForSet,
+  AvailableReviewer,
+} from './lsvRatings';
 import {
   winRateToGradeTier,
   gradeTierToIndex,
@@ -201,76 +206,131 @@ export interface FullSpreadsheetRow {
   seventeenLandsOpeningHandWrPct: string;
   seventeenLandsDrawnWrPct: string;
 
-  // LSV Review Benchmarks
-  lsvGrade: string;
-  lsvScore: string;
-  lsvVerdict: string;
+  // Reviewer Benchmarks (LSV, LLU, DS, etc.)
+  lsvGrade?: string;
+  lsvScore?: string;
+  lsvVerdict?: string;
+  lluGrade?: string;
+  lluScore?: string;
+  lluVerdict?: string;
+  dsGrade?: string;
+  dsScore?: string;
+  dsVerdict?: string;
 
   // Comparison & Calibration Insights
   deltaVs17LandsSteps: string;
   comparisonStatusVs17Lands: string;
-  deltaVsLsvSteps: string;
+  deltaVsLsvSteps?: string;
+  deltaVsLluSteps?: string;
+  deltaVsDsSteps?: string;
   calibrationAccuracyPct: string;
 
   // External Links
   scryfallUrl: string;
   seventeenLandsUrl: string;
+
+  // Index signature for dynamic reviewer columns
+  [key: string]: any;
 }
 
-export const FULL_SPREADSHEET_HEADERS: { key: keyof FullSpreadsheetRow; label: string }[] = [
-  { key: 'name', label: 'Card Name' },
-  { key: 'setCode', label: 'Set' },
-  { key: 'collectorNumber', label: 'Collector #' },
-  { key: 'manaCost', label: 'Mana Cost' },
-  { key: 'cmc', label: 'CMC / MV' },
-  { key: 'colors', label: 'Color(s)' },
-  { key: 'colorIdentity', label: 'Color Identity' },
-  { key: 'rarity', label: 'Rarity' },
-  { key: 'typeLine', label: 'Type Line' },
-  { key: 'power', label: 'Power' },
-  { key: 'toughness', label: 'Toughness' },
-  { key: 'keywords', label: 'Keywords' },
-  { key: 'roles', label: 'Role Tags' },
-  { key: 'userGrade', label: 'User Grade' },
-  { key: 'userScore', label: 'User Score (0-5)' },
-  { key: 'pickPriority', label: 'Pick Priority' },
-  { key: 'archetypeRole', label: 'Archetype / Role' },
-  { key: 'userNotes', label: 'User Notes' },
-  { key: 'evaluatedAt', label: 'Evaluation Date' },
-  { key: 'seventeenLandsGrade', label: '17Lands Tier' },
-  { key: 'seventeenLandsGihWrPct', label: '17Lands GIH WR (%)' },
-  { key: 'seventeenLandsGihWrDecimal', label: '17Lands GIH WR (Decimal)' },
-  { key: 'seventeenLandsAlsa', label: '17Lands ALSA' },
-  { key: 'seventeenLandsIwdPct', label: '17Lands IWD (%)' },
-  { key: 'seventeenLandsSampleSize', label: '17Lands Games Played' },
-  { key: 'seventeenLandsSeenCount', label: '17Lands Seen Count' },
-  { key: 'seventeenLandsPickRatePct', label: '17Lands Pick Rate (%)' },
-  { key: 'seventeenLandsOpeningHandWrPct', label: '17Lands Opening Hand WR (%)' },
-  { key: 'seventeenLandsDrawnWrPct', label: '17Lands Drawn WR (%)' },
-  { key: 'lsvGrade', label: 'LSV Grade' },
-  { key: 'lsvScore', label: 'LSV Score (0-5)' },
-  { key: 'lsvVerdict', label: 'LSV Verdict' },
-  { key: 'deltaVs17LandsSteps', label: 'User vs 17Lands Delta (Steps)' },
-  { key: 'comparisonStatusVs17Lands', label: '17Lands Calibration Status' },
-  { key: 'deltaVsLsvSteps', label: 'User vs LSV Delta (Steps)' },
-  { key: 'calibrationAccuracyPct', label: 'Calibration Accuracy (%)' },
-  { key: 'scryfallUrl', label: 'Scryfall URL' },
-  { key: 'seventeenLandsUrl', label: '17Lands Card URL' },
-  { key: 'oracleText', label: 'Oracle Text' },
-];
+export interface SpreadsheetHeader {
+  key: string;
+  label: string;
+}
 
 /**
- * Builds structured data rows containing all metadata, grades, 17Lands benchmarks, and LSV comparisons.
+ * Returns dynamic spreadsheet headers including all reviewers that have data.
+ */
+export function getFullSpreadsheetHeaders(reviewers: AvailableReviewer[]): SpreadsheetHeader[] {
+  const headers: SpreadsheetHeader[] = [
+    { key: 'name', label: 'Card Name' },
+    { key: 'setCode', label: 'Set' },
+    { key: 'collectorNumber', label: 'Collector #' },
+    { key: 'manaCost', label: 'Mana Cost' },
+    { key: 'cmc', label: 'CMC / MV' },
+    { key: 'colors', label: 'Color(s)' },
+    { key: 'colorIdentity', label: 'Color Identity' },
+    { key: 'rarity', label: 'Rarity' },
+    { key: 'typeLine', label: 'Type Line' },
+    { key: 'power', label: 'Power' },
+    { key: 'toughness', label: 'Toughness' },
+    { key: 'keywords', label: 'Keywords' },
+    { key: 'roles', label: 'Role Tags' },
+    { key: 'userGrade', label: 'User Grade' },
+    { key: 'userScore', label: 'User Score (0-5)' },
+    { key: 'pickPriority', label: 'Pick Priority' },
+    { key: 'archetypeRole', label: 'Archetype / Role' },
+    { key: 'userNotes', label: 'User Notes' },
+    { key: 'evaluatedAt', label: 'Evaluation Date' },
+    { key: 'seventeenLandsGrade', label: '17Lands Tier' },
+    { key: 'seventeenLandsGihWrPct', label: '17Lands GIH WR (%)' },
+    { key: 'seventeenLandsGihWrDecimal', label: '17Lands GIH WR (Decimal)' },
+    { key: 'seventeenLandsAlsa', label: '17Lands ALSA' },
+    { key: 'seventeenLandsIwdPct', label: '17Lands IWD (%)' },
+    { key: 'seventeenLandsSampleSize', label: '17Lands Games Played' },
+    { key: 'seventeenLandsSeenCount', label: '17Lands Seen Count' },
+    { key: 'seventeenLandsPickRatePct', label: '17Lands Pick Rate (%)' },
+    { key: 'seventeenLandsOpeningHandWrPct', label: '17Lands Opening Hand WR (%)' },
+    { key: 'seventeenLandsDrawnWrPct', label: '17Lands Drawn WR (%)' },
+  ];
+
+  // Pro Creator Review Benchmarks (Grade, Score, Verdict) for each reviewer with data
+  for (const rev of reviewers) {
+    const prefix = rev.shortName;
+    const idKey = rev.id.toLowerCase();
+    headers.push(
+      { key: `${idKey}Grade`, label: `${prefix} Grade` },
+      { key: `${idKey}Score`, label: `${prefix} Score (0-5)` },
+      { key: `${idKey}Verdict`, label: `${prefix} Verdict` },
+    );
+  }
+
+  // 17Lands calibration deltas
+  headers.push(
+    { key: 'deltaVs17LandsSteps', label: 'User vs 17Lands Delta (Steps)' },
+    { key: 'comparisonStatusVs17Lands', label: '17Lands Calibration Status' },
+  );
+
+  // Pro Creator Step Deltas
+  for (const rev of reviewers) {
+    const prefix = rev.shortName;
+    headers.push(
+      { key: `deltaVs${rev.id === 'LSV' ? 'Lsv' : rev.id}Steps`, label: `User vs ${prefix} Delta (Steps)` }
+    );
+  }
+
+  headers.push(
+    { key: 'calibrationAccuracyPct', label: 'Calibration Accuracy (%)' },
+    { key: 'scryfallUrl', label: 'Scryfall URL' },
+    { key: 'seventeenLandsUrl', label: '17Lands Card URL' },
+    { key: 'oracleText', label: 'Oracle Text' },
+  );
+
+  return headers;
+}
+
+export const DEFAULT_REVIEWERS: AvailableReviewer[] = [
+  { id: 'LSV', shortName: 'LSV', name: 'Luis Scott-Vargas', sourceLabel: 'Limited Resources' },
+  { id: 'LLU', shortName: 'LLU', name: 'Limited Level Ups', sourceLabel: 'Alex Nikolic' },
+  { id: 'DS', shortName: 'DS', name: 'Draftsim', sourceLabel: 'Draftsim.com' },
+];
+
+export const FULL_SPREADSHEET_HEADERS: { key: keyof FullSpreadsheetRow | string; label: string }[] =
+  getFullSpreadsheetHeaders(DEFAULT_REVIEWERS);
+
+/**
+ * Builds structured data rows containing all metadata, grades, 17Lands benchmarks, and pro reviewer comparisons.
  */
 export function buildFullSpreadsheetData(
   cards: Card[],
   evaluations: Record<string, UserCardEvaluation>,
   seventeenLandsData: SeventeenLandsSetData | null,
   setCode: string,
-  options: { gradedOnly?: boolean } = {}
+  options: { gradedOnly?: boolean; reviewers?: AvailableReviewer[] } = {}
 ): FullSpreadsheetRow[] {
   const { gradedOnly = false } = options;
   const upperSet = setCode.toUpperCase();
+  const reviewers = options.reviewers || getAvailableReviewersForSet(setCode, cards);
   const rows: FullSpreadsheetRow[] = [];
 
   for (const card of cards) {
@@ -290,10 +350,7 @@ export function buildFullSpreadsheetData(
       ? (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate)
       : null;
 
-    // LSV Benchmark Data
-    const lsvRating = getLsvRatingForCard(card, upperSet);
-
-    // Delta & Calibration Calculations
+    // Delta & Calibration Calculations vs 17Lands
     let delta17Steps = '';
     let comparisonStatus = 'Unrated';
     let calibrationAcc = '';
@@ -301,7 +358,7 @@ export function buildFullSpreadsheetData(
     if (userEval?.userGrade && actual17Tier) {
       const userIdx = gradeTierToIndex(userEval.userGrade);
       const actualIdx = gradeTierToIndex(actual17Tier);
-      const stepDiff = actualIdx - userIdx; // positive = user overrated, negative = user underrated
+      const stepDiff = actualIdx - userIdx;
       delta17Steps = stepDiff > 0 ? `+${stepDiff}` : `${stepDiff}`;
 
       const absDiff = Math.abs(stepDiff);
@@ -322,14 +379,6 @@ export function buildFullSpreadsheetData(
       comparisonStatus = '17Lands Pending';
     }
 
-    let deltaLsvSteps = '';
-    if (userEval?.userGrade && lsvRating?.grade) {
-      const userIdx = gradeTierToIndex(userEval.userGrade);
-      const lsvIdx = gradeTierToIndex(lsvRating.grade);
-      const stepDiff = lsvIdx - userIdx;
-      deltaLsvSteps = stepDiff > 0 ? `+${stepDiff}` : `${stepDiff}`;
-    }
-
     // Role tags
     const roles: string[] = [];
     if (card.is_creature) roles.push('Creature');
@@ -339,7 +388,7 @@ export function buildFullSpreadsheetData(
     if (card.is_land) roles.push('Land');
     if (card.archetype_tag) roles.push(card.archetype_tag);
 
-    rows.push({
+    const row: FullSpreadsheetRow = {
       name: card.name,
       setCode: (card.set || upperSet).toUpperCase(),
       collectorNumber: card.collector_number || '',
@@ -389,21 +438,45 @@ export function buildFullSpreadsheetData(
         ? `${(landData.ever_drawn_win_rate * 100).toFixed(1)}%`
         : '',
 
-      // LSV Review
-      lsvGrade: lsvRating?.grade || 'Pending',
-      lsvScore: lsvRating?.score !== undefined ? lsvRating.score.toFixed(1) : '',
-      lsvVerdict: lsvRating?.verdict || '',
-
       // Comparison & Calibration Insights
       deltaVs17LandsSteps: delta17Steps,
       comparisonStatusVs17Lands: comparisonStatus,
-      deltaVsLsvSteps: deltaLsvSteps,
       calibrationAccuracyPct: calibrationAcc,
 
       // External Links
       scryfallUrl: card.scryfall_uri || `https://scryfall.com/search?q=!"${encodeURIComponent(card.name)}"+set:${upperSet.toLowerCase()}`,
       seventeenLandsUrl: get17LandsCardUrl(upperSet, card, landData),
-    });
+    };
+
+    // Reviewer Ratings & Deltas
+    for (const rev of reviewers) {
+      const rating = getProRatingForCard(card, rev.id as ProCreatorSource, upperSet);
+      const idKey = rev.id.toLowerCase();
+      row[`${idKey}Grade`] = rating?.grade || 'Pending';
+      row[`${idKey}Score`] = rating?.score !== undefined ? rating.score.toFixed(1) : '';
+      row[`${idKey}Verdict`] = rating?.verdict || '';
+
+      let deltaSteps = '';
+      if (userEval?.userGrade && rating?.grade) {
+        const userIdx = gradeTierToIndex(userEval.userGrade);
+        const revIdx = gradeTierToIndex(rating.grade);
+        if (userIdx >= 0 && revIdx >= 0) {
+          const stepDiff = revIdx - userIdx;
+          deltaSteps = stepDiff > 0 ? `+${stepDiff}` : `${stepDiff}`;
+        }
+      }
+      const camelId = rev.id.charAt(0).toUpperCase() + rev.id.slice(1).toLowerCase();
+      row[`deltaVs${rev.id}Steps`] = deltaSteps;
+      row[`deltaVs${camelId}Steps`] = deltaSteps;
+    }
+
+    // Backward-compatibility aliases for LSV
+    if (!row.lsvGrade && row['lsvGrade']) row.lsvGrade = row['lsvGrade'];
+    if (!row.lsvScore && row['lsvScore']) row.lsvScore = row['lsvScore'];
+    if (!row.lsvVerdict && row['lsvVerdict']) row.lsvVerdict = row['lsvVerdict'];
+    if (!row.deltaVsLsvSteps && row['deltaVsLsvSteps']) row.deltaVsLsvSteps = row['deltaVsLsvSteps'];
+
+    rows.push(row);
   }
 
   return rows;
@@ -417,14 +490,16 @@ export function generateFullSpreadsheetCsv(
   evaluations: Record<string, UserCardEvaluation>,
   seventeenLandsData: SeventeenLandsSetData | null,
   setCode: string,
-  options: { gradedOnly?: boolean } = {}
+  options: { gradedOnly?: boolean; reviewers?: AvailableReviewer[] } = {}
 ): string {
-  const rows = buildFullSpreadsheetData(cards, evaluations, seventeenLandsData, setCode, options);
-  const headerLine = FULL_SPREADSHEET_HEADERS.map((h) => escapeCsvField(h.label)).join(',');
+  const reviewers = options.reviewers || getAvailableReviewersForSet(setCode, cards);
+  const headers = getFullSpreadsheetHeaders(reviewers);
+  const rows = buildFullSpreadsheetData(cards, evaluations, seventeenLandsData, setCode, { ...options, reviewers });
+  const headerLine = headers.map((h) => escapeCsvField(h.label)).join(',');
   const lines: string[] = [headerLine];
 
   for (const row of rows) {
-    const line = FULL_SPREADSHEET_HEADERS.map((h) => escapeCsvField(row[h.key])).join(',');
+    const line = headers.map((h) => escapeCsvField(row[h.key])).join(',');
     lines.push(line);
   }
 
@@ -440,14 +515,16 @@ export function generateFullSpreadsheetTsv(
   evaluations: Record<string, UserCardEvaluation>,
   seventeenLandsData: SeventeenLandsSetData | null,
   setCode: string,
-  options: { gradedOnly?: boolean } = {}
+  options: { gradedOnly?: boolean; reviewers?: AvailableReviewer[] } = {}
 ): string {
-  const rows = buildFullSpreadsheetData(cards, evaluations, seventeenLandsData, setCode, options);
-  const headerLine = FULL_SPREADSHEET_HEADERS.map((h) => escapeTsvField(h.label)).join('\t');
+  const reviewers = options.reviewers || getAvailableReviewersForSet(setCode, cards);
+  const headers = getFullSpreadsheetHeaders(reviewers);
+  const rows = buildFullSpreadsheetData(cards, evaluations, seventeenLandsData, setCode, { ...options, reviewers });
+  const headerLine = headers.map((h) => escapeTsvField(h.label)).join('\t');
   const lines: string[] = [headerLine];
 
   for (const row of rows) {
-    const line = FULL_SPREADSHEET_HEADERS.map((h) => escapeTsvField(row[h.key])).join('\t');
+    const line = headers.map((h) => escapeTsvField(row[h.key])).join('\t');
     lines.push(line);
   }
 

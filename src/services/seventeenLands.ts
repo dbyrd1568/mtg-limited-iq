@@ -1161,7 +1161,7 @@ export const EVALUATOR_GRADE_BRACKETS: EvaluatorGradeBracket[] = [
     maxGpa: 4.0,
     title: 'Pro Tour Caliber Drafter',
     description:
-      'Superior format understanding matching top-tier Limited pros (LSV, Lords of Limited). Minimal evaluation blindspots.',
+      'Superior format understanding matching top-tier Limited pros (LSV, Draftsim). Minimal evaluation blindspots.',
   },
   {
     minAcc: 54,
@@ -1287,13 +1287,17 @@ export function accuracyToEvaluatorGrade(accuracyPercent: number): {
   };
 }
 
-// Calculate calibration comparison between user grades and 17Lands data
+// Calculate calibration comparison between user grades and 17Lands data (or Pro Creator benchmarks when 17Lands is pending or requested)
 export function calculateSetCalibration(
   cards: Card[],
   userEvaluations: Record<string, UserCardEvaluation>,
-  seventeenLandsData: SeventeenLandsSetData | null
+  seventeenLandsData: SeventeenLandsSetData | null,
+  fallbackBenchmarkGetter?: (card: Card) => { grade: GradeTier; score?: number } | null,
+  customBenchmarkName?: string
 ): SetCalibrationSummary {
+  const is17LandsTarget = !customBenchmarkName || customBenchmarkName === '17Lands';
   const has17Lands = Boolean(
+    is17LandsTarget &&
     seventeenLandsData &&
     (seventeenLandsData.sampleSize || 0) > 500 &&
     Object.keys(seventeenLandsData.cards || {}).length > 0
@@ -1305,7 +1309,7 @@ export function calculateSetCalibration(
   let oneStepCount = 0;
   let twoStepCount = 0;
   let largeDiscrepancies = 0;
-  let totalRatedWith17Lands = 0;
+  let totalRatedWithBenchmark = 0;
 
   cards.forEach((card) => {
     const key = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
@@ -1338,7 +1342,16 @@ export function calculateSetCalibration(
       return;
     }
 
-    if (!landData || typeof landData.win_rate !== 'number') {
+    const fallbackBench = (!is17LandsTarget && fallbackBenchmarkGetter)
+      ? fallbackBenchmarkGetter(card)
+      : null;
+    const benchmarkGrade: GradeTier | null = (is17LandsTarget && has17Lands && landData && typeof landData.win_rate === 'number')
+      ? ((landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate))
+      : fallbackBench
+      ? fallbackBench.grade
+      : null;
+
+    if (!benchmarkGrade) {
       comparisons.push({
         card,
         userEvaluation: userEval,
@@ -1350,14 +1363,12 @@ export function calculateSetCalibration(
       return;
     }
 
-    totalRatedWith17Lands += 1;
+    totalRatedWithBenchmark += 1;
     const userIndex = gradeTierToIndex(userEval.userGrade);
-    const seventeenTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
-    const seventeenIndex = gradeTierToIndex(seventeenTier);
+    const benchmarkIndex = gradeTierToIndex(benchmarkGrade);
 
-    // Delta: positive means user gave higher grade than 17Lands (overrated), negative means user gave lower grade (underrated)
-    // E.g. user gave A (idx 1), 17Lands is A- (idx 2) -> tierGap = 2 - 1 = +1 step over
-    const tierGap = seventeenIndex - userIndex;
+    // Delta: positive means user gave higher grade than benchmark (overrated), negative means user gave lower grade (underrated)
+    const tierGap = benchmarkIndex - userIndex;
     totalDelta += tierGap;
 
     let status: CardEvaluationComparison['status'] = 'exact';
@@ -1394,24 +1405,24 @@ export function calculateSetCalibration(
 
   const correctCount = exactCount + oneStepCount;
   // Calculate overall calibration accuracy (0-100% of cards that were exact or within 1 step)
-  const overallCalScore = totalRatedWith17Lands > 0
-    ? Math.round((correctCount / totalRatedWith17Lands) * 100)
+  const overallCalScore = totalRatedWithBenchmark > 0
+    ? Math.round((correctCount / totalRatedWithBenchmark) * 100)
     : 0;
 
   // Calculate weighted calibration score giving 50% partial credit to 2-step misses (as documented in methodology)
   const weightedCorrectCount = exactCount + oneStepCount + 0.5 * twoStepCount;
-  const weightedCalScore = totalRatedWith17Lands > 0
-    ? Math.round((weightedCorrectCount / totalRatedWith17Lands) * 100)
+  const weightedCalScore = totalRatedWithBenchmark > 0
+    ? Math.round((weightedCorrectCount / totalRatedWithBenchmark) * 100)
     : 0;
 
-  const avgStepDelta = totalRatedWith17Lands > 0
-    ? Math.round((totalDelta / totalRatedWith17Lands) * 10) / 10
+  const avgStepDelta = totalRatedWithBenchmark > 0
+    ? Math.round((totalDelta / totalRatedWithBenchmark) * 10) / 10
     : 0;
 
   const evaluatorMeta = accuracyToEvaluatorGrade(overallCalScore);
 
   // Find biggest traps (user rated way too high, gap >= 2) and sleepers (user rated way too low, gap <= -2)
-  const ratedComparisons = comparisons.filter(c => c.userEvaluation && c.seventeenLandsData && c.status !== 'na');
+  const ratedComparisons = comparisons.filter(c => c.userEvaluation && c.status !== 'na' && c.status !== 'unrated');
   const biggestTraps = [...ratedComparisons]
     .filter(c => c.gradeDelta >= 2)
     .sort((a, b) => b.gradeDelta - a.gradeDelta)
@@ -1432,7 +1443,7 @@ export function calculateSetCalibration(
 
   return {
     setCode: cards[0]?.set || '',
-    totalRated: totalRatedWith17Lands,
+    totalRated: totalRatedWithBenchmark,
     totalCards: gradableCardsCount > 0 ? gradableCardsCount : cards.length,
     calibrationScore: overallCalScore,
     weightedScore: weightedCalScore,
@@ -1449,6 +1460,8 @@ export function calculateSetCalibration(
     biggestSleepers,
     biggestTraps,
     bias,
+    isCreatorBenchmark: customBenchmarkName ? customBenchmarkName !== '17Lands' : (!has17Lands && totalRatedWithBenchmark > 0),
+    benchmarkName: customBenchmarkName || (has17Lands ? '17Lands' : 'Pro Creators'),
   };
 }
 
@@ -1471,17 +1484,20 @@ export interface ColorAccuracyStat {
 export function calculateColorAccuracyAnalytics(
   cards: Card[],
   userEvaluations: Record<string, UserCardEvaluation>,
-  landsData: SeventeenLandsSetData | null
+  landsData: SeventeenLandsSetData | null,
+  fallbackBenchmarkGetter?: (card: Card) => { grade: GradeTier; score?: number } | null,
+  customBenchmarkActive?: boolean
 ): ColorAccuracyStat[] {
-  const has17Lands = Boolean(landsData && (landsData.sampleSize || 0) >= 1000 && Object.keys(landsData.cards || {}).length > 0);
+  const is17Lands = !customBenchmarkActive;
+  const has17Lands = Boolean(is17Lands && landsData && (landsData.sampleSize || 0) >= 1000 && Object.keys(landsData.cards || {}).length > 0);
   const COLOR_GROUPS = [
-    { id: 'W', label: 'White', badge: '☀️ White' },
-    { id: 'U', label: 'Blue', badge: '💧 Blue' },
-    { id: 'B', label: 'Black', badge: '💀 Black' },
-    { id: 'R', label: 'Red', badge: '🔥 Red' },
-    { id: 'G', label: 'Green', badge: '🌲 Green' },
-    { id: 'MULTI', label: 'Multicolor', badge: '🛡️ Multicolor' },
-    { id: 'COLORLESS', label: 'Colorless', badge: '⚙️ Colorless / Artifacts' },
+    { id: 'W', label: 'White', badge: 'White' },
+    { id: 'U', label: 'Blue', badge: 'Blue' },
+    { id: 'B', label: 'Black', badge: 'Black' },
+    { id: 'R', label: 'Red', badge: 'Red' },
+    { id: 'G', label: 'Green', badge: 'Green' },
+    { id: 'MULTI', label: 'Multicolor', badge: 'Multicolor' },
+    { id: 'COLORLESS', label: 'Colorless / Artifacts', badge: 'Colorless / Artifacts' },
   ];
 
   return COLOR_GROUPS.map((grp) => {
@@ -1503,13 +1519,21 @@ export function calculateColorAccuracyAnalytics(
       if (!evalData) return;
 
       const landData = has17Lands ? landsData?.cards[card.name] : undefined;
-      if (!landData || typeof landData.win_rate !== 'number') return;
+      const fallbackBench = (customBenchmarkActive && fallbackBenchmarkGetter)
+        ? fallbackBenchmarkGetter(card)
+        : null;
+      const benchmarkTier: GradeTier | null = (has17Lands && landData && typeof landData.win_rate === 'number')
+        ? ((landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate))
+        : fallbackBench
+        ? fallbackBench.grade
+        : null;
+
+      if (!benchmarkTier) return;
 
       const userIndex = gradeTierToIndex(evalData.userGrade);
-      const seventeenTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
-      const seventeenIndex = gradeTierToIndex(seventeenTier);
+      const benchmarkIndex = gradeTierToIndex(benchmarkTier);
 
-      const delta = seventeenIndex - userIndex;
+      const delta = benchmarkIndex - userIndex;
       totalDelta += delta;
       ratedCount += 1;
 

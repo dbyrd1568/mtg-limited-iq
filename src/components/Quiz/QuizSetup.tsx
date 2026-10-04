@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { QuestionCategory, QuizMode, QuizSettings, SetInfo, MTGRarity, SeventeenLandsSetData, Card } from '../../types/mtg';
-import { Swords, Zap, Hash, Shield, BookOpen, Sparkles, Trophy, Clock, CheckSquare, Square, Layers, Flame, Wand2, ShieldCheck, Target, AlertTriangle, Scale, GitCompare, ArrowRight, Lock } from 'lucide-react';
+import { Swords, Zap, Hash, Shield, BookOpen, Sparkles, Trophy, Clock, CheckSquare, Square, Layers, Flame, Wand2, ShieldCheck, ShieldAlert, Target, AlertTriangle, Scale, GitCompare, ArrowRight, Lock } from 'lucide-react';
 import { SetBadge, SetSymbol } from '../UI/SetSymbol';
 import { isSetUnderTwoWeeksOld, isAuthentic17LandsDataSet } from '../../services/seventeenLands';
 import { useContextualTour } from '../../context/ContextualTourContext';
@@ -71,6 +71,12 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
     name: 'Archetype Synergy Engines & Payoffs',
     description: 'Identify signpost engines and archetype enablers with text masked.',
     icon: <Sparkles className="w-4 h-4 text-yellow-300" />,
+  },
+  {
+    id: 'removal_to_play_around',
+    name: 'Removal to Play Around',
+    description: 'Open mana threat recognition, blowout anticipation & instant-speed timing.',
+    icon: <ShieldAlert className="w-4 h-4 text-rose-400" />,
   },
   {
     id: 'card_evaluation',

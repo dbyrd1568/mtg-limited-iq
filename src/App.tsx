@@ -4,7 +4,7 @@ import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS, deduplicateCards 
 import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData, get17LandsCardRating, canQuery17Lands } from './services/seventeenLands';
 import { loadProRatingsForSet } from './services/lsvRatings';
 import { loadSetArchetypes } from './services/wotcArchetypes';
-import { loadUserStats, loadUserEvaluations, saveUserEvaluation, deleteUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, deleteUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, deleteUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
+import { loadUserStats, loadUserEvaluations, saveUserEvaluation, deleteUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, deleteUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, deleteUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, normalizeUserProfileStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
 
 import { generateQuiz } from './services/quizGenerator';
 import { supabase, isSupabaseConfigured } from './services/supabase';
@@ -218,7 +218,7 @@ const AppContent: React.FC = () => {
               setUserEvaluations(refreshed.evaluations);
             }
             if (refreshed.stats) {
-              setUserStats(refreshed.stats);
+              setUserStats(normalizeUserProfileStats(refreshed.stats));
             }
           })
           .catch(() => {});
@@ -231,12 +231,12 @@ const AppContent: React.FC = () => {
         if ((!stats || stats.totalQuizzes === 0) && hasLocalProgress) {
           await migrateLocalDataToCloud(cloudUser.id, 'guest');
           const refreshed = await pullRemoteUserData(cloudUser.id);
-          if (refreshed.stats) setUserStats(refreshed.stats);
+          if (refreshed.stats) setUserStats(normalizeUserProfileStats(refreshed.stats));
           if (refreshed.evaluations && Object.keys(refreshed.evaluations).length > 0) {
             setUserEvaluations(refreshed.evaluations);
           }
         } else {
-          if (stats) setUserStats(stats);
+          if (stats) setUserStats(normalizeUserProfileStats(stats));
           const finalEvals =
             evaluations && Object.keys(evaluations).length > 0
               ? evaluations
@@ -583,6 +583,7 @@ const AppContent: React.FC = () => {
       'mana_cost_and_splash',
       'power_toughness',
       'archetype_engine',
+      'removal_to_play_around',
     ];
     if (is17Eligible) {
       availableCats.push('trap_or_sleeper', 'card_evaluation');
@@ -852,18 +853,18 @@ const AppContent: React.FC = () => {
                           <div className="flex items-center gap-1.5 shrink-0">
                             <div
                               className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/50 text-amber-700 dark:text-amber-400 text-xs font-semibold whitespace-nowrap shadow-xs"
-                              title={`Current Streak: ${userStats.currentStreak}`}
+                              title={`Current Streak: ${userStats?.currentStreak || 0}`}
                             >
                               <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                              <span>{userStats.currentStreak} Streak</span>
+                              <span>{userStats?.currentStreak || 0} Streak</span>
                             </div>
 
                             <div
                               className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium whitespace-nowrap shadow-xs"
-                              title={`Level ${userStats.level} (${userStats.xp} Total XP) • Gain XP by taking quizzes and grading cards`}
+                              title={`Level ${userStats?.level || 1} (${userStats?.xp || 0} Total XP) • Gain XP by taking quizzes and grading cards`}
                             >
-                              <span className="font-mono font-bold text-violet-600 dark:text-violet-400">Lv.{userStats.level}</span>
-                              <span className="text-slate-500 dark:text-slate-400 text-[11px]">({userStats.xp} XP)</span>
+                              <span className="font-mono font-bold text-violet-600 dark:text-violet-400">Lv.{userStats?.level || 1}</span>
+                              <span className="text-slate-500 dark:text-slate-400 text-[11px]">({userStats?.xp || 0} XP)</span>
                             </div>
                           </div>
 

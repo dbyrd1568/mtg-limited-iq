@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { UserProfileStats, UserCardEvaluation, UserArchetypeEvaluation } from '../types/mtg';
-import { loadUserStats, saveUserStats, loadUserEvaluations, loadUserArchetypeEvaluations, getActiveUser } from './storage';
+import { loadUserStats, saveUserStats, loadUserEvaluations, loadUserArchetypeEvaluations, getActiveUser, normalizeUserProfileStats } from './storage';
 import { isCloudUUID } from './auth';
 
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'local_only' | 'error';
@@ -368,7 +368,7 @@ export async function pullRemoteUserData(userId: string): Promise<{
 
     let remoteStats: UserProfileStats | null = null;
     if (statsRow?.stats_json && Object.keys(statsRow.stats_json).length > 0) {
-      remoteStats = statsRow.stats_json as UserProfileStats;
+      remoteStats = normalizeUserProfileStats(statsRow.stats_json as UserProfileStats);
       // Persist locally without triggering a redundant queueStatsSync
       localStorage.setItem(`mtg_stats_${userId}`, JSON.stringify(remoteStats));
     }

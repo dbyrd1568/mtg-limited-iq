@@ -1,4 +1,4 @@
-import { UserProfileStats, QuizResult, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, QuestionCategory, SetMasteryStat, UserAccount } from '../types/mtg';
+import { UserProfileStats, QuizResult, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, QuestionCategory, SetMasteryStat, UserAccount, ProCreatorSource } from '../types/mtg';
 import { queueStatsSync, queueEvaluationSync, queueEvaluationClearForSet, queueArchetypeEvaluationSync, queueArchetypeEvaluationClearForSet } from './cloudSync';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { isProdEnvironment, isLocalhost, isCloudUUID } from './environment';
@@ -21,6 +21,7 @@ const defaultCategories: Record<QuestionCategory, { attempted: number; correct: 
   mana_cost_and_splash: { attempted: 0, correct: 0 },
   power_toughness: { attempted: 0, correct: 0 },
   archetype_engine: { attempted: 0, correct: 0 },
+  removal_to_play_around: { attempted: 0, correct: 0 },
   card_evaluation: { attempted: 0, correct: 0 },
 };
 
@@ -226,37 +227,79 @@ function migrateLegacyDataToUser(userId: string): void {
 
 // ==================== USER-SCOPED STATS & EVALUATIONS ====================
 
+export function normalizeUserProfileStats(raw?: Partial<UserProfileStats> | null): UserProfileStats {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      ...defaultStats,
+      categories: { ...defaultCategories },
+      sets: {},
+      missedCards: {},
+      recentQuizzes: [],
+    };
+  }
+
+  const rawCats = (raw.categories && typeof raw.categories === 'object') ? raw.categories : {};
+  const categories: Record<QuestionCategory, { attempted: number; correct: number }> = {
+    ...defaultCategories,
+  };
+
+  (Object.keys(defaultCategories) as QuestionCategory[]).forEach((cat) => {
+    const item = (rawCats as Record<string, unknown>)[cat] as { attempted?: unknown; correct?: unknown } | undefined;
+    if (item && typeof item === 'object') {
+      categories[cat] = {
+        attempted: Number(item.attempted) || 0,
+        correct: Number(item.correct) || 0,
+      };
+    } else {
+      categories[cat] = { attempted: 0, correct: 0 };
+    }
+  });
+
+  const totalQuestions = Number(raw.totalQuestions) || 0;
+  const totalCorrect = Number(raw.totalCorrect) || 0;
+  const overallAccuracy = totalQuestions > 0
+    ? Math.round((totalCorrect / totalQuestions) * 100)
+    : (Number(raw.overallAccuracy) || 0);
+
+  return {
+    ...defaultStats,
+    ...raw,
+    totalQuizzes: Number(raw.totalQuizzes) || 0,
+    totalQuestions,
+    totalCorrect,
+    overallAccuracy,
+    currentStreak: Number(raw.currentStreak) || 0,
+    bestStreak: Number(raw.bestStreak) || 0,
+    xp: Number(raw.xp) || 0,
+    level: Math.max(1, Number(raw.level) || Math.floor((Number(raw.xp) || 0) / 500) + 1),
+    categories,
+    sets: raw.sets && typeof raw.sets === 'object' ? raw.sets : {},
+    missedCards: raw.missedCards && typeof raw.missedCards === 'object' ? raw.missedCards : {},
+    recentQuizzes: Array.isArray(raw.recentQuizzes) ? raw.recentQuizzes : [],
+    lastActive: raw.lastActive || new Date().toISOString(),
+  };
+}
+
 export function loadUserStats(userId?: string): UserProfileStats {
   try {
     const activeId = userId || getActiveUser()?.id || 'guest';
     const raw = localStorage.getItem(`mtg_stats_${activeId}`);
-    if (!raw) return defaultStats;
-    const parsed = JSON.parse(raw) as Partial<UserProfileStats>;
-    return {
-      ...defaultStats,
-      ...parsed,
-      categories: {
-        ...defaultCategories,
-        ...(parsed.categories || {}),
-      },
-      sets: parsed.sets || {},
-      missedCards: parsed.missedCards || {},
-      recentQuizzes: parsed.recentQuizzes || [],
-    };
+    if (!raw) return normalizeUserProfileStats(defaultStats);
+    const parsed = JSON.parse(raw);
+    return normalizeUserProfileStats(parsed);
   } catch (e) {
     console.error('Failed to load user stats:', e);
-    return defaultStats;
+    return normalizeUserProfileStats(defaultStats);
   }
 }
 
 export function saveUserStats(stats: UserProfileStats, userId?: string): void {
   try {
     const activeId = userId || getActiveUser()?.id || 'guest';
-    stats.lastActive = new Date().toISOString();
-    stats.overallAccuracy = stats.totalQuestions > 0 ? Math.round((stats.totalCorrect / stats.totalQuestions) * 100) : 0;
-    stats.level = Math.max(1, Math.floor(stats.xp / 500) + 1);
-    localStorage.setItem(`mtg_stats_${activeId}`, JSON.stringify(stats));
-    queueStatsSync(activeId, stats);
+    const normalized = normalizeUserProfileStats(stats);
+    normalized.lastActive = new Date().toISOString();
+    localStorage.setItem(`mtg_stats_${activeId}`, JSON.stringify(normalized));
+    queueStatsSync(activeId, normalized);
   } catch (e) {
     console.error('Failed to save user stats:', e);
   }
@@ -815,3 +858,65 @@ export function importUserDataFromJSON(jsonString: string, userId?: string): boo
     return false;
   }
 }
+
+// ==================== USER-SCOPED PREFERRED PRO CREATORS ====================
+
+export const DEFAULT_PREFERRED_CREATORS: ProCreatorSource[] = ['LSV', 'LLU', 'DS'];
+
+const VALID_PRO_CREATOR_SOURCES = new Set<string>(['LSV', 'LLU', 'DS']);
+
+function sanitizePreferredCreators(rawList: unknown[]): ProCreatorSource[] {
+  const mapped = rawList
+    .map((item) => (item === 'LOL' ? 'DS' : item))
+    .filter((item): item is ProCreatorSource => VALID_PRO_CREATOR_SOURCES.has(item as string));
+  const deduped = Array.from(new Set(mapped));
+  return deduped.length > 0 ? (deduped.slice(0, 3) as ProCreatorSource[]) : [...DEFAULT_PREFERRED_CREATORS];
+}
+
+/**
+ * Returns the active user's chosen pro creators (maximum 3).
+ */
+export function getPreferredCreators(userId?: string): ProCreatorSource[] {
+  try {
+    const activeUser = getActiveUser();
+    const activeId = userId || activeUser?.id || 'guest';
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(`mtg_preferred_creators_${activeId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return sanitizePreferredCreators(parsed);
+        }
+      }
+    }
+    if (activeUser?.preferredCreators && Array.isArray(activeUser.preferredCreators) && activeUser.preferredCreators.length > 0) {
+      return sanitizePreferredCreators(activeUser.preferredCreators);
+    }
+  } catch {}
+  return [...DEFAULT_PREFERRED_CREATORS];
+}
+
+/**
+ * Persists the user's preferred pro creators, strictly enforcing a maximum of 3.
+ */
+export function setPreferredCreators(creators: ProCreatorSource[], userId?: string): ProCreatorSource[] {
+  const activeUser = getActiveUser();
+  const activeId = userId || activeUser?.id || 'guest';
+  // Strictly enforce maximum of 3 creators
+  const limited = Array.from(new Set(creators)).slice(0, 3);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`mtg_preferred_creators_${activeId}`, JSON.stringify(limited));
+    }
+    if (activeUser && activeUser.id === activeId) {
+      updateUserAccount({
+        ...activeUser,
+        preferredCreators: limited,
+      });
+    }
+  } catch (e) {
+    console.error('Failed to set preferred creators:', e);
+  }
+  return limited;
+}
+

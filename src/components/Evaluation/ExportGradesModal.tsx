@@ -32,9 +32,15 @@ import {
   generateFullSpreadsheetCsv,
   generateFullSpreadsheetTsv,
   buildFullSpreadsheetData,
+  getFullSpreadsheetHeaders,
   downloadFile,
   copyTextToClipboard,
 } from '../../services/gradeExport';
+import {
+  getAvailableReviewersForSet,
+  loadProRatingsForSet,
+  AvailableReviewer,
+} from '../../services/lsvRatings';
 import {
   get17LandsTierListUrl,
   save17LandsTierListUrl,
@@ -207,6 +213,24 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
     ).length;
   }, [cards, evaluations, setCode]);
 
+  const [proRatingsLoaded, setProRatingsLoaded] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isOpen && currentSet?.code) {
+      loadProRatingsForSet(currentSet.code).then(() => {
+        setProRatingsLoaded(true);
+      });
+    }
+  }, [isOpen, currentSet?.code]);
+
+  const availableReviewers = useMemo<AvailableReviewer[]>(() => {
+    return getAvailableReviewersForSet(setCode, cards);
+  }, [setCode, cards, proRatingsLoaded]);
+
+  const spreadsheetHeaders = useMemo(() => {
+    return getFullSpreadsheetHeaders(availableReviewers);
+  }, [availableReviewers]);
+
   // Preview data (first 5 rows)
   const previewRows = useMemo(() => {
     return buildFullSpreadsheetData(
@@ -214,31 +238,33 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
       evaluations,
       seventeenLandsData,
       setCode,
-      { gradedOnly: exportScope === 'graded' }
+      { gradedOnly: exportScope === 'graded', reviewers: availableReviewers }
     ).slice(0, 5);
-  }, [cards, evaluations, seventeenLandsData, setCode, exportScope]);
+  }, [cards, evaluations, seventeenLandsData, setCode, exportScope, availableReviewers]);
 
   if (!isOpen) return null;
 
-  const handleDownloadFullCsv = () => {
+  const handleDownloadFullCsv = async () => {
+    await loadProRatingsForSet(setCode);
     const csvContent = generateFullSpreadsheetCsv(
       cards,
       evaluations,
       seventeenLandsData,
       setCode,
-      { gradedOnly: exportScope === 'graded' }
+      { gradedOnly: exportScope === 'graded', reviewers: availableReviewers }
     );
     const filename = `${setCode.toUpperCase()}_Grades_Comparison_${exportScope === 'graded' ? 'Graded' : 'All'}.csv`;
     downloadFile(csvContent, filename);
   };
 
   const handleCopyFullTsv = async () => {
+    await loadProRatingsForSet(setCode);
     const tsvContent = generateFullSpreadsheetTsv(
       cards,
       evaluations,
       seventeenLandsData,
       setCode,
-      { gradedOnly: exportScope === 'graded' }
+      { gradedOnly: exportScope === 'graded', reviewers: availableReviewers }
     );
     const ok = await copyTextToClipboard(tsvContent);
     if (ok) {
@@ -557,7 +583,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 <div className="text-xs text-violet-900 dark:text-slate-300 space-y-1">
                   <div className="font-bold">What is included in this spreadsheet?</div>
                   <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                    All <strong>38 columns</strong>: Card Name, Mana Cost, CMC, Rarity, Type Line, P/T, Keywords, Role Tags, Oracle Text, <strong>User Grade</strong>, Score, Priority, Notes, <strong>17Lands Empirical Metrics</strong> (GIH WR %, ALSA, IWD %, Games Played, Seen Count, Pick Rate %), <strong>LSV Review</strong> (Grade, Score, Verdict), and <strong>Step Deltas / Calibration Traps & Sleepers</strong>.
+                    All <strong>{spreadsheetHeaders.length} columns</strong>: Card Name, Mana Cost, CMC, Rarity, Type Line, P/T, Keywords, Role Tags, Oracle Text, <strong>User Grade</strong>, Score, Priority, Notes, <strong>17Lands Empirical Metrics</strong> (GIH WR %, ALSA, IWD %, Games Played, Seen Count, Pick Rate %), <strong>Pro Creator Reviews</strong> ({availableReviewers.map((r) => r.shortName).join(', ')}: Grade, Score, Verdict, and Step Deltas), and <strong>Calibration Status & Accuracy</strong>.
                   </p>
                 </div>
               </div>
@@ -577,7 +603,9 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                         <th className="px-3 py-2.5 whitespace-nowrap">User Grade</th>
                         <th className="px-3 py-2.5 whitespace-nowrap">17Lands Tier</th>
                         <th className="px-3 py-2.5 whitespace-nowrap">17L GIH WR</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">LSV Grade</th>
+                        {availableReviewers.map((rev) => (
+                          <th key={rev.id} className="px-3 py-2.5 whitespace-nowrap">{rev.shortName} Grade</th>
+                        ))}
                         <th className="px-3 py-2.5 whitespace-nowrap">17L Delta</th>
                         <th className="px-3 py-2.5 whitespace-nowrap">Status</th>
                       </tr>
@@ -585,7 +613,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-900">
                       {previewRows.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-3 py-6 text-center text-slate-400 italic">
+                          <td colSpan={6 + availableReviewers.length} className="px-3 py-6 text-center text-slate-400 italic">
                             No cards match the selected scope. Rate some cards to preview data.
                           </td>
                         </tr>
@@ -604,9 +632,14 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                             <td className="px-3 py-2 text-emerald-600 dark:text-emerald-400">
                               {row.seventeenLandsGihWrPct || '—'}
                             </td>
-                            <td className="px-3 py-2 text-amber-600 dark:text-amber-400">
-                              {row.lsvGrade}
-                            </td>
+                            {availableReviewers.map((rev) => {
+                              const val = (row as any)[`${rev.id.toLowerCase()}Grade`] || '—';
+                              return (
+                                <td key={rev.id} className="px-3 py-2 font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                                  {val}
+                                </td>
+                              );
+                            })}
                             <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                               {row.deltaVs17LandsSteps || '—'}
                             </td>

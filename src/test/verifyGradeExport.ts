@@ -171,7 +171,7 @@ console.log('Test 3: Full Comparison Spreadsheet (CSV / TSV)...');
 const fullRows = buildFullSpreadsheetData(mockCards, mockEvaluations, mock17LandsData, 'DFT', { gradedOnly: false });
 
 assert(fullRows.length === 3, '3 full rows built');
-assert(FULL_SPREADSHEET_HEADERS.length === 39, '39 total comparison and metadata columns');
+assert(FULL_SPREADSHEET_HEADERS.length === 47, `47 total comparison and metadata columns (expected 47, got ${FULL_SPREADSHEET_HEADERS.length})`);
 
 const lightningRow = fullRows.find((r) => r.name === 'Lightning Strike')!;
 assert(lightningRow.userGrade === 'A-', 'User grade present');
@@ -195,7 +195,12 @@ assert(fullCsv.startsWith('\uFEFF'), 'CSV begins with UTF-8 BOM for Microsoft Ex
 assert(fullCsv.includes('Card Name'), 'Contains Card Name header');
 assert(fullCsv.includes('17Lands GIH WR (%)'), 'Contains 17Lands GIH WR column');
 assert(fullCsv.includes('LSV Grade'), 'Contains LSV Grade column');
-assert(fullCsv.includes('User vs 17Lands Delta (Steps)'), 'Contains Delta column');
+assert(fullCsv.includes('LLU Grade'), 'Contains LLU Grade column');
+assert(fullCsv.includes('DS Grade'), 'Contains DS Grade column');
+assert(fullCsv.includes('User vs 17Lands Delta (Steps)'), 'Contains 17Lands Delta column');
+assert(fullCsv.includes('User vs LSV Delta (Steps)'), 'Contains LSV Delta column');
+assert(fullCsv.includes('User vs LLU Delta (Steps)'), 'Contains LLU Delta column');
+assert(fullCsv.includes('User vs DS Delta (Steps)'), 'Contains DS Delta column');
 
 // Verify TSV output
 const fullTsv = generateFullSpreadsheetTsv(mockCards, mockEvaluations, mock17LandsData, 'DFT', { gradedOnly: false });
