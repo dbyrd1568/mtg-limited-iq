@@ -3,6 +3,12 @@
 All notable changes to this project will be documented here.
 
 
+## [1.7.10](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.7.9...v1.7.10) (2026-10-04)
+
+### ✨ Features
+
+* **evaluation:** add pro creator benchmarks, threat matrix, and stats crash safeguards ([538f4a0](https://github.com/dbyrd1568/mtg-limited-iq/commit/538f4a0864d52c3e5a161993e5998ec9b0533d89))
+
 ## [1.7.9](https://github.com/dbyrd1568/mtg-limited-iq/compare/v1.7.8...v1.7.9) (2026-09-30)
 
 ### ✨ Features
