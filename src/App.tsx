@@ -29,9 +29,12 @@ import { QuizSummary } from './components/Quiz/QuizSummary';
 import { EvaluationHub } from './components/Evaluation/EvaluationHub';
 import { ExportGradesModal } from './components/Evaluation/ExportGradesModal';
 import { StatsDashboard } from './components/Stats/StatsDashboard';
+import { ThreatMatrixView } from './components/Explorer/ThreatMatrixView';
+import { QuickRateModal } from './components/Evaluation/QuickRateModal';
+import { SimilarCardsModal } from './components/Evaluation/SimilarCardsModal';
 import { SharedGradesView } from './components/Shared/SharedGradesView';
 import { parseAppUrlParams, updateAppUrlParams } from './services/urlParams';
-import { Brain, Flame } from 'lucide-react';
+import { Brain, Flame, ShieldAlert } from 'lucide-react';
 import { PlaneswalkerSymbol } from './components/UI/PlaneswalkerSymbol';
 import { SetBadge, SetSymbol } from './components/UI/SetSymbol';
 import { LegalModal, LegalDocType } from './components/Legal/LegalModal';
@@ -46,7 +49,7 @@ const AppContent: React.FC = () => {
     const params = parseAppUrlParams();
     return params.tab || 'evaluation';
   });
-  const [quizSubTab, setQuizSubTab] = useState<'take' | 'stats'>(() => {
+  const [quizSubTab, setQuizSubTab] = useState<'take' | 'threats' | 'stats'>(() => {
     const params = parseAppUrlParams();
     return params.quiz_subtab || 'take';
   });
@@ -161,6 +164,8 @@ const AppContent: React.FC = () => {
   const [activeQuestions, setActiveQuestions] = useState<QuizQuestion[]>([]);
   const [activeSettings, setActiveSettings] = useState<QuizSettings | null>(null);
   const [lastResult, setLastResult] = useState<QuizResult | null>(null);
+  const [selectedThreatCardForModal, setSelectedThreatCardForModal] = useState<Card | null>(null);
+  const [threatSimilarCardsModalCard, setThreatSimilarCardsModalCard] = useState<Card | null>(null);
 
   // Supabase Auth Listener on Startup
   useEffect(() => {
@@ -868,7 +873,7 @@ const AppContent: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Subtabs Pill Switcher (Text only, NO icons on sub modes) */}
+                          {/* Subtabs Pill Switcher (Take Quiz | Threats / Removal | Mastery Stats) */}
                           <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs">
                             <button
                               onClick={() => {
@@ -882,6 +887,21 @@ const AppContent: React.FC = () => {
                               }`}
                             >
                               Take Quiz
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setQuizSubTab('threats');
+                                updateAppUrlParams({ tab: 'quiz', subtab: 'threats' });
+                              }}
+                              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                                quizSubTab === 'threats'
+                                  ? 'bg-rose-600 text-white shadow-xs font-bold'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                              }`}
+                            >
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                              <span>Threat Matrix</span>
                             </button>
 
                             <button
@@ -930,6 +950,19 @@ const AppContent: React.FC = () => {
                           />
                         )}
                       </>
+                    )}
+
+                    {quizSubTab === 'threats' && (
+                      <div className="max-w-[1440px] mx-auto px-3 sm:px-6">
+                        <ThreatMatrixView
+                          cards={cards}
+                          currentSetCode={currentSet.code}
+                          currentSetName={currentSet.name}
+                          seventeenLandsData={seventeenLandsData}
+                          onSelectCard={(c) => setSelectedThreatCardForModal(c)}
+                          onOpenCompsModal={(c) => setThreatSimilarCardsModalCard(c)}
+                        />
+                      </div>
                     )}
 
                     {quizSubTab === 'stats' && (
@@ -1090,6 +1123,45 @@ const AppContent: React.FC = () => {
           }
         }}
       />
+
+      {/* Threat Matrix Card Inspector Modal */}
+      {selectedThreatCardForModal && (
+        <QuickRateModal
+          isOpen={Boolean(selectedThreatCardForModal)}
+          onClose={() => setSelectedThreatCardForModal(null)}
+          cards={cards}
+          card={selectedThreatCardForModal}
+          onSelectCard={(c) => setSelectedThreatCardForModal(c)}
+          userEvaluations={userEvaluations}
+          seventeenLandsData={seventeenLandsData}
+          isBlindGrading={isBlindGrading}
+          onToggleBlindGrading={handleToggleBlindGrading}
+          onSaveEvaluation={handleSaveEvaluation}
+          onDeleteEvaluation={handleDeleteEvaluation}
+          totalSetCardsCount={cards.length}
+          onPracticeCard={(c) => {
+            setSelectedThreatCardForModal(null);
+            setActiveTab('quiz');
+            setQuizSubTab('take');
+            setQuizState('setup');
+          }}
+        />
+      )}
+
+      {/* Threat Matrix Card Similarity / Comps Modal */}
+      {threatSimilarCardsModalCard && (
+        <SimilarCardsModal
+          isOpen={Boolean(threatSimilarCardsModalCard)}
+          onClose={() => setThreatSimilarCardsModalCard(null)}
+          targetCard={threatSimilarCardsModalCard}
+          allCards={cards}
+          onSelectTargetCard={(c: Card) => {
+            setThreatSimilarCardsModalCard(null);
+            setSelectedThreatCardForModal(c);
+          }}
+          isAdmin={isAdmin}
+        />
+      )}
 
       {/* Contextual Onboarding Tour Tooltip Popover */}
       <ContextualTourTooltip />

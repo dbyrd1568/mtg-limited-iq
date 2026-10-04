@@ -4,8 +4,8 @@ import { ActiveTab } from '../components/Navbar';
 export interface AppUrlParams {
   set?: string;
   tab?: ActiveTab;
-  subtab?: 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'take' | 'stats' | 'overview' | 'users' | 'features' | 'grading' | 'access' | 'precedents';
-  quiz_subtab?: 'take' | 'stats';
+  subtab?: 'grade' | 'forecast' | 'calibration' | 'notes' | 'methodology' | 'take' | 'threats' | 'stats' | 'overview' | 'users' | 'features' | 'grading' | 'access' | 'precedents';
+  quiz_subtab?: 'take' | 'threats' | 'stats';
   card?: string; // Collector number (e.g. '12' or '#012'), card name, or ID
   blind?: boolean;
   color?: string;
@@ -25,6 +25,7 @@ export function normalizeTab(tabParam?: string | null): ActiveTab | undefined {
   if (t === 'quiz' || t === 'q') return 'quiz';
   if (t === 'evaluation' || t === 'eval' || t === 'grading' || t === 'grade' || t === 'hub' || t === 'explorer' || t === 'list' || t === 'cards' || t === 'visualizer') return 'evaluation';
   if (t === 'stats' || t === 'profile' || t === 'mastery') return 'quiz';
+  if (t === 'threats' || t === 'threat' || t === 'matrix') return 'quiz';
   return undefined;
 }
 
@@ -49,15 +50,19 @@ export function normalizeSubtab(subParam?: string | null): 'grade' | 'forecast' 
 }
 
 /**
- * Normalizes quiz subtab query (Take Quiz vs Mastery Stats)
+ * Normalizes quiz subtab query (Take Quiz vs Threat Matrix vs Mastery Stats)
  */
-export function normalizeQuizSubtab(subParam?: string | null, rawTabParam?: string | null): 'take' | 'stats' | undefined {
+export function normalizeQuizSubtab(subParam?: string | null, rawTabParam?: string | null): 'take' | 'threats' | 'stats' | undefined {
   if (rawTabParam && (rawTabParam.toLowerCase().trim() === 'stats' || rawTabParam.toLowerCase().trim() === 'mastery')) {
     return 'stats';
+  }
+  if (rawTabParam && (rawTabParam.toLowerCase().trim() === 'threats' || rawTabParam.toLowerCase().trim() === 'matrix')) {
+    return 'threats';
   }
   if (!subParam) return undefined;
   const s = subParam.toLowerCase().trim();
   if (s === 'stats' || s === 'mastery' || s === 'analytics' || s === 'profile') return 'stats';
+  if (s === 'threats' || s === 'threat' || s === 'matrix' || s === 'removal') return 'threats';
   if (s === 'take' || s === 'quiz' || s === 'play') return 'take';
   return undefined;
 }
