@@ -4,6 +4,7 @@ import { getSetThreatCards, classifyThreat, canCastWithOpenMana, OpenManaPool, T
 import { ManaSymbol, ManaCostRenderer } from '../UI/ManaSymbol';
 import { Zap, ShieldAlert, Sparkles, Filter, RotateCcw, AlertTriangle, Eye, PlayingCardsFan, Info, ExternalLink, Check, Swords, Shield, ChevronRight } from 'lucide-react';
 import { get17LandsCardRating, get17LandsCardUrl } from '../../services/seventeenLands';
+import { CardObfuscator } from '../CardObfuscator';
 
 interface ThreatMatrixViewProps {
   cards: Card[];
@@ -415,8 +416,8 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
                   </span>
                 </div>
 
-                {/* Threat Cards Grid */}
-                <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Threat Cards Grid: 2 columns per row on desktop for spacious card visuals */}
+                <div className="p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {secThreats.map(({ card, classification }) => {
                     const landData = get17LandsCardRating(card, seventeenLandsData) || undefined;
                     const isInstant = classification.isInstantOrFlash;
@@ -425,104 +426,135 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
                       <div
                         key={card.id}
                         onClick={() => onSelectCard(card)}
-                        className="p-3 rounded-xl bg-slate-50/70 dark:bg-[#060a1d]/80 border border-slate-200/90 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-2 shadow-2xs hover:shadow-xs cursor-pointer group"
+                        className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-[#060a1d]/90 border border-slate-200/90 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all shadow-xs hover:shadow-md cursor-pointer group flex flex-col sm:flex-row items-center sm:items-start gap-4"
                       >
-                        {/* Top Row: Name, Mana Cost, Speed Badge */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors truncate">
-                              {card.name}
-                            </h4>
-                            <div className="shrink-0 flex items-center gap-1.5">
-                              <ManaCostRenderer manaCost={card.mana_cost} size="xs" />
-                            </div>
-                          </div>
-
-                          {/* Sub-header Badges: Speed, Rarity, Mechanism */}
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {/* Speed Badge */}
-                            <span
-                              className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono font-black uppercase tracking-wider flex items-center gap-1 ${
-                                isInstant
-                                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80'
-                                  : 'bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                              }`}
-                            >
-                              {isInstant && <Zap className="w-2.5 h-2.5 text-amber-500" />}
-                              <span>{isInstant ? 'Instant' : classification.speed}</span>
-                            </span>
-
-                            {/* Rarity Badge */}
-                            <span className={`px-1 py-0.5 rounded text-[8px] font-mono font-bold uppercase ${
-                              card.rarity === 'common'
-                                ? 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
-                                : card.rarity === 'uncommon'
-                                ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-300 dark:border-sky-800'
-                                : card.rarity === 'rare'
-                                ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                                : 'bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
-                            }`}>
-                              {card.rarity[0].toUpperCase()}
-                            </span>
-
-                            {/* Mechanism Tag */}
-                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-violet-100/80 dark:bg-violet-950/60 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60">
-                              {classification.mechanism}
-                            </span>
-
-                            {/* Restriction Tag */}
-                            {classification.restriction && (
-                              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60">
-                                {classification.restriction}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Threat Summary Banner */}
-                          <div className="p-1.5 rounded-lg bg-white dark:bg-[#0a0f28] border border-slate-200/80 dark:border-slate-800/80 text-[11px] text-slate-700 dark:text-slate-300 leading-snug">
-                            {classification.shortSummary}
-                          </div>
+                        {/* 1. Card Visual (Always Shown) */}
+                        <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[170px] relative z-10">
+                          <CardObfuscator
+                            card={card}
+                            obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
+                            size="sm"
+                            showSublabel={false}
+                          />
                         </div>
 
-                        {/* Bottom Row: 17Lands Telemetry & Action Buttons */}
-                        <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-1 text-[10px] font-mono">
-                          {landData && typeof landData.win_rate === 'number' ? (
-                            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                              <span>WR: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{((landData.win_rate || 0) * 100).toFixed(1)}%</strong></span>
-                              <span className="text-slate-300 dark:text-slate-700">•</span>
-                              <span>ALSA: <strong className="text-slate-800 dark:text-slate-200">{typeof landData.avg_seen === 'number' ? landData.avg_seen.toFixed(1) : '-'}</strong></span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-500 italic">
-                              {card.type_line}
-                            </span>
-                          )}
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            {onOpenCompsModal && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onOpenCompsModal(card);
-                                }}
-                                className="p-1 rounded-md text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                                title="View Precedent Engine comps"
+                        {/* 2. Tactical Metadata & Details */}
+                        <div className="flex-1 w-full min-w-0 flex flex-col justify-between self-stretch gap-2">
+                          <div className="space-y-1.5">
+                            {/* Card Title & Mana Cost */}
+                            <div className="flex items-center justify-between gap-2">
+                              <h4
+                                className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors truncate"
+                                title={card.name}
                               >
-                                <PlayingCardsFan className="w-3 h-3" />
-                              </button>
+                                {card.name}
+                              </h4>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                <ManaCostRenderer manaCost={card.mana_cost} size="xs" />
+                              </div>
+                            </div>
+
+                            {/* Type Line */}
+                            <p className="text-[11px] font-mono text-violet-700 dark:text-cyan-300 truncate">
+                              {card.type_line}
+                            </p>
+
+                            {/* Sub-header Badges: Speed, Rarity, Mechanism, Restriction */}
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                              {/* Speed Badge */}
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-black uppercase tracking-wider flex items-center gap-1 ${
+                                  isInstant
+                                    ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80'
+                                    : 'bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+                                }`}
+                              >
+                                {isInstant && <Zap className="w-2.5 h-2.5 text-amber-500" />}
+                                <span>{isInstant ? 'Instant' : classification.speed}</span>
+                              </span>
+
+                              {/* Rarity Badge */}
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
+                                card.rarity === 'common'
+                                  ? 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+                                  : card.rarity === 'uncommon'
+                                  ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-300 dark:border-sky-800'
+                                  : card.rarity === 'rare'
+                                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                                  : 'bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                              }`}>
+                                {card.rarity.toUpperCase()}
+                              </span>
+
+                              {/* Mechanism Tag */}
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-100/90 dark:bg-violet-950/70 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800/80">
+                                {classification.mechanism}
+                              </span>
+
+                              {/* Restriction Tag */}
+                              {classification.restriction && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/70">
+                                  {classification.restriction}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Threat Summary Banner */}
+                            <div className="p-2 rounded-xl bg-white dark:bg-[#0a0f28] border border-slate-200/80 dark:border-slate-800/80 text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
+                              <span className="font-bold text-rose-600 dark:text-rose-400">Play Around: </span>
+                              <span>{classification.shortSummary}</span>
+                            </div>
+
+                            {/* Oracle rules text snippet if present */}
+                            {card.oracle_text && (
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed whitespace-pre-line italic">
+                                "{card.oracle_text}"
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Bottom Row: 17Lands Telemetry & Action Buttons */}
+                          <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-1 text-[11px] font-mono mt-1">
+                            {landData && typeof landData.win_rate === 'number' ? (
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                <span>WR: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{((landData.win_rate || 0) * 100).toFixed(1)}%</strong></span>
+                                <span className="text-slate-300 dark:text-slate-700">•</span>
+                                <span>ALSA: <strong className="text-slate-800 dark:text-slate-200">{typeof landData.avg_seen === 'number' ? landData.avg_seen.toFixed(1) : '-'}</strong></span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-500 italic text-[10px]">
+                                17Lands data pending
+                              </span>
                             )}
 
-                            <a
-                              href={get17LandsCardUrl(card.set || currentSetCode, card, landData)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-1 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors shrink-0"
-                              title="Open on 17Lands.com"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {onOpenCompsModal && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenCompsModal(card);
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-[10px] font-mono font-medium"
+                                  title="Find similar cards & historical comps (Precedent Engine)"
+                                >
+                                  <PlayingCardsFan className="w-3.5 h-3.5" />
+                                  <span>Comps</span>
+                                </button>
+                              )}
+
+                              <a
+                                href={get17LandsCardUrl(card.set || currentSetCode, card, landData)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors shrink-0"
+                                title="Open on 17Lands.com"
+                                aria-label={`Open ${card.name} on 17Lands.com`}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
                           </div>
                         </div>
                       </div>

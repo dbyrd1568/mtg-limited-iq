@@ -831,7 +831,7 @@ const AppContent: React.FC = () => {
                     onExitQuiz={() => setQuizState('setup')}
                   />
                 ) : (
-                  <div className="space-y-4">
+                  <div className="max-w-[1440px] mx-auto pb-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
                     {/* UNIFIED TOP-DOCKED CONTROL BAR (Matching Grading Hub layout) */}
                     <div className="sticky top-14 sm:top-16 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-slate-100/95 dark:bg-[#030614]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
@@ -935,16 +935,14 @@ const AppContent: React.FC = () => {
                     )}
 
                     {quizSubTab === 'threats' && (
-                      <div className="max-w-[1440px] mx-auto px-3 sm:px-6">
-                        <ThreatMatrixView
-                          cards={cards}
-                          currentSetCode={currentSet.code}
-                          currentSetName={currentSet.name}
-                          seventeenLandsData={seventeenLandsData}
-                          onSelectCard={(c) => setSelectedThreatCardForModal(c)}
-                          onOpenCompsModal={(c) => setThreatSimilarCardsModalCard(c)}
-                        />
-                      </div>
+                      <ThreatMatrixView
+                        cards={cards}
+                        currentSetCode={currentSet.code}
+                        currentSetName={currentSet.name}
+                        seventeenLandsData={seventeenLandsData}
+                        onSelectCard={(c) => setSelectedThreatCardForModal(c)}
+                        onOpenCompsModal={(c) => setThreatSimilarCardsModalCard(c)}
+                      />
                     )}
 
                     {quizSubTab === 'stats' && (
