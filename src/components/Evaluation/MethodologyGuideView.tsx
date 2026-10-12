@@ -66,7 +66,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
   return (
     <div className="space-y-6 w-full pb-12 animate-in fade-in duration-200">
       {/* 1. Header Banner */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
       </div>
 
       {/* 2. Interactive Calculator / Grade Converter Sandbox */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-[#0d163a] dark:via-[#090e24] dark:to-[#0f1a44] border border-violet-200 dark:border-cyan-500/40 shadow-md space-y-4">
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-[#0d163a] dark:via-[#121316] dark:to-[#0f1a44] border border-violet-200 dark:border-cyan-500/40 shadow-md space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-violet-200 dark:border-cyan-500/20">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -104,7 +104,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Left: Your Prediction Input */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Award className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
               <span>Select Your Card Grade</span>
@@ -132,7 +132,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
           </div>
 
           {/* Middle: 17Lands Win Rate Slider */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <BarChart2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -172,7 +172,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
           </div>
 
           {/* Right: Calculated Delta & Calibration Credit */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Scale className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
               <span>Calibration Result</span>
@@ -196,7 +196,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
       </div>
 
       {/* 3. The 3-Source Triangulation Framework */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-6">
+      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -229,7 +229,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               Your personal subjective evaluation, deckbuilding notes, and pick priority. Anchors all calibration calculations.
             </p>
-            <div className="p-2 rounded-xl bg-white dark:bg-[#050818] border border-violet-200 dark:border-violet-800/60 text-[11px] font-mono text-violet-800 dark:text-violet-300">
+            <div className="p-2 rounded-xl bg-white dark:bg-[#17181c] border border-violet-200 dark:border-violet-800/60 text-[11px] font-mono text-violet-800 dark:text-violet-300">
               • Scale: A+ through F (0.5 – 5.0)<br />
               • Locked permanently active (cannot be hidden)
             </div>
@@ -249,7 +249,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               Luis Scott-Vargas (Limited Resources) pre-release set review ratings. Built upon 15+ years of Pro Tour mastery and Quadrant Theory.
             </p>
-            <div className="p-2 rounded-xl bg-white dark:bg-[#050818] border border-amber-200 dark:border-amber-800/60 text-[11px] font-mono text-amber-800 dark:text-amber-300">
+            <div className="p-2 rounded-xl bg-white dark:bg-[#17181c] border border-amber-200 dark:border-amber-800/60 text-[11px] font-mono text-amber-800 dark:text-amber-300">
               • Scale: 0.0 to 5.0 (Mapped to 11 Tiers)<br />
               • Available immediately on preview day 0
             </div>
@@ -269,7 +269,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               Arena match data across hundreds of thousands of games. Measures Game-In-Hand Win Rate (GIH WR) and ALSA pick speeds.
             </p>
-            <div className="p-2 rounded-xl bg-white dark:bg-[#050818] border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-mono text-emerald-800 dark:text-emerald-300">
+            <div className="p-2 rounded-xl bg-white dark:bg-[#17181c] border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-mono text-emerald-800 dark:text-emerald-300">
               • Scale: GIH WR (44% to 66%+)<br />
               • Synchronized as games are logged
             </div>
@@ -277,13 +277,13 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
         </div>
 
         {/* Compact Naming & Togglability Rules */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
           <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
             <Eye className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
             Compact Abbreviations & Rating Source Togglability
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-600 dark:text-slate-300 leading-relaxed">
-            <div className="p-3 rounded-xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <div className="p-3 rounded-xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-1.5">
               <strong className="text-slate-900 dark:text-white font-mono block">1. Tight Space Labeling:</strong>
               To maximize card image visibility and avoid clutter, tight UI spaces (card tiles, modal headers, and table columns) use ultra-compact abbreviations:
               <ul className="list-disc pl-4 space-y-0.5 font-mono text-[11px] text-slate-700 dark:text-slate-200 pt-1">
@@ -293,7 +293,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
               </ul>
             </div>
 
-            <div className="p-3 rounded-xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <div className="p-3 rounded-xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-1.5">
               <strong className="text-slate-900 dark:text-white font-mono block">2. Togglable Sources System:</strong>
               You can toggle any combination of external sources using the top bar pills <code className="text-violet-600 dark:text-cyan-300 font-bold">[✓ Me] [✓ LSV] [✓ 17L]</code>:
               <ul className="list-disc pl-4 space-y-0.5 text-[11px] pt-1">
@@ -393,7 +393,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
       </div>
 
       {/* 4. Card Similarity Engine & Historical Comps Methodology */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-6">
+      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
@@ -459,28 +459,28 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
         </div>
 
         {/* How Consensus is Calculated */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3 text-xs">
           <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
             <Scale className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
             <span>How the Historical Consensus ("MIGHT" Grade) is Projected</span>
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="p-3 rounded-xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 space-y-1">
+            <div className="p-3 rounded-xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-1">
               <strong className="text-slate-900 dark:text-white block font-mono">1. Scryfall Query Execution:</strong>
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
                 Constructs a targeted query excluding reprints and non-booster cards across 14 modern premier draft sets.
               </p>
             </div>
 
-            <div className="p-3 rounded-xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 space-y-1">
+            <div className="p-3 rounded-xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-1">
               <strong className="text-slate-900 dark:text-white block font-mono">2. 17Lands Cross-Reference:</strong>
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
                 Pulls Game-In-Hand Win Rates (GIH WR) and ALSA values from our IndexedDB cache for each matched candidate.
               </p>
             </div>
 
-            <div className="p-3 rounded-xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 space-y-1">
+            <div className="p-3 rounded-xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-1">
               <strong className="text-slate-900 dark:text-white block font-mono">3. Weighted Mean Projection:</strong>
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
                 Averages the win rates of the top comps and maps the result to our standard 11-tier letter grade system (e.g. 57.8% &rarr; Tier B+).
@@ -495,7 +495,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
       </div>
 
       {/* 17Lands Metrics Deep Dive */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
+      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
           <BarChart2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -505,7 +505,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           {/* GIH WR */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold flex items-center justify-center text-[10px]">GIH</span>
@@ -516,13 +516,13 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
               The percentage of games won where the card was drawn into your hand at any point (opening hand or drawn during the match).
             </p>
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#090e24] text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#121316] text-slate-700 dark:text-slate-300 font-mono text-[11px]">
               Why not Games Played (GP WR)? A card stuck in your deck without being drawn didn't impact the game. GIH isolates the card's active contribution.
             </div>
           </div>
 
           {/* IWD */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-cyan-300 font-mono font-bold flex items-center justify-center text-[10px]">IWD</span>
@@ -533,14 +533,14 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
               Calculates <code className="font-mono text-violet-700 dark:text-cyan-300">GIH WR - GND WR</code> (Games Not Drawn Win Rate).
             </p>
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#090e24] text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#121316] text-slate-700 dark:text-slate-300 font-mono text-[11px]">
               Positive IWD (+3% to +8%): Drawing this card makes your deck actively win more.<br />
               Negative IWD (-2% to -6%): The deck wins more when this card stays un-drawn (a classic trap card).
             </div>
           </div>
 
           {/* ALSA */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono font-bold flex items-center justify-center text-[10px]">ALSA</span>
@@ -551,7 +551,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
               The average pick number (1.0 to 14.0) in a pack where the card is taken by human drafters.
             </p>
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#090e24] text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#121316] text-slate-700 dark:text-slate-300 font-mono text-[11px]">
               • ALSA 1.1–2.2: First-pick bomb or premier removal.<br />
               • ALSA 7.0–12.0: Late-pack filler or niche build-around.
             </div>
@@ -568,7 +568,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
               17Lands users are dedicated, data-tracking players whose aggregate average win rate is <strong>~55% to 56%</strong> (not 50%).
             </p>
-            <div className="p-2.5 rounded-xl bg-white dark:bg-[#090e24] text-amber-900 dark:text-amber-300 font-mono text-[11px] border border-amber-200 dark:border-amber-500/30 font-semibold">
+            <div className="p-2.5 rounded-xl bg-white dark:bg-[#121316] text-amber-900 dark:text-amber-300 font-mono text-[11px] border border-amber-200 dark:border-amber-500/30 font-semibold">
               Crucial: A card with a 52.0% GIH WR is performing below average (a C- or D tier card), while 58.0% is strong (B+), and &gt;62% is elite (A/A+).
             </div>
           </div>
@@ -576,7 +576,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
       </div>
 
       {/* Section: The Industry Landscape */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
+      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
           <BookOpen className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -646,7 +646,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
       </div>
 
       {/* Section: Mathematical Formulas */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-6">
+      <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-6">
         <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
           <Calculator className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -768,11 +768,11 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
         {/* Detailed Formulas Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           {/* Formula: Step Delta & Tolerance */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2">
             <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm font-heading">
               Step Delta (Δ) & 1-Step Tolerance Rule
             </h4>
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#090e24] font-mono text-[11px] text-slate-900 dark:text-white text-center font-bold border border-slate-200 dark:border-slate-800">
+            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#121316] font-mono text-[11px] text-slate-900 dark:text-white text-center font-bold border border-slate-200 dark:border-slate-800">
               Δ = Index(17Lands Grade) - Index(Your Grade)
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -795,27 +795,27 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
           </div>
 
           {/* Formula: Set Calibration Score */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2">
             <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm font-heading">
               Set Calibration Accuracy Score (%)
             </h4>
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#090e24] font-mono text-[11px] text-slate-900 dark:text-white text-center font-bold border border-slate-200 dark:border-slate-800">
+            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#121316] font-mono text-[11px] text-slate-900 dark:text-white text-center font-bold border border-slate-200 dark:border-slate-800">
               Calibration Score = [ (Exact + 1-Step) + (0.5 &times; 2-Step) ] &divide; Total Rated Cards &times; 100%
             </div>
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
               Provides your global accuracy score against 17Lands draft win rates:
             </p>
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-              <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400">
+              <div className="p-2 rounded bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400">
                 &ge; 59%: Pro Tour Caliber (LSV / Top Creators)
               </div>
-              <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-cyan-600 dark:text-cyan-400">
+              <div className="p-2 rounded bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-cyan-600 dark:text-cyan-400">
                 49% – 58%: Diamond / Mythic Drafter
               </div>
-              <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-violet-600 dark:text-cyan-300">
+              <div className="p-2 rounded bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-violet-600 dark:text-cyan-300">
                 39% – 48%: Solid / Capable Drafter
               </div>
-              <div className="p-2 rounded bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400">
+              <div className="p-2 rounded bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400">
                 29% – 38%: Baseline / Developing
               </div>
             </div>

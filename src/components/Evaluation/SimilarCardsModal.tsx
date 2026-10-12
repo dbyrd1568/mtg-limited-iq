@@ -608,10 +608,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="w-full h-full sm:w-[96vw] sm:max-w-[1600px] sm:max-h-[94vh] my-auto flex flex-col bg-white dark:bg-[#090e24] border-0 sm:border border-slate-200 dark:border-slate-800 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden"
+        className="w-full h-full sm:w-[96vw] sm:max-w-[1600px] sm:max-h-[94vh] my-auto flex flex-col bg-white dark:bg-[#121316] border-0 sm:border border-slate-200 dark:border-slate-800 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden"
       >
         {/* Modal Header */}
-        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/80 dark:bg-[#050818]/90">
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/80 dark:bg-[#17181c]/90">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shrink-0">
               <PlayingCardsFan className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -761,7 +761,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="flex flex-col items-center">
                       <CardObfuscator
                       card={targetCard}
@@ -834,7 +834,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             className={`py-1 rounded-md text-[11px] font-mono font-bold transition-all border cursor-pointer ${
                               isSelected
                                 ? 'bg-violet-600 text-white border-violet-500 shadow-xs font-black ring-2 ring-violet-400'
-                                : 'bg-white dark:bg-[#070b1e] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                                : 'bg-white dark:bg-[#17181c] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                             }`}
                           >
                             {tier}
@@ -853,7 +853,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                           className={`py-1 rounded-md text-[11px] font-mono font-bold transition-all border cursor-pointer ${
                             currentGrade === 'N/A'
                               ? 'bg-slate-700 text-white border-slate-500 shadow-xs font-black ring-2 ring-slate-400'
-                              : 'bg-white dark:bg-[#070b1e] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                              : 'bg-white dark:bg-[#17181c] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                           }`}
                           title="Assign N/A (Excluded from math)"
                         >
@@ -872,7 +872,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             disabled={!canNavigatePrev}
                             className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all border shadow-2xs ${
                               canNavigatePrev
-                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 cursor-pointer active:scale-[0.98]'
+                                ? 'bg-white dark:bg-[#1c1d22] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 cursor-pointer active:scale-[0.98]'
                                 : 'opacity-30 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
                             }`}
                             title={canNavigatePrev ? "Previous Card (← Arrow key or [)" : "No previous card"}
@@ -893,7 +893,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                             disabled={!canNavigateNext}
                             className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all border shadow-2xs ${
                               canNavigateNext
-                                ? 'bg-white dark:bg-[#0c1236] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 cursor-pointer active:scale-[0.98]'
+                                ? 'bg-white dark:bg-[#1c1d22] hover:bg-slate-100 dark:hover:bg-[#141e54] text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 hover:border-violet-500 dark:hover:border-cyan-400 cursor-pointer active:scale-[0.98]'
                                 : 'opacity-30 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
                             }`}
                             title={canNavigateNext ? "Next Card (→ Arrow key or ])" : "No next card"}
@@ -975,7 +975,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                   </div>
 
                   {presentedMatches.length === 0 ? (
-                    <div className="py-16 px-6 rounded-3xl bg-slate-50/70 dark:bg-[#070b1e]/70 border border-slate-200 dark:border-slate-800 text-center">
+                    <div className="py-16 px-6 rounded-3xl bg-slate-50/70 dark:bg-[#17181c]/70 border border-slate-200 dark:border-slate-800 text-center">
                       <p className="text-sm font-bold text-slate-900 dark:text-white">No comparable cards found</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">Use the search bar above to manually select a comparable card.</p>
                     </div>
@@ -993,7 +993,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         <div
                           key={`${comp.set}_${comp.id}`}
                           onClick={() => setInspectCardMatch(match)}
-                          className="group p-4 sm:p-6 rounded-3xl bg-white dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800/90 shadow-sm hover:border-violet-400 dark:hover:border-cyan-400 transition-all cursor-pointer hover:shadow-md"
+                          className="group p-4 sm:p-6 rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/90 shadow-sm hover:border-violet-400 dark:hover:border-cyan-400 transition-all cursor-pointer hover:shadow-md"
                         >
                           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
                             {/* Left Column: Full Card Visual + 17Lands & Use Grade directly in the space below card */}
@@ -1004,7 +1004,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                   e.stopPropagation();
                                   setInspectCardMatch(match);
                                 }}
-                                className="relative w-full h-[293px] sm:h-[321px] rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-[#050818] shadow-md hover:ring-2 hover:ring-violet-400 dark:hover:ring-cyan-400 group-hover:ring-2 group-hover:ring-violet-400 dark:group-hover:ring-cyan-400 transition-all cursor-pointer block text-left"
+                                className="relative w-full h-[293px] sm:h-[321px] rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-md hover:ring-2 hover:ring-violet-400 dark:hover:ring-cyan-400 group-hover:ring-2 group-hover:ring-violet-400 dark:group-hover:ring-cyan-400 transition-all cursor-pointer block text-left"
                                 title={`Click to view full card details for ${comp.name}`}
                               >
                                 <CardImage
@@ -1187,7 +1187,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                 <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
                                   Oracle Rules Text
                                 </span>
-                                <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed bg-slate-50 dark:bg-[#050818] p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 whitespace-pre-line shadow-2xs">
+                                <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed bg-slate-50 dark:bg-[#17181c] p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 whitespace-pre-line shadow-2xs">
                                   {comp.oracle_text || 'No oracle rules text.'}
                                 </div>
                               </div>
@@ -1196,14 +1196,14 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                               <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
                                 {/* Comparison Specs & Insights Grid */}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
-                                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200/60 dark:border-slate-800/60">
+                                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200/60 dark:border-slate-800/60">
                                     <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">Curve & Stats</span>
                                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                                       {comp.cmc} CMC {comp.power !== undefined ? `• ${comp.power}/${comp.toughness}` : `• ${comp.type_line.split('—')[0].trim()}`}
                                     </span>
                                   </div>
 
-                                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200/60 dark:border-slate-800/60">
+                                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200/60 dark:border-slate-800/60">
                                     <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">Format Origin</span>
                                     <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                                       <SetSymbol setCode={comp.set} size="xs" />
@@ -1212,7 +1212,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                     </span>
                                   </div>
 
-                                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200/60 dark:border-slate-800/60 col-span-2 sm:col-span-1">
+                                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200/60 dark:border-slate-800/60 col-span-2 sm:col-span-1">
                                     <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">Draft Velocity</span>
                                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                                       {match.alsa !== undefined ? `Pick ~${match.alsa.toFixed(1)} ALSA` : 'Pending'}
@@ -1259,7 +1259,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-2.5 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 bg-slate-50/80 dark:bg-[#050818]/90 font-mono text-[11px] text-center sm:text-left">
+        <div className="px-5 py-2.5 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 bg-slate-50/80 dark:bg-[#17181c]/90 font-mono text-[11px] text-center sm:text-left">
           Searches Premier Draft Precedents across modern sets
         </div>
       </div>
@@ -1272,10 +1272,10 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-[96vw] max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+            className="w-[96vw] max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
           >
             {/* Header */}
-            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#060a1d]">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#17181c]">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800/60 flex items-center justify-center text-violet-600 dark:text-cyan-400 shrink-0">
                   <GitCompare className="w-5 h-5" />
@@ -1365,7 +1365,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     />
 
                     {/* Grading Panel: Consistently at the bottom of the gradable card */}
-                    <div className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 space-y-2 shadow-2xs font-mono">
+                    <div className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2 shadow-2xs font-mono">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           Your Rating
@@ -1381,7 +1381,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       <div className="grid grid-cols-6 sm:grid-cols-11 gap-1 pt-0.5">
                         {GRADE_TIERS.map((tier) => {
                           const isSelected = currentGrade === tier;
-                          let color = 'bg-white text-slate-800 border-slate-200 dark:bg-[#0b1029] dark:text-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
+                          let color = 'bg-white text-slate-800 border-slate-200 dark:bg-[#1c1d22] dark:text-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
                           if (tier.startsWith('A')) color = 'bg-amber-100 text-amber-950 border-amber-300 font-bold dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-500 hover:text-white';
                           if (tier.startsWith('B')) color = 'bg-cyan-100 text-cyan-950 border-cyan-300 font-bold dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40 hover:bg-cyan-500 hover:text-white';
                           if (tier.startsWith('C')) color = 'bg-slate-100 text-slate-900 border-slate-300 font-bold dark:bg-slate-800/50 dark:text-slate-200 dark:border-slate-700/60 hover:bg-slate-600 hover:text-white';
@@ -1507,7 +1507,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
                         Oracle Rules Text
                       </span>
-                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line text-sm shadow-2xs">
+                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line text-sm shadow-2xs">
                         {targetCard.oracle_text || 'No oracle rules text.'}
                       </div>
                     </div>
@@ -1607,7 +1607,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     />
 
                     {/* Precedent Benchmark Panel: Perfectly balancing "Your Rating" on the left */}
-                    <div className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 space-y-2 shadow-2xs font-mono">
+                    <div className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2 shadow-2xs font-mono">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           Precedent Benchmark
@@ -1705,7 +1705,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                       <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
                         Oracle Rules Text
                       </span>
-                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line text-sm shadow-2xs">
+                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line text-sm shadow-2xs">
                         {inspectCardMatch.card.oracle_text || 'No oracle rules text.'}
                       </div>
                     </div>
@@ -1768,7 +1768,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-4 sm:px-6 py-2.5 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 bg-slate-50/80 dark:bg-[#050818]/90 font-mono text-[11px] flex flex-wrap items-center justify-between gap-3">
+            <div className="px-4 sm:px-6 py-2.5 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 bg-slate-50/80 dark:bg-[#17181c]/90 font-mono text-[11px] flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 truncate">
                 <span className="truncate">Head-to-head: {targetCard.name} vs. {inspectCardMatch.card.name}</span>
                 <span className="hidden md:inline text-slate-400 dark:text-slate-600">•</span>

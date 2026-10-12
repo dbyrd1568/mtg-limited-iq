@@ -270,10 +270,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const AVATAR_COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-[96vw] max-w-lg bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/90 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-[96vw] max-w-lg bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/90 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#17181c]">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-cyan-300">
               <Shield className="w-5 h-5" />
@@ -319,7 +319,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {activeTab === 'profile' ? (
           <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
             {/* Active User Card */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   {currentUser?.avatarUrl && !avatarError ? (
@@ -407,7 +407,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* Edit Profile Form */}
             {isEditingProfile ? (
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#070c26] border border-violet-300 dark:border-violet-500/40 space-y-3 animate-in fade-in duration-150">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-violet-300 dark:border-violet-500/40 space-y-3 animate-in fade-in duration-150">
                 <div className="text-xs font-bold text-slate-900 dark:text-white font-heading">Edit Profile</div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Display Name</label>
@@ -415,7 +415,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
                   />
                 </div>
 
@@ -426,7 +426,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={avatarUrl}
                     onChange={(e) => setAvatarUrl(e.target.value)}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
                   />
                 </div>
 
@@ -468,7 +468,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             ) : null}
 
             {/* Preferred Pro Creators Selector (Strictly Max 2 for 4 Total Comparison Columns) */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#070c26] border border-slate-200 dark:border-slate-800/80 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -495,7 +495,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                         isSelected
                           ? 'bg-violet-50/80 dark:bg-violet-950/40 border-violet-500 dark:border-violet-400 shadow-xs ring-1 ring-violet-500/30'
-                          : 'bg-white dark:bg-[#050818] border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 opacity-70 hover:opacity-100'
+                          : 'bg-white dark:bg-[#17181c] border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 opacity-70 hover:opacity-100'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -552,7 +552,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
 
             {/* Tab Navigation */}
-            <div className="grid grid-cols-3 p-1 bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
+            <div className="grid grid-cols-3 p-1 bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl gap-1">
               <button
                 onClick={() => setActiveTab('oauth')}
                 className={`py-1.5 px-1 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer text-center truncate ${
@@ -650,7 +650,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
                     />
                   </div>
                 </div>
@@ -692,7 +692,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         placeholder="Your Name"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
                       />
                     </div>
                   </div>
@@ -708,7 +708,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
                     />
                   </div>
                 </div>
@@ -723,7 +723,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+                      className="w-full pl-10 pr-4 py-2 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
                     />
                   </div>
                 </div>

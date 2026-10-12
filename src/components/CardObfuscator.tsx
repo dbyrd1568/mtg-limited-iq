@@ -169,7 +169,7 @@ export function tokenizeAndSanitizeOracleText(
       return (
         <span
           key={idx}
-          className={`inline-flex items-center gap-0.5 mx-0.5 rounded bg-[#050818] text-cyan-300 font-mono font-bold border border-cyan-400/50 shadow-xs align-baseline select-none ${pillSizeClass}`}
+          className={`inline-flex items-center gap-0.5 mx-0.5 rounded bg-[#17181c] text-cyan-300 font-mono font-bold border border-cyan-400/50 shadow-xs align-baseline select-none ${pillSizeClass}`}
           title="Card name concealed for quiz deduction"
         >
           <EyeOff className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
@@ -248,12 +248,12 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
       case 'whiteout':
         return 'bg-slate-100/95 text-slate-900 border-2 border-dashed border-slate-400 font-mono';
       case 'blackout':
-        return 'bg-[#050818]/95 text-cyan-200 border border-violet-500/50 font-mono';
+        return 'bg-[#17181c]/95 text-cyan-200 border border-zinc-700 font-mono';
       case 'scratch':
-        return 'backdrop-blur-xl bg-violet-950/85 border border-cyan-400/50 text-cyan-200';
+        return 'backdrop-blur-xl bg-zinc-900/85 border border-zinc-600 text-zinc-200';
       default:
         // Arcane blur
-        return 'backdrop-blur-md bg-[#070b22]/85 border border-violet-400/40 text-violet-200 shadow-inner';
+        return 'backdrop-blur-md bg-[#121316]/85 border border-zinc-700/60 text-zinc-200 shadow-inner';
     }
   };
 
@@ -382,12 +382,12 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
           maxHeight: `min(${sizeConfig.maxH}px, 100%)`,
           maxWidth: '100%',
         }}
-        className={`relative rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-[#070a1c] card-foil-sheen shrink ${getRarityGlow(card.rarity)}`}
+        className={`relative rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-[#090a0d] card-foil-sheen shrink ${getRarityGlow(card.rarity)}`}
       >
         {/* Art Only Mask Mode */}
         {isArtOnly && !obfuscation.isRevealed ? (
-          <div className="relative w-full h-full flex flex-col bg-[#050818] p-2">
-            <div className="relative w-full h-full rounded-xl overflow-hidden border border-violet-500/40 shadow-inner">
+          <div className="relative w-full h-full flex flex-col bg-[#17181c] p-2">
+            <div className="relative w-full h-full rounded-xl overflow-hidden border border-zinc-700 shadow-inner">
               <CardImage
                 card={activeCardData}
                 src={artCropUri}
@@ -396,7 +396,7 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
                 imageClassName="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                 loading="eager"
               />
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#050818] via-[#050818]/80 to-transparent p-2 text-center pointer-events-none z-10">
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#17181c] via-[#17181c]/80 to-transparent p-2 text-center pointer-events-none z-10">
                 <span className="text-xs font-bold text-cyan-300 flex items-center justify-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   Recognize this artwork?
@@ -432,7 +432,7 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
               e.stopPropagation();
               setFaceIndex(prev => (prev === 0 ? 1 : 0));
             }}
-            className="absolute top-2.5 right-2.5 z-30 bg-[#06091d]/90 hover:bg-[#0e1438] border border-violet-400/60 text-cyan-300 p-1.5 rounded-full shadow-xl transition-all cursor-pointer hover:scale-110"
+            className="absolute top-2.5 right-2.5 z-30 bg-[#17181c]/90 hover:bg-[#1f2026] border border-zinc-700 text-cyan-300 p-1.5 rounded-full shadow-xl transition-all cursor-pointer hover:scale-110"
             title={`Transform card (Showing face ${faceIndex + 1} of 2)`}
           >
             <RotateCw className="w-3.5 h-3.5" />

@@ -72,10 +72,10 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[96vw] max-w-[1550px] max-h-[94vh] bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-[96vw] max-w-[1550px] max-h-[94vh] bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
       >
         {/* Modal Header */}
-        <div className="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-[#050818]/90 shrink-0">
+        <div className="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-[#17181c]/90 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 flex items-center justify-center text-violet-700 dark:text-cyan-400 shrink-0">
               <RefreshCw className="w-4 h-4" />
@@ -139,7 +139,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
 
             {/* Inline search bar if user wants to change candidate without leaving modal */}
             {isSearchingAnother && (
-              <div className="mb-4 p-3.5 rounded-2xl bg-white/95 dark:bg-[#070b1e]/95 border border-violet-300/80 dark:border-cyan-800/80 shadow-lg animate-in fade-in slide-in-from-top-2 space-y-2">
+              <div className="mb-4 p-3.5 rounded-2xl bg-white/95 dark:bg-[#17181c]/95 border border-violet-300/80 dark:border-cyan-800/80 shadow-lg animate-in fade-in slide-in-from-top-2 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
                     Search Any Magic Card to Preview:
@@ -161,7 +161,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
 
             <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
               {/* Card Thumbnail */}
-              <div className="w-[110px] sm:w-[130px] h-[154px] sm:h-[182px] rounded-2xl overflow-hidden shadow-md border border-slate-300 dark:border-slate-700 shrink-0 bg-[#050818]">
+              <div className="w-[110px] sm:w-[130px] h-[154px] sm:h-[182px] rounded-2xl overflow-hidden shadow-md border border-slate-300 dark:border-slate-700 shrink-0 bg-[#17181c]">
                 <CardImage
                   card={activeCandidate}
                   src={repImageUri}
@@ -208,7 +208,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
 
                 {/* Oracle Rules Text */}
                 {activeCandidate.oracle_text && (
-                  <div className="p-3 rounded-2xl bg-white/80 dark:bg-[#060a1d]/80 border border-slate-200/80 dark:border-slate-800 text-xs font-sans text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line max-h-24 overflow-y-auto custom-scrollbar shadow-2xs">
+                  <div className="p-3 rounded-2xl bg-white/80 dark:bg-[#17181c]/80 border border-slate-200/80 dark:border-slate-800 text-xs font-sans text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line max-h-24 overflow-y-auto custom-scrollbar shadow-2xs">
                     {activeCandidate.oracle_text}
                   </div>
                 )}
@@ -267,8 +267,8 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                     onClick={() => setSelectedSlot(slotIdx)}
                     className={`rounded-3xl border-2 transition-all cursor-pointer flex flex-col justify-between overflow-hidden relative shadow-sm hover:shadow-md ${
                       isSelected
-                        ? 'bg-violet-50/90 dark:bg-[#0d1436] border-violet-600 dark:border-cyan-400 ring-2 ring-violet-500/40 dark:ring-cyan-400/40 shadow-xl'
-                        : 'bg-white dark:bg-[#070b1e] border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-slate-700'
+                        ? 'bg-violet-50/90 dark:bg-[#1c1d22] border-violet-600 dark:border-cyan-400 ring-2 ring-violet-500/40 dark:ring-cyan-400/40 shadow-xl'
+                        : 'bg-white dark:bg-[#17181c] border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-slate-700'
                     }`}
                   >
                     {/* Slot Header Bar */}
@@ -276,7 +276,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                       className={`px-4 py-2.5 border-b flex items-center justify-between gap-2 ${
                         isSelected
                           ? 'bg-violet-100/90 dark:bg-violet-950/70 border-violet-200 dark:border-cyan-900/60'
-                          : 'bg-slate-50 dark:bg-[#050818] border-slate-100 dark:border-slate-800/80'
+                          : 'bg-slate-50 dark:bg-[#17181c] border-slate-100 dark:border-slate-800/80'
                       }`}
                     >
                       <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-900 text-white dark:bg-slate-800 dark:text-slate-200">
@@ -299,7 +299,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                     {comp ? (
                       <div className="p-4 flex-1 flex flex-col justify-between gap-3">
                         {/* Card Image Thumbnail */}
-                        <div className="w-full h-[220px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#050818] shadow-sm relative shrink-0 group">
+                        <div className="w-full h-[220px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-sm relative shrink-0 group">
                           <CardImage
                             card={comp}
                             src={compImageUri}
@@ -354,7 +354,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                         </div>
 
                         {/* 17Lands & Similarity Row */}
-                        <div className="flex items-center justify-between gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200/80 dark:border-slate-800 text-[11px] font-mono">
+                        <div className="flex items-center justify-between gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200/80 dark:border-slate-800 text-[11px] font-mono">
                           <span className="font-bold text-violet-700 dark:text-cyan-400">
                             {existingMatch.similarityScore}% Match
                           </span>
@@ -370,13 +370,13 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
                         {/* Rules / Oracle Text Box */}
                         {comp.oracle_text ? (
                           <div
-                            className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#050818]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug line-clamp-3 min-h-[58px]"
+                            className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug line-clamp-3 min-h-[58px]"
                             title={comp.oracle_text}
                           >
                             {comp.oracle_text}
                           </div>
                         ) : (
-                          <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#050818]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-400 italic min-h-[58px] flex items-center justify-center">
+                          <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-400 italic min-h-[58px] flex items-center justify-center">
                             (No rules text)
                           </div>
                         )}
@@ -435,7 +435,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-[#050818]/90 shrink-0">
+        <div className="px-5 sm:px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-[#17181c]/90 shrink-0">
           <button
             type="button"
             onClick={onClose}

@@ -720,12 +720,12 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
   return (
     <div
       ref={chartContainerRef}
-      className={`rounded-3xl bg-white dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 shadow-sm transition-all overflow-hidden flex flex-col ${
+      className={`rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 shadow-sm transition-all overflow-hidden flex flex-col ${
         isFullscreen ? 'fixed inset-3 z-[150] shadow-2xl max-w-none' : 'w-full'
       }`}
     >
       {/* Chart Top Header & Controls */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/70 dark:bg-[#050818]/80">
+      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/70 dark:bg-[#17181c]/80">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="p-1.5 rounded-lg bg-violet-100 dark:bg-cyan-500/20 text-violet-700 dark:text-cyan-300">
@@ -754,7 +754,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
         {/* Benchmark Selector Tabs, Set Chooser & Action Bar */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {/* Independent Benchmark Tabs */}
-          <div className="flex items-center gap-1 bg-white dark:bg-[#090e24] p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <div className="flex items-center gap-1 bg-white dark:bg-[#121316] p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
             {[
               { id: '17L', label: '17Lands', title: '17Lands Draft Win Rates' },
               { id: 'LSV', label: 'LSV', title: 'Luis Scott-Vargas' },
@@ -778,7 +778,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
           </div>
 
           {/* By Set Selector */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#090e24] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <div className="flex items-center gap-1.5 bg-white dark:bg-[#121316] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
             <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">Set:</span>
             <select
               value={selectedSetCode}
@@ -830,7 +830,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
       </div>
 
       {/* Summary KPI Pills */}
-      <div className="px-4 sm:px-6 py-2.5 bg-slate-100/60 dark:bg-[#050818]/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap text-xs font-mono">
+      <div className="px-4 sm:px-6 py-2.5 bg-slate-100/60 dark:bg-[#17181c]/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap text-xs font-mono">
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           <div>
             <span className="text-slate-500 text-[11px]">Plotted: </span>
@@ -870,14 +870,14 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
       </div>
 
       {/* Main Interactive Plot Area with Side-by-Side Controls */}
-      <div className={`flex-1 p-3 sm:p-5 lg:p-6 flex flex-col ${panelPosition === 'left' ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center lg:items-start justify-center gap-6 relative bg-slate-50/30 dark:bg-[#030612]/30`}>
+      <div className={`flex-1 p-3 sm:p-5 lg:p-6 flex flex-col ${panelPosition === 'left' ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center lg:items-start justify-center gap-6 relative bg-slate-50/30 dark:bg-[#090a0d]/30`}>
         {isLoadingSet ? (
           <div className="py-24 text-center space-y-2">
             <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs font-mono text-slate-500 dark:text-slate-400">Loading {selectedSetCode} data...</p>
           </div>
         ) : allPoints.length === 0 ? (
-          <div className="py-16 text-center max-w-lg space-y-4 mx-auto p-6 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="py-16 text-center max-w-lg space-y-4 mx-auto p-6 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 shadow-sm">
             {(userRatedSets[selectedSetCode.toUpperCase()] || 0) > 0 && activeBenchmark === '17L' ? (
               <>
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xs">
@@ -1367,7 +1367,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                     top: `${activePos.y}px`,
                     transform: activePos.placement === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0%)',
                   }}
-                  className={`absolute z-50 p-3 rounded-2xl bg-slate-900/95 dark:bg-[#090e24]/95 text-white shadow-2xl backdrop-blur-md w-[360px] max-w-[94vw] animate-in fade-in zoom-in-95 duration-150 font-sans ${
+                  className={`absolute z-50 p-3 rounded-2xl bg-slate-900/95 dark:bg-[#121316]/95 text-white shadow-2xl backdrop-blur-md w-[360px] max-w-[94vw] animate-in fade-in zoom-in-95 duration-150 font-sans ${
                     isCardPinned
                       ? 'pointer-events-auto border-2 border-cyan-500/80 dark:border-cyan-400/80 ring-4 ring-cyan-500/20'
                       : 'pointer-events-none border border-slate-700/80 dark:border-cyan-500/50'
@@ -1508,7 +1508,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                       ? 'translateY(-20%)'
                       : 'translateY(-50%)',
                 }}
-                className="absolute z-40 pointer-events-none p-3.5 rounded-2xl bg-slate-900/95 dark:bg-[#070b1e]/95 text-white shadow-2xl border border-cyan-500/80 dark:border-cyan-400 backdrop-blur-md w-[295px] space-y-2.5 animate-in fade-in zoom-in-95 duration-100 font-sans"
+                className="absolute z-40 pointer-events-none p-3.5 rounded-2xl bg-slate-900/95 dark:bg-[#17181c]/95 text-white shadow-2xl border border-cyan-500/80 dark:border-cyan-400 backdrop-blur-md w-[295px] space-y-2.5 animate-in fade-in zoom-in-95 duration-100 font-sans"
               >
                 <div className="flex items-center justify-between pb-1.5 border-b border-cyan-500/30">
                   <div className="flex items-center gap-1.5">
@@ -1571,7 +1571,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                   top: '50%',
                   transform: 'translate(-50%, -50%)',
                 }}
-                className="absolute z-40 pointer-events-none p-3.5 rounded-2xl bg-slate-900/95 dark:bg-[#070b1e]/95 text-white shadow-2xl border border-cyan-500/80 backdrop-blur-md w-[295px] space-y-2 animate-in fade-in zoom-in-95 duration-100 font-sans"
+                className="absolute z-40 pointer-events-none p-3.5 rounded-2xl bg-slate-900/95 dark:bg-[#17181c]/95 text-white shadow-2xl border border-cyan-500/80 backdrop-blur-md w-[295px] space-y-2 animate-in fade-in zoom-in-95 duration-100 font-sans"
               >
                 <div className="flex items-center justify-between pb-1.5 border-b border-cyan-500/30">
                   <div className="flex items-center gap-1.5">
@@ -1610,7 +1610,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
             </div>
 
             {/* Unified Side Controls & Toggles Panel */}
-            <div className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4 bg-white/95 dark:bg-[#070b22]/95 backdrop-blur-xs border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+            <div className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4 bg-white/95 dark:bg-[#17181c]/95 backdrop-blur-xs border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
               {/* Header */}
               <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -1646,7 +1646,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                   className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-bold flex items-center justify-between transition-all cursor-pointer ${
                     showTrendline
                       ? 'bg-cyan-500/15 border-cyan-500/50 text-cyan-700 dark:text-cyan-300 shadow-2xs ring-1 ring-cyan-400/30'
-                      : 'bg-slate-50 dark:bg-[#050818] border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                      : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
                   title={showTrendline ? 'Hide Tendency Trendline' : 'Show Tendency Trendline (R²)'}
                 >
@@ -1673,7 +1673,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                     className={`px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between ${
                       discrepancyFilter === 'ALL'
                         ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold border-slate-900 dark:border-slate-100 shadow-2xs'
-                        : 'bg-slate-50 dark:bg-[#050818] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400'
+                        : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400'
                     }`}
                   >
                     <span className="text-[10px] opacity-75">All Cards</span>
@@ -1686,7 +1686,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                     className={`px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between ${
                       discrepancyFilter === 'EXACT'
                         ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-2xs'
-                        : 'bg-slate-50 dark:bg-[#050818] border-slate-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400'
+                        : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400'
                     }`}
                   >
                     <span className="text-[10px] opacity-75">🎯 Exact (0Δ)</span>
@@ -1699,7 +1699,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                     className={`px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between ${
                       discrepancyFilter === 'TRAPS'
                         ? 'bg-rose-600 text-white font-bold border-rose-600 shadow-2xs'
-                        : 'bg-slate-50 dark:bg-[#050818] border-slate-200 dark:border-slate-800 text-rose-700 dark:text-rose-400 hover:border-rose-400'
+                        : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-rose-700 dark:text-rose-400 hover:border-rose-400'
                     }`}
                   >
                     <span className="text-[10px] opacity-75">⚠️ Traps (+Δ)</span>
@@ -1712,7 +1712,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                     className={`px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col justify-between ${
                       discrepancyFilter === 'SLEEPERS'
                         ? 'bg-sky-600 text-white font-bold border-sky-600 shadow-2xs'
-                        : 'bg-slate-50 dark:bg-[#050818] border-slate-200 dark:border-slate-800 text-sky-700 dark:text-sky-400 hover:border-sky-400'
+                        : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-sky-700 dark:text-sky-400 hover:border-sky-400'
                     }`}
                   >
                     <span className="text-[10px] opacity-75">🧊 Sleepers (-Δ)</span>
@@ -1745,7 +1745,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                     className={`col-span-2 px-2.5 py-1.5 rounded-xl font-mono text-[11px] font-bold flex items-center justify-between cursor-pointer transition-all border ${
                       rarityFilter === 'ALL'
                         ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100 shadow-2xs'
-                        : 'bg-slate-50 dark:bg-[#050818] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                        : 'bg-slate-50 dark:bg-[#17181c] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -1768,7 +1768,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                       className={`px-2.5 py-1.5 rounded-xl font-mono text-[11px] font-bold flex items-center justify-between cursor-pointer transition-all border ${
                         rarityFilter === item.id
                           ? 'bg-violet-600 text-white border-violet-500 shadow-2xs'
-                          : 'bg-slate-50 dark:bg-[#050818] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                          : 'bg-slate-50 dark:bg-[#17181c] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
                       }`}
                     >
                       <span className="flex items-center gap-1.5 truncate">
@@ -1790,7 +1790,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
 
       {/* 4. Statistical Modeling & Linear Regression (OLS) Bar */}
       {stats.total >= 2 && (
-        <div className="px-4 sm:px-6 py-2.5 bg-slate-100/90 dark:bg-[#040718] border-t border-slate-200 dark:border-slate-800/90 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div className="px-4 sm:px-6 py-2.5 bg-slate-100/90 dark:bg-[#090a0d] border-t border-slate-200 dark:border-slate-800/90 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
           <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
@@ -1817,7 +1817,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                 </button>
 
                 {activeInfoPopup === 'intercept' && (
-                  <div className="absolute bottom-full left-0 mb-2 z-40 w-72 p-3 bg-slate-900/95 dark:bg-[#070b1e]/98 text-white rounded-xl shadow-2xl border border-cyan-500/80 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-100 pointer-events-none select-none">
+                  <div className="absolute bottom-full left-0 mb-2 z-40 w-72 p-3 bg-slate-900/95 dark:bg-[#17181c]/98 text-white rounded-xl shadow-2xl border border-cyan-500/80 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-100 pointer-events-none select-none">
                     <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-cyan-500/30">
                       <strong className="text-cyan-300 font-bold flex items-center gap-1.5 text-xs">
                         <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
@@ -1890,7 +1890,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               </button>
 
               {activeInfoPopup === 'rsq' && (
-                <div className="absolute bottom-full left-0 mb-2 z-40 w-72 p-3 bg-slate-900/95 dark:bg-[#070b1e]/98 text-white rounded-xl shadow-2xl border border-cyan-500/80 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-100 pointer-events-none select-none">
+                <div className="absolute bottom-full left-0 mb-2 z-40 w-72 p-3 bg-slate-900/95 dark:bg-[#17181c]/98 text-white rounded-xl shadow-2xl border border-cyan-500/80 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-100 pointer-events-none select-none">
                   <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-cyan-500/30">
                     <strong className="text-cyan-300 font-bold flex items-center gap-1.5 text-xs">
                       <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
@@ -1944,7 +1944,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               </button>
 
               {activeInfoPopup === 'tendency' && (
-                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 z-40 w-80 sm:w-96 p-3.5 bg-slate-900/98 dark:bg-[#070b1e]/98 text-white rounded-xl shadow-2xl border border-cyan-500/80 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-100 select-none">
+                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 z-40 w-80 sm:w-96 p-3.5 bg-slate-900/98 dark:bg-[#17181c]/98 text-white rounded-xl shadow-2xl border border-cyan-500/80 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-100 select-none">
                   <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-cyan-500/30">
                     <strong className="text-cyan-300 font-bold flex items-center gap-1.5 text-xs">
                       <Sparkles className="w-3.5 h-3.5 text-cyan-400" />

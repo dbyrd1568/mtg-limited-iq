@@ -174,7 +174,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
       {/* Header & KPI Summary */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -197,13 +197,13 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleExport}
-              className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-[#050818] hover:bg-slate-200 dark:hover:bg-[#10163b] border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-[#17181c] hover:bg-slate-200 dark:hover:bg-[#10163b] border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
               <Download className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
               <span>Export</span>
             </button>
 
-            <label className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-[#050818] hover:bg-slate-200 dark:hover:bg-[#10163b] border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+            <label className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-[#17181c] hover:bg-slate-200 dark:hover:bg-[#10163b] border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
               <Upload className="w-3.5 h-3.5 text-slate-500" />
               <span>Import</span>
               <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
@@ -220,7 +220,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
         {/* 4 Core Stat Tiles */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div
-            className="p-4 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-0.5"
+            className="p-4 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-center space-y-0.5"
             title={`Overall Accuracy: (${userStats.totalCorrect} correct ÷ ${userStats.totalQuestions || (userStats.totalQuizzes * 10)} attempted questions) × 100%`}
           >
             <span className="text-2xl sm:text-3xl font-black font-heading text-violet-700 dark:text-cyan-300">{userStats.overallAccuracy}%</span>
@@ -229,17 +229,17 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
             <span className="text-2xl sm:text-3xl font-black font-heading text-slate-900 dark:text-white">{userStats.totalQuizzes}</span>
             <p className="text-xs text-slate-500 dark:text-slate-400">Quizzes Finished</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
             <span className="text-2xl sm:text-3xl font-black font-heading text-emerald-600 dark:text-emerald-400">{userStats.totalCorrect}</span>
             <p className="text-xs text-slate-500 dark:text-slate-400">Questions Mastered</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
             <div className="flex items-center justify-center gap-1">
               <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
               <span className="text-2xl sm:text-3xl font-black font-heading text-amber-600 dark:text-amber-300">{userStats.bestStreak}</span>
@@ -266,7 +266,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
             </span>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
             {(Object.keys(CATEGORY_DETAILS) as QuestionCategory[]).map((cat) => {
               const details = CATEGORY_DETAILS[cat];
               const stat = userStats.categories?.[cat] || { attempted: 0, correct: 0 };
@@ -292,7 +292,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-100 dark:bg-[#050818] rounded-full h-1.5 overflow-hidden border border-slate-200 dark:border-slate-800">
+                  <div className="w-full bg-slate-100 dark:bg-[#17181c] rounded-full h-1.5 overflow-hidden border border-slate-200 dark:border-slate-800">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         acc >= 80 ? 'bg-emerald-500' : acc >= 60 ? 'bg-violet-500' : 'bg-rose-500'
@@ -303,15 +303,15 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
 
                   {/* Interactive Category Tooltip / Strategy Card */}
                   {isTooltipOpen && (
-                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-700 space-y-2 text-xs text-slate-700 dark:text-slate-300 animate-in fade-in duration-200 shadow-xs">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-700 space-y-2 text-xs text-slate-700 dark:text-slate-300 animate-in fade-in duration-200 shadow-xs">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#090e24] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#121316] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                           {details.tag}
                         </span>
                         <span className="text-slate-400">Limited Heuristic</span>
                       </div>
                       <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-sans">{details.description}</p>
-                      <div className="p-2 rounded-lg bg-amber-50 dark:bg-[#090e24] border border-amber-200 dark:border-slate-800 space-y-1">
+                      <div className="p-2 rounded-lg bg-amber-50 dark:bg-[#121316] border border-amber-200 dark:border-slate-800 space-y-1">
                         <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">💡 Why It Wins Drafts:</div>
                         <p className="text-[11px] text-amber-900 dark:text-slate-300 leading-relaxed">{details.whyItMatters}</p>
                       </div>
@@ -335,7 +335,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
             </h2>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-2.5 shadow-xs">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-2.5 shadow-xs">
             {setStatsList.length === 0 ? (
               <div className="py-6 text-center text-slate-400 text-xs">
                 Take quizzes on different sets to earn Mastery badges!
@@ -344,11 +344,11 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
               setStatsList.map((set) => (
                 <div
                   key={set.setCode}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs"
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-xs"
                 >
                   <div className="overflow-hidden">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#090e24] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                      <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#121316] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                         {set.setCode}
                       </span>
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{set.setName}</h4>
@@ -399,7 +399,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
         </div>
 
         {missedCardsList.length === 0 ? (
-          <div className="p-6 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 text-center text-slate-500 dark:text-slate-400 text-xs shadow-xs">
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 text-center text-slate-500 dark:text-slate-400 text-xs shadow-xs">
             🎉 Your Missed Practice Deck is empty! You have zero unmastered cards.
           </div>
         ) : (
@@ -408,12 +408,12 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
               <div
                 key={`${item.setCode}_${item.cardId}`}
                 onClick={() => onSelectCardName?.(item.cardName)}
-                className="p-3.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-[#090e24] dark:hover:bg-[#0d1538] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 flex items-center justify-between gap-3 shadow-xs cursor-pointer transition-colors group"
+                className="p-3.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-[#121316] dark:hover:bg-[#1f2026] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 flex items-center justify-between gap-3 shadow-xs cursor-pointer transition-colors group"
                 title="Click to view & grade card in Evaluation Hub"
               >
                 <div className="overflow-hidden">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                    <span className="font-mono text-[10px] font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                       {item.setCode}
                     </span>
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-300 transition-colors truncate">{item.cardName}</h4>

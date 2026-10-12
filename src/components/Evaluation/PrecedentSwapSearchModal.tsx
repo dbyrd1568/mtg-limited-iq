@@ -432,10 +432,10 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[96vw] max-w-[1550px] h-[92vh] max-h-[92vh] bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-[96vw] max-w-[1550px] h-[92vh] max-h-[92vh] bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
       >
         {/* Modal Header */}
-        <div className="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-[#050818]/90 shrink-0">
+        <div className="px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/90 dark:bg-[#17181c]/90 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 flex items-center justify-center text-violet-700 dark:text-cyan-400 shrink-0">
               <ArrowLeftRight className="w-4 h-4" />
@@ -498,8 +498,8 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
         </div>
 
         {/* Mobile View Toggle Bar (Visible only on < md) */}
-        <div className="flex md:hidden items-center justify-between gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-[#070b1e] shrink-0">
-          <div className="flex items-center gap-1 w-full bg-slate-200/80 dark:bg-[#050818] p-1 rounded-xl">
+        <div className="flex md:hidden items-center justify-between gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-[#17181c] shrink-0">
+          <div className="flex items-center gap-1 w-full bg-slate-200/80 dark:bg-[#17181c] p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setMobileTab('search')}
@@ -532,7 +532,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
           {/* ========================================================= */}
           {/* LEFT COLUMN: Card Being Swapped (Width ~360px)            */}
           {/* ========================================================= */}
-          <div className={`w-full md:w-[360px] lg:w-[380px] shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#070b1e]/60 flex-col overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-4 ${
+          <div className={`w-full md:w-[360px] lg:w-[380px] shrink-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#17181c]/60 flex-col overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-4 ${
             mobileTab === 'preview' ? 'flex flex-1 min-h-0' : 'hidden md:flex'
           }`}>
             {/* Slot Selector Tabs & Reference Card Toggle */}
@@ -546,7 +546,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                 </span>
               </div>
 
-              <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-200/70 dark:bg-[#050818] rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-200/70 dark:bg-[#17181c] rounded-2xl border border-slate-200 dark:border-slate-800">
                 {[0, 1, 2, 3].map((slotIdx) => {
                   const isCur = selectedSlot === slotIdx;
                   const match = currentMatches[slotIdx];
@@ -583,7 +583,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
               </div>
 
               {/* View Mode Segmented Control: Original Reference vs Precedent in Slot */}
-              <div className="flex items-center p-1 bg-slate-200/80 dark:bg-[#050818] rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center p-1 bg-slate-200/80 dark:bg-[#17181c] rounded-2xl border border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setActiveCardView('reference')}
@@ -612,7 +612,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
             </div>
 
             {/* Card Details Box */}
-            <div className="p-4 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex-1 flex flex-col justify-between">
+            <div className="p-4 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex-1 flex flex-col justify-between">
               {activeCardView === 'reference' ? (
                 /* Original Reference Card Details */
                 <div className="space-y-3">
@@ -684,7 +684,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                   </div>
 
                   {/* Telemetry info */}
-                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-violet-50/70 dark:bg-[#070b1e] border border-violet-200/80 dark:border-violet-900/40 text-[11px] font-mono">
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-violet-50/70 dark:bg-[#17181c] border border-violet-200/80 dark:border-violet-900/40 text-[11px] font-mono">
                     <div>
                       <span className="text-slate-400 block text-[10px]">Evaluation Target</span>
                       <span className="font-bold text-violet-700 dark:text-cyan-400">
@@ -709,7 +709,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
                         Oracle Rules Text:
                       </span>
-                      <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#050818]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug max-h-28 overflow-y-auto custom-scrollbar">
+                      <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug max-h-28 overflow-y-auto custom-scrollbar">
                         {targetCard.oracle_text}
                       </div>
                     </div>
@@ -797,7 +797,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                   </div>
 
                   {/* 17Lands Telemetry & Similarity */}
-                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200/80 dark:border-slate-800 text-[11px] font-mono">
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200/80 dark:border-slate-800 text-[11px] font-mono">
                     <div>
                       <span className="text-slate-400 block text-[10px]">Precedent Match</span>
                       <span className="font-bold text-violet-700 dark:text-cyan-400">
@@ -822,7 +822,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
                         Oracle Rules Text:
                       </span>
-                      <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#050818]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug max-h-24 overflow-y-auto custom-scrollbar">
+                      <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug max-h-24 overflow-y-auto custom-scrollbar">
                         {currentSlotCard.oracle_text}
                       </div>
                     </div>
@@ -870,13 +870,13 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
           {/* ========================================================= */}
           {/* RIGHT COLUMN: Robust Search & Visual Card Grid            */}
           {/* ========================================================= */}
-          <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#090e24] overflow-y-auto custom-scrollbar ${
+          <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#121316] overflow-y-auto custom-scrollbar ${
             mobileTab === 'search' ? 'flex min-h-0' : 'hidden md:flex'
           }`}>
             {/* Search Toolbar (Main Screen Style) */}
-            <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3 bg-slate-50/50 dark:bg-[#060a1d]/50">
+            <div className="p-3 sm:p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 space-y-2.5 sm:space-y-3 bg-slate-50/50 dark:bg-[#17181c]/50">
               {/* Active Target Slot Selector Strip */}
-              <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-200/70 dark:bg-[#050818] rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-mono mb-1">
+              <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-200/70 dark:bg-[#17181c] rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-mono mb-1">
                 <div className="flex items-center gap-1.5 pl-1.5 shrink-0">
                   <ArrowLeftRight className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400 shrink-0" />
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
@@ -898,7 +898,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                         className={`px-2.5 sm:px-3 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
                           isCur
                             ? 'bg-violet-600 text-white shadow-xs ring-2 ring-violet-400/40'
-                            : 'bg-white/80 dark:bg-[#090e24] text-slate-600 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800'
+                            : 'bg-white/80 dark:bg-[#121316] text-slate-600 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800'
                         }`}
                       >
                         <span>Slot {slotIdx + 1}</span>
@@ -946,7 +946,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                       }
                     }}
                     placeholder="Search by card name, rules text (e.g. 'draw a card'), stats 2/3, or mana {2}{W}..."
-                    className="w-full h-10 pl-10 pr-9 bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 shadow-xs transition-all"
+                    className="w-full h-10 pl-10 pr-9 bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 shadow-xs transition-all"
                   />
 
                   {/* Clear / Spinner icon */}
@@ -1008,7 +1008,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                     <select
                       value={selectedRarity}
                       onChange={(e) => setSelectedRarity(e.target.value)}
-                      className="h-7 px-2 bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer capitalize"
+                      className="h-7 px-2 bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer capitalize"
                     >
                       {RARITY_OPTIONS.map((r) => (
                         <option key={r} value={r} className="capitalize">
@@ -1026,7 +1026,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                     <select
                       value={selectedType}
                       onChange={(e) => setSelectedType(e.target.value)}
-                      className="h-7 px-2 bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer"
+                      className="h-7 px-2 bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer"
                     >
                       {TYPE_OPTIONS.map((t) => (
                         <option key={t} value={t}>
@@ -1044,7 +1044,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as any)}
-                      className="h-7 px-2 bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer"
+                      className="h-7 px-2 bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer"
                     >
                       <option value="similarity">Similarity % (High → Low)</option>
                       <option value="name">Card Name (A → Z)</option>
@@ -1066,7 +1066,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                     key={chip}
                     type="button"
                     onClick={() => handleChipClick(chip)}
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-mono bg-white dark:bg-[#050818] hover:bg-violet-50 dark:hover:bg-violet-950/40 text-slate-600 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 border border-slate-200 dark:border-slate-800 hover:border-violet-300 transition-colors cursor-pointer shadow-2xs"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-mono bg-white dark:bg-[#17181c] hover:bg-violet-50 dark:hover:bg-violet-950/40 text-slate-600 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 border border-slate-200 dark:border-slate-800 hover:border-violet-300 transition-colors cursor-pointer shadow-2xs"
                   >
                     {chip}
                   </button>
@@ -1075,7 +1075,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
             </div>
 
             {/* Results Counter Bar */}
-            <div className="px-5 py-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-[#050818]/30">
+            <div className="px-5 py-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-[#17181c]/30">
               <div className="flex items-center gap-2">
                 <span>
                   Found <span className="font-bold text-slate-800 dark:text-slate-200">{evaluatedResults.length}</span> candidates
@@ -1099,7 +1099,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                   {[...Array(6)].map((_, i) => (
                     <div
                       key={i}
-                      className="p-4 rounded-3xl bg-slate-50 dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 animate-pulse space-y-3"
+                      className="p-4 rounded-3xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 animate-pulse space-y-3"
                     >
                       <div className="w-full aspect-[63/88] max-h-[350px] bg-slate-200 dark:bg-slate-800 rounded-2xl" />
                       <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-md w-3/4" />
@@ -1129,7 +1129,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                     return (
                       <div
                         key={`${card.set}_${card.id}`}
-                        className={`rounded-3xl border bg-white dark:bg-[#070b1e] shadow-xs hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 group gap-3 ${
+                        className={`rounded-3xl border bg-white dark:bg-[#17181c] shadow-xs hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden p-3.5 sm:p-4 group gap-3 ${
                           isCurrentlySwapped
                             ? 'border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-400/40'
                             : inSlotIndex >= 0
@@ -1160,7 +1160,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                           </div>
 
                           {/* Card Thumbnail Artwork (Enlarged & clean, no overlay badges) */}
-                          <div className="w-full aspect-[63/88] max-h-[350px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#050818] shadow-xs relative shrink-0 flex items-center justify-center">
+                          <div className="w-full aspect-[63/88] max-h-[350px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-xs relative shrink-0 flex items-center justify-center">
                             <CardImage
                               card={card}
                               src={imageUri}
@@ -1203,13 +1203,13 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                           {/* Rules / Oracle Text Box */}
                           {card.oracle_text ? (
                             <div
-                              className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#050818]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug line-clamp-3 min-h-[58px]"
+                              className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-700 dark:text-slate-300 leading-snug line-clamp-3 min-h-[58px]"
                               title={card.oracle_text}
                             >
                               {card.oracle_text}
                             </div>
                           ) : (
-                            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#050818]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-400 italic min-h-[58px] flex items-center justify-center">
+                            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/60 border border-slate-200/60 dark:border-slate-800/60 text-[11px] font-sans text-slate-400 italic min-h-[58px] flex items-center justify-center">
                               (No rules text)
                             </div>
                           )}
@@ -1294,7 +1294,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                                         ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-400 shadow-2xs font-black'
                                         : isSelected
                                         ? 'bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-cyan-300 border-violet-400'
-                                        : 'bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-cyan-300 border-slate-200 dark:border-slate-800'
+                                        : 'bg-slate-100 dark:bg-[#17181c] hover:bg-violet-100 dark:hover:bg-violet-950/60 text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-cyan-300 border-slate-200 dark:border-slate-800'
                                     }`}
                                   >
                                     {isThisSlot ? `✓ S${slotIdx + 1}` : `S${slotIdx + 1}`}
@@ -1335,7 +1335,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
         </div>
 
         {/* Modal Footer */}
-        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/90 dark:bg-[#050818]/90 shrink-0">
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/90 dark:bg-[#17181c]/90 shrink-0">
           <button
             type="button"
             onClick={onClose}

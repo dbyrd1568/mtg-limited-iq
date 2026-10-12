@@ -66,7 +66,7 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
             placeholder={placeholder || defaultPlaceholder}
             value={query}
             onChange={(e) => onChangeQuery(e.target.value)}
-            className="w-full h-9 pl-9 pr-8 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-mono transition-all shadow-xs"
+            className="w-full h-9 pl-9 pr-8 bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-mono transition-all shadow-xs"
           />
 
           {/* Right Action: Clear (x) button */}
@@ -87,7 +87,7 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
           <button
             type="button"
             onClick={() => setIsAdvancedOpen(true)}
-            className="h-9 flex items-center justify-center gap-1.5 px-3 rounded-xl bg-slate-100 dark:bg-[#050818] hover:bg-violet-50 dark:hover:bg-violet-950/40 border border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700/60 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 transition-all cursor-pointer shadow-xs whitespace-nowrap"
+            className="h-9 flex items-center justify-center gap-1.5 px-3 rounded-xl bg-slate-100 dark:bg-[#17181c] hover:bg-violet-50 dark:hover:bg-violet-950/40 border border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700/60 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-violet-700 dark:hover:text-cyan-300 transition-all cursor-pointer shadow-xs whitespace-nowrap"
             title="Open Scryfall-style visual advanced search filters"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />

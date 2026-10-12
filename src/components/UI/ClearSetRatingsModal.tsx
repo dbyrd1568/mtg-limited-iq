@@ -47,10 +47,10 @@ export const ClearSetRatingsModal: React.FC<ClearSetRatingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 dark:bg-[#030612]/90 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-white dark:bg-[#0a0f29] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#1c1d22] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070b1e]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c]">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
@@ -93,7 +93,7 @@ export const ClearSetRatingsModal: React.FC<ClearSetRatingsModalProps> = ({
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-xs space-y-2">
                 <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
                   <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span>Selected Set Only Guarantee:</span>
@@ -206,7 +206,7 @@ export const ClearSetRatingsModal: React.FC<ClearSetRatingsModalProps> = ({
                   placeholder={`Type "${expectedPhrase}" to confirm`}
                   value={typedConfirmation}
                   onChange={(e) => setTypedConfirmation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm font-mono tracking-wider bg-slate-50 dark:bg-[#050818] border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-rose-500 dark:focus:border-rose-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm font-mono tracking-wider bg-slate-50 dark:bg-[#17181c] border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-rose-500 dark:focus:border-rose-400"
                 />
                 <div className="flex items-center justify-between text-[11px] font-mono">
                   <span className="text-slate-400">Target phrase: {expectedPhrase}</span>

@@ -253,7 +253,7 @@ export const SetBadge: React.FC<SetBadgeProps> = ({
 
   return (
     <span
-      className={`font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-cyan-500/30 flex items-center gap-1.5 shadow-xs shrink-0 ${className}`}
+      className={`font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-cyan-500/30 flex items-center gap-1.5 shadow-xs shrink-0 ${className}`}
       title={`${code} MTG Set`}
     >
       <SetSymbol setCode={code} iconSvgUri={iconSvgUri} size={size === 'md' ? 'md' : size === 'xs' ? 'xs' : 'sm'} rarity={rarity} />

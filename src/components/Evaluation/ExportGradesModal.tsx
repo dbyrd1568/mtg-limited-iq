@@ -372,10 +372,10 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#080d26] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-[#050818]/60">
+        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-[#17181c]/60">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-violet-500/20 shrink-0">
               <FileSpreadsheet className="w-5 h-5" />
@@ -415,7 +415,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="px-5 sm:px-6 py-3 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-[#050818]/40">
+        <div className="px-5 sm:px-6 py-3 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-[#17181c]/40">
           <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-200/60 dark:bg-slate-900/90 rounded-xl border border-slate-300/50 dark:border-slate-800">
             <button
               type="button"
@@ -473,7 +473,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
           {/* ==================== TAB 1: FULL SPREADSHEET ==================== */}
           {activeTab === 'spreadsheet' && (
             cards.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-3 my-4">
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-center space-y-3 my-4">
                 <FileSpreadsheet className="w-10 h-10 text-slate-400 mx-auto" />
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
                   No Active Set Selected
@@ -492,7 +492,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
             ) : (
             <div className="space-y-6">
               {/* Summary Metrics & Scope Filter */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono mb-1">
                     Export Scope
@@ -552,7 +552,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyFullTsv}
-                  className="p-4 rounded-2xl bg-white dark:bg-[#050818] hover:bg-slate-50 dark:hover:bg-violet-950/30 border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 transition-all flex items-center justify-between cursor-pointer group"
+                  className="p-4 rounded-2xl bg-white dark:bg-[#17181c] hover:bg-slate-50 dark:hover:bg-violet-950/30 border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 transition-all flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-cyan-300 flex items-center justify-center shrink-0">
@@ -595,7 +595,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                   <span>{previewRows.length} sample cards</span>
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto bg-white dark:bg-[#050818]">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto bg-white dark:bg-[#17181c]">
                   <table className="w-full text-left text-xs font-mono divide-y divide-slate-200 dark:divide-slate-800">
                     <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 font-bold">
                       <tr>
@@ -660,7 +660,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
           {/* ==================== TAB 2: SEND TO 17LANDS ==================== */}
           {activeTab === 'seventeenlands' && (
             cards.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-3 my-4">
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-center space-y-3 my-4">
                 <Share2 className="w-10 h-10 text-slate-400 mx-auto" />
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
                   No Active Set Selected
@@ -690,7 +690,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
               </div>
 
               {/* Method 1: Automated CSV Download & Open 17Lands */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-violet-600 text-white font-bold text-xs flex items-center justify-center font-mono shrink-0">
@@ -792,7 +792,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Tool A: Draggable Bookmarklet */}
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#050818] border border-amber-200 dark:border-amber-800/40 space-y-2">
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#17181c] border border-amber-200 dark:border-amber-800/40 space-y-2">
                     <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                       Option A: Bookmarklet
                     </span>
@@ -814,7 +814,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                   </div>
 
                   {/* Tool B: Console 1-Liner Script */}
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#050818] border border-amber-200 dark:border-amber-800/40 space-y-2">
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#17181c] border border-amber-200 dark:border-amber-800/40 space-y-2">
                     <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                       Option B: Browser Console
                     </span>
@@ -838,7 +838,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
               </div>
 
               {/* Step 3: Save & Track Your Public 17Lands Tier List URL */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-cyan-600 text-white font-bold text-xs flex items-center justify-center font-mono shrink-0">
                     3
@@ -936,7 +936,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
           {/* ==================== TAB 3: PUBLIC SHARE LINK ==================== */}
           {activeTab === 'share' && (
             cards.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-center space-y-3 my-4">
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-center space-y-3 my-4">
                 <Link2 className="w-10 h-10 text-slate-400 mx-auto" />
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
                   No Active Set Selected
@@ -960,7 +960,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 </div>
 
                 {/* Configuration Options */}
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
                     Sharing Preferences
                   </h4>
@@ -1006,7 +1006,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 </div>
 
                 {/* Share Link Generation / Active Status */}
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Link2 className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -1101,7 +1101,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 </div>
 
                 {/* Security Guarantee Box */}
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818]/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c]/60 border border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
                     <Lock className="w-3.5 h-3.5 text-violet-500" />
                     <span>Security & Anti-Scraping Guarantees</span>
@@ -1122,7 +1122,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
             <div className="space-y-6">
               {/* Overview Metrics Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
                   <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Total Graded</div>
                   <div className="text-2xl font-black text-violet-600 dark:text-cyan-300 font-heading mt-0.5">
                     {totalGradedAllSets}
@@ -1130,7 +1130,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Cards with grades</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
                   <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Sets Graded</div>
                   <div className="text-2xl font-black text-slate-900 dark:text-white font-heading mt-0.5">
                     {uniqueSetsGraded.length}
@@ -1140,7 +1140,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
                   <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Quizzes Taken</div>
                   <div className="text-2xl font-black text-slate-900 dark:text-white font-heading mt-0.5">
                     {userProfileStats.totalQuizzes}
@@ -1150,7 +1150,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
                   <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Profile Level</div>
                   <div className="text-2xl font-black text-amber-500 dark:text-amber-400 font-heading mt-0.5">
                     Lv {userProfileStats.level}
@@ -1185,7 +1185,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyProfileJson}
-                  className="p-4 rounded-2xl bg-white dark:bg-[#050818] hover:bg-slate-50 dark:hover:bg-violet-950/30 border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 transition-all flex items-center justify-between cursor-pointer group"
+                  className="p-4 rounded-2xl bg-white dark:bg-[#17181c] hover:bg-slate-50 dark:hover:bg-violet-950/30 border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 transition-all flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-cyan-300 flex items-center justify-center shrink-0">
@@ -1220,7 +1220,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                   </div>
                 </div>
 
-                <div className="rounded-2xl bg-slate-900 dark:bg-[#030614] border border-slate-800 p-4 font-mono text-xs text-slate-300 overflow-x-auto max-h-56 leading-relaxed">
+                <div className="rounded-2xl bg-slate-900 dark:bg-[#090a0d] border border-slate-800 p-4 font-mono text-xs text-slate-300 overflow-x-auto max-h-56 leading-relaxed">
                   <pre className="text-[11px]">
                     {backupJsonString.split('\n').slice(0, 30).join('\n')}
                     {backupJsonString.split('\n').length > 30 && '\n  ... [truncated for preview, full payload will be downloaded]'}
@@ -1245,7 +1245,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3.5 sm:px-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#050818]/60 flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 sm:px-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#17181c]/60 flex items-center justify-between shrink-0">
           <div className="text-[11px] font-mono text-slate-400">
             {activeTab === 'backup'
               ? `${totalGradedAllSets} cards evaluated • ${uniqueSetsGraded.length} sets in database`

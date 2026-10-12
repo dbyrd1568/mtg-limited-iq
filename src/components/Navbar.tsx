@@ -92,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#060919]/95 backdrop-blur-md shadow-xs transition-colors duration-200">
+    <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#090a0d]/95 backdrop-blur-md shadow-xs transition-colors duration-200">
       <div className="max-w-[1440px] mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
           {/* Brand Logo & Name: Official WOTC MTG Planeswalker Spark + MTG Limited IQ */}
@@ -111,7 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Navigation Tabs in Unified Pill Aesthetic (Desktop only; Mobile uses MobileBottomNav) */}
-          <nav className="hidden md:flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar shrink-0">
+          <nav className="hidden md:flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#121316] border border-slate-200/90 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar shrink-0">
             <button
               onClick={() => onTabChange('evaluation')}
               className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
@@ -181,7 +181,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {isHelpMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#0b102b] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                   {onOpenWelcomeTour && (
                     <button
                       type="button"
@@ -268,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   {/* Semantic Live Sync Status Indicator Dot */}
                   <span
-                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-white dark:ring-[#060919] ${
+                    className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-white dark:ring-[#090a0d] ${
                       syncStatus === 'synced'
                         ? 'bg-emerald-500'
                         : syncStatus === 'syncing'

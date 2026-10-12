@@ -82,9 +82,9 @@ export const EmptySetPlaceholder: React.FC<EmptySetPlaceholderProps> = ({
               key={set.code}
               type="button"
               onClick={() => onSelectSet(set)}
-              className="p-3 rounded-2xl bg-white dark:bg-[#080d26] hover:bg-violet-50/80 dark:hover:bg-violet-950/40 border border-slate-200 dark:border-slate-800/80 hover:border-violet-400 dark:hover:border-violet-600 transition-all text-left flex items-center gap-3 group cursor-pointer shadow-xs hover:shadow-md"
+              className="p-3 rounded-2xl bg-white dark:bg-[#121316] hover:bg-violet-50/80 dark:hover:bg-violet-950/40 border border-slate-200 dark:border-slate-800/80 hover:border-violet-400 dark:hover:border-violet-600 transition-all text-left flex items-center gap-3 group cursor-pointer shadow-xs hover:shadow-md"
             >
-              <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <SetSymbol setCode={set.code} iconSvgUri={set.icon_svg_uri} size="sm" />
               </div>
               <div className="min-w-0 flex-1">

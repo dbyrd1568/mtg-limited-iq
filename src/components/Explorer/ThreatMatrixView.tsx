@@ -132,7 +132,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
   return (
     <div className="space-y-4">
       {/* 1. Header Tactical Banner */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -155,12 +155,12 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
 
           {/* Quick Summary Pill Badges */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="px-3 py-1.5 rounded-xl bg-white/80 dark:bg-[#070b1f] border border-slate-200 dark:border-slate-800 text-xs font-mono flex items-center gap-2 shadow-2xs">
+            <div className="px-3 py-1.5 rounded-xl bg-white/80 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-xs font-mono flex items-center gap-2 shadow-2xs">
               <span className="text-slate-400">Live Threats:</span>
               <strong className="text-rose-600 dark:text-rose-400 font-bold">{filteredThreats.length}</strong>
               <span className="text-slate-400">/ {allSetThreats.length}</span>
             </div>
-            <div className="px-3 py-1.5 rounded-xl bg-white/80 dark:bg-[#070b1f] border border-slate-200 dark:border-slate-800 text-xs font-mono flex items-center gap-2 shadow-2xs">
+            <div className="px-3 py-1.5 rounded-xl bg-white/80 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-xs font-mono flex items-center gap-2 shadow-2xs">
               <Zap className="w-3.5 h-3.5 text-amber-500" />
               <span className="text-slate-400">Instant Speed:</span>
               <strong className="text-amber-600 dark:text-amber-400 font-bold">{instantCount}</strong>
@@ -192,7 +192,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
                   className={`px-2 py-0.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer border ${
                     openMana.C === cmc && openMana.W === 0 && openMana.U === 0 && openMana.B === 0 && openMana.R === 0 && openMana.G === 0
                       ? 'bg-violet-600 text-white border-violet-500 shadow-2xs'
-                      : 'bg-white dark:bg-[#080d21] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-400'
+                      : 'bg-white dark:bg-[#121316] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-violet-400'
                   }`}
                   title={`Simulate opponent having any ${cmc} mana open`}
                 >
@@ -216,7 +216,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
 
           {/* Clickable Mana Pips Selector */}
           <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 p-1.5 rounded-xl bg-white/90 dark:bg-[#070b1f] border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center gap-1.5 p-1.5 rounded-xl bg-white/90 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-slate-400 px-1 hidden md:inline">Add Mana:</span>
               {(['W', 'U', 'B', 'R', 'G', 'C'] as (keyof OpenManaPool)[]).map((pip) => (
                 <button
@@ -246,7 +246,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
                         key={pip}
                         type="button"
                         onClick={() => handleDecrementPip(pip)}
-                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white dark:bg-[#080d21] border border-violet-300 dark:border-violet-700/80 hover:border-rose-400 cursor-pointer shadow-2xs group"
+                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white dark:bg-[#121316] border border-violet-300 dark:border-violet-700/80 hover:border-rose-400 cursor-pointer shadow-2xs group"
                         title={`Click to remove 1 ${pip === 'C' ? 'Generic' : pip} mana`}
                       >
                         <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 group-hover:text-rose-500">
@@ -268,10 +268,10 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
       </div>
 
       {/* 3. Toolbar Controls: Speed, Rarity, Mechanism, and Color */}
-      <div className="p-3 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2.5">
+      <div className="p-3 bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2.5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Timing / Speed Toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={() => setSpeedFilter('instant_only')}
@@ -300,7 +300,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
           </div>
 
           {/* Rarity (80/20 Rule) Toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={() => setRarityFilter('common_uncommon')}
@@ -357,7 +357,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
 
       {/* 4. Threat Matrix Color Grid */}
       {filteredThreats.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-white dark:bg-[#090e24] border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="p-12 text-center rounded-2xl bg-white dark:bg-[#121316] border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
           <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
             <Check className="w-6 h-6" />
           </div>
@@ -397,7 +397,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
             return (
               <div
                 key={sec.id}
-                className="rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-xs"
+                className="rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-xs"
               >
                 {/* Section Header */}
                 <div className={`px-4 py-2.5 ${sec.headerBg} border-b ${sec.borderCol} flex items-center justify-between`}>
@@ -406,7 +406,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
                     <h3 className={`text-sm font-black ${sec.textCol} tracking-tight`}>
                       {sec.name} Threats
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/80 dark:bg-[#060a1d] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/80 dark:bg-[#17181c] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 shadow-2xs">
                       {secThreats.length} card{secThreats.length === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -426,7 +426,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
                       <div
                         key={card.id}
                         onClick={() => onSelectCard(card)}
-                        className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-[#060a1d]/90 border border-slate-200/90 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all shadow-xs hover:shadow-md cursor-pointer group flex flex-col sm:flex-row items-center sm:items-start gap-4"
+                        className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-[#17181c]/90 border border-slate-200/90 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all shadow-xs hover:shadow-md cursor-pointer group flex flex-col sm:flex-row items-center sm:items-start gap-4"
                       >
                         {/* 1. Card Visual (Always Shown) */}
                         <div className="shrink-0 flex flex-col items-center sm:items-start w-full sm:w-[170px] relative z-10">
@@ -500,7 +500,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
                             </div>
 
                             {/* Threat Summary Banner */}
-                            <div className="p-2 rounded-xl bg-white dark:bg-[#0a0f28] border border-slate-200/80 dark:border-slate-800/80 text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
+                            <div className="p-2 rounded-xl bg-white dark:bg-[#1c1d22] border border-slate-200/80 dark:border-slate-800/80 text-[11px] text-slate-700 dark:text-slate-200 leading-snug">
                               <span className="font-bold text-rose-600 dark:text-rose-400">Play Around: </span>
                               <span>{classification.shortSummary}</span>
                             </div>

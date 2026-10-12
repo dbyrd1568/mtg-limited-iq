@@ -111,10 +111,10 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 dark:bg-[#030612]/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[92vh] bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl max-h-[92vh] bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-violet-600 dark:bg-cyan-500 text-white flex items-center justify-center shadow-md shrink-0">
               <Filter className="w-4 h-4" />
@@ -176,7 +176,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
               placeholder="e.g. Acrobatic Leap, Dragon, Strike..."
               value={filters.name}
               onChange={(e) => setFilters((p) => ({ ...p, name: e.target.value }))}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
             />
           </div>
 
@@ -193,7 +193,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
               placeholder="e.g. flying, draw a card, counter target, destroy..."
               value={filters.oracleText}
               onChange={(e) => setFilters((p) => ({ ...p, oracleText: e.target.value }))}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
             />
             {/* Quick keywords chips */}
             <div className="flex flex-wrap items-center gap-1 pt-1">
@@ -232,7 +232,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                     className={`px-3 py-1.5 rounded-xl font-semibold text-xs transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-violet-600 text-white border-violet-500 shadow-xs'
-                        : 'bg-slate-100 dark:bg-[#050818] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                        : 'bg-slate-100 dark:bg-[#17181c] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
                     }`}
                   >
                     {t}
@@ -246,13 +246,13 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                 placeholder="Subtype (e.g. Cat, Frog, Equipment, Aura, Goblin, Legend)..."
                 value={filters.subtype}
                 onChange={(e) => setFilters((p) => ({ ...p, subtype: e.target.value }))}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-medium"
               />
             </div>
           </div>
 
           {/* Colors & Mana */}
-          <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800/80">
+          <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/80">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <label className="font-heading font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Colors
@@ -311,7 +311,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                     className={`px-3.5 py-1.5 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-violet-600 text-white border-violet-500 shadow-xs'
-                        : 'bg-slate-100 dark:bg-[#050818] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-400'
+                        : 'bg-slate-100 dark:bg-[#17181c] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-400'
                     }`}
                   >
                     {r.label}
@@ -324,7 +324,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
           {/* Mana Value & Combat Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Mana Value (CMC) */}
-            <div className="space-y-1 p-3 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+            <div className="space-y-1 p-3 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
               <label className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-400">
                 Mana Value (MV / CMC)
               </label>
@@ -356,7 +356,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
             </div>
 
             {/* Power */}
-            <div className="space-y-1 p-3 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+            <div className="space-y-1 p-3 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
               <label className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-400">
                 Power
               </label>
@@ -387,7 +387,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
             </div>
 
             {/* Toughness */}
-            <div className="space-y-1 p-3 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800">
+            <div className="space-y-1 p-3 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
               <label className="font-mono text-[11px] font-bold text-slate-600 dark:text-slate-400">
                 Toughness
               </label>
@@ -424,7 +424,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
               Limited Utility Tags
             </label>
             <div className="flex flex-wrap gap-2">
-              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer select-none">
+              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={Boolean(filters.isInstantSpeed)}
@@ -434,7 +434,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                 <span>Instant Speed / Flash (is:flash)</span>
               </label>
 
-              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer select-none">
+              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={Boolean(filters.isRemoval)}
@@ -444,7 +444,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
                 <span>Removal Spells (is:removal)</span>
               </label>
 
-              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer select-none">
+              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={Boolean(filters.isCombatTrick)}
@@ -457,7 +457,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
           </div>
 
           {/* Live Query Preview Box */}
-          <div className="p-3.5 rounded-2xl bg-violet-50/80 dark:bg-[#060a1d] border border-violet-200 dark:border-violet-500/40 space-y-1.5">
+          <div className="p-3.5 rounded-2xl bg-violet-50/80 dark:bg-[#17181c] border border-violet-200 dark:border-violet-500/40 space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
               <span className="font-heading font-bold uppercase tracking-wider text-violet-900 dark:text-cyan-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
@@ -475,7 +475,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
               )}
             </div>
 
-            <div className="p-2 rounded-xl bg-white dark:bg-[#040714] border border-violet-200 dark:border-slate-800 font-mono text-xs text-violet-900 dark:text-cyan-200 break-all min-h-[36px] flex items-center">
+            <div className="p-2 rounded-xl bg-white dark:bg-[#090a0d] border border-violet-200 dark:border-slate-800 font-mono text-xs text-violet-900 dark:text-cyan-200 break-all min-h-[36px] flex items-center">
               {generatedQuery ? (
                 <span>{generatedQuery}</span>
               ) : (
@@ -486,7 +486,7 @@ export const AdvancedSearchModal: React.FC<AdvancedSearchModalProps> = ({
         </form>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] flex items-center justify-between shrink-0">
+        <div className="px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] flex items-center justify-between shrink-0">
           <button
             type="button"
             onClick={handleReset}

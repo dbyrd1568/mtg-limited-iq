@@ -489,17 +489,17 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   return (
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-6 animate-in fade-in duration-200">
       {/* Header Banner with Sub-Tabs & Set Overview */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         <div className="space-y-1.5 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <SetBadge setCode={currentSetCode} />
             <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-violet-950/60 px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-violet-500/30 font-mono font-semibold">
               {cards.length} Total Cards
             </span>
-            <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#050818] px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 font-mono">
+            <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#17181c] px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 font-mono">
               {ratedCountInSet} Graded
             </span>
-            <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#050818] px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 font-mono">
+            <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#17181c] px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 font-mono">
               {wotcArchetypes.length} Supported Archetypes
             </span>
           </div>
@@ -535,7 +535,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
             <span>Export</span>
           </button>
 
-          <nav className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs">
+          <nav className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#17181c] border border-slate-200/90 dark:border-slate-800/80 shadow-xs">
             <button
               onClick={() => setActiveExplorerTab('cards')}
               className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
@@ -583,7 +583,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
       ) : activeExplorerTab === 'cards' ? (
         <>
           {/* Streamlined 2-Row Filter Toolbar */}
-          <div className="p-3 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
+          <div className="p-3 bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
             {/* Row 1: Search, Sort, Status, Benchmarks, Blind Toggle */}
             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-2.5">
               {/* Card Search Bar */}
@@ -609,7 +609,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="h-9 px-2.5 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
+                    className="h-9 px-2.5 bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
                   >
                     <option value="number">Collector # (001 → 300)</option>
                     <option value="name">Card Name (A → Z)</option>
@@ -619,7 +619,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                 </div>
 
                 {/* Status Filter Pills */}
-                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
                   {[
                     { id: 'ALL', label: 'All' },
                     { id: 'UNRATED', label: 'Ungraded' },
@@ -640,7 +640,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                 </div>
 
                 {/* Benchmark Data Toggles (Me, LSV, LLU, DS, 17Lands) */}
-                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline">
                     Benchmarks:
                   </span>
@@ -780,7 +780,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
               })()}
 
               {/* Rarity Filter Pills */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                 {['ALL', 'common', 'uncommon', 'rare', 'mythic'].map((rarity) => {
                   const isSelected = (rarity === 'ALL' && (selectedRarities.includes('ALL') || selectedRarities.length === 0)) ||
                     (rarity !== 'ALL' && selectedRarities.includes(rarity));
@@ -813,7 +813,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
               </div>
 
               {/* Tactical Roles */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
                 {DEFAULT_ROLE_FILTERS.map((role) => {
                   const isSelected = (role.id === 'ALL' && (selectedRoles.includes('ALL') || selectedRoles.length === 0)) ||
                     (role.id !== 'ALL' && selectedRoles.includes(role.id));
@@ -867,7 +867,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
       {/* Cards Visual Grid */}
       {filteredAndSortedCards.length === 0 ? (
-        <div className="py-16 text-center text-slate-500 bg-slate-50 dark:bg-[#090e28]/50 rounded-3xl border border-slate-200 dark:border-violet-900/30">
+        <div className="py-16 text-center text-slate-500 bg-slate-50 dark:bg-[#121316]/50 rounded-3xl border border-slate-200 dark:border-violet-900/30">
           <p className="text-sm">No cards match the active filters.</p>
         </div>
       ) : (
@@ -881,7 +881,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
               <div
                 key={card.id}
                 onClick={() => handleSelectModalCard(card)}
-                className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
+                className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
               >
                 {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
                 <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
@@ -998,7 +998,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                     {/* Evaluation Verdict & 17Lands Stats */}
                     {effectiveIsBlind && !userEval?.userGrade ? (
                       /* Card is Ungraded in Blind Mode: Simple invite */
-                      <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                      <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-dashed border-slate-200 dark:border-slate-800 text-center">
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                           Rate the card to see how you compare
                         </span>
@@ -1020,7 +1020,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                       </div>
                     ) : (
                       /* Compare Mode: Clean single-panel display */
-                      <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
+                      <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
                         {landData && userEval?.userGrade ? (() => {
                           const actualTier: GradeTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
                           const gap = gradeTierToIndex(actualTier) - gradeTierToIndex(userEval.userGrade);
@@ -1103,7 +1103,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
                     {/* User Notes Snippet */}
                     {userEval?.notes && (
-                      <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-[11px] text-slate-700 dark:text-cyan-200/90 flex items-start gap-1.5">
+                      <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-[11px] text-slate-700 dark:text-cyan-200/90 flex items-start gap-1.5">
                         <FileText className="w-3 h-3 text-violet-600 dark:text-cyan-400 shrink-0 mt-0.5" />
                         <span className="line-clamp-2 italic leading-relaxed">"{userEval.notes}"</span>
                       </div>
@@ -1173,7 +1173,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
       ) : (
         <div className="space-y-6">
           {/* Archetypes Subheader / Quick Metagame Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
             <div className="flex items-center gap-2.5">
               <BookOpen className="w-5 h-5 text-violet-600 dark:text-cyan-400 shrink-0" />
               <div>
@@ -1189,7 +1189,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
               href={get17LandsArchetypeUrl(currentSetCode)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-[#050818] text-slate-700 dark:text-slate-200 hover:text-violet-600 dark:hover:text-cyan-300 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1.5 shrink-0 self-start sm:self-center transition-colors"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-[#17181c] text-slate-700 dark:text-slate-200 hover:text-violet-600 dark:hover:text-cyan-300 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1.5 shrink-0 self-start sm:self-center transition-colors"
               title="Open 17Lands Deck Color Data & Win Rates in new tab"
             >
               <BarChart2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -1207,7 +1207,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
               return (
                 <div
                   key={archetype.code}
-                  className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                  className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                 >
                   <div className="space-y-4">
                     {/* Archetype Header */}
@@ -1249,7 +1249,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                     </div>
 
                     {/* Archetype Strategy Overview */}
-                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#060a1d] border border-slate-200/70 dark:border-slate-800/70 space-y-2">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200/70 dark:border-slate-800/70 space-y-2">
                       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                         <BookOpen className="w-3.5 h-3.5 text-violet-500" />
                         <span>Archetype Strategy Overview</span>
@@ -1292,7 +1292,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                               Crucial Commons / Glue:
                             </span>
                             {archetype.keyCommons.map((cName) => (
-                              <span key={cName} className="px-2 py-0.5 rounded-md bg-white dark:bg-[#070b1e] border border-violet-200 dark:border-violet-700/60 font-mono text-[10px] font-bold text-violet-800 dark:text-cyan-300">
+                              <span key={cName} className="px-2 py-0.5 rounded-md bg-white dark:bg-[#17181c] border border-violet-200 dark:border-violet-700/60 font-mono text-[10px] font-bold text-violet-800 dark:text-cyan-300">
                                 {cName}
                               </span>
                             ))}
@@ -1331,7 +1331,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                               <div
                                 key={signpostCard.id}
                                 onClick={() => handleSelectModalCard(signpostCard)}
-                                className="group relative flex flex-col items-center p-2 rounded-2xl bg-slate-50 hover:bg-slate-100 dark:bg-[#060a1d] dark:hover:bg-[#0a0f2c] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/60 shadow-xs transition-all cursor-pointer text-center"
+                                className="group relative flex flex-col items-center p-2 rounded-2xl bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#0a0f2c] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/60 shadow-xs transition-all cursor-pointer text-center"
                                 title={`Inspect & Grade ${signpostCard.name}`}
                               >
                                 {/* Mini Top Bar: YOU & 17L Badges */}
@@ -1455,12 +1455,12 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
       {/* Card Detail Modal (Large, Immersive Card Inspection with Direct Top Grade Action & 17Lands Comparison) */}
       {selectedCardForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-          <div className="relative w-[96vw] max-w-5xl h-[88vh] max-h-[860px] my-auto bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="relative w-[96vw] max-w-5xl h-[88vh] max-h-[860px] my-auto bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
             {/* Modal Header (With Option to Grade Card Up Top) */}
-            <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] shrink-0">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] shrink-0">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0">
+                <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0">
                   #{selectedCardForModal.collector_number} {selectedCardForModal.set}
                 </span>
                 <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-heading truncate">
@@ -1487,7 +1487,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                 <button
                   onClick={handlePrevCard}
                   disabled={currentModalIndex <= 0}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer transition-all"
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer transition-all"
                   title="Previous Card (← Arrow)"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -1497,7 +1497,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                 <button
                   onClick={handleNextCard}
                   disabled={currentModalIndex >= filteredAndSortedCards.length - 1}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer transition-all"
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer transition-all"
                   title="Next Card (→ Arrow)"
                 >
                   <span className="hidden sm:inline">Next</span>
@@ -1623,7 +1623,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
                   {/* 🌟 DIRECT INLINE GRADING BAR (Click to rate immediately!) */}
                   {onSaveEvaluation && (
-                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-slate-700 dark:text-slate-300" title="Assign draft evaluation tier: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
                           Grade Card:
@@ -1696,7 +1696,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                   />
 
                   {/* Oracle Rules Text Box */}
-                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800/80 space-y-1.5">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/80 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         Oracle Rules Text
@@ -1721,7 +1721,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
                   {/* Strategic Notes Field */}
                   {onSaveEvaluation && (
-                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800/80 space-y-2">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/80 space-y-2">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
                         <span className="flex items-center gap-1.5 font-bold">
                           <FileText className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
@@ -1736,7 +1736,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                         onBlur={handleModalNoteBlur}
                         onKeyDown={(e) => e.stopPropagation()}
                         placeholder="Write your strategic thoughts and notes on this card..."
-                        className="w-full p-2.5 bg-white dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 focus:ring-1 focus:ring-violet-400/50 resize-none transition-all leading-relaxed"
+                        className="w-full p-2.5 bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 focus:ring-1 focus:ring-violet-400/50 resize-none transition-all leading-relaxed"
                       />
                     </div>
                   )}

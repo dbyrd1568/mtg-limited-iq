@@ -916,11 +916,11 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   return (
     <div className="max-w-[1440px] mx-auto pb-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, frozen/sticky on scroll) */}
-      <div className="sticky top-14 sm:top-16 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-slate-100/95 dark:bg-[#030614]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+      <div className="sticky top-14 sm:top-16 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         {/* Left: Sub-tabs */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#060a1d] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
+          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
             <button
               onClick={() => setActiveSubTab('grade')}
               className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
@@ -1040,7 +1040,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
       {activeSubTab === 'grade' && (
         <div className="space-y-3.5">
           {/* Streamlined 2-Row Filter Toolbar */}
-          <div className="p-3 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
+          <div className="p-3 bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
             {/* Row 1: Search, Sort, Status, and Benchmarks */}
             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-2.5">
               {/* Card Search Bar */}
@@ -1066,7 +1066,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   <select
                     value={cardListSortBy}
                     onChange={(e) => setCardListSortBy(e.target.value as any)}
-                    className="h-9 px-2.5 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
+                    className="h-9 px-2.5 bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
                   >
                     <option value="number">Card # (#001 → #300)</option>
                     <option value="name">Card Name (A → Z)</option>
@@ -1082,7 +1082,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
 
                 {/* Evaluation Status Filter */}
-                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
                   {[
                     { id: 'ALL', label: 'All' },
                     { id: 'UNRATED', label: 'Ungraded' },
@@ -1103,7 +1103,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
 
                 {/* Benchmark Data Toggles (Me, LSV, LLU, DS, 17Lands) */}
-                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline">
                     Benchmarks:
                   </span>
@@ -1217,7 +1217,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               })()}
 
               {/* Rarity Filter Pills */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                 {['ALL', 'common', 'uncommon', 'rare', 'mythic'].map((rar) => {
                   const isSelected = (rar === 'ALL' && (selectedRarities.includes('ALL') || selectedRarities.length === 0)) ||
                     (rar !== 'ALL' && selectedRarities.includes(rar));
@@ -1250,7 +1250,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               </div>
 
               {/* Grade Tier Filter Pills */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
                 <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline">
                   Grade{selectedGrades.length > 1 ? ` (${selectedGrades.length})` : ''}:
                 </span>
@@ -1274,7 +1274,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               </div>
 
               {/* Tactical Roles (Clean neutral active state) */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
                 {DEFAULT_ROLE_FILTERS.map((role) => {
                   const isSelected = (role.id === 'ALL' && (selectedRoles.includes('ALL') || selectedRoles.length === 0)) ||
                     (role.id !== 'ALL' && selectedRoles.includes(role.id));
@@ -1337,7 +1337,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 <div
                   key={card.id}
                   onClick={() => handleSelectCardForModal(card)}
-                  className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
+                  className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
                 >
                   {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
                   <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
@@ -1454,7 +1454,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       {/* Evaluation Verdict & 17Lands Stats */}
                       {isBlindGrading && !userEval?.userGrade ? (
                         /* Card is Ungraded in Blind Mode: Simple invite */
-                        <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                        <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-dashed border-slate-200 dark:border-slate-800 text-center">
                           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                             Rate the card to see how you compare
                           </span>
@@ -1476,7 +1476,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         </div>
                       ) : (
                         /* Compare Mode: Clean single-panel display */
-                        <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
+                        <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
                           {landData && userEval?.userGrade ? (() => {
                             const actualTier: GradeTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
                             const gap = gradeTierToIndex(actualTier) - gradeTierToIndex(userEval.userGrade);
@@ -1559,7 +1559,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
                       {/* User Notes Snippet */}
                       {userEval?.notes && (
-                        <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-[11px] text-slate-700 dark:text-cyan-200/90 flex items-start gap-1.5">
+                        <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-[11px] text-slate-700 dark:text-cyan-200/90 flex items-start gap-1.5">
                           <FileText className="w-3 h-3 text-violet-600 dark:text-cyan-400 shrink-0 mt-0.5" />
                           <span className="line-clamp-2 italic leading-relaxed">"{userEval.notes}"</span>
                         </div>
@@ -1732,7 +1732,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
           {/* Overall Evaluator Report Card Banner (only shown when benchmark data is available) */}
           {!(activeBenchmarkTarget === '17L' && !effective17LandsData) && (
-            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-[#090e24] dark:via-[#060919] dark:to-[#040612] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-slate-100 dark:from-[#121316] dark:via-[#17181c] dark:to-[#040612] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
               {/* Left: Overall Accuracy Scores & Difference Explainer */}
               <div className="space-y-3">
@@ -1746,7 +1746,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 {/* Score Cards: Strict % and Weighted % */}
                 <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                   {/* Strict Accuracy */}
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#050818] border-2 border-emerald-500/40 dark:border-emerald-500/50 shadow-md min-w-[170px]">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#17181c] border-2 border-emerald-500/40 dark:border-emerald-500/50 shadow-md min-w-[170px]">
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl sm:text-4xl font-black font-mono text-emerald-600 dark:text-emerald-400">
                         {calibrationSummary.totalRated > 0 ? `${calibrationSummary.calibrationScore}%` : '—'}
@@ -1766,7 +1766,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   </div>
 
                   {/* Weighted Accuracy */}
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#050818] border-2 border-violet-500/40 dark:border-cyan-500/50 shadow-md min-w-[170px]">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#17181c] border-2 border-violet-500/40 dark:border-cyan-500/50 shadow-md min-w-[170px]">
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl sm:text-4xl font-black font-mono text-violet-700 dark:text-cyan-300">
                         {calibrationSummary.totalRated > 0
@@ -1832,7 +1832,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               {/* Step Precision Matrix */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-slate-800/80">
                 <div
-                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-emerald-200 dark:border-emerald-500/30 text-center"
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-emerald-200 dark:border-emerald-500/30 text-center"
                   title="Cards where your assigned grade exactly matched 17Lands grade (0 steps off)"
                 >
                   <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{calibrationSummary.exactMatches}</span>
@@ -1843,7 +1843,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
 
                 <div
-                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-emerald-200 dark:border-emerald-500/30 text-center"
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-emerald-200 dark:border-emerald-500/30 text-center"
                   title="Cards where your grade was within ±1 sub-tier (e.g. A to A-, B- to C+) - Counts as Correct!"
                 >
                   <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{calibrationSummary.oneStepMatches}</span>
@@ -1854,7 +1854,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
 
                 <div
-                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-amber-200 dark:border-amber-500/30 text-center"
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-amber-200 dark:border-amber-500/30 text-center"
                   title="Cards with a 2-step grade delta (e.g. A to B+, B to C+)"
                 >
                   <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">{calibrationSummary.twoStepMatches}</span>
@@ -1865,7 +1865,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
 
                 <div
-                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-rose-200 dark:border-rose-500/30 text-center"
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-rose-200 dark:border-rose-500/30 text-center"
                   title="Cards with 3 or more steps delta (Major overvaluation trap or undervaluation sleeper)"
                 >
                   <span className="text-xl font-bold font-mono text-rose-600 dark:text-rose-400">{calibrationSummary.largeDiscrepancies}</span>
@@ -1880,7 +1880,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
               {/* Mathematical Breakdown & Rubric Panel */}
               {showMathExplainer && (
-                <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#050818] border border-violet-200 dark:border-cyan-500/40 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#17181c] border border-violet-200 dark:border-cyan-500/40 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                       <Calculator className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -1893,7 +1893,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     {/* Step Delta Formula */}
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-2">
                       <h5 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded bg-violet-100 dark:bg-violet-600/30 text-violet-700 dark:text-cyan-300 font-mono font-bold flex items-center justify-center text-[11px]">1</span>
                         Step Delta Calculation (Δ)
@@ -1901,7 +1901,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                         Every grade is indexed across the 11-tier spectrum: <code className="font-mono text-[11px] text-violet-700 dark:text-cyan-300">A+ (0), A (1), A- (2) ... F (10)</code>.
                       </p>
-                      <div className="p-2.5 rounded bg-slate-100 dark:bg-[#050818] font-mono text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 text-center font-bold">
+                      <div className="p-2.5 rounded bg-slate-100 dark:bg-[#17181c] font-mono text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 text-center font-bold">
                         Δ = Index(17Lands Grade) - Index(Your Grade)
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -1911,7 +1911,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     </div>
 
                     {/* Single-Step Tolerance Rule */}
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-2">
                       <h5 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded bg-emerald-100 dark:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 font-mono font-bold flex items-center justify-center text-[11px]">2</span>
                         Single-Step Tolerance Rule (≤ 1 Step = Correct)
@@ -1955,23 +1955,23 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       Pre-release draft grading is high-variance forecasting. Top Pro Tour competitors and premier Limited creators average <strong>58%–65% accuracy</strong> within ±1 step. Pure random guessing across 11 tiers is <strong>~25%</strong>. Evaluator grades and GPA are curved to reward true format intuition rather than an unrealistic 100% academic scale:
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[11px] font-mono">
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-emerald-300 dark:border-emerald-600/40">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-emerald-300 dark:border-emerald-600/40">
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">A+ (4.0 GPA)</span>
                         <p className="text-[10px] text-slate-500">&ge; 64% (Pro Tour Peak)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-emerald-200 dark:border-emerald-700/40">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-emerald-200 dark:border-emerald-700/40">
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">A (3.8–4.0)</span>
                         <p className="text-[10px] text-slate-500">59% – 63% (Top Creator)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800">
                         <span className="font-bold text-cyan-600 dark:text-cyan-400">A- (3.5–3.8)</span>
                         <p className="text-[10px] text-slate-500">54% – 58% (Mythic Tier)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800">
                         <span className="font-bold text-sky-600 dark:text-sky-400">B+ (3.2–3.5)</span>
                         <p className="text-[10px] text-slate-500">49% – 53% (Diamond Tier)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800">
                         <span className="font-bold text-sky-600 dark:text-sky-400">B (2.8–3.2)</span>
                         <p className="text-[10px] text-slate-500">44% – 48% (Strong Drafter)</p>
                       </div>
@@ -1979,23 +1979,23 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <span className="font-bold text-violet-700 dark:text-cyan-300">B- (2.5–2.8)</span>
                         <p className="text-[10px] text-slate-500">39% – 43% (Capable Drafter)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800">
                         <span className="font-bold text-slate-700 dark:text-slate-300">C+ (2.2–2.5)</span>
                         <p className="text-[10px] text-slate-500">34% – 38% (Developing)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800">
                         <span className="font-bold text-slate-700 dark:text-slate-300">C (1.8–2.2)</span>
                         <p className="text-[10px] text-slate-500">29% – 33% (Baseline)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800">
                         <span className="font-bold text-amber-600 dark:text-amber-400">C- (1.5–1.8)</span>
                         <p className="text-[10px] text-slate-500">24% – 28% (~Random Base)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-slate-200 dark:border-slate-800">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-slate-200 dark:border-slate-800">
                         <span className="font-bold text-amber-600 dark:text-amber-400">D (1.0–1.5)</span>
                         <p className="text-[10px] text-slate-500">18% – 23% (Misread)</p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#090e24] border border-rose-300 dark:border-rose-800/60 col-span-2 sm:col-span-2">
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#121316] border border-rose-300 dark:border-rose-800/60 col-span-2 sm:col-span-2">
                         <span className="font-bold text-rose-600 dark:text-rose-400">F (0.0–1.0 GPA)</span>
                         <p className="text-[10px] text-slate-500">&lt; 18% (Inverted read only)</p>
                       </div>
@@ -2007,9 +2007,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           )}
 
             {/* Benchmark Target Switcher & View Mode Toggle Controls */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-2.5 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800/80">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-2.5 rounded-2xl bg-slate-100/90 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/80">
               {/* Independent Benchmark Sub-Tabs */}
-              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#090e24] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex-wrap">
+              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#121316] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex-wrap">
                 <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 px-2 uppercase tracking-wider flex items-center gap-1">
                   <Target className="w-3.5 h-3.5 text-violet-500" />
                   Benchmark:
@@ -2066,7 +2066,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
               {/* View Mode Controls & Set Indicator */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#090e24] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#121316] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
                   <button
                     type="button"
                     onClick={() => handleSetAnalyticsViewMode('both')}
@@ -2118,7 +2118,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
             {/* When 17Lands is selected but data is not yet available, do not continue showing data below */}
             {activeBenchmarkTarget === '17L' && !effective17LandsData ? (
-              <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-center max-w-2xl mx-auto space-y-5 shadow-sm">
+              <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-center max-w-2xl mx-auto space-y-5 shadow-sm">
                 <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xs">
                   <EyeOff className="w-8 h-8" />
                 </div>
@@ -2207,7 +2207,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             {(analyticsViewMode === 'both' || analyticsViewMode === 'ledger') && (
               <>
                 {/* Color Breakdown */}
-                <div className="p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
+                <div className="p-5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
@@ -2222,7 +2222,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 {colorAnalytics.map((stat) => (
                   <div
                     key={stat.color}
-                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 space-y-2 flex flex-col justify-between"
+                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2 flex flex-col justify-between"
                     title={`Color Accuracy for ${stat.label}: ${stat.correctCount} of ${stat.totalRated} cards exact or within 1 step = ${stat.accuracyRate}% Accuracy (Avg step delta: ${stat.avgDelta > 0 ? `+${stat.avgDelta} steps over` : stat.avgDelta < 0 ? `${stat.avgDelta} steps under` : '0.0'})`}
                   >
                     <div className="flex items-center justify-between">
@@ -2269,7 +2269,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             </div>
 
             {/* Complete 11-Tier Grade Distribution Spectrum */}
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BarChart2 className="w-4 h-4 text-amber-500" />
@@ -2284,7 +2284,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 {gradeDistribution.map((point) => (
                   <div
                     key={point.tier}
-                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                     title={`Tier ${point.tier} (${point.score.toFixed(1)} pts): You assigned ${point.userCount} cards (${point.userPercent}%) vs 17Lands ${point.actualCount} cards (${point.actualPercent}%)`}
                   >
                     <div className="flex items-center gap-2.5 min-w-[120px]">
@@ -2325,7 +2325,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           {/* Biggest Traps vs Sleepers */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Traps */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-rose-200 dark:border-rose-500/25 space-y-3 shadow-xs">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-rose-200 dark:border-rose-500/25 space-y-3 shadow-xs">
               <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
                 <TrendingDown className="w-4 h-4" />
                 <h3 className="text-xs font-bold uppercase tracking-wider">
@@ -2334,7 +2334,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               </div>
 
               {calibrationSummary.biggestTraps.length === 0 ? (
-                <div className="p-4 text-center text-slate-500 text-xs bg-slate-50 dark:bg-[#050818] rounded-xl">
+                <div className="p-4 text-center text-slate-500 text-xs bg-slate-50 dark:bg-[#17181c] rounded-xl">
                   No major over-evaluations detected!
                 </div>
               ) : (
@@ -2343,7 +2343,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     <div
                       key={comp.card.id}
                       onClick={() => handleSelectCardForModal(comp.card)}
-                      className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#0d1538] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 flex items-center justify-between gap-2 cursor-pointer transition-colors group"
+                      className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#1f2026] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 flex items-center justify-between gap-2 cursor-pointer transition-colors group"
                     >
                       <div className="overflow-hidden">
                         <div className="flex items-center gap-1.5">
@@ -2382,7 +2382,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             </div>
 
             {/* Sleepers */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-emerald-200 dark:border-emerald-500/25 space-y-3 shadow-xs">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-emerald-200 dark:border-emerald-500/25 space-y-3 shadow-xs">
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                 <TrendingUp className="w-4 h-4" />
                 <h3 className="text-xs font-bold uppercase tracking-wider">
@@ -2391,7 +2391,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               </div>
 
               {calibrationSummary.biggestSleepers.length === 0 ? (
-                <div className="p-4 text-center text-slate-500 text-xs bg-slate-50 dark:bg-[#050818] rounded-xl">
+                <div className="p-4 text-center text-slate-500 text-xs bg-slate-50 dark:bg-[#17181c] rounded-xl">
                   No major under-evaluations detected!
                 </div>
               ) : (
@@ -2400,7 +2400,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     <div
                       key={comp.card.id}
                       onClick={() => handleSelectCardForModal(comp.card)}
-                      className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#0d1538] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 flex items-center justify-between gap-2 cursor-pointer transition-colors group"
+                      className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#1f2026] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 flex items-center justify-between gap-2 cursor-pointer transition-colors group"
                     >
                       <div className="overflow-hidden">
                         <div className="flex items-center gap-1.5">
@@ -2440,7 +2440,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           </div>
 
           {/* Full Card-by-Card Comparison Ledger */}
-          <div className="p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-4 shadow-xs">
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-4 shadow-xs">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
@@ -2475,7 +2475,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       setComparisonSortDirection(dir || 'asc');
                     }
                   }}
-                  className="px-3 py-1.5 bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
+                  className="px-3 py-1.5 bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
                 >
                   <option value="number_asc">Card Number (#001 → #300)</option>
                   <option value="number_desc">Card Number (#300 → #001)</option>
@@ -2509,7 +2509,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               <ManaColorFilterBar selectedColor={comparisonSelectedColor} onSelectColor={setComparisonSelectedColor} />
 
               {/* Verdict Filter Pills */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#050818] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
                 {[
                   { id: 'ALL', label: 'All' },
                   { id: 'EXACT', label: 'Exact Match' },
@@ -2768,7 +2768,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                                 {verdict.text} <span className="opacity-75 font-normal">(vs Creator)</span>
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-semibold">
+                              <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-semibold">
                                 TBD (Pending)
                               </span>
                             )
@@ -2793,7 +2793,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
       {/* SUBTAB 3: Notes & Draft Playbook */}
       {activeSubTab === 'notes' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-1 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-1 shadow-xs">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white font-heading flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Personal Draft Notes & Set Strategy Playbook</span>
@@ -2820,7 +2820,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         handleSelectCardForModal(card);
                       }
                     }}
-                    className="group p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-cyan-500/60 space-y-2 shadow-xs hover:shadow-md cursor-pointer transition-all duration-200"
+                    className="group p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-cyan-500/60 space-y-2 shadow-xs hover:shadow-md cursor-pointer transition-all duration-200"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -2828,12 +2828,12 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-cyan-400 transition-colors">{card.name}</h4>
                         {card.mana_cost && <ManaCostRenderer manaCost={card.mana_cost} size="xs" />}
                       </div>
-                      <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                      <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                         Grade: {evalData.userGrade}
                       </span>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-200 italic leading-relaxed group-hover:border-slate-300 dark:group-hover:border-slate-700 transition-colors">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-200 italic leading-relaxed group-hover:border-slate-300 dark:group-hover:border-slate-700 transition-colors">
                       "{evalData.notes}"
                     </div>
 

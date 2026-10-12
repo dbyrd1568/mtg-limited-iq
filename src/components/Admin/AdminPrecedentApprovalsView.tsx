@@ -127,7 +127,7 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
   return (
     <div className="space-y-6">
       {/* Header and Summary Toolbar */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -183,7 +183,7 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
         {/* Filter Toolbar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
           {/* Status Segmented Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-[#040714] rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-[#090a0d] rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold">
             {(['pending', 'approved', 'rejected', 'all'] as const).map((status) => (
               <button
                 key={status}
@@ -231,12 +231,12 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
 
       {/* Proposals List */}
       {loading ? (
-        <div className="p-12 text-center space-y-3 rounded-3xl bg-white dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800">
+        <div className="p-12 text-center space-y-3 rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
           <RefreshCw className="w-8 h-8 text-violet-500 animate-spin mx-auto" />
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading precedent proposals...</p>
         </div>
       ) : proposals.length === 0 ? (
-        <div className="p-12 text-center space-y-3 rounded-3xl bg-white dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800">
+        <div className="p-12 text-center space-y-3 rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800">
           <CheckCircle2 className="w-10 h-10 text-emerald-500/80 mx-auto" />
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No Proposals Found</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
@@ -256,7 +256,7 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
             return (
               <div
                 key={proposal.id}
-                className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#060a1d] border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
               >
                 {/* Proposal Meta Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
@@ -311,7 +311,7 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
                 {/* 3-Column Context Grid (Target Reference, Old Comp, Proposed Replacement) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 1. Target Card (Reference) */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#030612] border border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#090a0d] border border-slate-200 dark:border-slate-800 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-violet-700 dark:text-cyan-300 px-2 py-0.5 rounded bg-violet-100 dark:bg-violet-950/80 border border-violet-200 dark:border-violet-800/60">
                         Target Card (Ref)
@@ -356,7 +356,7 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
                   </div>
 
                   {/* 2. Old Replaced Comp */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#030612] border border-slate-200 dark:border-slate-800 space-y-2.5 opacity-80">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#090a0d] border border-slate-200 dark:border-slate-800 space-y-2.5 opacity-80">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
                         Replaced Comp
@@ -450,7 +450,7 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
 
                 {/* Inferred Insights & Bridge Section */}
                 {(proposal.inferredInsights.length > 0 || proposal.mechanicBridge) && (
-                  <div className="p-3.5 rounded-2xl bg-violet-50/70 dark:bg-[#04081c] border border-violet-200/80 dark:border-violet-900/50 space-y-1.5 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-violet-50/70 dark:bg-[#17181c] border border-violet-200/80 dark:border-violet-900/50 space-y-1.5 text-xs">
                     <div className="flex items-center gap-1.5 font-bold font-mono text-violet-800 dark:text-cyan-300 text-[11px]">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                       <span>Learned Delta &amp; Heuristic Insights</span>
@@ -503,7 +503,7 @@ export const AdminPrecedentApprovalsView: React.FC<AdminPrecedentApprovalsViewPr
       {/* Reject Modal */}
       {rejectionModalProposal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
               <AlertCircle className="w-5 h-5" />
               <h3 className="font-bold text-base text-slate-900 dark:text-white font-heading">

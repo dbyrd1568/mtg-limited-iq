@@ -149,7 +149,7 @@ export const ContextualTourTooltip: React.FC = () => {
       {/* Tour Tooltip Card with directional arrow */}
       <div
         ref={tooltipRef}
-        className="fixed z-[100] w-[340px] max-w-[calc(100vw-32px)] bg-white dark:bg-[#0b102b] border border-violet-400/80 dark:border-violet-500/60 rounded-2xl shadow-2xl p-4 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150"
+        className="fixed z-[100] w-[340px] max-w-[calc(100vw-32px)] bg-white dark:bg-[#1c1d22] border border-violet-400/80 dark:border-violet-500/60 rounded-2xl shadow-2xl p-4 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150"
         style={{
           top: `${tooltipPos.top}px`,
           left: `${tooltipPos.left}px`,
@@ -158,12 +158,12 @@ export const ContextualTourTooltip: React.FC = () => {
         {/* Directional Arrow pointing to the target element */}
         {tooltipPos.placement === 'bottom' ? (
           <div
-            className="absolute -top-2 w-4 h-4 bg-white dark:bg-[#0b102b] border-t border-l border-violet-400/80 dark:border-violet-500/60 rotate-45"
+            className="absolute -top-2 w-4 h-4 bg-white dark:bg-[#1c1d22] border-t border-l border-violet-400/80 dark:border-violet-500/60 rotate-45"
             style={{ left: `${tooltipPos.arrowLeft}px` }}
           />
         ) : (
           <div
-            className="absolute -bottom-2 w-4 h-4 bg-white dark:bg-[#0b102b] border-b border-r border-violet-400/80 dark:border-violet-500/60 rotate-45"
+            className="absolute -bottom-2 w-4 h-4 bg-white dark:bg-[#1c1d22] border-b border-r border-violet-400/80 dark:border-violet-500/60 rotate-45"
             style={{ left: `${tooltipPos.arrowLeft}px` }}
           />
         )}

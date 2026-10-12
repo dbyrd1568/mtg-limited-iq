@@ -73,10 +73,10 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl bg-white dark:bg-[#090e28] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 bg-slate-950/70 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl bg-white dark:bg-[#121316] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c]">
           <div className="flex items-center gap-3">
             <div className="p-2 sm:p-2.5 rounded-2xl bg-violet-100 dark:bg-violet-600/30 border border-violet-300 dark:border-violet-400/40 text-violet-700 dark:text-cyan-300 shadow-xs shrink-0">
               <Wand2 className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -99,7 +99,7 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
         </div>
 
         {/* Controls, Filters & Search */}
-        <div className="p-3 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-[#070b22] space-y-3 sm:space-y-4">
+        <div className="p-3 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-[#17181c] space-y-3 sm:space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
             {/* Search Input */}
             <div className="relative md:col-span-8">
@@ -109,7 +109,7 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                 placeholder="Search set name or code (e.g. Secrets of Strixhaven, SOS, Bloomburrow, OTJ)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 transition-all font-medium"
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 transition-all font-medium"
                 autoFocus
               />
             </div>
@@ -122,7 +122,7 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                 value={customCodeInput}
                 onChange={(e) => setCustomCodeInput(e.target.value.toUpperCase())}
                 maxLength={8}
-                className="w-full uppercase font-mono text-xs px-3 py-2.5 bg-white dark:bg-[#050818] border border-slate-300 dark:border-slate-800 rounded-xl text-violet-700 dark:text-cyan-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-bold"
+                className="w-full uppercase font-mono text-xs px-3 py-2.5 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-violet-700 dark:text-cyan-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-bold"
               />
               <button
                 type="submit"
@@ -159,19 +159,19 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                     className={`flex items-center justify-between p-4 rounded-2xl border text-left transition-all cursor-pointer group ${
                       isSelected
                         ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-500 shadow-sm ring-1 ring-violet-400'
-                        : 'bg-white dark:bg-[#070b22]/80 hover:bg-slate-50 dark:hover:bg-[#0f163f] border-slate-200 dark:border-slate-800 shadow-xs'
+                        : 'bg-white dark:bg-[#17181c]/80 hover:bg-slate-50 dark:hover:bg-[#0f163f] border-slate-200 dark:border-slate-800 shadow-xs'
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-3">
                       {/* Set Symbol / Icon */}
-                      <div className="shrink-0 w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1.5 shadow-xs">
+                      <div className="shrink-0 w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1.5 shadow-xs">
                         <SetSymbol setCode={set.code} iconSvgUri={set.icon_svg_uri} size="md" />
                       </div>
 
                       {/* Set Details (Full Un-truncated Name) */}
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-black text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1">
+                          <span className="font-mono text-xs font-black text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1">
                             <SetSymbol setCode={set.code} iconSvgUri={set.icon_svg_uri} size="xs" />
                             <span>{set.code}</span>
                           </span>
@@ -245,7 +245,7 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
         </div>
 
         {/* Modal Footer (Fixed height status bar, prevents content jump) */}
-        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0">
+        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0">
           <div>
             {isLoadingCards ? (
               <span className="flex items-center gap-2 text-violet-600 dark:text-cyan-400 font-medium">

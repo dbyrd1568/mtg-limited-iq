@@ -91,7 +91,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       icon: Sparkles,
       accentColor: 'from-violet-600 via-indigo-600 to-amber-500',
       visualNode: (
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2.5">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2 flex-wrap">
             <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold">
               <span className="px-2.5 py-1 rounded-xl bg-violet-600 text-white shadow-xs">Grading</span>
@@ -143,7 +143,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       icon: Scale,
       accentColor: 'from-violet-600 to-cyan-500',
       visualNode: (
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2.5">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2">
             <div className="flex items-center gap-1 font-mono text-[10px] flex-wrap">
               <span className="px-1.5 py-0.5 rounded-md bg-violet-950 text-white font-bold border border-violet-400">Me: A-</span>
@@ -154,7 +154,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
             </div>
             <span className="text-[10px] font-mono text-slate-400">#042 • 2U</span>
           </div>
-          <div className="flex items-center justify-between text-[11px] font-mono bg-slate-50 dark:bg-[#050818] p-2 rounded-xl border border-slate-100 dark:border-slate-800/80">
+          <div className="flex items-center justify-between text-[11px] font-mono bg-slate-50 dark:bg-[#17181c] p-2 rounded-xl border border-slate-100 dark:border-slate-800/80">
             <span>GIH WR: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">58.4%</strong></span>
             <span>ALSA: <strong>3.2</strong></span>
             <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
@@ -213,7 +213,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       icon: PlayingCardsFan,
       accentColor: 'from-cyan-500 to-blue-600',
       visualNode: (
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#090e24] border border-violet-200 dark:border-violet-800/60 text-xs shadow-xs space-y-2.5">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-violet-200 dark:border-violet-800/60 text-xs shadow-xs space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono uppercase font-bold text-violet-700 dark:text-cyan-300 flex items-center gap-1.5">
               <PlayingCardsFan className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
@@ -224,14 +224,14 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
             </span>
           </div>
           <div className="space-y-1.5 text-[11px]">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-slate-900 dark:text-white">Statistical Precedent #1</span>
                 <span className="text-[10px] text-slate-400 font-mono">(OTJ)</span>
               </div>
               <span className="text-emerald-600 dark:text-emerald-400 font-bold font-mono">57.9% WR • Grade B</span>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-slate-900 dark:text-white">Statistical Precedent #2</span>
                 <span className="text-[10px] text-slate-400 font-mono">(BLB)</span>
@@ -331,7 +331,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
       icon: Brain,
       accentColor: 'from-emerald-500 to-teal-500',
       visualNode: (
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-xs shadow-xs space-y-2">
           <div className="flex items-center justify-between gap-1.5 flex-wrap">
             <span className="text-[10px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400">Tactical Filters:</span>
             <div className="flex items-center gap-1 font-mono text-[10px] font-bold">
@@ -341,7 +341,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
               <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Removal</span>
             </div>
           </div>
-          <div className="p-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-100 dark:border-slate-800/80 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+          <div className="p-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-100 dark:border-slate-800/80 font-mono text-[11px] text-slate-600 dark:text-slate-300">
             Search syntax: <code className="text-violet-600 dark:text-cyan-400 font-bold">o:flying mv&lt;=2</code> or <code className="text-violet-600 dark:text-cyan-400 font-bold">t:equipment</code>
           </div>
         </div>
@@ -404,18 +404,18 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 dark:bg-[#030612]/90 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200"
       onClick={handleDismiss}
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-tour-title"
     >
       <div
-        className="relative w-full max-w-2xl bg-white dark:bg-[#080d26] border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl bg-white dark:bg-[#121316] border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header with Gradient Bar */}
-        <div className="relative px-5 sm:px-6 pt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-b from-slate-50/80 to-white dark:from-[#0a1133]/90 dark:to-[#080d26]">
+        <div className="relative px-5 sm:px-6 pt-5 pb-4 border-b border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-b from-slate-50/80 to-white dark:from-[#0a1133]/90 dark:to-[#121316]">
           {/* Subtle Top Accent Glow */}
           <div
             className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${currentStep.accentColor}`}
@@ -484,7 +484,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
         {/* Modal Scrollable Body */}
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
           {/* Tagline Banner */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200/80 dark:border-slate-800/80">
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200/80 dark:border-slate-800/80">
             <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
               {currentStep.tagline}
             </p>
@@ -507,7 +507,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
               return (
                 <div
                   key={idx}
-                  className="flex items-start gap-3 p-3 rounded-2xl bg-white dark:bg-[#0a0f2e]/60 border border-slate-100 dark:border-slate-800/60 hover:border-violet-300 dark:hover:border-violet-700/50 transition-colors shadow-2xs"
+                  className="flex items-start gap-3 p-3 rounded-2xl bg-white dark:bg-[#1c1d22]/60 border border-slate-100 dark:border-slate-800/60 hover:border-violet-300 dark:hover:border-violet-700/50 transition-colors shadow-2xs"
                 >
                   <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800/60 flex items-center justify-center text-violet-600 dark:text-cyan-400 shrink-0 mt-0.5">
                     <BulletIcon className="w-4 h-4" />
@@ -541,7 +541,7 @@ export const WelcomeTourModal: React.FC<WelcomeTourModalProps> = ({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="px-5 sm:px-6 py-4 border-t border-slate-200/80 dark:border-slate-800/80 bg-slate-50/80 dark:bg-[#060a1f]/90 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="px-5 sm:px-6 py-4 border-t border-slate-200/80 dark:border-slate-800/80 bg-slate-50/80 dark:bg-[#17181c]/90 flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Don't show again checkbox */}
           <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600 dark:text-slate-400 select-none self-start sm:self-center">
             <input

@@ -183,9 +183,9 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-[#030614] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-[#090a0d] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
       {/* Top Simple Header */}
-      <header className="border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#060919]/95 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#17181c]/95 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 via-indigo-600 to-amber-500 dark:from-violet-500 dark:via-indigo-500 dark:to-cyan-400 flex items-center justify-center text-white shadow-md shadow-violet-500/20 shrink-0 p-1.5 border border-white/20">
             <PlaneswalkerSymbol className="w-full h-full text-white drop-shadow-xs" />
@@ -234,7 +234,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
 
             {/* Feature Highlights Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#080d26] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
                 <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-950 text-violet-600 dark:text-violet-300 shrink-0">
                   <Brain className="w-4 h-4" />
                 </div>
@@ -246,7 +246,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#080d26] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
                 <div className="p-2 rounded-xl bg-cyan-100 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-300 shrink-0">
                   <BarChart3 className="w-4 h-4" />
                 </div>
@@ -258,7 +258,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#080d26] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
                 <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300 shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </div>
@@ -270,7 +270,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#080d26] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 shadow-xs flex items-start gap-3 text-left">
                 <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-300 shrink-0">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
@@ -286,7 +286,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
 
           {/* Right Auth Card Column */}
           <div className="lg:col-span-5 w-full">
-            <div className="bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xl">
+            <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xl">
               <div className="space-y-1 mb-5">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white font-heading">
                   Sign In to Continue
@@ -317,7 +317,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
 
 
               {/* Auth Tab Navigation */}
-              <div className="grid grid-cols-3 p-1 bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 rounded-xl gap-1 mb-5">
+              <div className="grid grid-cols-3 p-1 bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl gap-1 mb-5">
                 <button
                   type="button"
                   onClick={() => setActiveTab('oauth')}
@@ -434,7 +434,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@example.com"
                         required
-                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                   </div>
@@ -477,7 +477,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         placeholder="Your Display Name"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                   )}
@@ -494,7 +494,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@example.com"
                         required
-                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                   </div>
@@ -511,7 +511,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({ onAuthenticated }) => {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
                         required
-                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                   </div>

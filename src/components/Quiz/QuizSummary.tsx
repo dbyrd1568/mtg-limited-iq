@@ -53,7 +53,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 space-y-8 animate-in fade-in duration-300">
       {/* Top Banner / Scorecard */}
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 p-6 sm:p-10 shadow-lg text-center space-y-6">
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 p-6 sm:p-10 shadow-lg text-center space-y-6">
         <div className="flex flex-col items-center gap-3">
           <div className="p-4 rounded-3xl bg-violet-100 dark:bg-violet-600/30 border border-violet-300 dark:border-violet-400/40 text-violet-700 dark:text-cyan-300 shadow-xs">
             <Trophy className="w-8 h-8" />
@@ -79,7 +79,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
 
           {/* Correct Questions */}
           <div className="flex flex-col items-center">
-            <div className="w-24 h-24 rounded-3xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shadow-xs">
+            <div className="w-24 h-24 rounded-3xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shadow-xs">
               <span className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
                 {result.score} / {result.totalQuestions}
               </span>
@@ -90,7 +90,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
 
           {/* XP Gained */}
           <div className="flex flex-col items-center">
-            <div className="w-24 h-24 rounded-3xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shadow-xs">
+            <div className="w-24 h-24 rounded-3xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shadow-xs">
               <span className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-300">+{xpEarned}</span>
               <span className="text-[10px] uppercase font-bold text-slate-500">Draft XP</span>
             </div>
@@ -99,7 +99,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
 
           {/* Time Spent */}
           <div className="flex flex-col items-center">
-            <div className="w-24 h-24 rounded-3xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shadow-xs">
+            <div className="w-24 h-24 rounded-3xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shadow-xs">
               <span className="text-2xl font-bold font-mono text-violet-700 dark:text-cyan-300">{result.timeSpentSeconds}s</span>
               <span className="text-[10px] uppercase font-bold text-slate-500">Duration</span>
             </div>
@@ -130,7 +130,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
 
           <button
             onClick={onGoToEvaluation}
-            className="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-[#070b22] hover:bg-slate-200 dark:hover:bg-[#101538] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+            className="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-[#17181c] hover:bg-slate-200 dark:hover:bg-[#101538] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs"
           >
             <Award className="w-4 h-4 text-amber-500 dark:text-amber-300" />
             <span>Card Grading Hub</span>
@@ -138,7 +138,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
 
           <button
             onClick={onGoToStats}
-            className="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-[#070b22] hover:bg-slate-200 dark:hover:bg-[#101538] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+            className="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-[#17181c] hover:bg-slate-200 dark:hover:bg-[#101538] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs"
           >
             <span>Mastery Stats</span>
             <ArrowRight className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
@@ -167,7 +167,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
                 key={q.id}
                 className={`rounded-3xl border transition-all overflow-hidden shadow-xs ${
                   isCorrect
-                    ? 'bg-white dark:bg-[#090e28]/70 border-slate-200 dark:border-slate-800'
+                    ? 'bg-white dark:bg-[#121316]/70 border-slate-200 dark:border-slate-800'
                     : 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-200 dark:border-rose-500/30'
                 }`}
               >
@@ -190,7 +190,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
                         {q.card.mana_cost && (
                           <ManaCostRenderer manaCost={q.card.mana_cost} size="xs" />
                         )}
-                        <span className="text-[10px] font-mono uppercase bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800 text-violet-700 dark:text-violet-300 font-semibold">
+                        <span className="text-[10px] font-mono uppercase bg-slate-100 dark:bg-[#17181c] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800 text-violet-700 dark:text-violet-300 font-semibold">
                           {q.category.replace('_', ' ')}
                         </span>
                       </div>
@@ -212,7 +212,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
 
                 {/* Expanded Card Details & Explanation */}
                 {isExpanded && (
-                  <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#050818]/90 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                  <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c]/90 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
                     <div className="md:col-span-4 flex justify-center">
                       <CardObfuscator
                         card={q.card}
@@ -228,7 +228,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
                         <p className="text-xs text-slate-700 dark:text-slate-200 mt-1 leading-relaxed">{q.explanation}</p>
                       </div>
 
-                      <div className="p-3.5 rounded-2xl bg-white dark:bg-[#090e28] border border-slate-200 dark:border-slate-800 space-y-1">
+                      <div className="p-3.5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 space-y-1">
                         <div className="text-[11px] font-bold text-violet-700 dark:text-violet-300 uppercase">Oracle Rules Text</div>
                         <p className="text-xs text-slate-700 dark:text-slate-200 font-sans leading-relaxed">
                           {q.card.oracle_text || 'No oracle rules text.'}

@@ -685,10 +685,10 @@ export const AdminUserEvaluationInspectorModal: React.FC<AdminUserEvaluationInsp
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-7xl h-[92vh] max-h-[960px] bg-white dark:bg-[#080d21] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-900 dark:text-slate-100"
+        className="relative w-full max-w-7xl h-[92vh] max-h-[960px] bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-900 dark:text-slate-100"
       >
         {/* ==================== 1. MODAL HEADER ==================== */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-[#050818]/90 shrink-0">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-[#17181c]/90 shrink-0">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* User Identity & Badges */}
             <div className="flex items-center gap-3">
@@ -1585,7 +1585,7 @@ export const AdminUserEvaluationInspectorModal: React.FC<AdminUserEvaluationInsp
         </div>
 
         {/* ==================== 3. MODAL FOOTER ==================== */}
-        <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-[#050818]/90 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
+        <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-[#17181c]/90 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 shrink-0">
           <div className="flex items-center gap-2 truncate">
             <span>Viewing: <strong className="text-slate-900 dark:text-white">{user.name}</strong></span>
             <span>•</span>

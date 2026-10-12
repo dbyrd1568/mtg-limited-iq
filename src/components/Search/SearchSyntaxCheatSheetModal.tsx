@@ -22,10 +22,10 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 dark:bg-[#030612]/90 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-cyan-400 flex items-center justify-center border border-violet-200 dark:border-violet-700/50 shrink-0">
               <BookOpen className="w-4 h-4" />
@@ -70,7 +70,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Fields Table */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#17181c]/60">
                 <table className="w-full text-left font-mono">
                   <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
                     <tr>
@@ -108,7 +108,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
               </div>
 
               {/* Operators Table */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#17181c]/60">
                 <table className="w-full text-left font-mono">
                   <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
                     <tr>
@@ -146,7 +146,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
               </div>
 
               {/* Color Codes Table */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#17181c]/60">
                 <table className="w-full text-left font-mono">
                   <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
                     <tr>
@@ -193,7 +193,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Fields Table */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#17181c]/60">
                 <table className="w-full text-left font-mono">
                   <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
                     <tr>
@@ -231,7 +231,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
               </div>
 
               {/* Operators Table */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#17181c]/60">
                 <table className="w-full text-left font-mono">
                   <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
                     <tr>
@@ -269,7 +269,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
               </div>
 
               {/* Rarity & Number Codes */}
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#17181c]/60">
                 <table className="w-full text-left font-mono">
                   <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
                     <tr>
@@ -311,7 +311,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
               <span>Examples (Click any to search immediately)</span>
             </h3>
 
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#050818]/60">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/60 dark:bg-[#17181c]/60">
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {[
                   {
@@ -392,7 +392,7 @@ export const SearchSyntaxCheatSheetModal: React.FC<SearchSyntaxCheatSheetModalPr
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#060a1d] flex items-center justify-end">
+        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] flex items-center justify-end">
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs"

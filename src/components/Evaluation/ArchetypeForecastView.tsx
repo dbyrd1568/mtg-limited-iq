@@ -432,7 +432,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* 1. Top Set Progress & Source Banner */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-violet-500/35 shadow-md space-y-4 transition-colors">
+      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-violet-500/35 shadow-md space-y-4 transition-colors">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
@@ -554,7 +554,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               </div>
             </div>
 
-            <div className="shrink-0 flex items-center gap-3 self-end sm:self-center bg-slate-100 dark:bg-[#050818] px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="shrink-0 flex items-center gap-3 self-end sm:self-center bg-slate-100 dark:bg-[#17181c] px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
               <div className="text-right font-mono">
                 <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Accuracy Score</div>
                 <div className="text-lg font-black text-violet-700 dark:text-cyan-300">{report.metaCalibrationScore} / 100</div>
@@ -562,7 +562,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             </div>
           </div>
         ) : (
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-violet-500/30 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-violet-500/30 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
               <Scale className="w-4 h-4 text-violet-600 dark:text-cyan-400 shrink-0" />
               <span className="text-slate-600 dark:text-slate-300">
@@ -573,7 +573,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         )
       ) : (
         !isBlindGrading && (
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
               <Clock className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="text-slate-600 dark:text-slate-400">
@@ -588,7 +588,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Top Color Card */}
         <div
-          className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
+          className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
         >
           <div className="flex items-center justify-between">
             <span
@@ -642,7 +642,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
         {/* Top Archetype */}
         <div
-          className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
+          className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
         >
           <div className="flex items-center justify-between">
             <span
@@ -704,7 +704,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
         {/* Total Bombs Graded */}
         <div
-          className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
+          className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
         >
           <div className="flex items-center justify-between">
             <span
@@ -744,7 +744,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
         {/* Lowest Rated Color */}
         <div
-          className="p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
+          className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-2 shadow-xs"
         >
           <div className="flex items-center justify-between">
             <span
@@ -807,7 +807,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               Your highest-rated card across each rarity tier in {report.setName}.
             </p>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-[#050818] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 self-start sm:self-auto">
+          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-[#17181c] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 self-start sm:self-auto">
             <span>Set Progress: <strong className="text-violet-700 dark:text-cyan-300 font-bold">{report.ratedCards}</strong> / {report.totalCards} cards</span>
           </div>
         </div>
@@ -823,7 +823,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             return (
               <div
                 key={sec.key}
-                className={`p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs flex flex-col justify-between space-y-3 transition-colors ${sec.themeColor.border}`}
+                className={`p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs flex flex-col justify-between space-y-3 transition-colors ${sec.themeColor.border}`}
               >
                 {/* Rarity Header */}
                 <div className="flex items-center justify-between">
@@ -837,7 +837,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                   </div>
 
                   <span
-                    className="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-[#050818] px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800"
+                    className="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-[#17181c] px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800"
                     title={sec.naCount > 0 ? `${sec.rankedCount} graded (A–F) • ${sec.naCount} lands evaluated (N/A)` : `${sec.gradedCount} of ${sec.totalInSet} cards evaluated`}
                   >
                     {sec.gradedCount} / {sec.totalInSet} evaluated
@@ -893,7 +893,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
                       {/* User Notes Preview (if added) */}
                       {topItem.eval.notes && topItem.eval.notes.trim().length > 0 && (
-                        <div className="flex items-start gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-300 italic line-clamp-2">
+                        <div className="flex items-start gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-300 italic line-clamp-2">
                           <MessageSquare className="w-3 h-3 text-cyan-500 shrink-0 mt-0.5" />
                           <span className="line-clamp-2 leading-relaxed">"{topItem.eval.notes.trim()}"</span>
                         </div>
@@ -981,7 +981,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                               [sec.key]: !prev[sec.key],
                             }))
                           }
-                          className="w-full mt-1.5 py-1 px-2 rounded-lg text-[10px] font-mono font-semibold bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#0d1538] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-between transition-colors cursor-pointer"
+                          className="w-full mt-1.5 py-1 px-2 rounded-lg text-[10px] font-mono font-semibold bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#1f2026] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-between transition-colors cursor-pointer"
                         >
                           <span>{expandedRarityRunnerUps[sec.key] ? 'Hide' : 'View'} Top 5 {sec.shortLabel}s</span>
                           {expandedRarityRunnerUps[sec.key] ? (
@@ -1000,7 +1000,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                               key={item.card.id}
                               type="button"
                               onClick={() => onSelectCard?.(item.card)}
-                              className="w-full flex items-center justify-between p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#0d1538] border border-slate-200/80 dark:border-slate-800/60 hover:border-violet-400 dark:hover:border-cyan-400/50 text-[11px] transition-colors cursor-pointer text-left group"
+                              className="w-full flex items-center justify-between p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#1f2026] border border-slate-200/80 dark:border-slate-800/60 hover:border-violet-400 dark:hover:border-cyan-400/50 text-[11px] transition-colors cursor-pointer text-left group"
                             >
                               <div className="flex items-center gap-1.5 truncate min-w-0 mr-1.5">
                                 <span className="font-mono font-bold text-slate-400 dark:text-slate-500 text-[10px] w-4 shrink-0">
@@ -1026,7 +1026,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                   </div>
                 ) : (
                   /* Empty State */
-                  <div className="p-6 rounded-2xl bg-slate-50/50 dark:bg-[#050818]/50 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2 flex flex-col items-center justify-center min-h-[260px]">
+                  <div className="p-6 rounded-2xl bg-slate-50/50 dark:bg-[#17181c]/50 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2 flex flex-col items-center justify-center min-h-[260px]">
                     <div className={`p-2 rounded-xl ${sec.themeColor.chip} shrink-0 flex items-center justify-center`}>
                       <SetSymbol setCode={setCode} rarity={sec.key} size="lg" />
                     </div>
@@ -1059,7 +1059,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         </div>
 
         {/* Content Creator Style Color Rankings Banner */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-violet-500/35 shadow-sm space-y-4">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-violet-500/35 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-violet-700 dark:text-cyan-300 bg-violet-100 dark:bg-violet-950/80 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-700/50">
@@ -1067,7 +1067,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               </span>
             </div>
             {colorless && colorless.totalCards > 0 && (
-              <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1.5 self-start sm:self-auto bg-slate-50 dark:bg-[#050818] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1.5 self-start sm:self-auto bg-slate-50 dark:bg-[#17181c] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
                 <span>Colorless ({colorless.ratedCards} of {colorless.totalCards} rated):</span>
                 {colorless.ratedCards > 0 ? (
                   <span className="font-bold text-slate-700 dark:text-slate-200">
@@ -1102,7 +1102,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 return (
                   <React.Fragment key={col.color}>
                     {/* Color Column */}
-                    <div className="flex flex-col items-center gap-1.5 min-w-[64px] sm:min-w-[84px] p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#050818]/90 border border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors">
+                    <div className="flex flex-col items-center gap-1.5 min-w-[64px] sm:min-w-[84px] p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors">
                       {/* Mana Pip Art */}
                       <div className="relative group">
                         <ManaSymbol symbol={col.symbol} size="xl" className="w-10 h-10 sm:w-11 sm:h-11 drop-shadow-md hover:scale-110 transition-transform" />
@@ -1192,7 +1192,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                   <span>17Lands Win Rates:</span>
                   <span className="text-amber-600 dark:text-amber-400 font-bold">TBD</span>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#050818]/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#17181c]/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-500 shrink-0" />
                   <span>17Lands data is available approximately 2 weeks after release. Color win rates will populate then.</span>
                 </div>
@@ -1204,7 +1204,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {report.colorRankings.filter((col) => col.color !== 'C' || col.totalCards > 0).map((col, idx) => {
             const mTheme = MONOCOLOR_THEMES[col.color] || {
-              bgGradient: 'bg-white dark:bg-[#090e24]',
+              bgGradient: 'bg-white dark:bg-[#121316]',
               borderColor: 'border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700',
               pip: 'C',
             };
@@ -1212,7 +1212,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             return (
               <div
                 key={col.color}
-                className="p-4 rounded-2xl bg-white dark:bg-[#090d20] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs hover:shadow-md transition-all overflow-hidden relative min-w-0 w-full"
+                className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs hover:shadow-md transition-all overflow-hidden relative min-w-0 w-full"
                 title={`Average Grade Score Calculation:
 Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ ${col.ratedCards} rated cards in ${col.name} = ${col.averageScore.toFixed(2)} / 5.0`}
               >
@@ -1223,7 +1223,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-[#050818] border border-slate-300 dark:border-slate-800 text-xs font-bold font-mono text-violet-700 dark:text-cyan-300 flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 text-xs font-bold font-mono text-violet-700 dark:text-cyan-300 flex items-center justify-center">
                         #{idx + 1}
                       </span>
                       {col.color !== 'C' && <ManaSymbol symbol={mTheme.pip} size="md" />}
@@ -1261,7 +1261,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                 {!isBlindGrading && col.color !== 'C' && (
                   report.has17LandsData && col.seventeenLandsAvgWinRate !== undefined ? (
                     <div
-                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818]/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono"
+                      className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono"
                       title={`17Lands Premier Draft stats: ${((col.seventeenLandsAvgWinRate || 0) * 100).toFixed(1)}% average GIH win rate across all ${col.name} monocolored cards (Rank #${col.seventeenLandsRank} in Arena metagame)`}
                     >
                       <div className="flex items-center gap-1.5">
@@ -1292,7 +1292,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                     </div>
                   ) : (
                     <div
-                      className="p-2 rounded-xl bg-slate-50/70 dark:bg-[#050818]/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400"
+                      className="p-2 rounded-xl bg-slate-50/70 dark:bg-[#17181c]/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400"
                     >
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">17Lands:</span>
@@ -1323,7 +1323,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                             key={b.card.id}
                             type="button"
                             onClick={() => onSelectCard?.(b.card)}
-                            className="w-full flex items-center justify-between text-[11px] bg-slate-50 hover:bg-slate-100 dark:bg-[#050818]/90 dark:hover:bg-[#0d1538] px-2 py-1 rounded border border-slate-200 dark:border-slate-800/60 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group/card"
+                            className="w-full flex items-center justify-between text-[11px] bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c]/90 dark:hover:bg-[#1f2026] px-2 py-1 rounded border border-slate-200 dark:border-slate-800/60 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group/card"
                           >
                             <span className="text-slate-800 dark:text-white truncate max-w-[170px] group-hover/card:text-violet-600 dark:group-hover/card:text-cyan-300">{b.card.name}</span>
                             <span className="font-mono font-bold text-amber-600 dark:text-amber-300">{b.eval.userGrade}</span>
@@ -1344,7 +1344,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                             key={c.card.id}
                             type="button"
                             onClick={() => onSelectCard?.(c.card)}
-                            className="w-full flex items-center justify-between text-[11px] bg-slate-50 hover:bg-slate-100 dark:bg-[#050818]/90 dark:hover:bg-[#0d1538] px-2 py-1 rounded border border-slate-200 dark:border-slate-800/60 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group/card"
+                            className="w-full flex items-center justify-between text-[11px] bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c]/90 dark:hover:bg-[#1f2026] px-2 py-1 rounded border border-slate-200 dark:border-slate-800/60 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group/card"
                           >
                             <span className="text-slate-700 dark:text-slate-300 truncate max-w-[170px] group-hover/card:text-violet-600 dark:group-hover/card:text-cyan-300">{c.card.name}</span>
                             <span className="font-mono font-bold text-violet-600 dark:text-cyan-300">{c.eval.userGrade}</span>
@@ -1383,8 +1383,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                               isSelected
                                 ? `bg-violet-600 text-white shadow-xs ring-2 ring-inset ring-violet-400 dark:ring-cyan-300 font-black ${readOnly ? 'cursor-default' : 'cursor-pointer'}`
                                 : readOnly
-                                ? 'opacity-35 cursor-default bg-slate-100 dark:bg-[#050818] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
-                                : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-[#131d42] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
+                                ? 'opacity-35 cursor-default bg-slate-100 dark:bg-[#17181c] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
+                                : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#17181c] dark:hover:bg-[#131d42] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
                             }`}
                             title={readOnly ? `${col.name}: ${col.userEvaluation?.userGrade || 'Unrated'}` : `Assign grade ${tier} to ${col.name}`}
                           >
@@ -1397,7 +1397,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                     <button
                       type="button"
                       onClick={() => openColorNotes(col)}
-                      className="w-full py-1.5 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#0f1738] border border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-w-0"
+                      className="w-full py-1.5 px-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#0f1738] border border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-w-0"
                     >
                       <Edit3 className="w-3 h-3 text-violet-500 dark:text-cyan-400 shrink-0" />
                       <span className="truncate">{col.userEvaluation?.notes ? 'Edit Color Notes' : 'Add Color Strategy Notes'}</span>
@@ -1430,7 +1430,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
           return (
             <div
               key={arch.code}
-              className="p-4 rounded-2xl bg-white dark:bg-[#090d20] border border-slate-200 dark:border-slate-800/80 transition-all space-y-3 shadow-xs hover:shadow-md relative overflow-hidden group min-w-0 w-full"
+              className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 transition-all space-y-3 shadow-xs hover:shadow-md relative overflow-hidden group min-w-0 w-full"
             >
               {/* Authentic MTG 50/50 Dual Land Split Bar - Left half Color 1, Right half Color 2, NO yellow in middle */}
               <div className="flex h-1.5 w-[calc(100%+2rem)] -mx-4 -mt-4 mb-3.5 shrink-0">
@@ -1443,7 +1443,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Dual WOTC Mana Pips */}
-                    <div className="flex items-center gap-0.5 bg-slate-100/90 dark:bg-[#050818]/90 px-1.5 py-0.5 rounded-lg border border-slate-300 dark:border-slate-700/60 shadow-xs shrink-0">
+                    <div className="flex items-center gap-0.5 bg-slate-100/90 dark:bg-[#17181c]/90 px-1.5 py-0.5 rounded-lg border border-slate-300 dark:border-slate-700/60 shadow-xs shrink-0">
                       {pips.map((p) => (
                         <ManaSymbol key={p} symbol={p} size="sm" />
                       ))}
@@ -1510,7 +1510,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
 
               {/* WOTC Design Strategy & Mechanics */}
               {arch.description && (
-                <div className="p-3 rounded-2xl bg-slate-50/90 dark:bg-[#060a1d]/90 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                <div className="p-3 rounded-2xl bg-slate-50/90 dark:bg-[#17181c]/90 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
                   <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                     <BookOpen className="w-3.5 h-3.5 text-amber-500" />
                     <span>Archetype Strategy Overview</span>
@@ -1537,7 +1537,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
               {!isBlindGrading && (
                 report.has17LandsData && arch.seventeenLandsWinRate !== undefined ? (
                   <div
-                    className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-[#050818]/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono"
+                    className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400" title={`Delta Calibration Read: Your prediction is ${arch.gradeDelta === 0 ? 'an exact match with 17Lands' : (arch.gradeDelta || 0) > 0 ? `higher than 17Lands by ${arch.gradeDelta} tier(s)` : `lower than 17Lands by ${Math.abs(arch.gradeDelta || 0)} tier(s)`}`}>
@@ -1569,7 +1569,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   </div>
                 ) : (
                   <div
-                    className="p-2 rounded-xl bg-slate-50/70 dark:bg-[#050818]/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2 flex-wrap text-xs font-mono text-slate-500 dark:text-slate-400"
+                    className="p-2 rounded-xl bg-slate-50/70 dark:bg-[#17181c]/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2 flex-wrap text-xs font-mono text-slate-500 dark:text-slate-400"
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">17Lands Calibration:</span>
@@ -1585,7 +1585,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
               )}
 
               {/* Signpost & Colors Formula Subtext with Tooltips */}
-              <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-slate-50/90 dark:bg-[#050818]/80 border border-slate-200 dark:border-slate-800/60 text-center text-[10px] font-mono">
+              <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-slate-50/90 dark:bg-[#17181c]/80 border border-slate-200 dark:border-slate-800/60 text-center text-[10px] font-mono">
                 <div className="flex flex-col items-center gap-0.5" title={`Signpost Formula (30% weight in Power Score): Average grade of the ${arch.signposts.length} gold signpost uncommons/rares in this archetype = ${arch.signpostAvgScore.toFixed(2)} / 5.0`}>
                   <span className="text-slate-500">
                     Signpost Avg (30%)
@@ -1624,7 +1624,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         key={sp.card.id}
                         type="button"
                         onClick={() => onSelectCard?.(sp.card)}
-                        className="text-[11px] bg-slate-100 hover:bg-slate-200 dark:bg-[#050818]/90 dark:hover:bg-[#0d1538] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 px-2 py-0.5 rounded-lg text-slate-800 dark:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer text-left group/sp max-w-full"
+                        className="text-[11px] bg-slate-100 hover:bg-slate-200 dark:bg-[#17181c]/90 dark:hover:bg-[#1f2026] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 px-2 py-0.5 rounded-lg text-slate-800 dark:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer text-left group/sp max-w-full"
                       >
                         <span className="group-hover/sp:text-violet-600 dark:group-hover/sp:text-cyan-300 font-medium truncate">{sp.card.name}</span>
                         {sp.eval && (
@@ -1654,7 +1654,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                           key={pick.card.id}
                           type="button"
                           onClick={() => onSelectCard?.(pick.card)}
-                          className="w-full flex items-center justify-between text-[11px] bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#0d1538] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group/pick min-w-0"
+                          className="w-full flex items-center justify-between text-[11px] bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#1f2026] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group/pick min-w-0"
                         >
                           <div className="flex items-center gap-2 truncate min-w-0">
                             <span className="text-slate-800 dark:text-white font-medium truncate group-hover/pick:text-violet-600 dark:group-hover/pick:text-cyan-300">{pick.card.name}</span>
@@ -1723,8 +1723,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                           isSelected
                             ? `bg-violet-600 text-white shadow-xs ring-2 ring-inset ring-violet-400 dark:ring-cyan-300 font-black ${readOnly ? 'cursor-default' : 'cursor-pointer'}`
                             : readOnly
-                            ? 'opacity-35 cursor-default bg-slate-100 dark:bg-[#050818] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
-                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-[#131d42] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
+                            ? 'opacity-35 cursor-default bg-slate-100 dark:bg-[#17181c] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#17181c] dark:hover:bg-[#131d42] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
                         }`}
                         title={readOnly ? `${arch.name}: ${arch.letterGrade}` : `Directly rate ${arch.name} as ${tier}`}
                       >
@@ -1802,7 +1802,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
 
                   <button
                     onClick={() => setShowOtherArchetypes(!showOtherArchetypes)}
-                    className="text-xs font-bold text-violet-600 dark:text-cyan-400 hover:text-violet-700 dark:hover:text-cyan-300 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#090e24] cursor-pointer self-start sm:self-auto shadow-xs"
+                    className="text-xs font-bold text-violet-600 dark:text-cyan-400 hover:text-violet-700 dark:hover:text-cyan-300 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121316] cursor-pointer self-start sm:self-auto shadow-xs"
                   >
                     <span>{showOtherArchetypes ? 'Hide Other Color Pairs' : `Show ${report.otherArchetypes.length} Other Pairs`}</span>
                     {showOtherArchetypes ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -1822,12 +1822,12 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
 
       {/* 6. Strategy Dossier & Detailed Notes Modal */}
       {activeDossierArchetype && (
-        <div className={`fixed inset-0 ${zIndex || 'z-50'} flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 dark:bg-[#030614]/85 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto`}>
-          <div className="bg-white dark:bg-[#090d20] border border-slate-200 dark:border-violet-500/35 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto">
+        <div className={`fixed inset-0 ${zIndex || 'z-50'} flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 dark:bg-[#090a0d]/85 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto`}>
+          <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-violet-500/35 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto">
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-[#050818] p-1.5 rounded-xl border border-slate-300 dark:border-slate-700">
+                <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-[#17181c] p-1.5 rounded-xl border border-slate-300 dark:border-slate-700">
                   {activeDossierArchetype.colors.map((c) => (
                     <ManaSymbol key={c} symbol={c} size="md" />
                   ))}
@@ -1908,7 +1908,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
               </div>
               <button
                 onClick={() => setActiveDossierArchetype(null)}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#17181c] dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1917,7 +1917,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
             {/* Modal Scrollable Body */}
             <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
               {/* 1. Grade Strip & Metagame Role Picker */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800/80 space-y-3">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/80 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Star className="w-4 h-4 text-amber-500" />
@@ -1991,8 +1991,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                           isSelected
                             ? `bg-violet-600 text-white shadow-xs ring-2 ring-inset ring-violet-400 dark:ring-cyan-300 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`
                             : readOnly
-                            ? 'opacity-35 cursor-default bg-white dark:bg-[#090d20] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
-                            : 'bg-white hover:bg-slate-100 dark:bg-[#090d20] dark:hover:bg-[#121b44] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
+                            ? 'opacity-35 cursor-default bg-white dark:bg-[#121316] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
+                            : 'bg-white hover:bg-slate-100 dark:bg-[#121316] dark:hover:bg-[#121b44] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
                         }`}
                       >
                         {tier}
@@ -2020,8 +2020,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                             isSelected
                               ? `bg-violet-600 text-white border-violet-500 shadow-sm ${readOnly ? 'cursor-default' : 'cursor-pointer'}`
                               : readOnly
-                              ? 'opacity-40 cursor-default bg-white dark:bg-[#090d20] text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
-                              : 'bg-white hover:bg-slate-100 dark:bg-[#090d20] dark:hover:bg-[#121b44] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 cursor-pointer'
+                              ? 'opacity-40 cursor-default bg-white dark:bg-[#121316] text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800'
+                              : 'bg-white hover:bg-slate-100 dark:bg-[#121316] dark:hover:bg-[#121b44] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 cursor-pointer'
                           }`}
                         >
                           {role === 'Premier Deck' && <Crown className="w-3 h-3 text-amber-300 shrink-0" />}
@@ -2052,7 +2052,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                       {activeDossierArchetype.mechanics.map((mech) => (
                         <span
                           key={mech}
-                          className="px-2.5 py-0.5 rounded-md text-xs font-mono font-bold bg-white dark:bg-[#090d20] text-slate-800 dark:text-slate-200 border border-amber-200 dark:border-amber-500/40 shadow-xs"
+                          className="px-2.5 py-0.5 rounded-md text-xs font-mono font-bold bg-white dark:bg-[#121316] text-slate-800 dark:text-slate-200 border border-amber-200 dark:border-amber-500/40 shadow-xs"
                         >
                           #{mech}
                         </span>
@@ -2083,7 +2083,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         Crucial Commons / Glue:
                       </span>
                       {activeDossierArchetype.keyCommons.map((cName) => (
-                        <span key={cName} className="px-2 py-0.5 rounded-md bg-white dark:bg-[#070b1e] border border-violet-200 dark:border-violet-700/60 font-mono text-[11px] font-bold text-violet-900 dark:text-cyan-300">
+                        <span key={cName} className="px-2 py-0.5 rounded-md bg-white dark:bg-[#17181c] border border-violet-200 dark:border-violet-700/60 font-mono text-[11px] font-bold text-violet-900 dark:text-cyan-300">
                           {cName}
                         </span>
                       ))}
@@ -2112,8 +2112,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   placeholder={readOnly ? 'No draft notes recorded for this archetype.' : `Jot down draft priorities, key commons, splash requirements, curve targets, or traps to avoid in ${activeDossierArchetype.name}...`}
                   className={`w-full h-28 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs placeholder-slate-400 focus:outline-none resize-none font-sans leading-relaxed ${
                     readOnly
-                      ? 'cursor-default bg-slate-100/60 dark:bg-[#030612] text-slate-800 dark:text-slate-200'
-                      : 'bg-slate-50 dark:bg-[#050818] text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 dark:focus:ring-cyan-400'
+                      ? 'cursor-default bg-slate-100/60 dark:bg-[#090a0d] text-slate-800 dark:text-slate-200'
+                      : 'bg-slate-50 dark:bg-[#17181c] text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 dark:focus:ring-cyan-400'
                   }`}
                 />
               </div>
@@ -2130,7 +2130,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         key={sp.card.id}
                         type="button"
                         onClick={() => onSelectCard?.(sp.card)}
-                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#10193d] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group"
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#10193d] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group"
                       >
                         <div className="truncate mr-2">
                           <span className="text-xs font-bold text-slate-800 dark:text-white block truncate group-hover:text-violet-600 dark:group-hover:text-cyan-300">{sp.card.name}</span>
@@ -2157,7 +2157,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                         key={pick.card.id}
                         type="button"
                         onClick={() => onSelectCard?.(pick.card)}
-                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#050818] dark:hover:bg-[#10193d] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group"
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#17181c] dark:hover:bg-[#10193d] border border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors cursor-pointer text-left group"
                       >
                         <div className="truncate mr-2">
                           <span className="text-xs font-medium text-slate-800 dark:text-white block truncate group-hover:text-violet-600 dark:group-hover:text-cyan-300">{pick.card.name}</span>
@@ -2174,7 +2174,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#060a1c] flex items-center justify-between gap-3 shrink-0">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#17181c] flex items-center justify-between gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveDossierArchetype(null)}
@@ -2204,8 +2204,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
 
       {/* 7. Monocolor Notes Modal */}
       {activeColorNotesColor && (
-        <div className={`fixed inset-0 ${zIndex || 'z-50'} flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 dark:bg-[#030614]/85 backdrop-blur-md animate-in fade-in duration-150`}>
-          <div className="bg-white dark:bg-[#090d20] border border-slate-200 dark:border-violet-500/35 rounded-3xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden">
+        <div className={`fixed inset-0 ${zIndex || 'z-50'} flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 dark:bg-[#090a0d]/85 backdrop-blur-md animate-in fade-in duration-150`}>
+          <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-violet-500/35 rounded-3xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <ManaSymbol symbol={activeColorNotesColor.symbol} size="lg" />
@@ -2220,7 +2220,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
               </div>
               <button
                 onClick={() => setActiveColorNotesColor(null)}
-                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] dark:hover:bg-slate-800 text-slate-500 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#17181c] dark:hover:bg-slate-800 text-slate-500 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2268,8 +2268,8 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                           isSelected
                             ? `bg-violet-600 text-white shadow-xs ring-2 ring-inset ring-violet-400 dark:ring-cyan-300 font-black ${readOnly ? 'cursor-default' : 'cursor-pointer'}`
                             : readOnly
-                            ? 'opacity-35 cursor-default bg-slate-100 dark:bg-[#050818] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
-                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#050818] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
+                            ? 'opacity-35 cursor-default bg-slate-100 dark:bg-[#17181c] text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-[#17181c] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 cursor-pointer'
                         }`}
                       >
                         {tier}
@@ -2290,14 +2290,14 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   placeholder={readOnly ? 'No notes recorded for this color.' : `Notes on ${activeColorNotesColor.name} in ${setCode}: depth, key commons, splash viability, removal speed...`}
                   className={`w-full h-32 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs placeholder-slate-400 focus:outline-none resize-none font-sans ${
                     readOnly
-                      ? 'cursor-default bg-slate-100/60 dark:bg-[#030612] text-slate-800 dark:text-slate-200'
-                      : 'bg-slate-50 dark:bg-[#050818] text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 dark:focus:ring-cyan-400'
+                      ? 'cursor-default bg-slate-100/60 dark:bg-[#090a0d] text-slate-800 dark:text-slate-200'
+                      : 'bg-slate-50 dark:bg-[#17181c] text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 dark:focus:ring-cyan-400'
                   }`}
                 />
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#060a1c] flex items-center justify-end gap-2.5">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#17181c] flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setActiveColorNotesColor(null)}

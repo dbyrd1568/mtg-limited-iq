@@ -74,7 +74,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
           type="button"
           onClick={onFallbackOAuth}
           disabled={isLoading}
-          className="w-full py-2.5 px-4 rounded-xl bg-white dark:bg-[#0c1236] hover:bg-slate-50 dark:hover:bg-[#121a4a] border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer disabled:opacity-60 min-h-[42px]"
+          className="w-full py-2.5 px-4 rounded-xl bg-white dark:bg-[#1c1d22] hover:bg-slate-50 dark:hover:bg-[#121a4a] border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer disabled:opacity-60 min-h-[42px]"
         >
           <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
             <path

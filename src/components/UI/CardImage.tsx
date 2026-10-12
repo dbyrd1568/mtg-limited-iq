@@ -431,7 +431,7 @@ export const CardImage: React.FC<CardImageProps> = ({
     <div className={`relative w-full h-full overflow-hidden rounded-[4.75%/3.4%] ${className}`}>
       {/* Loading Skeleton */}
       {!isLoaded && (
-        <div className="absolute inset-0 bg-[#050818] flex items-center justify-center z-10 pointer-events-none rounded-[4.75%/3.4%]">
+        <div className="absolute inset-0 bg-[#17181c] flex items-center justify-center z-10 pointer-events-none rounded-[4.75%/3.4%]">
           <Loader2 className="w-5 h-5 text-violet-500 dark:text-cyan-400 animate-spin opacity-70" />
         </div>
       )}

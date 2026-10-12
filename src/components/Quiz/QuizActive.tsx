@@ -199,7 +199,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
   return (
     <div className="max-w-[1440px] mx-auto py-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
       {/* Top Header Bar: Progress, Timer, Audio & Exit */}
-      <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+      <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={onExitQuiz}
@@ -212,7 +212,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
             <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300">
               Q{currentIndex + 1}/{totalQuestions}
             </span>
-            <div className="w-24 sm:w-32 h-2 rounded-full bg-slate-100 dark:bg-[#050818] overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="w-24 sm:w-32 h-2 rounded-full bg-slate-100 dark:bg-[#17181c] overflow-hidden border border-slate-200 dark:border-slate-800">
               <div
                 className="h-full bg-gradient-to-r from-violet-600 to-cyan-500 transition-all duration-300"
                 style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
@@ -228,7 +228,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
               className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
                 timeLeft <= 5
                   ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50'
-                  : 'bg-slate-100 dark:bg-[#050818] text-violet-700 dark:text-cyan-300 border-slate-200 dark:border-slate-800'
+                  : 'bg-slate-100 dark:bg-[#17181c] text-violet-700 dark:text-cyan-300 border-slate-200 dark:border-slate-800'
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
@@ -247,7 +247,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
           {/* Sound Toggle */}
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
             title={soundEnabled ? 'Mute Audio Cues' : 'Unmute Audio Cues'}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-violet-600 dark:text-cyan-400" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
@@ -261,7 +261,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
         <div className={`${isHeadToHead ? 'lg:col-span-6' : 'lg:col-span-5'} flex flex-col items-center justify-center space-y-3 min-w-0`}>
           {isHeadToHead && currentQuestion.comparisonCard ? (
             /* 17Lands Duel Arena (2 Cards Side-by-Side without overlap) */
-            <div className="w-full bg-white dark:bg-[#080d24] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+            <div className="w-full bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Swords className="w-3.5 h-3.5 text-amber-500" />
@@ -277,12 +277,12 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                   className={`flex flex-col items-center cursor-pointer transition-all p-1.5 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-[170px] sm:max-w-[210px] ${
                     selectedOptionId === currentQuestion.card.id
                       ? 'bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500 dark:ring-cyan-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-[#0c1236]'
+                      : 'hover:bg-slate-100 dark:hover:bg-[#1c1d22]'
                   }`}
                   title="Click card to choose Option A"
                 >
                   <div className="flex items-center justify-between w-full mb-1.5 px-0.5">
-                    <span className="text-[10px] sm:text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-1.5 sm:px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] sm:text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-1.5 sm:px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                       Option A (1)
                     </span>
                     <button
@@ -291,7 +291,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                         e.stopPropagation();
                         setZoomedCard({ card: currentQuestion.card, label: 'Option A', optionId: currentQuestion.card.id });
                       }}
-                      className="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-slate-100 dark:bg-[#17181c] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
                       title="Enlarge Option A (without choosing answer)"
                     >
                       <ZoomIn className="w-3 h-3 text-violet-600 dark:text-cyan-400" />
@@ -322,7 +322,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
 
                 {/* VS Badge */}
                 <div className="shrink-0 flex flex-col items-center justify-center px-0.5">
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-100 dark:bg-[#0e1438] border border-slate-300 dark:border-cyan-400/50 text-slate-800 dark:text-cyan-200 font-bold text-[10px] sm:text-xs flex items-center justify-center font-mono shadow-xs">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-100 dark:bg-[#1c1d22] border border-slate-300 dark:border-cyan-400/50 text-slate-800 dark:text-cyan-200 font-bold text-[10px] sm:text-xs flex items-center justify-center font-mono shadow-xs">
                     VS
                   </div>
                 </div>
@@ -333,12 +333,12 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                   className={`flex flex-col items-center cursor-pointer transition-all p-1.5 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-[170px] sm:max-w-[210px] ${
                     selectedOptionId === currentQuestion.comparisonCard.id
                       ? 'bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500 dark:ring-cyan-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-[#0c1236]'
+                      : 'hover:bg-slate-100 dark:hover:bg-[#1c1d22]'
                   }`}
                   title="Click card to choose Option B"
                 >
                   <div className="flex items-center justify-between w-full mb-1.5 px-0.5">
-                    <span className="text-[10px] sm:text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#050818] px-1.5 sm:px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] sm:text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-1.5 sm:px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                       Option B (2)
                     </span>
                     <button
@@ -347,7 +347,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                         e.stopPropagation();
                         setZoomedCard({ card: currentQuestion.comparisonCard!, label: 'Option B', optionId: currentQuestion.comparisonCard!.id });
                       }}
-                      className="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-slate-100 dark:bg-[#050818] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold bg-slate-100 dark:bg-[#17181c] hover:bg-violet-100 dark:hover:bg-violet-900/60 text-slate-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-800/80 flex items-center gap-1 transition-all cursor-pointer hover:scale-105 shadow-xs"
                       title="Enlarge Option B (without choosing answer)"
                     >
                       <ZoomIn className="w-3 h-3 text-violet-600 dark:text-cyan-400" />
@@ -399,7 +399,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                     e.stopPropagation();
                     setZoomedCard({ card: currentQuestion.card });
                   }}
-                  className="absolute bottom-3 right-3 px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#050818]/90 hover:bg-[#090e28] text-cyan-300 border border-violet-500/50 flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all hover:scale-105 cursor-pointer opacity-90 group-hover:opacity-100"
+                  className="absolute bottom-3 right-3 px-2.5 py-1 rounded-xl text-xs font-semibold bg-[#17181c]/90 hover:bg-[#121316] text-cyan-300 border border-violet-500/50 flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all hover:scale-105 cursor-pointer opacity-90 group-hover:opacity-100"
                   title="View card larger"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
@@ -410,7 +410,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
           )}
 
           {/* Category Tag */}
-          <span className="px-3 py-1 rounded-full bg-white dark:bg-[#080d24] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-mono text-xs shadow-xs">
+          <span className="px-3 py-1 rounded-full bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-mono text-xs shadow-xs">
             {currentQuestion.title}
           </span>
         </div>
@@ -418,11 +418,11 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
         {/* Right Column: Question Prompt, Options & Feedback */}
         <div className={`${isHeadToHead ? 'lg:col-span-6' : 'lg:col-span-7'} space-y-4 min-w-0`}>
           {/* Question Prompt Card */}
-          <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
+          <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs">
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-heading leading-snug">
               {currentQuestion.prompt}
             </h2>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
               <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <p className="leading-relaxed">{currentQuestion.tacticalContext}</p>
             </div>
@@ -435,7 +435,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
               const isOptionCorrect = option.id === currentQuestion.correctAnswer;
               const optionCard = cardMap[option.id];
 
-              let buttonStyle = 'bg-white dark:bg-[#090e24] hover:bg-slate-50 dark:hover:bg-[#10163b] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200';
+              let buttonStyle = 'bg-white dark:bg-[#121316] hover:bg-slate-50 dark:hover:bg-[#10163b] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200';
 
               if (isAnswerSubmitted) {
                 if (isOptionCorrect) {
@@ -443,7 +443,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 } else if (isSelected && !isOptionCorrect) {
                   buttonStyle = 'bg-rose-50 text-rose-950 border-rose-500 dark:bg-rose-950/40 dark:border-rose-500 dark:text-rose-200 ring-1 ring-rose-500';
                 } else {
-                  buttonStyle = 'bg-slate-50 dark:bg-[#050818]/30 border-slate-200 dark:border-slate-900 text-slate-400 dark:text-slate-600 opacity-50';
+                  buttonStyle = 'bg-slate-50 dark:bg-[#17181c]/30 border-slate-200 dark:border-slate-900 text-slate-400 dark:text-slate-600 opacity-50';
                 }
               }
 
@@ -456,7 +456,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                   className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer select-none shadow-xs ${buttonStyle}`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
-                    <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 flex items-center justify-center shrink-0">
+                    <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 font-mono text-xs font-bold text-violet-700 dark:text-cyan-300 flex items-center justify-center shrink-0">
                       {idx + 1}
                     </span>
                     <div className="overflow-hidden min-w-0 flex-1">
@@ -529,7 +529,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 )}
               </div>
 
-              <div className="p-3 rounded-xl bg-white dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-300">
+              <div className="p-3 rounded-xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-300">
                 <p className="leading-relaxed font-sans">{currentQuestion.explanation}</p>
               </div>
 
@@ -555,7 +555,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
           onClick={() => setZoomedCard(null)}
         >
           <div
-            className="relative max-w-md sm:max-w-lg w-full max-h-[94vh] overflow-y-auto bg-white dark:bg-[#070b24] border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 flex flex-col items-center select-none"
+            className="relative max-w-md sm:max-w-lg w-full max-h-[94vh] overflow-y-auto bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 flex flex-col items-center select-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header: Card Title, Set/Rarity & Close Button */}

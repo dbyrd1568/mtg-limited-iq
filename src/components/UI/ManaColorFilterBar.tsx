@@ -143,7 +143,7 @@ export const ManaColorFilterBar: React.FC<ManaColorFilterBarProps> = ({
   ];
 
   return (
-    <div className={`flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#060a1d] border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0 overflow-x-auto no-scrollbar max-w-full ${className}`}>
+    <div className={`flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl bg-slate-100/90 dark:bg-[#17181c] border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0 overflow-x-auto no-scrollbar max-w-full ${className}`}>
       {showAllButton && (
         <button
           type="button"

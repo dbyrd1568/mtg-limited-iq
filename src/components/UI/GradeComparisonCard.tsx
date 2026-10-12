@@ -183,7 +183,7 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
       : 'grid-cols-1';
 
   return (
-    <div className={`p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5 ${className}`}>
+    <div className={`p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5 ${className}`}>
       {/* Header & Delta Badge */}
       <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-slate-200 dark:border-slate-800/80">
         <div className="flex items-center gap-1.5">

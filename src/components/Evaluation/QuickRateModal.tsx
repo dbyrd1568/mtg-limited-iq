@@ -445,11 +445,11 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
   if (!isOpen || !currentCard) return null;
 
   return (
-    <div className={`fixed inset-0 ${zIndex || 'z-[130]'} flex items-center justify-center p-0 sm:p-5 bg-slate-950/70 dark:bg-[#040711]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto`}>
+    <div className={`fixed inset-0 ${zIndex || 'z-[130]'} flex items-center justify-center p-0 sm:p-5 bg-slate-950/70 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto`}>
       {/* Dimension Modal Container (Full-screen mobile, bounded dialog desktop) */}
-      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl lg:max-w-6xl sm:h-[90vh] sm:max-h-[880px] my-auto bg-white dark:bg-[#090e24] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl lg:max-w-6xl sm:h-[90vh] sm:max-h-[880px] my-auto bg-white dark:bg-[#121316] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Fixed Header */}
-        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d]">
+        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#17181c]">
           <div className="flex items-center justify-between gap-3 min-w-0">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="p-1.5 sm:p-2 rounded-xl bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-cyan-300 shrink-0">
@@ -475,7 +475,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
 
           <div className="flex items-center gap-2 shrink-0 sm:ml-auto overflow-x-auto no-scrollbar pb-0.5 sm:pb-0">
             {/* Sequence Order Dropdown */}
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-xl text-xs shrink-0">
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-xl text-xs shrink-0">
               <ArrowUpDown className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
               <select
                 value={sortOrder}
@@ -492,7 +492,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
             </div>
 
             {/* Ratings Source Toggles: [✓ Me] [✓ LSV] [✓ LLU] [✓ LOL] [✓ 17L] */}
-            <div className="flex items-center gap-1 bg-white dark:bg-[#050818] p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0 text-xs font-mono">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#17181c] p-0.5 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0 text-xs font-mono">
               <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-1 hidden md:inline">Ratings:</span>
 
               {/* Me */}
@@ -700,8 +700,8 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
             />
 
             {/* Complete Oracle Rules Text (Internal scroll for long cards, keeps modal static) */}
-            <div className="flex-1 min-h-[75px] max-h-[150px] overflow-y-auto p-3 rounded-xl bg-slate-50 dark:bg-[#050818] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line">
-              <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-1 sticky top-0 bg-slate-50 dark:bg-[#050818] z-10">
+            <div className="flex-1 min-h-[75px] max-h-[150px] overflow-y-auto p-3 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-line">
+              <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider mb-1 sticky top-0 bg-slate-50 dark:bg-[#17181c] z-10">
                 Oracle Rules Text
               </div>
               {currentCard.oracle_text || 'No oracle rules text.'}
@@ -732,8 +732,8 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                 placeholder={readOnly ? 'No notes recorded by user.' : "Write thoughts on this card (e.g., 'Bomb P1P1', 'Key payoff for spells', 'Too slow vs aggro')..."}
                 className={`w-full p-2 border rounded-xl text-xs resize-none transition-all leading-relaxed ${
                   readOnly
-                    ? 'bg-slate-100/60 dark:bg-[#040714] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 cursor-default focus:outline-none'
-                    : 'bg-slate-50 dark:bg-[#050818] border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400'
+                    ? 'bg-slate-100/60 dark:bg-[#090a0d] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 cursor-default focus:outline-none'
+                    : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400'
                 }`}
               />
             </div>
@@ -744,7 +744,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
         {(() => {
           const isCurrentLand = Boolean(currentCard?.is_land || currentCard?.type_line?.toLowerCase().includes('land'));
           return (
-            <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#060a1d] space-y-2 pb-safe">
+            <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#17181c] space-y-2 pb-safe">
 
               <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center flex items-center justify-center gap-1.5" title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
                 {readOnly ? (
@@ -764,7 +764,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
               >
                 {GRADE_TIERS.map((tier) => {
                   const isSelected = currentEval?.userGrade === tier;
-                  let color = 'bg-white text-slate-800 border-slate-300 dark:bg-[#050818] dark:text-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
+                  let color = 'bg-white text-slate-800 border-slate-300 dark:bg-[#17181c] dark:text-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
                   if (tier.startsWith('A')) color = 'bg-amber-100 text-amber-950 border-amber-300 font-bold dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/40 hover:bg-amber-500 hover:text-white';
                   if (tier.startsWith('B')) color = 'bg-cyan-100 text-cyan-950 border-cyan-300 font-bold dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40 hover:bg-cyan-500 hover:text-white';
                   if (tier.startsWith('C')) color = 'bg-slate-100 text-slate-900 border-slate-300 font-bold dark:bg-slate-800/50 dark:text-slate-200 dark:border-slate-700/60 hover:bg-slate-600 hover:text-white';
@@ -837,7 +837,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
 
             {/* Segmented Toggle: All Cards vs Ungraded Only */}
             <div className="flex items-center gap-2.5">
-              <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-200/80 dark:bg-[#050818] border border-slate-300/80 dark:border-slate-800 text-xs font-semibold shadow-2xs">
+              <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-200/80 dark:bg-[#17181c] border border-slate-300/80 dark:border-slate-800 text-xs font-semibold shadow-2xs">
                 <button
                   type="button"
                   onClick={() => handleToggleNavMode('all')}

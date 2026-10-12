@@ -316,7 +316,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full pl-10 pr-9 py-2.5 bg-white dark:bg-[#070b1e] border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 shadow-xs transition-all"
+          className="w-full pl-10 pr-9 py-2.5 bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-mono text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 shadow-xs transition-all"
         />
 
         {/* Right Icon: Spinner or Clear */}
@@ -399,8 +399,8 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
 
       {/* Autocomplete Dropdown */}
       {isOpen && results.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#090e24] border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden max-h-[360px] overflow-y-auto custom-scrollbar animate-in fade-in-50 duration-150">
-          <div className="p-2 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-[#050818] flex items-center justify-between">
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden max-h-[360px] overflow-y-auto custom-scrollbar animate-in fade-in-50 duration-150">
+          <div className="p-2 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-[#17181c] flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Select card to substitute into precedents
             </span>
