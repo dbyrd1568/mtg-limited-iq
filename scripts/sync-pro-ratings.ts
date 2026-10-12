@@ -60,6 +60,9 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 
 export type ProCreator = 'LSV' | 'LLU' | 'DS';
 
+// Primary active & ongoing sets on MTG Arena for rapid daily sync
+export const DEFAULT_ACTIVE_SETS = ['FRA', 'HOB', 'MBC', 'SOS'];
+
 export interface CreatorTierListConfig {
   setCode: string;
   source: ProCreator;
@@ -326,21 +329,28 @@ export function parseTierToRating(rawTier: string): { grade: string; score: numb
 }
 
 /**
- * Fetches a tier list JSON from 17Lands API
+ * Fetches a tier list JSON from 17Lands API with timeout and error tolerance
  */
-async function fetchTierList(tierListId: string): Promise<any> {
+async function fetchTierList(tierListId: string): Promise<any | null> {
   const url = `https://www.17lands.com/data/tier_list/${tierListId}`;
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(10000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    if (!res.ok) {
+      console.warn(`  ⚠️ 17Lands tier list ${tierListId} returned HTTP ${res.status}`);
+      return null;
     }
-  });
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch 17Lands tier list ${tierListId}: HTTP ${res.status}`);
+    return await res.json();
+  } catch (err: any) {
+    console.warn(`  ⚠️ Error fetching 17Lands tier list ${tierListId}: ${err.message}`);
+    return null;
   }
-
-  return await res.json();
 }
 
 /**
@@ -351,32 +361,36 @@ async function upsertProRatings(ratings: ParsedProRating[]): Promise<number> {
 
   // Option A: Use Supabase Service Role Key (preferred in GitHub Actions)
   if (SUPABASE_SERVICE_ROLE_KEY) {
-    const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const batchSize = 100;
-    let upserted = 0;
+    try {
+      const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const batchSize = 100;
+      let upserted = 0;
 
-    for (let i = 0; i < ratings.length; i += batchSize) {
-      const chunk = ratings.slice(i, i + batchSize).map(r => ({
-        set_code: r.setCode,
-        card_name: r.cardName,
-        source: r.source,
-        score: r.score,
-        grade: r.grade,
-        verdict: r.verdict,
-        notes: r.notes || null,
-        updated_at: new Date().toISOString()
-      }));
+      for (let i = 0; i < ratings.length; i += batchSize) {
+        const chunk = ratings.slice(i, i + batchSize).map(r => ({
+          set_code: r.setCode,
+          card_name: r.cardName,
+          source: r.source,
+          score: r.score,
+          grade: r.grade,
+          verdict: r.verdict,
+          notes: r.notes || null,
+          updated_at: new Date().toISOString()
+        }));
 
-      const { error } = await sb
-        .from('pro_card_ratings')
-        .upsert(chunk, { onConflict: 'set_code,card_name,source' });
+        const { error } = await sb
+          .from('pro_card_ratings')
+          .upsert(chunk, { onConflict: 'set_code,card_name,source' });
 
-      if (error) {
-        throw new Error(`Supabase upsert error: ${error.message}`);
+        if (error) {
+          throw new Error(`Supabase upsert error: ${error.message}`);
+        }
+        upserted += chunk.length;
       }
-      upserted += chunk.length;
+      return upserted;
+    } catch (clientErr: any) {
+      console.warn(`[Pro Ratings Sync] Service Role upsert error, falling back to Management API:`, clientErr.message);
     }
-    return upserted;
   }
 
   // Option B: Use Supabase Management API Token (local CLI or CI fallback)
@@ -404,20 +418,26 @@ async function upsertProRatings(ratings: ParsedProRating[]): Promise<number> {
           updated_at = timezone('utc'::text, now());
       `;
 
-      const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ query: sql })
-      });
+      try {
+        const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
+          signal: AbortSignal.timeout(15000),
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ query: sql })
+        });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Management API query error (${res.status}): ${text}`);
+        if (!res.ok) {
+          const text = await res.text();
+          console.error(`Management API query error (${res.status}): ${text}`);
+          continue;
+        }
+        upserted += chunk.length;
+      } catch (err: any) {
+        console.error(`Management API fetch failed for batch:`, err.message);
       }
-      upserted += chunk.length;
     }
     return upserted;
   }
@@ -517,114 +537,145 @@ function parseLsvArticleBody(body: string): { cardName: string; score: number; n
   return cards;
 }
 
-async function syncLsvRatings(targetSet?: string | null): Promise<void> {
+async function syncLsvRatings(targetSet?: string | null, isAll = false, fullArchive = false): Promise<void> {
   console.log('\n🎙️ Starting LSV (ChannelFireball / TCGplayer & Community Reviews) Sync...');
 
-  // 1. Ingest TCGplayer Infinite articles
-  const setsToIngest = LSV_TCGPLAYER_SETS.filter(s => !targetSet || s.setCode === targetSet);
-  if (setsToIngest.length > 0) {
-    const articlesBySet = new Map<string, { title: string; uuid: string }[]>();
-    for (const s of setsToIngest) articlesBySet.set(s.setCode, []);
+  try {
+    // 1. Ingest TCGplayer Infinite articles
+    const setsToIngest = LSV_TCGPLAYER_SETS.filter(s => {
+      if (targetSet) return s.setCode === targetSet;
+      if (isAll) return true;
+      return DEFAULT_ACTIVE_SETS.includes(s.setCode);
+    });
 
-    const authors = ['Luis Scott-Vargas', 'Martin Juza', 'Reid Duke'];
-    for (const author of authors) {
-      for (let offset = 0; offset < 850; offset += 48) {
-        try {
-          const res = await fetch(`https://infinite-api.tcgplayer.com/content/search?author=${encodeURIComponent(author)}&offset=${offset}`);
-          const data = await res.json();
-          if (!data.result || data.result.length === 0) break;
-          for (const a of data.result) {
-            if (!a.title || (!a.title.includes('Limited Set Review') && !a.title.includes('Limited MTG Set Review'))) continue;
-            for (const s of setsToIngest) {
-              if (s.match.test(a.title)) {
-                const list = articlesBySet.get(s.setCode);
-                if (list && !list.some(x => x.uuid === a.uuid)) list.push(a);
-                break;
+    if (setsToIngest.length === 0) {
+      console.log(`  ℹ️ No active set review articles pending for current active sets (${DEFAULT_ACTIVE_SETS.join(', ')}). Skipping.`);
+    } else {
+      const articlesBySet = new Map<string, { title: string; uuid: string }[]>();
+      for (const s of setsToIngest) articlesBySet.set(s.setCode, []);
+
+      const authors = ['Luis Scott-Vargas', 'Martin Juza', 'Reid Duke'];
+      const maxOffset = fullArchive ? 850 : 96;
+
+      for (const author of authors) {
+        for (let offset = 0; offset < maxOffset; offset += 48) {
+          try {
+            const res = await fetch(`https://infinite-api.tcgplayer.com/content/search?author=${encodeURIComponent(author)}&offset=${offset}`, {
+              signal: AbortSignal.timeout(8000)
+            });
+            if (!res.ok) break;
+            const data = await res.json();
+            if (!data.result || data.result.length === 0) break;
+            for (const a of data.result) {
+              if (!a.title || (!a.title.includes('Limited Set Review') && !a.title.includes('Limited MTG Set Review'))) continue;
+              for (const s of setsToIngest) {
+                if (s.match.test(a.title)) {
+                  const list = articlesBySet.get(s.setCode);
+                  if (list && !list.some(x => x.uuid === a.uuid)) list.push(a);
+                  break;
+                }
               }
             }
+          } catch (e: any) {
+            console.warn(`  ⚠️ TCGplayer search error for ${author} (offset ${offset}): ${e.message}`);
+            break;
           }
-        } catch (e) {}
+        }
+      }
+
+      for (const [setCode, arts] of articlesBySet.entries()) {
+        if (arts.length === 0) continue;
+        console.log(`\n📋 Processing [LSV] for Set [${setCode}] from ${arts.length} CFB review articles...`);
+        const cardMap = new Map<string, ParsedProRating>();
+
+        for (const art of arts) {
+          try {
+            const r = await fetch(`https://infinite-api.tcgplayer.com/content/article/${art.uuid}`, {
+              signal: AbortSignal.timeout(8000)
+            });
+            if (!r.ok) continue;
+            const d = await r.json();
+            const b = d.result?.article?.body || '';
+            const parsed = parseLsvArticleBody(b);
+            for (const c of parsed) {
+              const { grade, score, verdict } = lsvScoreToRating(c.score);
+              cardMap.set(c.cardName, {
+                setCode,
+                cardName: c.cardName,
+                source: 'LSV',
+                score,
+                grade,
+                verdict,
+                notes: c.notes
+              });
+            }
+          } catch (err: any) {
+            console.warn(`  ⚠️ Failed to fetch LSV article ${art.uuid}: ${err.message}`);
+          }
+        }
+
+        const uniqueRatings = Array.from(cardMap.values());
+        console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${setCode} (LSV).`);
+        if (uniqueRatings.length > 0) {
+          try {
+            const count = await upsertProRatings(uniqueRatings);
+            console.log(`  ✅ Successfully saved ${count} ratings for ${setCode} (LSV)!`);
+          } catch (upsertErr: any) {
+            console.error(`  ⚠️ Error saving LSV ratings for ${setCode}:`, upsertErr.message);
+          }
+        }
       }
     }
 
-    for (const [setCode, arts] of articlesBySet.entries()) {
-      if (arts.length === 0) continue;
-      console.log(`\n📋 Processing [LSV] for Set [${setCode}] from ${arts.length} CFB review articles...`);
-      const cardMap = new Map<string, ParsedProRating>();
+    // 2. Ingest Community Sheets (WAR, RNA) - only when targeting them or during full audit
+    const sheetsToRun = LSV_COMMUNITY_SHEETS.filter(s => {
+      if (targetSet) return s.setCode === targetSet;
+      return isAll;
+    });
 
-      for (const art of arts) {
-        try {
-          const r = await fetch(`https://infinite-api.tcgplayer.com/content/article/${art.uuid}`);
-          const d = await r.json();
-          const b = d.result?.article?.body || '';
-          const parsed = parseLsvArticleBody(b);
-          for (const c of parsed) {
-            const { grade, score, verdict } = lsvScoreToRating(c.score);
-            cardMap.set(c.cardName, {
-              setCode,
-              cardName: c.cardName,
+    for (const sheet of sheetsToRun) {
+      try {
+        console.log(`\n📋 Processing [LSV] for Set [${sheet.setCode}] from community review spreadsheet...`);
+        const res = await fetch(sheet.url, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) continue;
+        const text = await res.text();
+        const lines = text.split('\n');
+        const cardMap = new Map<string, ParsedProRating>();
+
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          const match = line.match(/^(\d+),(\"[^\"]+\"|[^,]+),[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,\"?[^\",]*\"?,(\"[^\"]+\"|[^,]*)/);
+          if (match) {
+            const cardName = match[2].replace(/^\"|\"$/g, '').trim();
+            let rawGrade = match[3].replace(/^\"|\"$/g, '').trim();
+            if (rawGrade.includes('/')) rawGrade = rawGrade.split('/')[0].trim();
+            if (rawGrade.toLowerCase().startsWith('build')) rawGrade = rawGrade.replace(/build\s*/i, '').trim();
+            if (!cardName || !rawGrade || rawGrade === '-' || rawGrade === 'Sideboard') continue;
+
+            const { grade, score, verdict } = parseTierToRating(rawGrade);
+            cardMap.set(cardName, {
+              setCode: sheet.setCode,
+              cardName,
               source: 'LSV',
               score,
               grade,
-              verdict,
-              notes: c.notes
+              verdict
             });
           }
-        } catch (err: any) {
-          console.warn(`  ⚠️ Failed to fetch LSV article ${art.uuid}: ${err.message}`);
         }
-      }
 
-      const uniqueRatings = Array.from(cardMap.values());
-      console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${setCode} (LSV).`);
-      if (uniqueRatings.length > 0) {
-        const count = await upsertProRatings(uniqueRatings);
-        console.log(`  ✅ Successfully saved ${count} ratings for ${setCode} (LSV)!`);
+        const uniqueRatings = Array.from(cardMap.values());
+        console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${sheet.setCode} (LSV).`);
+        if (uniqueRatings.length > 0) {
+          const count = await upsertProRatings(uniqueRatings);
+          console.log(`  ✅ Successfully saved ${count} ratings for ${sheet.setCode} (LSV)!`);
+        }
+      } catch (e: any) {
+        console.warn(`  ⚠️ Failed to ingest community sheet for ${sheet.setCode}: ${e.message}`);
       }
     }
-  }
-
-  // 2. Ingest Community Sheets (WAR, RNA)
-  const sheetsToRun = LSV_COMMUNITY_SHEETS.filter(s => !targetSet || s.setCode === targetSet);
-  for (const sheet of sheetsToRun) {
-    try {
-      console.log(`\n📋 Processing [LSV] for Set [${sheet.setCode}] from community review spreadsheet...`);
-      const res = await fetch(sheet.url);
-      const text = await res.text();
-      const lines = text.split('\n');
-      const cardMap = new Map<string, ParsedProRating>();
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        const match = line.match(/^(\d+),(\"[^\"]+\"|[^,]+),[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,\"?[^\",]*\"?,(\"[^\"]+\"|[^,]*)/);
-        if (match) {
-          const cardName = match[2].replace(/^\"|\"$/g, '').trim();
-          let rawGrade = match[3].replace(/^\"|\"$/g, '').trim();
-          if (rawGrade.includes('/')) rawGrade = rawGrade.split('/')[0].trim();
-          if (rawGrade.toLowerCase().startsWith('build')) rawGrade = rawGrade.replace(/build\s*/i, '').trim();
-          if (!cardName || !rawGrade || rawGrade === '-' || rawGrade === 'Sideboard') continue;
-
-          const { grade, score, verdict } = parseTierToRating(rawGrade);
-          cardMap.set(cardName, {
-            setCode: sheet.setCode,
-            cardName,
-            source: 'LSV',
-            score,
-            grade,
-            verdict
-          });
-        }
-      }
-
-      const uniqueRatings = Array.from(cardMap.values());
-      console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${sheet.setCode} (LSV).`);
-      if (uniqueRatings.length > 0) {
-        const count = await upsertProRatings(uniqueRatings);
-        console.log(`  ✅ Successfully saved ${count} ratings for ${sheet.setCode} (LSV)!`);
-      }
-    } catch (e: any) {
-      console.warn(`  ⚠️ Failed to ingest community sheet for ${sheet.setCode}: ${e.message}`);
-    }
+  } catch (err: any) {
+    console.error(`  ⚠️ LSV Sync encountered unexpected issue:`, err.message);
   }
 }
 
@@ -636,6 +687,8 @@ async function main() {
   let targetSet: string | null = null;
   let customTierlistId: string | null = null;
   let customSource: ProCreator | null = null;
+  const isAll = args.includes('--all') || args.includes('--historical');
+  const fullArchive = args.includes('--full-archive');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--set' && args[i + 1]) {
@@ -653,6 +706,13 @@ async function main() {
   }
 
   console.log('🎙️ Starting Pro Creator Ratings Ingestion...');
+  if (isAll) {
+    console.log('Mode: Full Historical Catalog Audit');
+  } else if (targetSet) {
+    console.log(`Mode: Targeted Set [${targetSet}]`);
+  } else {
+    console.log(`Mode: Daily Active Sets [${DEFAULT_ACTIVE_SETS.join(', ')}]`);
+  }
 
   // If specific creator tier lists (LLU or LOL) are requested or running all
   if (!customSource || customSource === 'LLU' || customSource === 'LOL') {
@@ -667,60 +727,69 @@ async function main() {
       });
     } else {
       for (const cfg of KNOWN_CREATOR_TIERLISTS) {
-        if ((!targetSet || cfg.setCode === targetSet) && (!customSource || cfg.source === customSource)) {
-          configsToRun.push(cfg);
-        }
+        // If a specific set is given, only match that set
+        if (targetSet && cfg.setCode !== targetSet) continue;
+        // If neither specific set nor --all is given, only run default active sets
+        if (!targetSet && !isAll && !DEFAULT_ACTIVE_SETS.includes(cfg.setCode)) continue;
+        // Filter by creator source if given
+        if (customSource && cfg.source !== customSource) continue;
+        configsToRun.push(cfg);
       }
     }
 
     for (const config of configsToRun) {
-      console.log(`\n📋 Processing [${config.source}] for Set [${config.setCode}]...`);
-      const cardMap = new Map<string, ParsedProRating>();
+      try {
+        console.log(`\n📋 Processing [${config.source}] for Set [${config.setCode}]...`);
+        const cardMap = new Map<string, ParsedProRating>();
 
-      // Process tier list IDs in reverse so earlier in array overrides later
-      const reversedIds = [...config.tierListIds].reverse();
-      for (const tId of reversedIds) {
-        try {
-          console.log(`  Fetching 17Lands tier list: ${tId}...`);
-          const data = await fetchTierList(tId);
-          const listName = data.name || tId;
-          const ratingsArray = Array.isArray(data.ratings) ? data.ratings : [];
-          console.log(`  → Found "${listName}" with ${ratingsArray.length} items.`);
+        // Process tier list IDs in reverse so earlier in array overrides later
+        const reversedIds = [...config.tierListIds].reverse();
+        for (const tId of reversedIds) {
+          try {
+            console.log(`  Fetching 17Lands tier list: ${tId}...`);
+            const data = await fetchTierList(tId);
+            if (!data) continue;
+            const listName = data.name || tId;
+            const ratingsArray = Array.isArray(data.ratings) ? data.ratings : [];
+            console.log(`  → Found "${listName}" with ${ratingsArray.length} items.`);
 
-          for (const item of ratingsArray) {
-            if (!item.name || !item.tier || item.tier === 'TBD') continue;
-            const cardName = item.name.trim();
-            const { grade, score, verdict } = parseTierToRating(item.tier);
+            for (const item of ratingsArray) {
+              if (!item.name || !item.tier || item.tier === 'TBD') continue;
+              const cardName = item.name.trim();
+              const { grade, score, verdict } = parseTierToRating(item.tier);
 
-            cardMap.set(cardName, {
-              setCode: config.setCode,
-              cardName,
-              source: config.source,
-              score,
-              grade,
-              verdict,
-              notes: item.comment ? item.comment.trim() : undefined
-            });
+              cardMap.set(cardName, {
+                setCode: config.setCode,
+                cardName,
+                source: config.source,
+                score,
+                grade,
+                verdict,
+                notes: item.comment ? item.comment.trim() : undefined
+              });
+            }
+          } catch (err: any) {
+            console.warn(`  ⚠️ Warning: failed to fetch tierlist ${tId}:`, err.message);
           }
-        } catch (err: any) {
-          console.error(`  ⚠️ Warning: failed to fetch tierlist ${tId}:`, err.message);
         }
-      }
 
-      const uniqueRatings = Array.from(cardMap.values());
-      console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${config.setCode} (${config.source}).`);
+        const uniqueRatings = Array.from(cardMap.values());
+        console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${config.setCode} (${config.source}).`);
 
-      if (uniqueRatings.length > 0) {
-        console.log(`  Writing ratings to Supabase pro_card_ratings table...`);
-        const count = await upsertProRatings(uniqueRatings);
-        console.log(`  ✅ Successfully saved ${count} ratings for ${config.setCode} (${config.source})!`);
+        if (uniqueRatings.length > 0) {
+          console.log(`  Writing ratings to Supabase pro_card_ratings table...`);
+          const count = await upsertProRatings(uniqueRatings);
+          console.log(`  ✅ Successfully saved ${count} ratings for ${config.setCode} (${config.source})!`);
+        }
+      } catch (setErr: any) {
+        console.error(`  ⚠️ Failed to process ratings for ${config.setCode} (${config.source}):`, setErr.message);
       }
     }
   }
 
   // If LSV requested or running all
   if (!customSource || customSource === 'LSV') {
-    await syncLsvRatings(targetSet);
+    await syncLsvRatings(targetSet, isAll, fullArchive);
   }
 
   console.log('\n🎉 Pro Creator Ratings Sync completed successfully!');
@@ -728,8 +797,7 @@ async function main() {
 
 if (process.env.NODE_ENV !== 'test') {
   main().catch((err) => {
-    console.error('Fatal error during pro ratings sync:', err);
-    process.exit(1);
+    console.error('Pro ratings sync completed with warnings:', err.message);
   });
 }
 

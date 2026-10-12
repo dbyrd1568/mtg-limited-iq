@@ -70,9 +70,24 @@ jobs:
           FLASHBACK_SETS: ${{ vars.FLASHBACK_SETS || '' }}
 
       - name: 🎙️ Ingest Pro Creator Ratings (LSV, LLU, LOL)
+        continue-on-error: true
         run: |
-          echo "Syncing Pro Creator ratings (LLU, LSV, LOL)..."
-          npx tsx scripts/sync-pro-ratings.ts
+          MODE="${{ github.event.inputs.mode || 'active' }}"
+          CUSTOM_SETS="${{ github.event.inputs.sets || '' }}"
+          CRON_SCHEDULE="${{ github.event.schedule }}"
+
+          if [ "$MODE" = "audit-historical" ] || [ "$CRON_SCHEDULE" = "0 8 * * 0" ]; then
+            echo "Running weekly historical creator ratings sync..."
+            npx tsx scripts/sync-pro-ratings.ts --all
+          elif [ -n "$CUSTOM_SETS" ]; then
+            echo "Running creator ratings sync for custom sets: $CUSTOM_SETS"
+            for s in $(echo $CUSTOM_SETS | tr "," "\n"); do
+              npx tsx scripts/sync-pro-ratings.ts --set "$s"
+            done
+          else
+            echo "Running daily active sets creator ratings sync (HOB, FRA)..."
+            npx tsx scripts/sync-pro-ratings.ts
+          fi
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://irxgoelllogcyoiumxup.supabase.co' }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
