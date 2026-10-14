@@ -52,6 +52,7 @@ import { AdminFeatureUsageView } from './AdminFeatureUsageView';
 import { AdminGradingAnalyticsView } from './AdminGradingAnalyticsView';
 import { AdminAccessControlView } from './AdminAccessControlView';
 import { AdminPrecedentApprovalsView } from './AdminPrecedentApprovalsView';
+import { AdminDataSyncModal } from './AdminDataSyncModal';
 import { fetchPrecedentProposals } from '../../services/precedentApprovalService';
 import { updateAppUrlParams } from '../../services/urlParams';
 
@@ -98,6 +99,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [timeRange, setTimeRange] = useState<AdminTimeRange>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [syncModalType, setSyncModalType] = useState<'preview_cards' | 'seventeen_lands' | null>(null);
 
   // Admin Data State
   const [kpis, setKpis] = useState<AdminOverviewKPIs>({
@@ -251,8 +253,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        {/* Right Side: Time Range, Export, and Refresh */}
+        {/* Right Side: Data Operations, Time Range, Export, and Refresh */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Button 1: Update Preview Cards */}
+          <button
+            onClick={() => setSyncModalType('preview_cards')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-xs font-bold shadow-xs transition-all cursor-pointer"
+            title="Sync latest preview sets and card spoilers from Scryfall API"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+            <span>Update Preview Cards</span>
+          </button>
+
+          {/* Button 2: Update 17Lands Data */}
+          <button
+            onClick={() => setSyncModalType('seventeen_lands')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold shadow-xs transition-all cursor-pointer"
+            title="Update Premier Draft win rates and card telemetry from 17Lands"
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Update 17Lands Data</span>
+          </button>
+
           {/* Time Range Selector */}
           <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
             <button
@@ -472,6 +494,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               setSelectedUserForScorecard(u);
               setActiveSubTab('users');
             }}
+            onOpenSyncModal={(type) => setSyncModalType(type)}
           />
         )}
 
@@ -505,6 +528,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <AdminPrecedentApprovalsView currentUser={currentUser} />
         )}
       </div>
+
+      {/* Admin Data Operations Modal */}
+      {syncModalType && (
+        <AdminDataSyncModal
+          isOpen={syncModalType !== null}
+          onClose={() => setSyncModalType(null)}
+          syncType={syncModalType}
+          onSyncComplete={() => {
+            loadAllData();
+          }}
+        />
+      )}
     </div>
   );
 };

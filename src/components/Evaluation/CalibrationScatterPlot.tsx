@@ -5,7 +5,6 @@ import {
   winRateToGradeTier,
   gradeTierToIndex,
   get17LandsCardRating,
-  getOrEstimate17LandsCardRating,
   fetch17LandsSetData,
   getPreloaded17LandsData,
 } from '../../services/seventeenLands';
@@ -485,9 +484,9 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
       let actualAlsa: number | undefined = undefined;
 
       if (activeBenchmark === '17L') {
-        const rating = get17LandsCardRating(card, active17LData) || getOrEstimate17LandsCardRating(card, active17LData);
+        const rating = get17LandsCardRating(card, active17LData);
         if (rating && (rating.tier_grade || typeof rating.win_rate === 'number')) {
-          actualGrade = (rating.tier_grade as GradeTier) || winRateToGradeTier(rating.win_rate || 0.53);
+          actualGrade = (rating.tier_grade as GradeTier) || (typeof rating.win_rate === 'number' ? winRateToGradeTier(rating.win_rate) : null);
           actualWinRate = rating.win_rate;
           actualAlsa = rating.avg_seen;
         }

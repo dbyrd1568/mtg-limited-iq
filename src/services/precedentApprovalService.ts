@@ -7,7 +7,7 @@ import {
   CanonicalPrecedentEntry,
   CanonicalCompsMap,
 } from '../types/precedentApproval';
-import { getOrEstimate17LandsCardRating } from './seventeenLands';
+import { get17LandsCardRating } from './seventeenLands';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { getActiveUser } from './storage';
 import baseCanonicalComps from '../data/canonicalComps.json';
@@ -22,7 +22,7 @@ export function buildCardSnapshot(
   card: Card,
   match?: SimilarCardMatch | null
 ): CardSummarySnapshot {
-  const rating = getOrEstimate17LandsCardRating(card);
+  const rating = get17LandsCardRating(card);
   const winRate = match?.winRate ?? rating?.win_rate;
   const alsa = match?.alsa ?? rating?.avg_seen;
   const tierGrade = match?.tierGrade ?? (rating?.tier_grade as GradeTier);

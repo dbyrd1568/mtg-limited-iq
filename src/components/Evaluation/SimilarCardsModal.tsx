@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, GradeTier } from '../../types/mtg';
 import { findSimilarCards, CardSimilarityResult, SimilarCardMatch, buildCustomPrecedentMatch, generateGuaranteedFallbackResult, getCachedSimilarCards, buildCompTuningString } from '../../services/cardSimilarity';
-import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, scoreToGradeTier, winRateToGradeTier, gradeTierToIndex, get17LandsCardUrl, get17LandsCardRating } from '../../services/seventeenLands';
 import { getTargetCardOverrides, savePrecedentOverride, removePrecedentOverride, clearTargetCardOverrides, PrecedentSlotOverride } from '../../services/precedentOverrides';
 import { submitPrecedentProposal, getStoredCanonicalPrecedents, getTargetCardKey } from '../../services/precedentApprovalService';
 import { checkIsAdmin } from '../../services/admin';
@@ -120,7 +120,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
       return target17LandsData;
     }
     if (targetCard) {
-      const r = getOrEstimate17LandsCardRating(targetCard);
+      const r = get17LandsCardRating(targetCard);
       if (r && typeof r.win_rate === 'number') {
         return {
           winRate: r.win_rate,
@@ -136,7 +136,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   // Compute rich 17lands telemetry for the inspected comparable card
   const precedent17L = useMemo(() => {
     if (!inspectCardMatch) return null;
-    const r = getOrEstimate17LandsCardRating(inspectCardMatch.card);
+    const r = get17LandsCardRating(inspectCardMatch.card);
     const winRate = inspectCardMatch.winRate ?? r?.win_rate;
     const alsa = inspectCardMatch.alsa ?? r?.avg_seen;
     const tierGrade = (inspectCardMatch.tierGrade || (r?.tier_grade as GradeTier) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : 'C')) as GradeTier;

@@ -8,7 +8,7 @@ import { ExportGradesModal } from '../Evaluation/ExportGradesModal';
 import { ThreatMatrixView } from './ThreatMatrixView';
 import { ManaCostRenderer, ManaSymbol } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
-import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating, getOrEstimate17LandsCardRating, get17LandsQueryStatus } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating, get17LandsQueryStatus } from '../../services/seventeenLands';
 import { getLsvRatingForCard, getProRatingForCard } from '../../services/lsvRatings';
 import { GradeComparisonCard } from '../UI/GradeComparisonCard';
 import { PlaneswalkerSymbol } from '../UI/PlaneswalkerSymbol';
@@ -875,7 +875,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           {filteredAndSortedCards.map((card) => {
             const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
             const userEval = userEvaluations[evalKey];
-            const landData = get17LandsCardRating(card, effective17LandsData) || getOrEstimate17LandsCardRating(card, effective17LandsData) || undefined;
+            const landData = get17LandsCardRating(card, effective17LandsData) || undefined;
 
             return (
               <div
@@ -1798,8 +1798,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           currentGrade={userEvaluations[`${similarCardsModalCard.set.toLowerCase()}_${similarCardsModalCard.name.toLowerCase()}`]?.userGrade}
           target17LandsData={
             (() => {
-              const rating = get17LandsCardRating(similarCardsModalCard, effective17LandsData)
-                || getOrEstimate17LandsCardRating(similarCardsModalCard, effective17LandsData);
+              const rating = get17LandsCardRating(similarCardsModalCard, effective17LandsData);
               if (rating && typeof rating.win_rate === 'number') {
                 return {
                   winRate: rating.win_rate,

@@ -434,93 +434,17 @@ export function getProRatingForCard(
     if (found) return found;
   }
 
-  // 2. If source is LSV, check default map and fallback
+  // 2. If source is LSV, check default map
   if (source === 'LSV') {
     const liveSet = LIVE_PRO_RATINGS[setUpper];
     if (liveSet) {
       const found = findRatingInMap(liveSet, cardName);
       if (found) return found;
     }
-
-    // Automatically check if LSV set reviews are released based on the set schedule
-    if (!isLsvRatingEligible(setUpper)) {
-      return null;
-    }
-
-    // Realistic empirical estimation for released sets where manual transcription is pending
-    const rarity = (card.rarity || 'common').toLowerCase();
-    let baseScore = 2.5;
-    if (rarity === 'mythic') baseScore = 4.0;
-    else if (rarity === 'rare') baseScore = 3.5;
-    else if (rarity === 'uncommon') baseScore = 3.0;
-    else baseScore = 2.5;
-
-    if (card.is_removal) baseScore += 0.5;
-    if (card.cmc && card.cmc <= 2 && (card.is_creature || card.is_removal)) baseScore += 0.5;
-    if (card.cmc && card.cmc >= 7 && !card.is_removal) baseScore -= 0.5;
-
-    const clamped = Math.max(1.0, Math.min(5.0, Math.round(baseScore * 2) / 2));
-    return {
-      score: clamped,
-      grade: lsvScoreToGradeTier(clamped),
-      verdict: clamped >= 4.5 ? 'Bomb' : clamped >= 3.5 ? 'High Pick' : clamped >= 2.5 ? 'Solid Playable' : clamped >= 1.5 ? 'Filler' : 'Unplayable',
-      source: 'LSV',
-      isEstimated: true,
-    };
+    return null;
   }
 
-  // 3. If source is DS (Draftsim), fallback to empirical review estimation for eligible sets
-  if (source === 'DS') {
-    if (!isLsvRatingEligible(setUpper)) {
-      return null;
-    }
-    const rarity = (card.rarity || 'common').toLowerCase();
-    let baseScore = 2.5; // 5/10 on Draftsim comparative scale
-    if (rarity === 'mythic') baseScore = 4.0; // 8/10
-    else if (rarity === 'rare') baseScore = 3.5; // 7/10
-    else if (rarity === 'uncommon') baseScore = 3.0; // 6/10
-    else baseScore = 2.5; // 5/10
-
-    if (card.is_removal) baseScore += 0.5;
-    if (card.cmc && card.cmc <= 2 && (card.is_creature || card.is_removal)) baseScore += 0.5;
-    if (card.cmc && card.cmc >= 7 && !card.is_removal) baseScore -= 0.5;
-
-    const clamped = Math.max(1.0, Math.min(5.0, Math.round(baseScore * 2) / 2));
-    return {
-      score: clamped,
-      grade: lsvScoreToGradeTier(clamped),
-      verdict: clamped >= 4.5 ? 'Bomb' : clamped >= 3.5 ? 'High Pick' : clamped >= 2.5 ? 'Solid Playable' : clamped >= 1.5 ? 'Filler' : 'Unplayable',
-      source: 'DS',
-      isEstimated: true,
-    };
-  }
-
-  // 4. If source is LLU (Lords of Limited), fallback to empirical review estimation for eligible sets
-  if (source === 'LLU') {
-    if (!isLsvRatingEligible(setUpper)) {
-      return null;
-    }
-    const rarity = (card.rarity || 'common').toLowerCase();
-    let baseScore = 2.5;
-    if (rarity === 'mythic') baseScore = 4.0;
-    else if (rarity === 'rare') baseScore = 3.5;
-    else if (rarity === 'uncommon') baseScore = 3.0;
-    else baseScore = 2.5;
-
-    if (card.is_removal) baseScore += 0.5;
-    if (card.cmc && card.cmc <= 2 && (card.is_creature || card.is_removal)) baseScore += 0.5;
-    if (card.cmc && card.cmc >= 7 && !card.is_removal) baseScore -= 0.5;
-
-    const clamped = Math.max(1.0, Math.min(5.0, Math.round(baseScore * 2) / 2));
-    return {
-      score: clamped,
-      grade: lsvScoreToGradeTier(clamped),
-      verdict: clamped >= 4.5 ? 'Bomb' : clamped >= 3.5 ? 'High Pick' : clamped >= 2.5 ? 'Solid Playable' : clamped >= 1.5 ? 'Filler' : 'Unplayable',
-      source: 'LLU',
-      isEstimated: true,
-    };
-  }
-
+  // Strict Zero Estimation Policy: Only authentic creator reviews are returned.
   return null;
 }
 
@@ -571,7 +495,12 @@ export function getAvailableReviewersForSet(
       }
     }
 
-    // 3. If cards are provided, check if any card has a rating
+    // 3. Set eligibility fallback for standard pro reviewers
+    if (isLsvRatingEligible(upper)) {
+      return true;
+    }
+
+    // 4. If cards are provided, check if any card has a rating
     if (cards && cards.length > 0) {
       const sample = cards.slice(0, 50);
       return sample.some((card) => {
@@ -580,8 +509,7 @@ export function getAvailableReviewersForSet(
       });
     }
 
-    // 4. Set eligibility fallback
-    return isLsvRatingEligible(upper);
+    return false;
   };
 
   // Standard supported creators in canonical order: LSV, LLU, DS

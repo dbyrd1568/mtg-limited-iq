@@ -559,30 +559,32 @@ export async function syncSetReleaseSchedules(): Promise<void> {
   }
 }
 
-export async function fetchAllSets(): Promise<SetInfo[]> {
+export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promise<SetInfo[]> {
   try {
     // Sync live schedules in the background/inline so POPULAR_LIMITED_SETS has fresh dates
     await syncSetReleaseSchedules();
 
-    const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v7');
-    if (cachedSets && cachedSets.length > 0) {
-      // Re-overlay fresh schedules onto cached sets
-      POPULAR_LIMITED_SETS.forEach((pop) => {
-        const idx = cachedSets.findIndex((m) => m.code.toUpperCase() === pop.code.toUpperCase());
-        if (idx >= 0) {
-          cachedSets[idx].has_17lands_data = Boolean(pop.has_17lands_data);
-          cachedSets[idx].card_count = Math.max(cachedSets[idx].card_count, pop.card_count);
-          if (pop.arena_released_at) cachedSets[idx].arena_released_at = pop.arena_released_at;
-          if (pop.lsv_available_at) cachedSets[idx].lsv_available_at = pop.lsv_available_at;
-          if (pop.seventeen_lands_available_at) cachedSets[idx].seventeen_lands_available_at = pop.seventeen_lands_available_at;
-          if (pop.released_at) cachedSets[idx].released_at = pop.released_at;
-          if (pop.is_active_draft !== undefined) cachedSets[idx].is_active_draft = pop.is_active_draft;
-          if (pop.is_flashback !== undefined) cachedSets[idx].is_flashback = pop.is_flashback;
-        } else {
-          cachedSets.unshift(pop);
-        }
-      });
-      return cachedSets;
+    if (!options?.forceRefresh && typeof indexedDB !== 'undefined') {
+      const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v7');
+      if (cachedSets && cachedSets.length > 0) {
+        // Re-overlay fresh schedules onto cached sets
+        POPULAR_LIMITED_SETS.forEach((pop) => {
+          const idx = cachedSets.findIndex((m) => m.code.toUpperCase() === pop.code.toUpperCase());
+          if (idx >= 0) {
+            cachedSets[idx].has_17lands_data = Boolean(pop.has_17lands_data);
+            cachedSets[idx].card_count = Math.max(cachedSets[idx].card_count, pop.card_count);
+            if (pop.arena_released_at) cachedSets[idx].arena_released_at = pop.arena_released_at;
+            if (pop.lsv_available_at) cachedSets[idx].lsv_available_at = pop.lsv_available_at;
+            if (pop.seventeen_lands_available_at) cachedSets[idx].seventeen_lands_available_at = pop.seventeen_lands_available_at;
+            if (pop.released_at) cachedSets[idx].released_at = pop.released_at;
+            if (pop.is_active_draft !== undefined) cachedSets[idx].is_active_draft = pop.is_active_draft;
+            if (pop.is_flashback !== undefined) cachedSets[idx].is_flashback = pop.is_flashback;
+          } else {
+            cachedSets.unshift(pop);
+          }
+        });
+        return cachedSets;
+      }
     }
 
     const response = await fetch(`${SCRYFALL_API_BASE}/sets`, {
@@ -634,7 +636,9 @@ export async function fetchAllSets(): Promise<SetInfo[]> {
       }
     });
 
-    await set('scryfall_all_sets_v7', merged);
+    if (typeof indexedDB !== 'undefined') {
+      await set('scryfall_all_sets_v7', merged);
+    }
     return merged;
   } catch (err) {
     console.warn('Using popular limited sets fallback due to fetch error:', err);
@@ -722,7 +726,8 @@ export function deduplicateCards(cards: Card[]): Card[] {
 export async function fetchCardsForSet(
   setCode: string,
   onProgress?: (loaded: number, total: number) => void,
-  onCachedCards?: (cards: Card[]) => void
+  onCachedCards?: (cards: Card[]) => void,
+  options?: { forceRefresh?: boolean }
 ): Promise<Card[]> {
   const upperCode = setCode.toUpperCase();
   const cacheKey = `scryfall_cards_${upperCode}_v9`;
@@ -816,7 +821,7 @@ export async function fetchCardsForSet(
         ? (cachedCards && cachedCards.length >= targetSetCount)
         : (cachedCards && totalCount > 0 && cachedCards.length >= totalCount && totalCount > 175);
 
-      if (isFirstPage && isComplete && cachedCards) {
+      if (!options?.forceRefresh && isFirstPage && isComplete && cachedCards) {
         set(cacheKey, cachedCards).catch(() => {});
         return cachedCards;
       }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS, deduplicateCards } from './services/scryfall';
-import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, generateEstimated17LandsData, get17LandsCardRating, canQuery17Lands } from './services/seventeenLands';
+import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, get17LandsCardRating, canQuery17Lands } from './services/seventeenLands';
 import { loadProRatingsForSet } from './services/lsvRatings';
 import { loadSetArchetypes } from './services/wotcArchetypes';
 import { loadUserStats, loadUserEvaluations, saveUserEvaluation, deleteUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, deleteUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, deleteUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, normalizeUserProfileStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
@@ -440,33 +440,6 @@ const AppContent: React.FC = () => {
       } else if (landsData && landsCount > 0) {
         bestLandsData = landsData;
       }
-
-      // If the set has draft history (has_17lands_data !== false), ensure 100% card coverage
-      if (set.has_17lands_data !== false && dedupedFetched && dedupedFetched.length > 0) {
-        if (!bestLandsData) {
-          bestLandsData = generateEstimated17LandsData(dedupedFetched);
-        } else {
-          // If any cards in the set catalog are missing from 17Lands (e.g. bonus sheet or 0-game cards),
-          // seamlessly supplement them so NO card in a released set ever displays "Data Pending" or "TBD"
-          const estimated = generateEstimated17LandsData(dedupedFetched);
-          let supplemented = false;
-          const mergedCards = { ...bestLandsData.cards };
-          for (const card of dedupedFetched) {
-            const existing = get17LandsCardRating(card, bestLandsData);
-            if (!existing) {
-              const estRating = get17LandsCardRating(card, estimated);
-              if (estRating) {
-                mergedCards[card.name] = estRating;
-                supplemented = true;
-              }
-            }
-          }
-          if (supplemented) {
-            bestLandsData = { ...bestLandsData, cards: mergedCards };
-          }
-        }
-      }
-
       setSeventeenLandsData(bestLandsData);
     } catch (err) {
       console.error(`Error loading data for set ${set.code}:`, err);

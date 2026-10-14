@@ -7,7 +7,7 @@ import { ManaColorFilterBar } from '../UI/ManaColorFilterBar';
 import { SetSymbol } from '../UI/SetSymbol';
 import { CardImage } from '../UI/CardImage';
 import { CardObfuscator } from '../CardObfuscator';
-import { getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
+import { get17LandsCardRating } from '../../services/seventeenLands';
 import { checkIsAdmin } from '../../services/admin';
 import { getActiveUser } from '../../services/storage';
 import {
@@ -76,7 +76,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
   const [swappedFeedback, setSwappedFeedback] = useState<{ [cardName: string]: number }>({});
 
   const targetCardRating = useMemo(() => {
-    return targetCard ? getOrEstimate17LandsCardRating(targetCard) : null;
+    return targetCard ? get17LandsCardRating(targetCard) : null;
   }, [targetCard]);
 
   const [effectiveIsAdmin, setEffectiveIsAdmin] = useState<boolean>(isAdmin ?? false);

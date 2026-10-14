@@ -59,9 +59,9 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
   const userGrade = userEval?.userGrade;
   const userIndex = userGrade ? gradeTierToIndex(userGrade) : -1;
 
-  const actualGrade: GradeTier | null = landData
+  const actualGrade: GradeTier | null = (landData && typeof landData.win_rate === 'number')
     ? ((landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate))
-    : null;
+    : (landData?.tier_grade as GradeTier) || null;
   const actualIndex = actualGrade ? gradeTierToIndex(actualGrade) : -1;
 
   // Gap calculation (Me vs 17Lands)
@@ -93,10 +93,10 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
       );
     }
 
-    if (!landData) {
+    if (!landData || !actualGrade) {
       return (
         <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-[10.5px] font-semibold">
-          17L Syncing
+          No 17L Data
         </span>
       );
     }
@@ -306,13 +306,15 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
                   <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-emerald-600 text-white shadow-2xs">
                     {actualGrade}
                   </span>
-                  <span className="text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
-                    {((landData?.win_rate || 0) * 100).toFixed(1)}%
-                  </span>
+                  {typeof landData?.win_rate === 'number' && landData.win_rate > 0 && (
+                    <span className="text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                      {(landData.win_rate * 100).toFixed(1)}%
+                    </span>
+                  )}
                 </>
               ) : (
                 <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-mono leading-tight">
-                  {isBlindGrading && !userGrade ? '—' : isBlindGrading ? 'Hidden' : landData ? 'Syncing' : 'Pending'}
+                  {isBlindGrading && !userGrade ? '—' : isBlindGrading ? 'Hidden' : 'No Data'}
                 </span>
               )}
             </div>

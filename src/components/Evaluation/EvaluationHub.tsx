@@ -12,7 +12,6 @@ import {
   getColorSortIndex,
   getRaritySortIndex,
   get17LandsCardRating,
-  getOrEstimate17LandsCardRating,
   get17LandsCardUrl,
   get17LandsQueryStatus,
 } from '../../services/seventeenLands';
@@ -1331,7 +1330,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             {filteredCards.map((card, cardIndex) => {
               const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
               const userEval = userEvaluations[evalKey];
-              const landData = get17LandsCardRating(card, effective17LandsData) || getOrEstimate17LandsCardRating(card, effective17LandsData) || undefined;
+              const landData = get17LandsCardRating(card, effective17LandsData) || undefined;
 
               return (
                 <div
@@ -2939,8 +2938,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           currentGrade={userEvaluations[`${similarCardsModalCard.set.toLowerCase()}_${similarCardsModalCard.name.toLowerCase()}`]?.userGrade}
           target17LandsData={
             (() => {
-              const rating = get17LandsCardRating(similarCardsModalCard, effective17LandsData)
-                || getOrEstimate17LandsCardRating(similarCardsModalCard, effective17LandsData);
+              const rating = get17LandsCardRating(similarCardsModalCard, effective17LandsData);
               if (rating && typeof rating.win_rate === 'number') {
                 return {
                   winRate: rating.win_rate,

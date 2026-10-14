@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, GradeTier, SeventeenLandsSetData, UserCardEvaluation } from '../../types/mtg';
-import { GRADE_TIERS, GRADE_SCORES, getColorSortIndex, getRaritySortIndex, winRateToGradeTier, get17LandsCardRating, getOrEstimate17LandsCardRating } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, getColorSortIndex, getRaritySortIndex, winRateToGradeTier, get17LandsCardRating } from '../../services/seventeenLands';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
 import { CardObfuscator } from '../CardObfuscator';
 import { X, ChevronLeft, ChevronRight, Zap, FileText, Check, Eye, EyeOff, Scale, ArrowUpDown, PlayingCardsFan, ArrowRight, CheckCircle2, ExternalLink, BarChart2, Filter, Lock } from 'lucide-react';
@@ -185,8 +185,8 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
 
   const currentCard = (currentIndex >= 0 && currentIndex < orderedCards.length ? orderedCards[currentIndex] : null) || card;
   const evalKey = currentCard ? `${currentCard.set?.toLowerCase() || ''}_${currentCard.name?.toLowerCase() || ''}` : '';
-  const currentEval = userEvaluations[evalKey];
-  const landData = get17LandsCardRating(currentCard, seventeenLandsData) || getOrEstimate17LandsCardRating(currentCard, seventeenLandsData);
+  const currentEval = evalKey ? userEvaluations[evalKey] : undefined;
+  const landData = get17LandsCardRating(currentCard, seventeenLandsData);
 
   // Rated count strictly across the current set
   const ratedCountInSet = useMemo(() => {

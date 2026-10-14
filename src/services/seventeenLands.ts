@@ -339,8 +339,9 @@ export function get17LandsCardRating(
 }
 
 /**
- * Resolves authentic 17Lands telemetry or computes realistic empirical benchmarks
- * for cards in released draft sets, guaranteeing zero missing data on the compare screen.
+ * Resolves authentic 17Lands telemetry for a card.
+ * STRICT ZERO ESTIMATION POLICY: Never estimates, synthesizes, or fabricates data.
+ * Returns null if authentic telemetry is unavailable.
  */
 export function getOrEstimate17LandsCardRating(
   card: Card | { name: string; set?: string; rarity?: string; cmc?: number; is_removal?: boolean; is_combat_trick?: boolean; power?: string; toughness?: string; colors?: string[]; oracle_text?: string; keywords?: string[]; arena_id?: number } | null | undefined,
@@ -348,13 +349,13 @@ export function getOrEstimate17LandsCardRating(
 ): SeventeenLandsCardRating | null {
   if (!card) return null;
 
-  // 1. Check existing authentic/preloaded dataset
+  // 1. Check provided authentic dataset
   const existing = get17LandsCardRating(card, seventeenLandsData);
   if (existing && typeof existing.win_rate === 'number') {
     return existing;
   }
 
-  // 2. Check preloaded 17Lands dataset
+  // 2. Check preloaded authentic 17Lands dataset
   if (card.set) {
     const preloaded = getPreloaded17LandsData(card.set);
     if (preloaded) {
@@ -365,97 +366,8 @@ export function getOrEstimate17LandsCardRating(
     }
   }
 
-  // 3. For sets where 17Lands is not yet queryable (under 2 weeks post-Arena release), do not synthesize fake data
-  const upperSet = (card.set || '').toUpperCase();
-  if (!canQuery17Lands(upperSet)) {
-    return null;
-  }
-
-  // 4. Derive accurate empirical 17Lands rating based on card power, CMC, rarity, and mechanics
-  let baseWr = 0.535;
-  let baseAlsa = 4.8;
-  let baseIwd = 0.012;
-
-  const rarity = (card.rarity || 'common').toLowerCase();
-  if (rarity === 'mythic') {
-    baseWr += 0.065;
-    baseAlsa = 1.6;
-    baseIwd = 0.06;
-  } else if (rarity === 'rare') {
-    baseWr += 0.045;
-    baseAlsa = 2.2;
-    baseIwd = 0.04;
-  } else if (rarity === 'uncommon') {
-    baseWr += 0.02;
-    baseAlsa = 3.6;
-    baseIwd = 0.022;
-  }
-
-  const cmc = card.cmc ?? 3;
-  if (card.is_removal) {
-    if (cmc <= 2) { baseWr += 0.045; baseAlsa -= 1.8; baseIwd += 0.028; }
-    else if (cmc <= 3) { baseWr += 0.035; baseAlsa -= 1.2; baseIwd += 0.022; }
-    else { baseWr += 0.018; baseAlsa -= 0.6; baseIwd += 0.012; }
-  }
-  if (card.is_combat_trick && cmc <= 2) {
-    baseWr += 0.018;
-    baseAlsa -= 0.5;
-  }
-
-  if (card.power && card.toughness) {
-    const p = parseInt(card.power) || 0;
-    const t = parseInt(card.toughness) || 0;
-    if (p + t >= (cmc * 2) && cmc > 0) {
-      baseWr += 0.016;
-    }
-  }
-
-  const oracle = (card.oracle_text || '').toLowerCase();
-  const keywords = (card.keywords || []).map(k => k.toLowerCase());
-  const hasKw = (kw: string) => keywords.includes(kw) || oracle.includes(kw);
-
-  if (hasKw('flying')) { baseWr += 0.022; baseAlsa -= 0.6; }
-  if (hasKw('deathtouch')) { baseWr += 0.018; baseAlsa -= 0.5; }
-  if (hasKw('lifelink')) { baseWr += 0.014; baseAlsa -= 0.4; }
-  if (hasKw('draw a card') || hasKw('draws a card') || hasKw('draw two cards')) {
-    baseWr += 0.022;
-    baseAlsa -= 0.6;
-  }
-  if (/heartwood/i.test(oracle)) {
-    baseWr += 0.020;
-    baseAlsa -= 0.6;
-    baseIwd += 0.018;
-  } else if (/powerstone/i.test(oracle)) {
-    baseWr += 0.012;
-    baseAlsa -= 0.3;
-    baseIwd += 0.010;
-  }
-
-  const typeLine = ('type_line' in card ? card.type_line : '') || '';
-  if (typeLine.toLowerCase().includes('planeswalker')) {
-    baseWr += 0.04;
-    baseAlsa = Math.min(baseAlsa, 1.4);
-  }
-
-  baseWr = Math.min(0.665, Math.max(0.445, baseWr));
-  baseAlsa = Math.max(1.1, Math.min(11.5, baseAlsa));
-
-  const tierGrade = winRateToGradeTier(baseWr);
-
-  return {
-    name: card.name,
-    color: card.colors ? card.colors.join('') : 'C',
-    rarity: card.rarity || 'common',
-    seen_count: 3200,
-    avg_seen: parseFloat(baseAlsa.toFixed(1)),
-    pick_rate: 0.18,
-    game_count: 6800,
-    win_rate: parseFloat(baseWr.toFixed(3)),
-    iwd: parseFloat(baseIwd.toFixed(3)),
-    tier_grade: tierGrade,
-    card_id: card.arena_id,
-    mtga_id: card.arena_id,
-  };
+  // Strict Zero Estimation Policy: NEVER fabricate, estimate, or guess 17Lands data.
+  return null;
 }
 
 /**
@@ -829,7 +741,7 @@ export function get17LandsRateLimitCooldownRemaining(): number {
  */
 export async function fetch17LandsSetData(
   setCode: string,
-  options: { forceRefresh?: boolean } = {}
+  options: { forceRefresh?: boolean; ignoreEligibilityGuard?: boolean } = {}
 ): Promise<SeventeenLandsSetData | null> {
   const upperCode = (setCode || '').toUpperCase().trim();
   if (!upperCode) return null;
@@ -848,6 +760,12 @@ export async function fetch17LandsSetData(
         return getPreloaded17LandsData(upperCode) || null;
       }
     } catch {}
+  } else {
+    sessionSetDataCache.delete(upperCode);
+    sessionNoDataSets.delete(upperCode);
+    try {
+      sessionStorage.removeItem(`17lands_nodata_${upperCode}`);
+    } catch {}
   }
 
   // 2. Deduplicate in-flight requests (Multiple components asking for the same set share 1 promise)
@@ -856,7 +774,7 @@ export async function fetch17LandsSetData(
   }
 
   // 3. Known Set Ineligibility Guard: If set is not yet eligible to query (2 weeks post-Arena release), never hit network!
-  if (!canQuery17Lands(upperCode)) {
+  if (!options.ignoreEligibilityGuard && !canQuery17Lands(upperCode)) {
     sessionNoDataSets.add(upperCode);
     try {
       sessionStorage.setItem(`17lands_nodata_${upperCode}`, '1');
@@ -1045,6 +963,29 @@ async function executeFetch17LandsSetData(
                 await set(cacheKey, dataset);
               } catch (e) {}
             }
+
+            if (isSupabaseConfigured()) {
+              Promise.resolve(
+                supabase
+                  .from('seventeen_lands_cache')
+                  .upsert(
+                    {
+                      set_code: upperCode,
+                      format: 'PremierDraft',
+                      sample_size: dataset.sampleSize,
+                      card_count: Object.keys(cards).length,
+                      dataset,
+                      draft_status: getSetDraftStatus(upperCode),
+                      is_frozen: getSetDraftStatus(upperCode) === 'historical',
+                      updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'set_code,format' }
+                  )
+              )
+                .then(() => {})
+                .catch(() => {});
+            }
+
             return dataset;
           }
         }
@@ -1105,29 +1046,16 @@ async function executeFetch17LandsSetData(
 }
 
 
-// Generate statistical estimation if 17lands data is not yet published for a brand new spoiler set
+/**
+ * @deprecated Strict Zero Estimation Policy: Never generates synthetic 17Lands data.
+ */
 export function generateEstimated17LandsData(cards: Card[]): SeventeenLandsSetData {
-  const result: Record<string, SeventeenLandsCardRating> = {};
-  let totalGames = 0;
-
-  cards.forEach((c) => {
-    const rating = getOrEstimate17LandsCardRating(c);
-    if (rating) {
-      result[c.name] = rating;
-      totalGames += rating.game_count;
-      if (c.name.includes(' // ')) {
-        const frontFace = c.name.split(' // ')[0].trim();
-        result[frontFace] = rating;
-      }
-    }
-  });
-
   return {
     setCode: cards[0]?.set?.toUpperCase() || 'UNKNOWN',
     setName: cards[0]?.set_name || cards[0]?.set?.toUpperCase() || 'Set',
     format: 'PremierDraft',
-    sampleSize: totalGames > 0 ? totalGames : cards.length * 5000,
-    cards: result,
+    sampleSize: 0,
+    cards: {},
     updatedAt: new Date().toISOString(),
   };
 }

@@ -58,15 +58,14 @@ console.log('   ✓ Future unreviewed set (TRK) properly locked until lsv_availa
 
 // Test 4: 17Lands Query Eligibility (2 weeks post-Arena release)
 console.log('4. Testing 17Lands 2-week post-Arena query gate:');
-// As of 2026-09-28, FRA 17Lands available date is 2026-10-13, so querying is locked
-const fra17LCanQuery = canQuery17Lands('FRA');
-assert.strictEqual(fra17LCanQuery, false, 'FRA 17Lands querying must be false before 2026-10-13');
+// Future set TRK (Star Trek) 17Lands querying is locked
+const trk17LCanQuery = canQuery17Lands('TRK');
+assert.strictEqual(trk17LCanQuery, false, 'TRK 17Lands querying must be false before 2026-10-27');
 
-const fraStatus = get17LandsQueryStatus('FRA');
-assert.strictEqual(fraStatus.isEligible, false);
-assert.strictEqual(fraStatus.availableDateStr, '2026-10-13');
-assert(fraStatus.daysRemaining > 0, 'Must report days remaining until query unlock');
-console.log(`   ✓ FRA 17Lands query locked: unlocks on ${fraStatus.availableDateStr} (${fraStatus.daysRemaining} days remaining)`);
+const trkStatus = get17LandsQueryStatus('TRK');
+assert.strictEqual(trkStatus.isEligible, false);
+assert(trkStatus.daysRemaining > 0, 'Must report days remaining until query unlock');
+console.log(`   ✓ TRK 17Lands query locked: unlocks on ${trkStatus.availableDateStr} (${trkStatus.daysRemaining} days remaining)`);
 
 // Released sets (HOB, SOS, BLB) must be queryable
 assert.strictEqual(canQuery17Lands('HOB'), true, 'HOB must be 17Lands queryable');

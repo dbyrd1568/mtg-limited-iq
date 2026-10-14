@@ -1,6 +1,6 @@
 import { Card, GradeTier, MTGColor, MTGRarity } from '../types/mtg';
 import { normalizeScryfallCard, POPULAR_LIMITED_SETS } from './scryfall';
-import { fetch17LandsSetData, winRateToGradeTier, gradeTierToIndex, indexToGradeTier, GRADE_SCORES, scoreToGradeTier, getOrEstimate17LandsCardRating } from './seventeenLands';
+import { fetch17LandsSetData, winRateToGradeTier, gradeTierToIndex, indexToGradeTier, GRADE_SCORES, scoreToGradeTier, get17LandsCardRating, getOrEstimate17LandsCardRating } from './seventeenLands';
 import { getLearnedBenchmarkCandidates, getLearnedQueryExpansions, getLearnedPrecedentBoost } from './precedentLearning';
 import { getStoredCanonicalPrecedents, getTargetCardKey } from './precedentApprovalService';
 
@@ -5642,10 +5642,10 @@ export function generateGuaranteedFallbackResult(
     .slice(0, 4);
 
   const matches: SimilarCardMatch[] = top4.map(({ card, score, reasons }) => {
-    const r = getOrEstimate17LandsCardRating(card, null);
-    const winRate = r?.win_rate ?? 0.54;
-    const alsa = r?.avg_seen ?? 4.5;
-    const tierGrade: GradeTier = (r?.tier_grade as GradeTier | undefined) || winRateToGradeTier(winRate);
+    const r = get17LandsCardRating(card, null);
+    const winRate = typeof r?.win_rate === 'number' ? r.win_rate : undefined;
+    const alsa = typeof r?.avg_seen === 'number' ? r.avg_seen : undefined;
+    const tierGrade: GradeTier | undefined = (r?.tier_grade as GradeTier | undefined) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
     return {
       card,
       similarityScore: score,
@@ -6027,16 +6027,16 @@ export async function findSimilarCards(
       })
     );
 
-    // Assemble enriched matches with verified or estimated 17Lands data
+    // Assemble enriched matches with verified authentic 17Lands data
     const enrichedMatches: SimilarCardMatch[] = [];
     for (const { card, score, reasons } of topCandidates) {
       const setCode = card.set.toUpperCase();
       const setData = setDatasets[setCode];
-      const card17L = getOrEstimate17LandsCardRating(card, setData);
+      const card17L = get17LandsCardRating(card, setData);
 
-      const winRate = card17L?.win_rate ?? 0.54;
-      const alsa = card17L?.avg_seen ?? 4.5;
-      const tierGrade: GradeTier = (card17L?.tier_grade as GradeTier | undefined) || winRateToGradeTier(winRate);
+      const winRate = typeof card17L?.win_rate === 'number' ? card17L.win_rate : undefined;
+      const alsa = typeof card17L?.avg_seen === 'number' ? card17L.avg_seen : undefined;
+      const tierGrade: GradeTier | undefined = (card17L?.tier_grade as GradeTier | undefined) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
 
       enrichedMatches.push({
         card,
@@ -6248,24 +6248,15 @@ export async function buildCustomPrecedentMatch(
   const setCode = (replacementCard.set || '').toUpperCase();
   try {
     const setData = await fetch17LandsSetData(setCode);
-    const card17L = getOrEstimate17LandsCardRating(replacementCard, setData);
-    winRate = card17L?.win_rate;
-    alsa = card17L?.avg_seen;
+    const card17L = get17LandsCardRating(replacementCard, setData);
+    winRate = typeof card17L?.win_rate === 'number' ? card17L.win_rate : undefined;
+    alsa = typeof card17L?.avg_seen === 'number' ? card17L.avg_seen : undefined;
     tierGrade = (card17L?.tier_grade as GradeTier) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
   } catch {
-    const card17L = getOrEstimate17LandsCardRating(replacementCard, null);
-    winRate = card17L?.win_rate;
-    alsa = card17L?.avg_seen;
+    const card17L = get17LandsCardRating(replacementCard, null);
+    winRate = typeof card17L?.win_rate === 'number' ? card17L.win_rate : undefined;
+    alsa = typeof card17L?.avg_seen === 'number' ? card17L.avg_seen : undefined;
     tierGrade = (card17L?.tier_grade as GradeTier) || (typeof winRate === 'number' ? winRateToGradeTier(winRate) : undefined);
-  }
-
-  // Fallback estimation if not found in 17lands data
-  if (!tierGrade) {
-    const estimated = getOrEstimate17LandsCardRating(replacementCard, null);
-    tierGrade = (estimated?.tier_grade as GradeTier) || 'C';
-    if (typeof winRate !== 'number' && typeof estimated?.win_rate === 'number') {
-      winRate = estimated.win_rate;
-    }
   }
 
   return {
