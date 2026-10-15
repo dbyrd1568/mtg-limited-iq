@@ -76,6 +76,7 @@ interface AdminDashboardProps {
   currentUser: UserAccount | null;
   onOpenAuthModal: () => void;
   onReturnHome: () => void;
+  onDataReload?: () => Promise<void> | void;
   initialSubTab?: AdminSubTab;
 }
 
@@ -83,6 +84,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   currentUser,
   onOpenAuthModal,
   onReturnHome,
+  onDataReload,
   initialSubTab = 'overview',
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<AdminSubTab>(() => sanitizeAdminSubTab(initialSubTab));
@@ -535,8 +537,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           isOpen={syncModalType !== null}
           onClose={() => setSyncModalType(null)}
           syncType={syncModalType}
-          onSyncComplete={() => {
+          onSyncComplete={async () => {
             loadAllData();
+            if (onDataReload) {
+              await onDataReload();
+            }
           }}
         />
       )}

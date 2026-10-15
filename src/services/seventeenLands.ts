@@ -1,6 +1,6 @@
 import { get, set } from 'idb-keyval';
 import { Card, GradeTier, SetDraftStatus, SeventeenLandsCardRating, SeventeenLandsSetData, UserCardEvaluation, CardEvaluationComparison, SetCalibrationSummary } from '../types/mtg';
-import { POPULAR_LIMITED_SETS, compute17LandsAvailableDate } from './scryfall';
+import { POPULAR_LIMITED_SETS, compute17LandsAvailableDate, KNOWN_17LANDS_EXPANSIONS } from './scryfall';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 export const GRADE_TIERS: GradeTier[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
@@ -146,8 +146,8 @@ export function canQuery17Lands(
     ? setCodeOrSet
     : POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
 
-  // If already verified in catalog
-  if (setInfo?.has_17lands_data === true) return true;
+  // If already verified in catalog or known expansions
+  if (setInfo?.has_17lands_data === true || KNOWN_17LANDS_EXPANSIONS.has(upper)) return true;
 
   // Check 17Lands availability date (2 weeks / 14 days after MTG Arena release)
   const availDateStr = setInfo?.seventeen_lands_available_at || (setInfo?.arena_released_at ? compute17LandsAvailableDate(setInfo.arena_released_at) : null);
@@ -211,18 +211,23 @@ export function get17LandsQueryStatus(
  * - 'upcoming': An unreleased set whose release date is in the future (e.g. FRA prior to Oct 2, 2026; TRK).
  * - 'historical': A set whose initial Arena draft season has concluded and is off Arena from its first run.
  */
-export function getSetDraftStatus(setCode: string): SetDraftStatus {
-  const upper = (setCode || '').toUpperCase().trim();
-  const setInfo = POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
-  if (!setInfo) return 'historical';
+export function getSetDraftStatus(
+  setCodeOrSet: string | { code?: string; released_at?: string; is_active_draft?: boolean; is_flashback?: boolean }
+): SetDraftStatus {
+  if (!setCodeOrSet) return 'historical';
+  const upper = typeof setCodeOrSet === 'string' ? setCodeOrSet.toUpperCase().trim() : (setCodeOrSet.code || '').toUpperCase().trim();
+  const setInfo = typeof setCodeOrSet === 'object' && setCodeOrSet.released_at
+    ? setCodeOrSet
+    : POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
 
   // Explicit overrides
-  if (setInfo.is_flashback) return 'flashback';
-  if (setInfo.is_active_draft) return 'active';
+  if (setInfo?.is_flashback) return 'flashback';
+  if (setInfo?.is_active_draft) return 'active';
 
   // Check release date
-  if (!setInfo.released_at) return 'historical';
-  const isoStr = setInfo.released_at.includes('T') ? setInfo.released_at : `${setInfo.released_at}T00:00:00Z`;
+  const releasedAt = setInfo?.released_at || (typeof setCodeOrSet === 'object' ? setCodeOrSet.released_at : undefined);
+  if (!releasedAt) return 'historical';
+  const isoStr = releasedAt.includes('T') ? releasedAt : `${releasedAt}T00:00:00Z`;
   const releaseTime = new Date(isoStr).getTime();
   if (isNaN(releaseTime)) return 'historical';
 
@@ -234,12 +239,7 @@ export function getSetDraftStatus(setCode: string): SetDraftStatus {
   }
 
   // Active premier draft formats
-  if (upper === 'HOB' || upper === 'MBC') {
-    return 'active';
-  }
-
-  // When FRA releases (on or after 2026-10-02), FRA becomes active
-  if (upper === 'FRA' && now >= releaseTime) {
+  if (upper === 'HOB' || upper === 'MBC' || upper === 'FRA') {
     return 'active';
   }
 
@@ -707,6 +707,7 @@ export function clear17LandsSessionCache(): void {
   sessionSetDataCache.clear();
   inFlightSetRequests.clear();
   sessionNoDataSets.clear();
+  globalRateLimitCooldownUntil = 0;
   try {
     Object.keys(sessionStorage).forEach((key) => {
       if (key.startsWith('17lands_nodata_')) {
@@ -763,6 +764,7 @@ export async function fetch17LandsSetData(
   } else {
     sessionSetDataCache.delete(upperCode);
     sessionNoDataSets.delete(upperCode);
+    globalRateLimitCooldownUntil = 0;
     try {
       sessionStorage.removeItem(`17lands_nodata_${upperCode}`);
     } catch {}
@@ -785,11 +787,33 @@ export async function fetch17LandsSetData(
   }
 
   // 4. Rate-limit Circuit Breaker: If 17lands returned 403 or 429 recently, pause network requests
-  if (Date.now() < globalRateLimitCooldownUntil) {
+  if (Date.now() < globalRateLimitCooldownUntil && !options.forceRefresh) {
     const remainingSecs = Math.ceil((globalRateLimitCooldownUntil - Date.now()) / 1000);
     console.warn(`[17Lands] Request for ${upperCode} skipped: rate limit cooldown active (${remainingSecs}s remaining).`);
     const preloaded = getPreloaded17LandsData(upperCode);
-    return preloaded || null;
+    if (preloaded) return preloaded;
+    // Even during rate limit cooldown, check central Supabase telemetry cache before giving up!
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: dbRow } = await supabase.from('seventeen_lands_cache').select('dataset').eq('set_code', upperCode).maybeSingle();
+        if (dbRow?.dataset && typeof dbRow.dataset === 'object') {
+          const raw = dbRow.dataset as any;
+          const dbData: SeventeenLandsSetData = {
+            setCode: raw.setCode || raw.set_code || upperCode,
+            setName: raw.setName || raw.set_name || upperCode,
+            format: raw.format || 'PremierDraft',
+            sampleSize: raw.sampleSize || raw.sample_size || raw.total_games || 0,
+            cards: raw.cards || {},
+            updatedAt: raw.updatedAt || raw.updated_at || new Date().toISOString(),
+          };
+          if (dbData.cards && Object.keys(dbData.cards).length >= 5) {
+            sessionSetDataCache.set(upperCode, dbData);
+            return dbData;
+          }
+        }
+      } catch {}
+    }
+    return null;
   }
 
   // 5. Check IndexedDB Persistent Cache before touching the network

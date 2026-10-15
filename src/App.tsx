@@ -349,7 +349,7 @@ const AppContent: React.FC = () => {
   };
 
   // Fetch cards and 17lands data whenever currentSet changes
-  const loadSetData = useCallback(async (set: SetInfo | null) => {
+  const loadSetData = useCallback(async (set: SetInfo | null, options?: { forceRefresh?: boolean }) => {
     if (!set) {
       setCards([]);
       setSeventeenLandsData(null);
@@ -363,9 +363,9 @@ const AppContent: React.FC = () => {
 
     // Instantly populate preloaded 17Lands data so all 17Lands features are immediately active
     const preloaded = getPreloaded17LandsData(set.code);
-    if (preloaded) {
+    if (preloaded && !options?.forceRefresh) {
       setSeventeenLandsData(preloaded);
-    } else {
+    } else if (!options?.forceRefresh) {
       setSeventeenLandsData(null);
     }
 
@@ -376,19 +376,20 @@ const AppContent: React.FC = () => {
         setDownloadProgress({ loaded, total });
       },
       (cachedCards) => {
-        // Immediately populate cached cards to eliminate blank screen while checking Scryfall
-        const dedupedCached = deduplicateCards(cachedCards);
-        setCards(dedupedCached);
-        // Only dismiss loading state early if the cached cards count already matches or exceeds expected set count
-        if (dedupedCached.length >= (set.card_count || 200)) {
-          setIsLoadingCards(false);
+        if (!options?.forceRefresh) {
+          // Immediately populate cached cards to eliminate blank screen while checking Scryfall
+          const dedupedCached = deduplicateCards(cachedCards);
+          setCards(dedupedCached);
+          // Only dismiss loading state early if the cached cards count already matches or exceeds expected set count
+          if (dedupedCached.length >= (set.card_count || 200)) {
+            setIsLoadingCards(false);
+          }
         }
-      }
+      },
+      { forceRefresh: options?.forceRefresh }
     );
 
-    const landsPromise = canQuery17Lands(set)
-      ? fetch17LandsSetData(set.code)
-      : Promise.resolve(null);
+    const landsPromise = fetch17LandsSetData(set.code, { forceRefresh: options?.forceRefresh });
 
     const ratingsPromise = loadProRatingsForSet(set.code);
     const archetypesPromise = loadSetArchetypes(set.code);
@@ -770,6 +771,18 @@ const AppContent: React.FC = () => {
               currentUser={currentUser}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
               onReturnHome={() => setActiveTab('evaluation')}
+              onDataReload={async () => {
+                const refreshedSets = await fetchAllSets({ forceRefresh: true });
+                if (refreshedSets && refreshedSets.length > 0) {
+                  const sorted = [...refreshedSets].sort((a, b) => (b.released_at || '').localeCompare(a.released_at || ''));
+                  setAllSets(sorted);
+                  if (currentSet) {
+                    const updatedCurrent = sorted.find(s => s.code.toUpperCase() === currentSet.code.toUpperCase()) || currentSet;
+                    setCurrentSet(updatedCurrent);
+                    await loadSetData(updatedCurrent, { forceRefresh: true });
+                  }
+                }
+              }}
               initialSubTab={
                 (['overview', 'users', 'features', 'grading', 'access', 'precedents'].includes(parseAppUrlParams().subtab as any)
                   ? (parseAppUrlParams().subtab as any)

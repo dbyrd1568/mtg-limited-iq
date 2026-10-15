@@ -6,7 +6,7 @@ const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
 // Pre-curated list of 17Lands known expansion identifiers from https://www.17lands.com/data/filters
 export const KNOWN_17LANDS_EXPANSIONS = new Set([
-  'HOB', 'MBC', 'MSH', 'SOS', 'Y26SOS', 'TMT', 'ECL', 'Y26ECL', 'TLA', 'OM1', 'EOE', 'FIN', 'Y25EOE',
+  'FRA', 'HOB', 'MBC', 'MSH', 'SOS', 'Y26SOS', 'TMT', 'ECL', 'Y26ECL', 'TLA', 'OM1', 'EOE', 'FIN', 'Y25EOE',
   'TDM', 'Y25TDM', 'DFT', 'Y25DFT', 'PIO', 'FDN', 'DSK', 'Y25DSK', 'BLB', 'Y25BLB', 'MH3', 'OTJ',
   'Y24OTJ', 'MKM', 'Y24MKM', 'LCI', 'Y24LCI', 'WOE', 'Y24WOE', 'LTR', 'MOM', 'MAT', 'SIR', 'ONE',
   'Y23ONE', 'BRO', 'Y23BRO', 'DMU', 'Y23DMU', 'HBG', 'SNC', 'Y22SNC', 'NEO', 'DBL', 'VOW', 'RAVM',
@@ -35,17 +35,43 @@ export function computeArenaReleaseDate(tabletopReleasedAt: string): string {
 // Pre-curated list of top Limited sets with comprehensive metadata
 // Correctly tracks all sets with active 17Lands Premier Draft telemetry
 export const POPULAR_LIMITED_SETS: SetInfo[] = [
+  // 2027 Upcoming Sets
+  {
+    code: 'MDD',
+    name: 'Marvel: Darkhold Destiny',
+    card_count: 12,
+    released_at: '2027-04-09',
+    arena_released_at: '2027-04-06',
+    lsv_available_at: '2027-04-02',
+    seventeen_lands_available_at: '2027-04-20',
+    set_type: 'expansion',
+    has_17lands_data: false,
+    is_active_draft: false,
+  },
+  {
+    code: 'NAU',
+    name: 'Nauctis: The Sunken Realm',
+    card_count: 0,
+    released_at: '2027-02-05',
+    arena_released_at: '2027-02-02',
+    lsv_available_at: '2027-01-29',
+    seventeen_lands_available_at: '2027-02-16',
+    set_type: 'expansion',
+    has_17lands_data: false,
+    is_active_draft: false,
+  },
   // 2026 Sets
   {
     code: 'TRK',
     name: 'Star Trek',
     card_count: 135,
-    released_at: '2026-11-01',
-    arena_released_at: '2026-10-27',
-    lsv_available_at: '2026-10-24',
-    seventeen_lands_available_at: '2026-11-10',
+    released_at: '2026-11-13',
+    arena_released_at: '2026-11-10',
+    lsv_available_at: '2026-11-06',
+    seventeen_lands_available_at: '2026-11-24',
     set_type: 'expansion',
     has_17lands_data: false,
+    is_active_draft: false,
   },
   {
     code: 'MBC',
@@ -56,19 +82,20 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
     lsv_available_at: '2026-07-28',
     seventeen_lands_available_at: '2026-08-15',
     set_type: 'draft_innovation',
-    has_17lands_data: false,
+    has_17lands_data: true,
     is_active_draft: true,
   },
   {
     code: 'FRA',
     name: 'Reality Fracture',
-    card_count: 290,
+    card_count: 462,
     released_at: '2026-10-02',
     arena_released_at: '2026-09-29',
     lsv_available_at: '2026-09-25',
     seventeen_lands_available_at: '2026-10-13',
     set_type: 'expansion',
-    has_17lands_data: false,
+    has_17lands_data: true,
+    is_active_draft: true,
   },
   {
     code: 'HOB',
@@ -602,7 +629,14 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
     const draftableSetTypes = new Set(['core', 'expansion', 'masters', 'draft_innovation', 'starter', 'alchemy']);
 
     const validSets: SetInfo[] = data.data
-      .filter((s: any) => draftableSetTypes.has(s.set_type) && s.card_count > 30 && (!s.digital || KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase())))
+      .filter((s: any) => {
+        if (!draftableSetTypes.has(s.set_type)) return false;
+        if (s.digital && !KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase())) return false;
+        // Retain sets if card_count > 30 OR if it is an upcoming/recent set (2026 onwards) OR if in POPULAR_LIMITED_SETS
+        const isUpcomingOrRecent = s.released_at && s.released_at >= '2026-01-01';
+        const isPopular = POPULAR_LIMITED_SETS.some((p) => p.code.toUpperCase() === s.code.toUpperCase());
+        return s.card_count > 30 || isUpcomingOrRecent || isPopular;
+      })
       .map((s: any) => {
         const popMatch = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === s.code.toUpperCase());
         const has17L = popMatch ? Boolean(popMatch.has_17lands_data) : KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase());
@@ -612,9 +646,14 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
           name: s.name,
           card_count: effectiveCardCount,
           released_at: s.released_at,
+          arena_released_at: popMatch?.arena_released_at || (s.released_at ? computeArenaReleaseDate(s.released_at) : undefined),
+          seventeen_lands_available_at: popMatch?.seventeen_lands_available_at || (s.released_at ? compute17LandsAvailableDate(popMatch?.arena_released_at || computeArenaReleaseDate(s.released_at)) : undefined),
+          lsv_available_at: popMatch?.lsv_available_at,
           icon_svg_uri: s.icon_svg_uri,
           set_type: s.set_type,
           has_17lands_data: has17L,
+          is_active_draft: popMatch?.is_active_draft,
+          is_flashback: popMatch?.is_flashback,
         };
       });
 
@@ -743,26 +782,28 @@ export async function fetchCardsForSet(
   const popSet = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === upperCode);
   const targetSetCount = popSet?.card_count || 0;
 
-  try {
-    let rawCached = await get<Card[]>(cacheKey);
-    if (!rawCached || rawCached.length === 0) {
-      for (const legacyKey of legacyCacheKeys) {
-        rawCached = await get<Card[]>(legacyKey);
-        if (rawCached && rawCached.length > 0) break;
-      }
-    }
-    if (rawCached && rawCached.length > 0) {
-      // STRICT SET FILTER & DEDUPLICATION: strictly keep only cards for this set and deduplicate treatments by exact name!
-      const strictlyFiltered = deduplicateCards(rawCached.filter(c => c.set.toUpperCase() === upperCode));
-      if (strictlyFiltered.length > 0) {
-        cachedCards = strictlyFiltered;
-        if (onCachedCards) {
-          onCachedCards(strictlyFiltered);
+  if (typeof indexedDB !== 'undefined') {
+    try {
+      let rawCached = await get<Card[]>(cacheKey);
+      if (!rawCached || rawCached.length === 0) {
+        for (const legacyKey of legacyCacheKeys) {
+          rawCached = await get<Card[]>(legacyKey);
+          if (rawCached && rawCached.length > 0) break;
         }
       }
+      if (rawCached && rawCached.length > 0) {
+        // STRICT SET FILTER & DEDUPLICATION: strictly keep only cards for this set and deduplicate treatments by exact name!
+        const strictlyFiltered = deduplicateCards(rawCached.filter(c => c.set.toUpperCase() === upperCode));
+        if (strictlyFiltered.length > 0) {
+          cachedCards = strictlyFiltered;
+          if (onCachedCards) {
+            onCachedCards(strictlyFiltered);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('IndexedDB read error:', e);
     }
-  } catch (e) {
-    console.warn('IndexedDB read error:', e);
   }
 
   const allCards: Card[] = [];
@@ -800,6 +841,10 @@ export async function fetchCardsForSet(
       }
 
       if (!response || !response.ok) {
+        if (response?.status === 404) {
+          // Scryfall returns 404 when 0 cards match the query (e.g. newly announced sets with no cards previewed yet)
+          break;
+        }
         throw new Error(`Scryfall card search failed: ${response?.status} ${response?.statusText}`);
       }
 
@@ -871,10 +916,12 @@ export async function fetchCardsForSet(
     const dedupedCards = deduplicateCards(allCards);
 
     if (dedupedCards.length > 0) {
-      try {
-        await set(cacheKey, dedupedCards);
-      } catch (e) {
-        console.warn('Failed to cache cards in IndexedDB:', e);
+      if (typeof indexedDB !== 'undefined') {
+        try {
+          await set(cacheKey, dedupedCards);
+        } catch (e) {
+          console.warn('Failed to cache cards in IndexedDB:', e);
+        }
       }
       return dedupedCards;
     }
