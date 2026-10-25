@@ -738,12 +738,12 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
 
   lines.push(`\n## ${isAsymmetricSet ? `Designed Set Archetypes (${developedCount} Pairs)` : '2-Color Archetypes'}`);
   if (!report.isThresholdMet) {
-    lines.push(`> ⚠️ *Only ${report.ratedCards}/${report.evaluationsThreshold} minimum card evaluations completed. Archetypes without sufficient evaluations are marked N/A.*\n`);
+    lines.push(`> *Only ${report.ratedCards}/${report.evaluationsThreshold} minimum card evaluations completed. Archetypes without sufficient evaluations are marked N/A.*\n`);
   }
 
   const hasGradedArchetypes = (['A', 'B', 'C', 'D', 'F'] as const).some((b) => (isAsymmetricSet ? report.developedGradeList : report.gradeList)[b].length > 0);
   if (!hasGradedArchetypes) {
-    lines.push(`*Awaiting card evaluations to synthesize archetype power tiers (minimum ${report.evaluationsThreshold} card evaluations required).*`);
+    lines.push(`*Awaiting card evaluations to calculate archetype rankings (minimum ${report.evaluationsThreshold} card evaluations required).*`);
   } else {
     (['A', 'B', 'C', 'D', 'F'] as const).forEach((band) => {
       const archetypes = (isAsymmetricSet ? report.developedGradeList : report.gradeList)[band];
@@ -761,7 +761,7 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
   }
 
   if (isAsymmetricSet && report.otherArchetypes.length > 0) {
-    lines.push(`\n## 🧩 Other Color Pairs (${report.otherArchetypes.length} Pairs)`);
+    lines.push(`\n## Other Color Pairs (${report.otherArchetypes.length} Pairs)`);
     lines.push(`*Off-archetype pairs not specifically supported with signposts in ${report.setName}*`);
     (['A', 'B', 'C', 'D', 'F'] as const).forEach((band) => {
       const archetypes = report.otherGradeList[band];
@@ -777,6 +777,6 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
     });
   }
 
-  lines.push(`\n---\n*Synthesized with MTG Limited IQ*`);
+  lines.push(`\n---\n*Generated with MTG Limited IQ*`);
   return lines.join('\n');
 }

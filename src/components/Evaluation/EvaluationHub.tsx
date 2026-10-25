@@ -2112,7 +2112,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         ? 'bg-violet-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
-                    title="Show both the calibration scatter plot and detailed data ledger"
+                    title="Show both the scatter plot and card comparison table"
                   >
                     <Layers className="w-3.5 h-3.5" />
                     <span>Dashboard (All)</span>
@@ -2125,7 +2125,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         ? 'bg-violet-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
-                    title="View only the 2D calibration scatter plot comparing expected vs actual win rates"
+                    title="View only the scatter plot"
                   >
                     <Target className="w-3.5 h-3.5" />
                     <span>Scatter Plot</span>
@@ -2138,10 +2138,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                         ? 'bg-violet-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
-                    title="View color accuracy breakdown, distribution curve, and card-by-card comparison ledger"
+                    title="View color accuracy breakdown, distribution curve, and card comparison table"
                   >
                     <BarChart2 className="w-3.5 h-3.5" />
-                    <span>Ledger</span>
+                    <span>Table</span>
                   </button>
                 </div>
 
@@ -2478,7 +2478,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white font-heading">
-                  Card-by-Card Comparison Ledger
+                  Card-by-Card Comparison
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Examine your grade delta and 17Lands win rate.
@@ -2609,7 +2609,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     {show17L && renderSortableHeader('17l', '17L')}
                     {renderSortableHeader('winrate', 'GIH WR')}
                     {renderSortableHeader('alsa', 'ALSA')}
-                    {renderSortableHeader('verdict', 'Accuracy Verdict')}
+                    {renderSortableHeader('verdict', 'Grade Match')}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-900 font-sans">

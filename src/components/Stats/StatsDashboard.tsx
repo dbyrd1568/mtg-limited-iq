@@ -79,12 +79,12 @@ const CATEGORY_DETAILS: Record<QuestionCategory, CategoryDetails> = {
     proTip: 'Always track the "toughness breakpoint" of the format (e.g. 4 toughness in formats with 3-damage burn spells).',
   },
   archetype_engine: {
-    name: 'Archetype Synergy Engines',
+    name: 'Archetype Themes & Signposts',
     icon: <Sparkles className="w-4 h-4 text-yellow-300" />,
     tag: 'Draft Archetypes',
-    description: 'Tests understanding of mechanical archetype engines, key payoffs, and synergy enablers.',
-    whyItMatters: 'Modern draft sets are deeply synergy-driven. Identifying archetype engines allows you to assemble high-synergy 3-0 decks.',
-    proTip: 'Prioritize the enablers and payoffs that bridge across overlapping color archetypes.',
+    description: 'Tests understanding of 2-color archetype themes, key payoffs, and signposts.',
+    whyItMatters: 'Modern draft sets are built around 2-color archetypes. Identifying signpost themes helps you draft cohesive decks.',
+    proTip: 'Prioritize enablers and payoffs that fit overlapping color archetypes.',
   },
   removal_to_play_around: {
     name: 'Removal to Play Around',
@@ -308,15 +308,15 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
                         <span className="font-mono font-bold text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#121316] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                           {details.tag}
                         </span>
-                        <span className="text-slate-400">Limited Heuristic</span>
+                        <span className="text-slate-400">Draft Skill</span>
                       </div>
                       <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-sans">{details.description}</p>
                       <div className="p-2 rounded-lg bg-amber-50 dark:bg-[#121316] border border-amber-200 dark:border-slate-800 space-y-1">
-                        <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">💡 Why It Wins Drafts:</div>
+                        <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Why It Wins Drafts:</div>
                         <p className="text-[11px] text-amber-900 dark:text-slate-300 leading-relaxed">{details.whyItMatters}</p>
                       </div>
                       <div className="text-[11px] text-violet-700 dark:text-cyan-200 font-mono">
-                        🔥 <strong>Pro Tip:</strong> {details.proTip}
+                        <strong>Tip:</strong> {details.proTip}
                       </div>
                     </div>
                   )}
@@ -400,7 +400,7 @@ export const StatsDashboard: React.FC<StatsDashboardProps> = ({
 
         {missedCardsList.length === 0 ? (
           <div className="p-6 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 text-center text-slate-500 dark:text-slate-400 text-xs shadow-xs">
-            🎉 Your Missed Practice Deck is empty! You have zero unmastered cards.
+            Your Missed Practice Deck is empty.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

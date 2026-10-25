@@ -31,13 +31,13 @@ export const TOUR_STEP_DEFINITIONS: Record<ContextualTourStepId, TourStepDefinit
   grading_mode: {
     id: 'grading_mode',
     title: 'Grading Mode vs. Compare Mode',
-    badge: 'Blind Evaluation & Telemetry',
+    badge: 'Blind Grading & Comparison',
     targetSelector: '#mode-toggle-btn',
     preferredPlacement: 'bottom',
     description:
       'Toggle between Grading Mode (benchmarks and creator scores hidden for blind evaluation) and Compare Mode (17Lands win rates, ALSA, and pro reviews revealed side-by-side).',
     secondaryNote:
-      'Note: For upcoming or recently released sets, 17Lands telemetry begins populating ~2 weeks post-release as Arena draft games accumulate.',
+      'Note: For upcoming or recently released sets, 17Lands data becomes available ~2 weeks after Arena release.',
   },
   enter_grade: {
     id: 'enter_grade',
@@ -50,26 +50,26 @@ export const TOUR_STEP_DEFINITIONS: Record<ContextualTourStepId, TourStepDefinit
   },
   view_comps: {
     id: 'view_comps',
-    title: 'View Precedent Comps',
-    badge: 'Precedent Engine',
+    title: 'View Historical Comps',
+    badge: 'Card Comps',
     targetSelector: '#comps-action-btn',
     preferredPlacement: 'top',
     description:
-      'Click Comps on any card to launch the Precedent Engine! Compare against historically similar cards across modern MTG sets with authentic win rates and grade benchmarks.',
+      'Click Comps on any card to compare it against similar cards from past sets with 17Lands win rates and grade benchmarks.',
   },
   replace_comp: {
     id: 'replace_comp',
-    title: 'Search & Substitute Precedents',
-    badge: 'Custom Precedents',
+    title: 'Search & Swap Comps',
+    badge: 'Custom Comps',
     targetSelector: '#comp-search-bar',
     preferredPlacement: 'bottom',
     description:
-      'Customize your historical comps! Search across all of Magic history with visual card comparison, or swap any precedent slot with your preferred comparison card.',
+      'Customize your historical comps! Search across all of Magic history with visual card comparison, or swap any slot with your preferred comparison card.',
   },
   export_grades: {
     id: 'export_grades',
     title: 'Export & Share Grades',
-    badge: 'Data Portability',
+    badge: 'Share & Export',
     targetSelector: '#export-grades-btn, #share-export-grades-btn',
     preferredPlacement: 'bottom',
     description:
@@ -77,12 +77,12 @@ export const TOUR_STEP_DEFINITIONS: Record<ContextualTourStepId, TourStepDefinit
   },
   quiz_overview: {
     id: 'quiz_overview',
-    title: 'Tactical Format Quizzes',
-    badge: 'Tactical Drills',
+    title: 'Format Quizzes',
+    badge: 'Practice Quizzes',
     targetSelector: '#quiz-setup-header',
     preferredPlacement: 'bottom',
     description:
-      'Sharpen your draft instincts with tactical quizzes! Test your skills on Pack 1 Pick 1 picks, combat tricks, and 17Lands trap detection with timed and practice modes, or drill your Missed Cards Deck.',
+      'Practice set cards with timed or untimed quizzes on Pack 1 Pick 1 picks, combat tricks, removal, and 17Lands win rates, or review your Missed Cards Deck.',
   },
 };
 

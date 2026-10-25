@@ -1256,7 +1256,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                                   ? 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 border-fuchsia-300 dark:border-fuchsia-700'
                                   : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
                               }`}>
-                                ⚡ {archetype.pace}
+                                {archetype.pace}
                               </span>
                             )}
                           </div>
@@ -1611,12 +1611,12 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                     )}
                     {selectedCardForModal.is_instant_speed && (
                       <span className="text-[11px] px-2 py-0.5 rounded-lg bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 border border-cyan-300 dark:border-cyan-500/40 font-bold">
-                        ⚡ Instant Speed
+                        Instant Speed
                       </span>
                     )}
                     {selectedCardForModal.archetype_tag && (
                       <span className="text-[11px] px-2 py-0.5 rounded-lg bg-violet-100 text-violet-800 dark:bg-violet-950/60 border border-violet-300 dark:border-violet-500/40 font-bold">
-                        🛡️ {selectedCardForModal.archetype_tag}
+                        {selectedCardForModal.archetype_tag}
                       </span>
                     )}
                   </div>

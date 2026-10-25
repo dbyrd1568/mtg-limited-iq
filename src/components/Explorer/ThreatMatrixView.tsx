@@ -283,7 +283,7 @@ export const ThreatMatrixView: React.FC<ThreatMatrixViewProps> = ({
               title="Show only Instant-speed spells & Flash cards that can disrupt attacks during combat"
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>⚡ Instant Speed Only (Combat Threats)</span>
+              <span>Instant Speed Only (Combat Threats)</span>
             </button>
             <button
               type="button"

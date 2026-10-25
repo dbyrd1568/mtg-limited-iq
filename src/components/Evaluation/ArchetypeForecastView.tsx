@@ -679,7 +679,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/80 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-500/50 flex items-center gap-1.5">
                 <Target className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-300" />
-                👤 DRAFT META FORECAST & CREATOR RANKINGS
+                ARCHETYPE & COLOR RANKINGS
               </span>
 
               {!isBlindGrading && creatorReports.length > 0 && (
@@ -735,14 +735,14 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-heading">
               {userPerspectiveName
-                ? `${userPerspectiveName}'s Draft Meta Forecast: ${report.setName}`
+                ? `${userPerspectiveName}'s Color & Archetype Rankings: ${report.setName}`
                 : report.isFullyGraded
-                ? `Your Complete Draft Meta Forecast: ${report.setName}`
-                : `Draft Meta Forecast: Colors & Archetype Power Rankings`}
+                ? `Your Color & Archetype Rankings: ${report.setName}`
+                : `Color & Archetype Rankings`}
             </h2>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-              <strong className="text-violet-700 dark:text-cyan-300 font-semibold">Note:</strong> Synthesizes <strong className="text-slate-900 dark:text-white">{userPerspectiveName ? `${userPerspectiveName}'s personal card grades` : 'your personal card grades'}</strong>, <strong className="text-amber-600 dark:text-amber-300">Pro Creator evaluations (LSV, Limited Level-Ups, Draftsim)</strong>, and <strong className="text-emerald-600 dark:text-emerald-400">17Lands win rates</strong> into monocolor depth and archetype power rankings.
+              <strong className="text-violet-700 dark:text-cyan-300 font-semibold">Note:</strong> Combines <strong className="text-slate-900 dark:text-white">{userPerspectiveName ? `${userPerspectiveName}'s card grades` : 'your card grades'}</strong>, <strong className="text-amber-600 dark:text-amber-300">Pro Creator ratings (LSV, Limited Level-Ups, Draftsim)</strong>, and <strong className="text-emerald-600 dark:text-emerald-400">17Lands win rates</strong> into color and archetype rankings.
             </p>
           </div>
 
@@ -1573,7 +1573,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           {effectiveShowMe && (
             <div className="space-y-1.5">
               <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <span>Your Evaluation Read</span>
+                <span>Your Rankings</span>
                 <span className="text-violet-600 dark:text-cyan-400 font-bold">• Best to Worst</span>
               </div>
 
@@ -1650,7 +1650,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
                   <span className={`font-black ${accentText}`}>{cr.meta.shortName}</span>
                   <span>({cr.meta.name} — {cr.meta.sourceLabel})</span>
-                  <span className={`${accentText} font-bold`}>• Color Power Hierarchy ({cr.ratedCount} cards rated)</span>
+                  <span className={`${accentText} font-bold`}>• Color Rankings ({cr.ratedCount} cards rated)</span>
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-3.5 overflow-x-auto pb-1 pt-1">
@@ -1698,7 +1698,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
                 <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
                   <span>17Lands Win Rates</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">• 17Lands GIH Win Rate Hierarchy</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">• By GIH Win Rate</span>
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-3.5 overflow-x-auto pb-1 pt-1">
@@ -2416,7 +2416,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                   </h3>
                 </div>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {!isBlindGrading ? 'Your read vs Pro Creators (LSV, LLU, DS) & 17Lands win rates' : 'Synthesized from signpost gold + 2-color mono depth'}
+                  {!isBlindGrading ? 'Your rankings vs Pro Creators (LSV, LLU, DS) & 17Lands win rates' : 'Calculated from signpost gold + 2-color mono grades'}
                 </span>
               </div>
 
@@ -2435,7 +2435,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 {effectiveShowMe && (
                   <div className="space-y-1.5">
                     <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <span>Your Evaluation Read</span>
+                      <span>Your Rankings</span>
                       <span className="text-violet-600 dark:text-cyan-400 font-bold">• Best to Worst</span>
                     </div>
 
@@ -2497,7 +2497,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                       <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
                         <span className={`font-black ${accentText}`}>{cr.meta.shortName}</span>
                         <span>({cr.meta.name} — {cr.meta.sourceLabel})</span>
-                        <span className={`${accentText} font-bold`}>• Archetype Power Hierarchy</span>
+                        <span className={`${accentText} font-bold`}>• Archetype Rankings</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 pt-0.5">
@@ -2533,7 +2533,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                   <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
                     <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       <span>17Lands Win Rates</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">• 17Lands GIH Win Rate Hierarchy</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">• By GIH Win Rate</span>
                     </div>
 
                     <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 pt-0.5">

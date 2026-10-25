@@ -282,8 +282,8 @@ function generateInstantSpeedQuestion(cards: Card[]): QuizQuestion | null {
   const isInstant = target.type_line.toLowerCase().includes('instant');
 
   const options: QuizOption[] = [
-    { id: 'instant', label: '⚡ Instant Speed (Can be cast on opponent\'s turn / during combat)', isCorrect: isInstant },
-    { id: 'sorcery', label: '⏱️ Sorcery Speed (Main phase only, empty stack)', isCorrect: !isInstant },
+    { id: 'instant', label: 'Instant Speed (Can be cast on opponent\'s turn / during combat)', isCorrect: isInstant },
+    { id: 'sorcery', label: 'Sorcery Speed (Main phase only, empty stack)', isCorrect: !isInstant },
   ];
 
   return {
@@ -324,12 +324,12 @@ function generateManaCostAndSplashQuestion(cards: Card[]): QuizQuestion | null {
     const options: QuizOption[] = [
       {
         id: 'yes_splash',
-        label: `✅ Splashable: Single colored pip is easily supported with 3 splash mana sources`,
+        label: `Splashable: Single colored pip is easily supported with 3 splash mana sources`,
         isCorrect: isSplashable,
       },
       {
         id: 'no_splash',
-        label: `❌ Not Splashable: Double colored pips or cheap curve card requiring heavy mana base commitment`,
+        label: `Not Splashable: Double colored pips or cheap curve card requiring heavy mana base commitment`,
         isCorrect: !isSplashable,
       },
     ];
@@ -427,18 +427,18 @@ function generatePowerToughnessQuestion(cards: Card[]): QuizQuestion | null {
   };
 }
 
-// 8. Archetype Engine & Synergy Mechanic
+// 8. Archetype Strategy & Signpost Mechanics
 const ARCHETYPE_STRATEGIES: Record<string, string> = {
-  'Azorius (White/Blue)': '🪽 Fliers, Blink & Draw-Go Tempo',
-  'Dimir (Blue/Black)': '👁️ Flashback, Saboteur & Graveyard Threshold',
-  'Rakdos (Black/Red)': '💀 Sacrifice, Noncombat Damage & Aggro',
-  'Gruul (Red/Green)': '🦖 4+ Power Stompy & Trample Beatdown',
-  'Selesnya (Green/White)': '🌿 Go-Wide Tokens, Mounts & +1/+1 Counters',
-  'Orzhov (White/Black)': '⚖️ Bleed, Life Gain/Loss & Aristocrats',
-  'Izzet (Blue/Red)': '⚡ Instant & Sorcery Spellslinger / Velocity',
-  'Golgari (Black/Green)': '🍄 Graveyard Recursion, Delirium & Pests',
-  'Boros (Red/White)': '⚔️ Aggro Attack Triggers, Equipment & Valiant',
-  'Simic (Green/Blue)': '🌀 5+ Mana Value Big Spells & Ramp',
+  'Azorius (White/Blue)': 'Fliers, Blink & Draw-Go Tempo',
+  'Dimir (Blue/Black)': 'Flashback, Saboteur & Graveyard Threshold',
+  'Rakdos (Black/Red)': 'Sacrifice, Noncombat Damage & Aggro',
+  'Gruul (Red/Green)': '4+ Power Stompy & Trample Beatdown',
+  'Selesnya (Green/White)': 'Go-Wide Tokens, Mounts & +1/+1 Counters',
+  'Orzhov (White/Black)': 'Bleed, Life Gain/Loss & Aristocrats',
+  'Izzet (Blue/Red)': 'Instant & Sorcery Spellslinger / Velocity',
+  'Golgari (Black/Green)': 'Graveyard Recursion, Delirium & Pests',
+  'Boros (Red/White)': 'Aggro Attack Triggers, Equipment & Valiant',
+  'Simic (Green/Blue)': '5+ Mana Value Big Spells & Ramp',
 };
 
 function generateArchetypeEngineQuestion(cards: Card[]): QuizQuestion | null {
@@ -447,7 +447,7 @@ function generateArchetypeEngineQuestion(cards: Card[]): QuizQuestion | null {
 
   const target = signposts[Math.floor(Math.random() * signposts.length)];
   const correctArchetype = target.archetype_tag || target.colors.join('/') + ' Archetype';
-  const correctStrategy = ARCHETYPE_STRATEGIES[correctArchetype] || 'Draft Synergy Engine';
+  const correctStrategy = ARCHETYPE_STRATEGIES[correctArchetype] || '2-Color Archetype Signpost';
 
   const otherStrategies = Object.values(ARCHETYPE_STRATEGIES).filter(s => s !== correctStrategy);
   const dummyStrategies = getRandomElements(otherStrategies, 3);
@@ -461,18 +461,18 @@ function generateArchetypeEngineQuestion(cards: Card[]): QuizQuestion | null {
     id: `arch_engine_${target.id}_${Date.now()}_${Math.random()}`,
     category: 'archetype_engine',
     type: 'multiple_choice',
-    title: 'Draft Archetype Engine & Strategy Payoff',
-    prompt: `What core mechanical strategy / draft archetype engine does "${target.name}" anchor in Limited?`,
-    tacticalContext: `Knowing each archetype's mechanical engine allows you to draft matching enablers and payoffs.`,
+    title: 'Draft Archetype Strategy',
+    prompt: `What 2-color draft archetype strategy does "${target.name}" support?`,
+    tacticalContext: `Knowing each archetype's core theme helps you draft matching enablers and payoffs.`,
     card: target,
     obfuscation: {
       target: 'oracle_text',
       style: 'blur',
-      customOverlayText: 'Synergy Engine Concealed',
+      customOverlayText: 'Rules Text Concealed',
     },
     options,
     correctAnswer: correctStrategy,
-    explanation: `"${target.name}" (${correctArchetype}) anchors the strategy: "${correctStrategy}". Rules text: ${target.oracle_text || ''}`,
+    explanation: `"${target.name}" (${correctArchetype}) supports: "${correctStrategy}". Rules text: ${target.oracle_text || ''}`,
   };
 }
 
@@ -586,14 +586,14 @@ function generateRemovalToPlayAroundQuestion(cards: Card[]): QuizQuestion | null
       {
         id: target.card.id,
         label: `${target.card.name} ${target.card.mana_cost || ''}`,
-        description: `⚡ Instant: ${target.classification.shortSummary}`,
+        description: `Instant: ${target.classification.shortSummary}`,
         manaCost: target.card.mana_cost,
         isCorrect: true,
       },
       ...distractors.map((d) => ({
         id: d.id,
         label: `${d.name} ${d.mana_cost || ''}`,
-        description: `${d.type_line?.includes('Sorcery') ? '⏱️ Sorcery: ' : ''}${d.oracle_text?.slice(0, 60) || ''}...`,
+        description: `${d.type_line?.includes('Sorcery') ? 'Sorcery: ' : ''}${d.oracle_text?.slice(0, 60) || ''}...`,
         manaCost: d.mana_cost,
         isCorrect: false,
       })),
@@ -626,12 +626,12 @@ function generateRemovalToPlayAroundQuestion(cards: Card[]): QuizQuestion | null
   const options: QuizOption[] = [
     {
       id: 'instant',
-      label: '⚡ Instant Speed (Can be cast on your turn / during combat to disrupt attacks)',
+      label: 'Instant Speed (Can be cast on your turn / during combat to disrupt attacks)',
       isCorrect: isInstant,
     },
     {
       id: 'sorcery',
-      label: '⏱️ Sorcery Speed (Only castable on opponent’s own main phase, cannot disrupt combat)',
+      label: 'Sorcery Speed (Only castable on opponent’s own main phase, cannot disrupt combat)',
       isCorrect: !isInstant,
     },
   ];

@@ -685,7 +685,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                   <span>17Lands Public Tier List Sync</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  17Lands is protected by secure user session authentication on <code>17lands.com</code>; external websites cannot remotely write card grades to your account via standard URLs. To place all graded cards into their exact spots, use the <strong>Automated CSV Export</strong> below or the <strong>⚡ 1-Click Instant Auto-Apply</strong>.
+                  17Lands is protected by secure user session authentication on <code>17lands.com</code>; external websites cannot remotely write card grades to your account via standard URLs. To place all graded cards into their exact spots, use the <strong>Automated CSV Export</strong> below or the <strong>1-Click Auto-Apply</strong>.
                 </p>
               </div>
 
@@ -758,7 +758,7 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                     )}
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                       {syncTriggered
-                        ? `✅ File downloaded! Final Step on 17Lands:`
+                        ? `File downloaded! Final Step on 17Lands:`
                         : `Next Step on 17Lands:`}
                     </span>
                   </div>
@@ -772,18 +772,18 @@ export const ExportGradesModal: React.FC<ExportGradesModalProps> = ({
                     <span className="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px]">+ New copy</span>
                     <span className="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px]">Download CSV</span>
                     <span className="px-2.5 py-1 rounded bg-violet-600 text-white font-bold border border-violet-400 text-[11px] ring-2 ring-amber-400 shadow-sm flex items-center gap-1 animate-pulse">
-                      <span>👉 Import CSV 👈</span>
+                      <span>Import CSV</span>
                     </span>
                     <span className="px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px]">SealedDeck</span>
                   </div>
                 </div>
               </div>
 
-              {/* Method 2: ⚡ 1-Click Instant Auto-Apply (Zero File Picking) */}
+              {/* Method 2: 1-Click Auto-Apply (Zero File Picking) */}
               <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/5 via-violet-500/5 to-cyan-500/5 border border-amber-200 dark:border-amber-900/40 space-y-4">
                 <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold font-heading text-sm">
                   <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span>⚡ 1-Click Instant Auto-Apply (No File Dialog Required)</span>
+                  <span>1-Click Auto-Apply (No File Dialog Required)</span>
                 </div>
 
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">

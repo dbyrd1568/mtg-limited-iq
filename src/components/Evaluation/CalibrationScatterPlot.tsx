@@ -811,7 +811,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               <BarChart2 className="w-4 h-4" />
             </span>
             <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-              Grade Calibration Scatter Plot
+              Grade Comparison Scatter Plot
             </h3>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700">
               {activeBenchmark === '17L'
@@ -825,8 +825,8 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {activeBenchmark === '17L'
-              ? 'Visualizing evaluation accuracy against 17Lands empirical draft win rates. Points on the diagonal represent perfect calibration.'
-              : `Visualizing grade calibration against ${activeBenchmark === 'LSV' ? 'Luis Scott-Vargas (LSV)' : activeBenchmark === 'LLU' ? 'Limited Level Ups (LLU)' : 'Draftsim (DS)'}. Points on the diagonal represent identical card grades.`}
+              ? 'Compares your card grades against 17Lands draft win rates. Points on the diagonal represent exact grade matches.'
+              : `Compares your card grades against ${activeBenchmark === 'LSV' ? 'Luis Scott-Vargas (LSV)' : activeBenchmark === 'LLU' ? 'Limited Level Ups (LLU)' : 'Draftsim (DS)'}. Points on the diagonal represent identical card grades.`}
           </p>
         </div>
 
@@ -2028,7 +2028,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                       <div className="flex justify-between">
                         <span>Fit Quality:</span>
                         <strong className="text-cyan-200">
-                          {stats.rSquared >= 0.6 ? 'Exceptional Calibration' : stats.rSquared >= 0.35 ? 'Moderate Correlation' : 'High Noise / Dispersion'}
+                          {stats.rSquared >= 0.6 ? 'Strong Correlation' : stats.rSquared >= 0.35 ? 'Moderate Correlation' : 'Low Correlation'}
                         </strong>
                       </div>
                     </div>
@@ -2072,7 +2072,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                   </div>
                   <div className="space-y-2 text-[11px] text-slate-300">
                     <p className="leading-relaxed">
-                      The <strong>cyan Tendency Line</strong> reveals your systematic grading psychology versus the dashed 45° <strong>Ideal Parity (y = x)</strong> line:
+                      The <strong>cyan Tendency Line</strong> shows how your grades trend compared to the dashed 45° <strong>Exact Match (y = x)</strong> line:
                     </p>
 
                     <div className="space-y-2 bg-slate-800/80 p-2.5 rounded-lg border border-slate-700/60 font-mono text-[10px]">

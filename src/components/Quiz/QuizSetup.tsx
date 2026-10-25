@@ -68,8 +68,8 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
   },
   {
     id: 'archetype_engine',
-    name: 'Archetype Synergy Engines & Payoffs',
-    description: 'Identify signpost engines and archetype enablers with text masked.',
+    name: 'Archetype Themes & Signposts',
+    description: 'Identify signpost cards and 2-color archetype themes with text masked.',
     icon: <Sparkles className="w-4 h-4 text-yellow-300" />,
   },
   {
@@ -187,7 +187,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono uppercase font-bold text-violet-700 dark:text-cyan-300 bg-violet-100 dark:bg-cyan-500/15 border border-violet-200 dark:border-cyan-400/30 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
                 <Brain className="w-3.5 h-3.5" />
-                Card Quiz & Tactical Mastery
+                Card Quiz & Practice
               </span>
               <SetBadge setCode={currentSet.code} iconSvgUri={currentSet.icon_svg_uri} size="xs" className="px-2 py-0.5 text-[11px]" />
             </div>
@@ -195,7 +195,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({
               {currentSet.name} Card Quiz
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed">
-              Drill {currentSet.name} heuristics, analyze category proficiency, and master missed cards across {availableCardsCount} cards.
+              Practice {currentSet.name} cards, combat tricks, removal, and 17Lands win rates across {availableCardsCount} cards.
             </p>
           </div>
 

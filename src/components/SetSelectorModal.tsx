@@ -186,7 +186,7 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                           )}
                           {getSetDraftStatus(set.code) === 'flashback' && (
                             <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-600/50 shadow-xs shrink-0">
-                              ⚡ Flashback Draft
+                              Flashback Draft
                             </span>
                           )}
                           {getSetDraftStatus(set.code) === 'upcoming' && (
