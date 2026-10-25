@@ -1004,7 +1004,7 @@ console.assert(isBasicLand(rawTestCards[3]) === true, 'isBasicLand must return t
 console.assert(isBasicLand(rawTestCards[0]) === false, 'isBasicLand must return false for Heartfire Hero');
 
 const deduped = deduplicateCards(rawTestCards);
-console.assert(deduped.length === 4, `Expected exactly 4 unique cards (Hero #138, Plains #262, Plains #263, Fell #95), got ${deduped.length}`);
+console.assert(deduped.length === 3, `Expected exactly 3 unique cards (Hero #138, Plains #262, Fell #95), got ${deduped.length}`);
 
 const hero = deduped.find(c => c.name === 'Heartfire Hero');
 console.assert(hero !== undefined, 'Heartfire Hero must be present in deduped cards');
@@ -1012,9 +1012,8 @@ console.assert(hero?.collector_number === '138', `Heartfire Hero must resolve to
 console.assert(hero?.booster === true, 'Heartfire Hero must have booster=true');
 
 const plains = deduped.filter(c => c.name === 'Plains');
-console.assert(plains.length === 2, `Expected exactly 2 distinct Plains collector number variants, got ${plains.length}`);
-console.assert(plains.some(p => p.collector_number === '262' && p.booster === true && p.promo !== true), 'Plains #262 must resolve to booster over promo');
-console.assert(plains.some(p => p.collector_number === '263'), 'Plains #263 must be retained as distinct basic land variant');
+console.assert(plains.length === 1, `Expected exactly 1 canonical Plains card, got ${plains.length}`);
+console.assert(plains[0].collector_number === '262' && plains[0].booster === true && plains[0].promo !== true, 'Plains must resolve to base booster #262 over promo/variants');
 
 // Order Inversion Test: Even if showcase #272 appears FIRST in array, #138 must be selected
 const invertedCards: Card[] = [rawTestCards[1], rawTestCards[0]];

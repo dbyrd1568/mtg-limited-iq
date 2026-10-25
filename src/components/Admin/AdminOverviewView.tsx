@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Sparkles,
   Zap,
-  BarChart3,
 } from 'lucide-react';
 import {
   AdminOverviewKPIs,
@@ -28,7 +27,7 @@ interface AdminOverviewViewProps {
   recentLogs: UserActivityLog[];
   onSelectTab: (tab: AdminSubTab) => void;
   onSelectUser: (user: AdminUserSummary) => void;
-  onOpenSyncModal?: (type: 'preview_cards' | 'seventeen_lands') => void;
+  onOpenSyncModal?: (type: 'preview_cards' | 'seventeen_lands' | 'pro_ratings') => void;
 }
 
 export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
@@ -218,73 +217,6 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
               </span>
               <span>avg tactical quiz accuracy</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Admin Operational Data Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Update Preview Cards */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-violet-950/20 border border-violet-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-bold text-xs uppercase tracking-wider">
-                <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                <span>Card Catalog & Spoilers</span>
-              </div>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-300">
-                Scryfall API
-              </span>
-            </div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white font-heading">
-              Update Preview Sets & Cards
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Query Scryfall for newly spoiled cards in upcoming preview sets (such as Star Trek TRK). Invalidate local caches and refresh set counts.
-            </p>
-          </div>
-
-          <div className="pt-2">
-            <button
-              onClick={() => onOpenSyncModal?.('preview_cards')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md shadow-violet-500/20 transition-all cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Update Preview Cards</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Card 2: Update 17Lands Data */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/30 dark:from-slate-900 dark:via-slate-900/90 dark:to-emerald-950/20 border border-emerald-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-xs uppercase tracking-wider">
-                <BarChart3 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Draft Telemetry & Win Rates</span>
-              </div>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                17Lands Telemetry
-              </span>
-            </div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white font-heading">
-              Update 17Lands Data
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Ingest Premier Draft win rates, ALSA, and sample sizes for active draft sets (HOB, MBC, FRA) into local IndexedDB and central Supabase cache.
-            </p>
-          </div>
-
-          <div className="pt-2">
-            <button
-              onClick={() => onOpenSyncModal?.('seventeen_lands')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Update 17Lands Data</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
       </div>

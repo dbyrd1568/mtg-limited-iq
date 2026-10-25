@@ -39,7 +39,9 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'MDD',
     name: 'Marvel: Darkhold Destiny',
-    card_count: 12,
+    card_count: 280,
+    total_cards: 280,
+    preview_count: 12,
     released_at: '2027-04-09',
     arena_released_at: '2027-04-06',
     lsv_available_at: '2027-04-02',
@@ -51,7 +53,9 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'NAU',
     name: 'Nauctis: The Sunken Realm',
-    card_count: 0,
+    card_count: 280,
+    total_cards: 280,
+    preview_count: 0,
     released_at: '2027-02-05',
     arena_released_at: '2027-02-02',
     lsv_available_at: '2027-01-29',
@@ -64,7 +68,9 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'TRK',
     name: 'Star Trek',
-    card_count: 135,
+    card_count: 280,
+    total_cards: 280,
+    preview_count: 205,
     released_at: '2026-11-13',
     arena_released_at: '2026-11-10',
     lsv_available_at: '2026-11-06',
@@ -76,7 +82,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'MBC',
     name: 'Mystery Booster Commander Edition',
-    card_count: 80,
+    card_count: 280,
     released_at: '2026-08-01',
     arena_released_at: '2026-08-01',
     lsv_available_at: '2026-07-28',
@@ -88,7 +94,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'FRA',
     name: 'Reality Fracture',
-    card_count: 462,
+    card_count: 285,
     released_at: '2026-10-02',
     arena_released_at: '2026-09-29',
     lsv_available_at: '2026-09-25',
@@ -100,7 +106,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'HOB',
     name: 'The Hobbit',
-    card_count: 321,
+    card_count: 193,
     released_at: '2026-08-14',
     arena_released_at: '2026-08-11',
     lsv_available_at: '2026-08-07',
@@ -112,7 +118,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'MSH',
     name: 'Marvel Super Heroes',
-    card_count: 453,
+    card_count: 281,
     released_at: '2026-06-01',
     arena_released_at: '2026-05-26',
     lsv_available_at: '2026-05-22',
@@ -123,7 +129,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'SOS',
     name: 'Secrets of Strixhaven',
-    card_count: 368,
+    card_count: 271,
     released_at: '2026-04-24',
     arena_released_at: '2026-04-21',
     lsv_available_at: '2026-04-17',
@@ -134,7 +140,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'TMT',
     name: 'Teenage Mutant Ninja Turtles',
-    card_count: 320,
+    card_count: 195,
     released_at: '2026-03-01',
     arena_released_at: '2026-02-24',
     lsv_available_at: '2026-02-20',
@@ -145,7 +151,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'ECL',
     name: 'Lorwyn Eclipsed',
-    card_count: 408,
+    card_count: 273,
     released_at: '2026-01-01',
     arena_released_at: '2025-12-30',
     lsv_available_at: '2025-12-26',
@@ -157,7 +163,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'TLA',
     name: 'Avatar: The Last Airbender',
-    card_count: 394,
+    card_count: 286,
     released_at: '2025-11-01',
     arena_released_at: '2025-10-28',
     lsv_available_at: '2025-10-24',
@@ -168,7 +174,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'SPM',
     name: "Marvel's Spider-Man",
-    card_count: 286,
+    card_count: 193,
     released_at: '2025-09-26',
     arena_released_at: '2025-09-23',
     lsv_available_at: '2025-09-19',
@@ -179,7 +185,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'EOE',
     name: 'Edge of Eternities',
-    card_count: 400,
+    card_count: 266,
     released_at: '2025-08-01',
     arena_released_at: '2025-07-29',
     lsv_available_at: '2025-07-25',
@@ -190,7 +196,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'FIN',
     name: 'Final Fantasy',
-    card_count: 599,
+    card_count: 312,
     released_at: '2025-06-13',
     arena_released_at: '2025-06-10',
     lsv_available_at: '2025-06-06',
@@ -201,7 +207,7 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   {
     code: 'TDM',
     name: 'Tarkir: Dragonstorm',
-    card_count: 427,
+    card_count: 276,
     released_at: '2025-04-11',
     arena_released_at: '2025-04-08',
     lsv_available_at: '2025-04-04',
@@ -564,12 +570,22 @@ export async function syncSetReleaseSchedules(): Promise<void> {
           if (sched.has_17lands_data !== undefined && sched.has_17lands_data !== null) pop.has_17lands_data = sched.has_17lands_data;
           if (sched.is_active_draft !== undefined && sched.is_active_draft !== null) pop.is_active_draft = sched.is_active_draft;
           if (sched.is_flashback !== undefined && sched.is_flashback !== null) pop.is_flashback = sched.is_flashback;
-          if (sched.card_count) pop.card_count = Math.max(pop.card_count, sched.card_count);
+          // Curated POPULAR_LIMITED_SETS card_count is the authoritative unique card count.
+          // Only backfill from database if pop.card_count is empty or 0.
+          if (!pop.card_count && sched.card_count) {
+            pop.card_count = sched.card_count;
+            pop.total_cards = sched.card_count;
+          }
+          if (sched.preview_count !== undefined && sched.preview_count !== null) {
+            pop.preview_count = sched.preview_count;
+          }
         } else {
           POPULAR_LIMITED_SETS.unshift({
             code,
             name: sched.set_name || code,
             card_count: sched.card_count || 280,
+            total_cards: sched.card_count || 280,
+            preview_count: sched.preview_count !== undefined && sched.preview_count !== null ? sched.preview_count : undefined,
             released_at: sched.released_at || undefined,
             arena_released_at: sched.arena_released_at || undefined,
             lsv_available_at: sched.lsv_available_at || undefined,
@@ -592,14 +608,16 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
     await syncSetReleaseSchedules();
 
     if (!options?.forceRefresh && typeof indexedDB !== 'undefined') {
-      const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v7');
+      const cachedSets = await get<SetInfo[]>('scryfall_all_sets_v9');
       if (cachedSets && cachedSets.length > 0) {
         // Re-overlay fresh schedules onto cached sets
         POPULAR_LIMITED_SETS.forEach((pop) => {
           const idx = cachedSets.findIndex((m) => m.code.toUpperCase() === pop.code.toUpperCase());
           if (idx >= 0) {
             cachedSets[idx].has_17lands_data = Boolean(pop.has_17lands_data);
-            cachedSets[idx].card_count = Math.max(cachedSets[idx].card_count, pop.card_count);
+            cachedSets[idx].card_count = pop.card_count;
+            cachedSets[idx].total_cards = pop.total_cards || pop.card_count;
+            if (pop.preview_count !== undefined) cachedSets[idx].preview_count = pop.preview_count;
             if (pop.arena_released_at) cachedSets[idx].arena_released_at = pop.arena_released_at;
             if (pop.lsv_available_at) cachedSets[idx].lsv_available_at = pop.lsv_available_at;
             if (pop.seventeen_lands_available_at) cachedSets[idx].seventeen_lands_available_at = pop.seventeen_lands_available_at;
@@ -607,7 +625,10 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
             if (pop.is_active_draft !== undefined) cachedSets[idx].is_active_draft = pop.is_active_draft;
             if (pop.is_flashback !== undefined) cachedSets[idx].is_flashback = pop.is_flashback;
           } else {
-            cachedSets.unshift(pop);
+            cachedSets.unshift({
+              ...pop,
+              total_cards: pop.total_cards || pop.card_count,
+            });
           }
         });
         return cachedSets;
@@ -640,11 +661,20 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
       .map((s: any) => {
         const popMatch = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === s.code.toUpperCase());
         const has17L = popMatch ? Boolean(popMatch.has_17lands_data) : KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase());
-        const effectiveCardCount = popMatch ? Math.max(s.card_count, popMatch.card_count) : s.card_count;
+        const totalCards = popMatch?.total_cards || popMatch?.card_count || s.card_count;
+        const releaseTime = s.released_at ? new Date(s.released_at.includes('T') ? s.released_at : `${s.released_at}T00:00:00Z`).getTime() : 0;
+        const isUpcoming = (releaseTime > Date.now() && !popMatch?.is_active_draft && !popMatch?.is_flashback) || (popMatch && ['TRK', 'MDD', 'NAU'].includes(popMatch.code.toUpperCase()));
+        let previewCount = popMatch?.preview_count;
+        if (previewCount === undefined && isUpcoming) {
+          previewCount = typeof s.card_count === 'number' && s.card_count < totalCards ? s.card_count : 0;
+        }
+
         return {
           code: s.code.toUpperCase(),
           name: s.name,
-          card_count: effectiveCardCount,
+          card_count: totalCards,
+          total_cards: totalCards,
+          preview_count: previewCount,
           released_at: s.released_at,
           arena_released_at: popMatch?.arena_released_at || (s.released_at ? computeArenaReleaseDate(s.released_at) : undefined),
           seventeen_lands_available_at: popMatch?.seventeen_lands_available_at || (s.released_at ? compute17LandsAvailableDate(popMatch?.arena_released_at || computeArenaReleaseDate(s.released_at)) : undefined),
@@ -663,7 +693,9 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
       const idx = merged.findIndex((m) => m.code.toUpperCase() === pop.code.toUpperCase());
       if (idx >= 0) {
         merged[idx].has_17lands_data = Boolean(pop.has_17lands_data);
-        merged[idx].card_count = Math.max(merged[idx].card_count, pop.card_count);
+        merged[idx].card_count = pop.card_count;
+        merged[idx].total_cards = pop.total_cards || pop.card_count;
+        if (pop.preview_count !== undefined) merged[idx].preview_count = pop.preview_count;
         if (pop.arena_released_at) merged[idx].arena_released_at = pop.arena_released_at;
         if (pop.lsv_available_at) merged[idx].lsv_available_at = pop.lsv_available_at;
         if (pop.seventeen_lands_available_at) merged[idx].seventeen_lands_available_at = pop.seventeen_lands_available_at;
@@ -671,12 +703,15 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
         if (pop.is_active_draft !== undefined) merged[idx].is_active_draft = pop.is_active_draft;
         if (pop.is_flashback !== undefined) merged[idx].is_flashback = pop.is_flashback;
       } else {
-        merged.unshift(pop);
+        merged.unshift({
+          ...pop,
+          total_cards: pop.total_cards || pop.card_count,
+        });
       }
     });
 
     if (typeof indexedDB !== 'undefined') {
-      await set('scryfall_all_sets_v7', merged);
+      await set('scryfall_all_sets_v9', merged);
     }
     return merged;
   } catch (err) {
@@ -719,10 +754,8 @@ export function deduplicateCards(cards: Card[]): Card[] {
   for (const card of cards) {
     if (!card || !card.name) continue;
     const exactName = card.name.trim();
-    const isBasic = isBasicLand(card);
-    const key = isBasic
-      ? `${exactName.toLowerCase()}_${(card.collector_number || '').trim().toLowerCase()}`
-      : exactName.toLowerCase();
+    // Strictly deduplicate EVERYTHING by exact normalized card name
+    const key = exactName.toLowerCase();
     const existing = map.get(key);
 
     if (!existing) {
@@ -769,8 +802,9 @@ export async function fetchCardsForSet(
   options?: { forceRefresh?: boolean }
 ): Promise<Card[]> {
   const upperCode = setCode.toUpperCase();
-  const cacheKey = `scryfall_cards_${upperCode}_v9`;
+  const cacheKey = `scryfall_cards_${upperCode}_v10`;
   const legacyCacheKeys = [
+    `scryfall_cards_${upperCode}_v9`,
     `scryfall_cards_${upperCode}_v8`,
     `scryfall_cards_${upperCode}_v7`,
     `scryfall_cards_${upperCode}_v6`,
@@ -882,35 +916,6 @@ export async function fetchCardsForSet(
         // Respect Scryfall polite rate limit (50-100ms)
         await new Promise((res) => setTimeout(res, 80));
       }
-    }
-
-    // Fetch additional basic land printings within the set's main collector run so distinct basic land variants are retained
-    try {
-      const basicQuery = encodeURIComponent(`set:${upperCode.toLowerCase()} t:basic -layout:art_series -t:token`);
-      const basicUrl = `${SCRYFALL_API_BASE}/cards/search?q=${basicQuery}&unique=prints&order=set`;
-      const basicRes = await fetch(basicUrl, {
-        headers: {
-          'User-Agent': 'MTGLimitedIQ/2.0 (https://mtg-limited-iq.com)',
-          Accept: 'application/json',
-        },
-      });
-      if (basicRes.ok) {
-        const basicData: any = await basicRes.json();
-        if (Array.isArray(basicData.data)) {
-          const maxCollectorNum = targetSetCount > 0 ? targetSetCount : 400;
-          const normalizedBasics = basicData.data
-            .filter((c: any) => {
-              if (c.set?.toUpperCase() !== upperCode) return false;
-              if (!c.image_uris && (!c.card_faces || !c.card_faces[0]?.image_uris)) return false;
-              const num = parseInt(String(c.collector_number || '').replace(/\D/g, ''), 10);
-              return isNaN(num) || num <= maxCollectorNum;
-            })
-            .map(normalizeScryfallCard);
-          allCards.push(...normalizedBasics);
-        }
-      }
-    } catch (basicErr) {
-      console.warn(`Could not fetch extra basic land prints for ${upperCode}:`, basicErr);
     }
 
     const dedupedCards = deduplicateCards(allCards);

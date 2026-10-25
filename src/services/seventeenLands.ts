@@ -5,6 +5,205 @@ import { supabase, isSupabaseConfigured } from './supabase';
 
 export const GRADE_TIERS: GradeTier[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
 
+export interface GradeScaleTierInfo {
+  tier: GradeTier | 'N/A';
+  group: 'A' | 'B' | 'C' | 'D-F' | 'LAND';
+  category: string;
+  shortDescription: string;
+  detailedMeaning: string;
+  pickRecommendation: string;
+  examplesRole: string;
+  colorTheme: {
+    bg: string;
+    text: string;
+    border: string;
+    badge: string;
+  };
+}
+
+export const LIMITED_GRADE_SCALE: GradeScaleTierInfo[] = [
+  {
+    tier: 'A+',
+    group: 'A',
+    category: 'Format-Defining Mythic Bomb',
+    shortDescription: 'Unbeatable game-winner; wins unilaterally if unanswered',
+    detailedMeaning: 'The highest echelon in Limited. A card that completely warps the game around itself, demands an immediate answer, or wins the game on the spot regardless of the board state.',
+    pickRecommendation: 'Pack 1 Pick 1 slam dunk. Strong incentive to draft or splash this color.',
+    examplesRole: 'Game-ending mythics, devastating board sweepers, dominant planeswalkers',
+    colorTheme: {
+      bg: 'bg-amber-500/10 dark:bg-amber-500/15',
+      text: 'text-amber-700 dark:text-amber-300',
+      border: 'border-amber-400 dark:border-amber-500/40',
+      badge: 'bg-amber-500 text-white dark:bg-amber-500/30 dark:text-amber-300 border-amber-500',
+    },
+  },
+  {
+    tier: 'A',
+    group: 'A',
+    category: 'Dominant Bomb Rare / Premium Removal',
+    shortDescription: 'Dominant rare or premier unconditional removal',
+    detailedMeaning: 'An elite card that decisively swings the game in your favor or answers any opposing threat cleanly at an incredible mana rate.',
+    pickRecommendation: 'First-pick quality. Take over almost everything else in the pack.',
+    examplesRole: 'High-stat efficient bomb rares, unconditional instant-speed removal with upside',
+    colorTheme: {
+      bg: 'bg-amber-500/10 dark:bg-amber-500/15',
+      text: 'text-amber-700 dark:text-amber-300',
+      border: 'border-amber-400 dark:border-amber-500/40',
+      badge: 'bg-amber-500 text-white dark:bg-amber-500/30 dark:text-amber-300 border-amber-500',
+    },
+  },
+  {
+    tier: 'A-',
+    group: 'A',
+    category: 'Top Uncommon / Elite Playable',
+    shortDescription: 'Best uncommon in the set or premier removal spell',
+    detailedMeaning: 'Premier interactive spell or standout efficient creature that routinely outclasses other cards in the format. Rarely passed.',
+    pickRecommendation: 'P1P1 candidate. Excellent early pick that anchors your draft.',
+    examplesRole: 'Top uncommon engine creatures, hyper-efficient 2-for-1 removal',
+    colorTheme: {
+      bg: 'bg-amber-500/10 dark:bg-amber-500/15',
+      text: 'text-amber-700 dark:text-amber-300',
+      border: 'border-amber-400 dark:border-amber-500/40',
+      badge: 'bg-amber-500 text-white dark:bg-amber-500/30 dark:text-amber-300 border-amber-500',
+    },
+  },
+  {
+    tier: 'B+',
+    group: 'B',
+    category: 'Anchor Card / Top Common',
+    shortDescription: 'Best common in color or premier signpost gold uncommon',
+    detailedMeaning: 'The highest tier of common or a signpost gold card that clearly rewards you for being in an archetype. Solid signal when seen late.',
+    pickRecommendation: 'Early pick (picks 1–3). Signals an open color if wheeling or seen mid-pack.',
+    examplesRole: 'Premium common removal, key archetype payoffs, premium 2-for-1s',
+    colorTheme: {
+      bg: 'bg-cyan-500/10 dark:bg-cyan-500/15',
+      text: 'text-cyan-700 dark:text-cyan-300',
+      border: 'border-cyan-400 dark:border-cyan-500/40',
+      badge: 'bg-cyan-500 text-white dark:bg-cyan-500/30 dark:text-cyan-300 border-cyan-500',
+    },
+  },
+  {
+    tier: 'B',
+    group: 'B',
+    category: 'Great Playable / Core Deck Piece',
+    shortDescription: 'Always makes the 23-card main deck; actively happy to draft multiple',
+    detailedMeaning: 'A consistently strong performer that provides card advantage, great curve pressure, or reliable interaction. Core backbone of successful Limited decks.',
+    pickRecommendation: 'Solid mid-pack pickup (picks 2–5). Grab as many of these in your colors as you can.',
+    examplesRole: 'Strong 2-for-1s, above-rate flyers, versatile interaction pieces',
+    colorTheme: {
+      bg: 'bg-cyan-500/10 dark:bg-cyan-500/15',
+      text: 'text-cyan-700 dark:text-cyan-300',
+      border: 'border-cyan-400 dark:border-cyan-500/40',
+      badge: 'bg-cyan-500 text-white dark:bg-cyan-500/30 dark:text-cyan-300 border-cyan-500',
+    },
+  },
+  {
+    tier: 'B-',
+    group: 'B',
+    category: 'Solid Bread & Butter / Good Curve',
+    shortDescription: 'Reliable curve creature or solid combat trick/utility',
+    detailedMeaning: 'Workhorse card that performs its role dependably. Rarely gets cut unless your pool is exceptionally deep in your colors.',
+    pickRecommendation: 'Quality mid-pack pick (picks 3–7). Solid foundation for any deck.',
+    examplesRole: 'Bread-and-butter 2-drops and 3-drops, efficient combat tricks, solid card draw',
+    colorTheme: {
+      bg: 'bg-cyan-500/10 dark:bg-cyan-500/15',
+      text: 'text-cyan-700 dark:text-cyan-300',
+      border: 'border-cyan-400 dark:border-cyan-500/40',
+      badge: 'bg-cyan-500 text-white dark:bg-cyan-500/30 dark:text-cyan-300 border-cyan-500',
+    },
+  },
+  {
+    tier: 'C+',
+    group: 'C',
+    category: 'Good Playable with Synergy Upside',
+    shortDescription: 'Solid curve filler that gets better in the right archetype',
+    detailedMeaning: 'Good baseline card that bridges synergies. In the right archetype it plays like a B-, but on its own it is a dependable role player.',
+    pickRecommendation: 'Mid-to-late pick (picks 5–9). Prioritize when building toward specific archetype synergies.',
+    examplesRole: 'Synergy enablers (token makers, sac outlets), curve beaters with mild upside',
+    colorTheme: {
+      bg: 'bg-slate-500/10 dark:bg-slate-500/15',
+      text: 'text-slate-700 dark:text-slate-300',
+      border: 'border-slate-300 dark:border-slate-700',
+      badge: 'bg-slate-600 text-white dark:bg-slate-700 dark:text-slate-200 border-slate-600',
+    },
+  },
+  {
+    tier: 'C',
+    group: 'C',
+    category: 'Baseline Average / 23rd Card',
+    shortDescription: 'Average Limited baseline; the standard 23rd-card playable',
+    detailedMeaning: 'The true median of Limited draft. A vanilla curve creature or clunky removal spell that makes the deck to round out your 23 playables without excitement.',
+    pickRecommendation: 'Mid-to-late pick (picks 7–11). Take to ensure you meet your 23-playable minimum.',
+    examplesRole: 'Standard 2/2 for two, 3/3 for three, conditional 4-mana or 5-mana removal',
+    colorTheme: {
+      bg: 'bg-slate-500/10 dark:bg-slate-500/15',
+      text: 'text-slate-700 dark:text-slate-300',
+      border: 'border-slate-300 dark:border-slate-700',
+      badge: 'bg-slate-600 text-white dark:bg-slate-700 dark:text-slate-200 border-slate-600',
+    },
+  },
+  {
+    tier: 'C-',
+    group: 'C',
+    category: 'Below-Average Filler / Cut First',
+    shortDescription: 'Underpowered filler; cut whenever your pool has adequate depth',
+    detailedMeaning: 'A below-curve body or overcosted trick. You are not excited to play it, but it will do in a pinch if you were cut out of your colors or lack playables.',
+    pickRecommendation: 'Late pick (picks 8–13). First card on the chopping block when trimming to 40 cards.',
+    examplesRole: 'Overcosted combat tricks, low-stat creatures with negligible abilities',
+    colorTheme: {
+      bg: 'bg-slate-500/10 dark:bg-slate-500/15',
+      text: 'text-slate-700 dark:text-slate-300',
+      border: 'border-slate-300 dark:border-slate-700',
+      badge: 'bg-slate-600 text-white dark:bg-slate-700 dark:text-slate-200 border-slate-600',
+    },
+  },
+  {
+    tier: 'D',
+    group: 'D-F',
+    category: 'Marginal Filler / Sideboard',
+    shortDescription: 'Narrow situational card or weak filler; avoid maindecking',
+    detailedMeaning: 'Card with a low baseline that rarely belongs in your main 40. Often useful as a sideboard option against specific enemy strategies (e.g. artifact/enchantment removal or flyer hate).',
+    pickRecommendation: 'Late pick (picks 11–14). Draft for the sideboard in best-of-three, or avoid in best-of-one.',
+    examplesRole: 'Narrow Naturalize effects, situational lifegain, severely overcosted spells',
+    colorTheme: {
+      bg: 'bg-orange-500/10 dark:bg-orange-500/15',
+      text: 'text-orange-700 dark:text-orange-300',
+      border: 'border-orange-400 dark:border-orange-500/40',
+      badge: 'bg-orange-500 text-white dark:bg-orange-500/30 dark:text-orange-300 border-orange-500',
+    },
+  },
+  {
+    tier: 'F',
+    group: 'D-F',
+    category: 'Unplayable in Limited',
+    shortDescription: 'Never maindeck; actively lowers your deck win rate',
+    detailedMeaning: 'Designed for Constructed formats (Commander, Standard) or just strictly worse than alternative options. Playing an F-tier card drastically reduces your chance of winning.',
+    pickRecommendation: 'Last pick (pick 14–15). Never put into your 40-card main deck.',
+    examplesRole: 'Narrow combo pieces, non-interactive do-nothings, symmetric mill cards without synergy',
+    colorTheme: {
+      bg: 'bg-rose-500/10 dark:bg-rose-500/15',
+      text: 'text-rose-700 dark:text-rose-300',
+      border: 'border-rose-400 dark:border-rose-500/40',
+      badge: 'bg-rose-500 text-white dark:bg-rose-500/30 dark:text-rose-300 border-rose-500',
+    },
+  },
+  {
+    tier: 'N/A',
+    group: 'LAND',
+    category: 'Basic or Utility Land',
+    shortDescription: 'Excluded from card evaluation math and GPA calibration',
+    detailedMeaning: 'Lands provide mana bases rather than draft card quality. Marking lands as N/A ensures they do not skew your evaluator calibration, GPA, or sleeper/trap analysis.',
+    pickRecommendation: 'Added freely during deckbuilding (basics) or drafted according to mana fixing needs.',
+    examplesRole: 'Basic lands, common dual taplands, utility sphere lands',
+    colorTheme: {
+      bg: 'bg-slate-500/10 dark:bg-slate-500/15',
+      text: 'text-slate-500 dark:text-slate-400',
+      border: 'border-slate-300 dark:border-slate-700',
+      badge: 'bg-slate-500 text-white dark:bg-slate-700 dark:text-slate-300 border-slate-600',
+    },
+  },
+];
+
 export const GRADE_SCORES: Record<GradeTier | 'N/A', number> = {
   'A+': 5.0,
   'A': 4.7,
@@ -623,7 +822,7 @@ function getBenchmarkCardRating(cardName: string): SeventeenLandsCardRating | nu
     game_count: match.game_count || 6500,
     win_rate: wr,
     iwd: match.iwd || 0.015,
-    tier_grade: match.tier_grade || winRateToGradeTier(wr),
+    tier_grade: typeof match.win_rate === 'number' ? winRateToGradeTier(wr) : (match.tier_grade || winRateToGradeTier(wr)),
     card_id: match.card_id ?? match.mtga_id,
     mtga_id: match.mtga_id ?? (typeof match.card_id === 'number' ? match.card_id : undefined),
   };
@@ -662,7 +861,7 @@ export function getPreloaded17LandsData(setCode: string): SeventeenLandsSetData 
       game_count: games,
       win_rate: wr,
       iwd: data.iwd || 0.015,
-      tier_grade: data.tier_grade || winRateToGradeTier(wr),
+      tier_grade: typeof data.win_rate === 'number' ? winRateToGradeTier(wr) : (data.tier_grade || winRateToGradeTier(wr)),
       card_id: data.card_id ?? data.mtga_id,
       mtga_id: data.mtga_id ?? (typeof data.card_id === 'number' ? data.card_id : undefined),
     };
@@ -1298,7 +1497,9 @@ export function calculateSetCalibration(
       ? fallbackBenchmarkGetter(card)
       : null;
     const benchmarkGrade: GradeTier | null = (is17LandsTarget && has17Lands && landData && typeof landData.win_rate === 'number')
-      ? ((landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate))
+      ? winRateToGradeTier(landData.win_rate)
+      : (is17LandsTarget && has17Lands && landData?.tier_grade)
+      ? (landData.tier_grade as GradeTier)
       : fallbackBench
       ? fallbackBench.grade
       : null;
@@ -1475,7 +1676,9 @@ export function calculateColorAccuracyAnalytics(
         ? fallbackBenchmarkGetter(card)
         : null;
       const benchmarkTier: GradeTier | null = (has17Lands && landData && typeof landData.win_rate === 'number')
-        ? ((landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate))
+        ? winRateToGradeTier(landData.win_rate)
+        : (has17Lands && landData?.tier_grade)
+        ? (landData.tier_grade as GradeTier)
         : fallbackBench
         ? fallbackBench.grade
         : null;
@@ -1571,7 +1774,9 @@ export function calculateRarityAccuracyAnalytics(
       if (!landData || typeof landData.win_rate !== 'number') return;
 
       const userIndex = gradeTierToIndex(evalData.userGrade);
-      const seventeenTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
+      const seventeenTier = typeof landData.win_rate === 'number'
+        ? winRateToGradeTier(landData.win_rate)
+        : ((landData.tier_grade as GradeTier) || 'C');
       const seventeenIndex = gradeTierToIndex(seventeenTier);
 
       const delta = seventeenIndex - userIndex;
@@ -1641,7 +1846,9 @@ export function calculateGradeDistribution(
 
       const landData = has17Lands ? landsData?.cards[card.name] : undefined;
       if (landData && typeof landData.win_rate === 'number') {
-        const seventeenTier = (landData.tier_grade as GradeTier) || winRateToGradeTier(landData.win_rate);
+        const seventeenTier = typeof landData.win_rate === 'number'
+          ? winRateToGradeTier(landData.win_rate)
+          : ((landData.tier_grade as GradeTier) || 'C');
         if (seventeenTier === tier) {
           actualCount += 1;
         }

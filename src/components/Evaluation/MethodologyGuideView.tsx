@@ -126,8 +126,8 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
             </div>
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs font-mono">
-              <span className="text-slate-500 dark:text-slate-400">Index: <strong className="text-slate-900 dark:text-white">{userGradeIdx}</strong></span>
-              <span className="text-slate-500 dark:text-slate-400">Score: <strong className="text-violet-600 dark:text-cyan-400">{GRADE_SCORES[sandboxGrade].toFixed(1)} / 5.0</strong></span>
+              <span className="text-slate-500 dark:text-slate-400">Selected Tier: <strong className="text-slate-900 dark:text-white">{sandboxGrade}</strong></span>
+              <span className="text-slate-500 dark:text-slate-400">Scale Rank: <strong className="text-violet-600 dark:text-cyan-400">Step {userGradeIdx + 1} of 11</strong></span>
             </div>
           </div>
 

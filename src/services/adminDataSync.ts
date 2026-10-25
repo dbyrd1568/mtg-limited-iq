@@ -3,6 +3,7 @@ import {
   POPULAR_LIMITED_SETS,
   fetchAllSets,
   fetchCardsForSet,
+  deduplicateCards,
 } from './scryfall';
 import {
   fetch17LandsSetData,
@@ -10,6 +11,10 @@ import {
   getSetDraftStatus,
 } from './seventeenLands';
 import { supabase, isSupabaseConfigured } from './supabase';
+import {
+  loadProRatingsForSet,
+  getLoadedProRatingsByCreator,
+} from './lsvRatings';
 
 export interface SyncProgressUpdate {
   phase: string;
@@ -34,7 +39,7 @@ export interface SyncSetResult {
 }
 
 export interface SyncSummary {
-  type: 'preview_cards' | 'seventeen_lands';
+  type: 'preview_cards' | 'seventeen_lands' | 'pro_ratings';
   startedAt: string;
   completedAt: string;
   totalSets: number;
@@ -187,24 +192,44 @@ export async function syncPreviewSetsAndCards(options: {
         { forceRefresh: true }
       );
 
-      const newCardCount = freshCards.length;
+      const uniqueCards = deduplicateCards(freshCards);
+      const newCardCount = uniqueCards.length;
 
-      // Update in-memory POPULAR_LIMITED_SETS
+      // Update in-memory POPULAR_LIMITED_SETS:
+      // FRA draft pool is locked to 285 unique playable cards.
+      // For other sets, only update set total if the set is largely spoiled (>= 150 unique cards),
+      // protecting draft set baseline (e.g. 280) from teaser preview counts (e.g. 12 cards).
       const popMatch = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === code);
       if (popMatch) {
-        popMatch.card_count = newCardCount;
+        if (code === 'FRA') {
+          popMatch.card_count = 285;
+          popMatch.total_cards = 285;
+        } else if (newCardCount >= 150) {
+          popMatch.card_count = newCardCount;
+          popMatch.total_cards = newCardCount;
+        }
+        if (getSetDraftStatus(code) === 'upcoming' || newCardCount < (popMatch.total_cards || popMatch.card_count)) {
+          popMatch.preview_count = newCardCount;
+        }
       }
 
       // Update Supabase set_release_schedules if available
       if (isSupabaseConfigured()) {
         try {
+          const countToPersist =
+            code === 'FRA'
+              ? 285
+              : (popMatch?.card_count && popMatch.card_count >= 150
+                  ? popMatch.card_count
+                  : (newCardCount >= 150 ? newCardCount : (popMatch?.card_count || 280)));
+
           await supabase
             .from('set_release_schedules')
             .upsert(
               {
                 set_code: code,
                 set_name: setInfo.name,
-                card_count: newCardCount,
+                card_count: countToPersist,
                 updated_at: new Date().toISOString(),
               },
               { onConflict: 'set_code' }
@@ -447,3 +472,152 @@ export async function sync17LandsTelemetry(options: {
     results,
   };
 }
+
+/**
+ * Returns sets eligible for Pro Creator Ratings synchronization (active drafts + popular benchmark sets)
+ */
+export async function getProRatingsSyncableSets(): Promise<SetInfo[]> {
+  try {
+    const allSets = await fetchAllSets({ forceRefresh: false });
+    const priorityCodes = ['FRA', 'HOB', 'MBC', 'SOS', 'BLB', 'OTJ', 'STX', 'MH3'];
+    const matched = allSets.filter((s) => priorityCodes.includes(s.code.toUpperCase()));
+
+    // Also include any other sets from POPULAR_LIMITED_SETS that are not in allSets
+    POPULAR_LIMITED_SETS.forEach((pop) => {
+      const code = pop.code.toUpperCase();
+      if (priorityCodes.includes(code) && !matched.some((m) => m.code.toUpperCase() === code)) {
+        matched.push(pop);
+      }
+    });
+
+    // Sort by priority order
+    matched.sort((a, b) => {
+      const aIdx = priorityCodes.indexOf(a.code.toUpperCase());
+      const bIdx = priorityCodes.indexOf(b.code.toUpperCase());
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    });
+
+    return matched;
+  } catch (err) {
+    console.warn('[adminDataSync] Failed to fetch pro ratings sets:', err);
+    return POPULAR_LIMITED_SETS.filter((s) => ['FRA', 'HOB', 'MBC', 'SOS', 'BLB', 'OTJ', 'STX'].includes(s.code.toUpperCase()));
+  }
+}
+
+/**
+ * Syncs pro creator ratings across LSV, Limited Level Ups (LLU), and Draftsim (DS).
+ * Clears memory and IndexedDB caches, pulls fresh rows from Supabase pro_card_ratings table,
+ * maps tiers to standard scores and verdicts, and updates local cache.
+ */
+export async function syncProCreatorRatings(options: {
+  targetSetCode?: string; // 'ALL' or specific set code like 'FRA'
+  onProgress?: SyncProgressCallback;
+}): Promise<SyncSummary> {
+  const startedAt = new Date().toISOString();
+  const targetCode = (options.targetSetCode || 'ALL').toUpperCase().trim();
+
+  options.onProgress?.({
+    phase: 'Initializing',
+    progress: 5,
+    message: 'Resolving pro creator tier lists and set reviews across LSV, Limited Level Ups, and Draftsim...',
+  });
+
+  const availableSets = await getProRatingsSyncableSets();
+  let setsToSync: SetInfo[] = [];
+
+  if (targetCode === 'ALL') {
+    // Primary active/ongoing sets
+    setsToSync = availableSets;
+  } else {
+    const match = availableSets.find((s) => s.code.toUpperCase() === targetCode)
+      || POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === targetCode);
+    if (match) {
+      setsToSync = [match];
+    } else {
+      setsToSync = [{
+        code: targetCode,
+        name: targetCode,
+        card_count: 280,
+      }];
+    }
+  }
+
+  const results: SyncSetResult[] = [];
+  let successfulSets = 0;
+  let failedSets = 0;
+
+  for (let i = 0; i < setsToSync.length; i++) {
+    const setInfo = setsToSync[i];
+    const code = setInfo.code.toUpperCase();
+    const progressBase = Math.round(10 + (i / setsToSync.length) * 80);
+
+    options.onProgress?.({
+      phase: `Syncing ${code}`,
+      progress: progressBase,
+      message: `Fetching fresh creator review ratings for ${setInfo.name} (${code}) from Supabase & tierlists...`,
+      details: `Creators: Luis Scott-Vargas, Limited Level Ups, Draftsim...`,
+    });
+
+    try {
+      // Force refresh pro ratings from Supabase
+      const defaultMap = await loadProRatingsForSet(code, { forceRefresh: true });
+      const byCreator = getLoadedProRatingsByCreator(code) || {};
+
+      const lsvCount = Object.keys(byCreator['LSV'] || {}).length;
+      const lluCount = Object.keys(byCreator['LLU'] || {}).length;
+      const dsCount = Object.keys(byCreator['DS'] || {}).length;
+      const totalUniqueCards = Object.keys(defaultMap).length;
+
+      const creatorSummary = [
+        `Draftsim (DS): ${dsCount}`,
+        `Limited Level Ups (LLU): ${lluCount}`,
+        `Luis Scott-Vargas (LSV): ${lsvCount}`,
+      ].join(' • ');
+
+      successfulSets++;
+      results.push({
+        setCode: code,
+        setName: setInfo.name,
+        success: true,
+        cardsProcessed: totalUniqueCards,
+        status: totalUniqueCards > 0 ? 'updated' : 'unchanged',
+        details: `Loaded ${totalUniqueCards} unique card ratings. ${creatorSummary}`,
+      });
+
+      options.onProgress?.({
+        phase: `Synced ${code}`,
+        progress: progressBase + 20,
+        message: `Successfully synchronized ${totalUniqueCards} pro reviews for ${setInfo.name} (${code})!`,
+        details: creatorSummary,
+      });
+    } catch (err: any) {
+      failedSets++;
+      results.push({
+        setCode: code,
+        setName: setInfo.name,
+        success: false,
+        cardsProcessed: 0,
+        status: 'error',
+        error: err?.message || 'Error fetching pro ratings from database',
+        details: `Failed to fetch pro ratings: ${err?.message || 'Unknown error'}`,
+      });
+    }
+  }
+
+  options.onProgress?.({
+    phase: 'Complete',
+    progress: 100,
+    message: `Pro creator ratings sync complete! Processed ${setsToSync.length} set(s).`,
+  });
+
+  return {
+    type: 'pro_ratings',
+    startedAt,
+    completedAt: new Date().toISOString(),
+    totalSets: setsToSync.length,
+    successfulSets,
+    failedSets,
+    results,
+  };
+}
+

@@ -1,14 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, GradeTier, MTGColor, MTGRarity, SeventeenLandsSetData, UserCardEvaluation, ProCreatorSource, PRO_CREATORS } from '../../types/mtg';
 import { CardObfuscator } from '../CardObfuscator';
-import { Search, Filter, Sparkles, ExternalLink, Zap, Swords, Shield, X, ShieldCheck, ShieldAlert, ChevronLeft, ChevronRight, CheckCircle2, FileText, Star, BarChart2, Trash2, Eye, EyeOff, BookOpen, Layers, Check, PlayingCardsFan, Share2, Target } from 'lucide-react';
+import { Search, Filter, Sparkles, ExternalLink, Zap, Swords, Shield, X, ShieldCheck, ShieldAlert, ChevronLeft, ChevronRight, CheckCircle2, FileText, Star, BarChart2, Trash2, Eye, EyeOff, BookOpen, Layers, Check, PlayingCardsFan, Share2, Target, HelpCircle } from 'lucide-react';
 import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { SimilarCardsModal } from '../Evaluation/SimilarCardsModal';
 import { ExportGradesModal } from '../Evaluation/ExportGradesModal';
+import { GradingScaleModal } from '../Evaluation/GradingScaleModal';
 import { ThreatMatrixView } from './ThreatMatrixView';
 import { ManaCostRenderer, ManaSymbol } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
-import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating, get17LandsQueryStatus } from '../../services/seventeenLands';
+import { GRADE_TIERS, GRADE_SCORES, get17LandsSetUrl, get17LandsCardUrl, get17LandsArchetypeUrl, winRateToGradeTier, gradeTierToIndex, get17LandsCardRating, get17LandsQueryStatus, getSetDraftStatus } from '../../services/seventeenLands';
 import { getLsvRatingForCard, getProRatingForCard } from '../../services/lsvRatings';
 import { GradeComparisonCard } from '../UI/GradeComparisonCard';
 import { PlaneswalkerSymbol } from '../UI/PlaneswalkerSymbol';
@@ -124,6 +125,8 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
   const [modalNoteText, setModalNoteText] = useState<string>('');
   const [similarCardsModalCard, setSimilarCardsModalCard] = useState<Card | null>(null);
   const [isClearModalOpen, setIsClearModalOpen] = useState<boolean>(false);
+  const [isGradingScaleModalOpen, setIsGradingScaleModalOpen] = useState<boolean>(false);
+  const [selectedScaleTier, setSelectedScaleTier] = useState<GradeTier | 'N/A' | null>(null);
 
   const [showMe, setShowMe] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -494,7 +497,9 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <SetBadge setCode={currentSetCode} />
             <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-violet-950/60 px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-violet-500/30 font-mono font-semibold">
-              {cards.length} Total Cards
+              {getSetDraftStatus(currentSetCode) === 'upcoming' || (currentSet?.total_cards && cards.length < currentSet.total_cards)
+                ? `${cards.length} / ${currentSet?.total_cards || currentSet?.card_count || 280} Previewed Cards`
+                : `${cards.length} Total Cards`}
             </span>
             <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#17181c] px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 font-mono">
               {ratedCountInSet} Graded
@@ -883,8 +888,9 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                 onClick={() => handleSelectModalCard(card)}
                 className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
               >
-                {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
-                <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
+                <div className="space-y-3.5 flex-1 flex flex-col">
+                  {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
+                  <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {(() => {
                       const actualTier: GradeTier | null = landData
@@ -927,7 +933,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                                     : effectiveIsBlind
                                     ? `${meta.shortName} Rating (hidden in grading mode)`
                                     : rating
-                                    ? `${meta.shortName} Rating: ${rating.score.toFixed(1)} / 5.0 (${rating.grade}) - ${rating.verdict || 'Playable'}`
+                                    ? `${meta.shortName} Rating: ${rating.grade} - ${rating.verdict || 'Playable'}`
                                     : `${meta.shortName} Review pending (set not yet rated)`
                                 }
                               >
@@ -1093,7 +1099,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                               key={c}
                               className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 font-mono"
                             >
-                              <span>{meta.shortName}: <strong>{rating ? `${rating.score.toFixed(1)} / 5.0` : 'Pending'}</strong></span>
+                              <span>{meta.shortName}: <strong>{rating ? rating.grade : 'Pending'}</strong></span>
                               <span className="italic truncate font-sans">{rating?.verdict || 'Review pending'}</span>
                             </div>
                           );
@@ -1110,6 +1116,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                     )}
                   </div>
                 </div>
+              </div>
 
                 {/* Quick Grade Selector Bar */}
                 <div
@@ -1117,9 +1124,21 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                   className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5"
                 >
                   <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold">
-                    <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
+                    <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
                       <span>Rate Card</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedScaleTier(userEval?.userGrade || null);
+                          setIsGradingScaleModalOpen(true);
+                        }}
+                        className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer ml-0.5"
+                        title="What does each letter grade mean? (Grading Scale Reminder)"
+                      >
+                        <HelpCircle className="w-3 h-3" />
+                      </button>
                     </span>
 
                     <button
@@ -1138,7 +1157,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
 
                   <div
                     className="grid grid-cols-6 sm:grid-cols-11 gap-1"
-                    title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
+                    title="Grading Tiers: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
                   >
                     {GRADE_TIERS.map((tier) => {
                       const isSelected = userEval?.userGrade === tier;
@@ -1625,9 +1644,20 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                   {onSaveEvaluation && (
                     <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-700 dark:text-slate-300" title="Assign draft evaluation tier: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
-                          Grade Card:
-                        </span>
+                        <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                          <span>Grade Card:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedScaleTier(activeCardEval?.userGrade || null);
+                              setIsGradingScaleModalOpen(true);
+                            }}
+                            className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 transition-colors cursor-pointer"
+                            title="What does each letter grade mean? (Grading Scale Reminder)"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         {activeCardEval ? (
                           <span className="font-mono text-xs font-bold text-violet-700 dark:text-cyan-300">
                             Current Rating: <strong className="text-white px-1.5 py-0.5 bg-violet-600 rounded border border-violet-400">{activeCardEval.userGrade}</strong>
@@ -1642,7 +1672,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                         return (
                           <div
                             className={`grid gap-1 ${isModalCardLand ? 'grid-cols-12' : 'grid-cols-11'}`}
-                            title="Assign draft evaluation tier: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
+                            title="Assign draft evaluation tier: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
                           >
                             {GRADE_TIERS.map((tier) => {
                               const isSelected = activeCardEval?.userGrade === tier;
@@ -1842,6 +1872,13 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
           userId={currentUser?.id}
         />
       )}
+
+      {/* Grading Scale Modal */}
+      <GradingScaleModal
+        isOpen={isGradingScaleModalOpen}
+        onClose={() => setIsGradingScaleModalOpen(false)}
+        highlightTier={selectedScaleTier}
+      />
     </div>
   );
 };

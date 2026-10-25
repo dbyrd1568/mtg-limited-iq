@@ -17,6 +17,7 @@ import {
   BarChart2,
   Filter,
   Download,
+  RefreshCw,
   Info,
   Maximize2,
   Minimize2,
@@ -36,8 +37,10 @@ import {
   X,
   ExternalLink,
   MousePointerClick,
+  HelpCircle,
 } from 'lucide-react';
-import { getProRatingForCard } from '../../services/lsvRatings';
+import { getProRatingForCard, loadProRatingsForSet } from '../../services/lsvRatings';
+import { TrendlineExplanationModal } from './TrendlineExplanationModal';
 
 // The visual grade spectrum exactly as shown on the reference chart axes:
 // F, D-, D, D+, C-, C, C+, B-, B, B+, A-, A, A+
@@ -404,6 +407,34 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number; placement: 'top' | 'bottom' } | null>(null);
   const [hoveredIntercept, setHoveredIntercept] = useState<boolean>(false);
   const [hoveredTrendline, setHoveredTrendline] = useState<boolean>(false);
+  const [showTrendlineModal, setShowTrendlineModal] = useState<boolean>(false);
+  const trendlineHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTrendlineMouseEnter = useCallback(() => {
+    if (trendlineHoverTimeoutRef.current) {
+      clearTimeout(trendlineHoverTimeoutRef.current);
+      trendlineHoverTimeoutRef.current = null;
+    }
+    setHoveredTrendline(true);
+  }, []);
+
+  const handleTrendlineMouseLeave = useCallback(() => {
+    if (trendlineHoverTimeoutRef.current) {
+      clearTimeout(trendlineHoverTimeoutRef.current);
+    }
+    trendlineHoverTimeoutRef.current = setTimeout(() => {
+      setHoveredTrendline(false);
+    }, 280);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (trendlineHoverTimeoutRef.current) {
+        clearTimeout(trendlineHoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const [activeInfoPopup, setActiveInfoPopup] = useState<'intercept' | 'rsq' | 'tendency' | null>(null);
   const [showTrendline, setShowTrendline] = useState<boolean>(true);
   const [panelPosition, setPanelPosition] = useState<'right' | 'left'>(() => getCalibrationPlotPanelPosition(userId));
@@ -424,6 +455,53 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
       return next;
     });
   }, [userId]);
+
+  // Synchronize pro creator review updates
+  const [ratingsVersion, setRatingsVersion] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [refreshSuccess, setRefreshSuccess] = useState<boolean>(false);
+
+  // Eagerly load pro ratings for active set
+  useEffect(() => {
+    let isMounted = true;
+    loadProRatingsForSet(selectedSetCode)
+      .then(() => {
+        if (isMounted) setRatingsVersion((v) => v + 1);
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSetCode]);
+
+  // Listen for global pro-ratings-updated event dispatched from anywhere in the app
+  useEffect(() => {
+    const handleUpdate = () => {
+      setRatingsVersion((v) => v + 1);
+    };
+    window.addEventListener('pro-ratings-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('pro-ratings-updated', handleUpdate);
+    };
+  }, []);
+
+  const handleRefreshRatings = useCallback(async () => {
+    setIsRefreshing(true);
+    setRefreshSuccess(false);
+    try {
+      await Promise.all([
+        loadProRatingsForSet(selectedSetCode, { forceRefresh: true }),
+        fetch17LandsSetData(selectedSetCode, { forceRefresh: true, ignoreEligibilityGuard: true }),
+      ]);
+      setRatingsVersion((v) => v + 1);
+      setRefreshSuccess(true);
+      setTimeout(() => setRefreshSuccess(false), 2500);
+    } catch (e) {
+      console.warn('Failed to refresh ratings:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [selectedSetCode]);
 
   // Sync when propSet changes
   useEffect(() => {
@@ -485,8 +563,10 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
 
       if (activeBenchmark === '17L') {
         const rating = get17LandsCardRating(card, active17LData);
-        if (rating && (rating.tier_grade || typeof rating.win_rate === 'number')) {
-          actualGrade = (rating.tier_grade as GradeTier) || (typeof rating.win_rate === 'number' ? winRateToGradeTier(rating.win_rate) : null);
+        if (rating && (typeof rating.win_rate === 'number' || rating.tier_grade)) {
+          actualGrade = typeof rating.win_rate === 'number'
+            ? winRateToGradeTier(rating.win_rate)
+            : ((rating.tier_grade as GradeTier) || null);
           actualWinRate = rating.win_rate;
           actualAlsa = rating.avg_seen;
         }
@@ -540,7 +620,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
     });
 
     return points;
-  }, [activeCards, active17LData, userEvaluations, activeBenchmark, selectedSetCode]);
+  }, [activeCards, active17LData, userEvaluations, activeBenchmark, selectedSetCode, ratingsVersion]);
 
   // Rarity count breakdown for current plotted set
   const rarityCounts = useMemo(() => {
@@ -739,7 +819,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                 : activeBenchmark === 'LSV'
                 ? 'Me vs. Luis Scott-Vargas (LSV)'
                 : activeBenchmark === 'LLU'
-                ? 'Me vs. Lords of Limited (LLU)'
+                ? 'Me vs. Limited Level Ups (LLU)'
                 : 'Me vs. Draftsim (DS)'}
             </span>
           </div>
@@ -805,6 +885,25 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
               </optgroup>
             </select>
           </div>
+
+          {/* Refresh Creator Ratings & Telemetry */}
+          <button
+            type="button"
+            onClick={handleRefreshRatings}
+            disabled={isRefreshing}
+            className={`p-2 rounded-xl transition-all cursor-pointer border ${
+              refreshSuccess
+                ? 'bg-emerald-50 text-emerald-600 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700'
+            }`}
+            title="Refresh creator review ratings & 17Lands telemetry for this set"
+          >
+            {refreshSuccess ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-scale-in" />
+            ) : (
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-violet-500' : ''}`} />
+            )}
+          </button>
 
           {/* Export PNG */}
           <button
@@ -1044,8 +1143,9 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                 <g
                   id="ols-trendline-group"
                   className="cursor-pointer"
-                  onMouseEnter={() => setHoveredTrendline(true)}
-                  onMouseLeave={() => setHoveredTrendline(false)}
+                  onMouseEnter={handleTrendlineMouseEnter}
+                  onMouseLeave={handleTrendlineMouseLeave}
+                  onClick={() => setShowTrendlineModal(true)}
                 >
                   {/* Generous invisible stroke to make hovering the line effortless */}
                   <line
@@ -1570,7 +1670,9 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                   top: '50%',
                   transform: 'translate(-50%, -50%)',
                 }}
-                className="absolute z-40 pointer-events-none p-3.5 rounded-2xl bg-slate-900/95 dark:bg-[#17181c]/95 text-white shadow-2xl border border-cyan-500/80 backdrop-blur-md w-[295px] space-y-2 animate-in fade-in zoom-in-95 duration-100 font-sans"
+                className="absolute z-40 p-3.5 rounded-2xl bg-slate-900/95 dark:bg-[#17181c]/95 text-white shadow-2xl border border-cyan-500/80 backdrop-blur-md w-[295px] space-y-2 animate-in fade-in zoom-in-95 duration-100 font-sans pointer-events-auto"
+                onMouseEnter={handleTrendlineMouseEnter}
+                onMouseLeave={handleTrendlineMouseLeave}
               >
                 <div className="flex items-center justify-between pb-1.5 border-b border-cyan-500/30">
                   <div className="flex items-center gap-1.5">
@@ -1604,6 +1706,21 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                 <p className="text-[11px] text-slate-300 leading-relaxed">
                   {stats.biasDiagnosis}. The cyan line indicates your actual statistical grading relationship versus the 45° ideal parity line.
                 </p>
+
+                <div className="pt-1.5 border-t border-cyan-500/25">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHoveredTrendline(false);
+                      setShowTrendlineModal(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-500/40 hover:border-cyan-400 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>What does this mean?</span>
+                  </button>
+                </div>
               </div>
             )}
             </div>
@@ -2004,18 +2121,29 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
             {showTrendline && (
               <button
                 type="button"
-                onClick={() => setActiveInfoPopup(activeInfoPopup === 'tendency' ? null : 'tendency')}
-                className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400 font-bold hover:underline cursor-pointer"
-                title="Click to learn how to interpret your Tendency Trendline"
+                onClick={() => setShowTrendlineModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 font-bold text-[11px] border border-cyan-400/50 hover:border-cyan-400 transition-colors cursor-pointer"
+                title="Click for a full breakdown of your tendency line, formula, and drafting takeaways"
               >
-                <span className="inline-block w-3.5 h-0.5 bg-cyan-500 rounded-full" />
-                <span>Tendency Trendline (R²)</span>
-                <Info className="w-2.5 h-2.5 opacity-70" />
+                <HelpCircle className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
+                <span>What does this mean?</span>
               </button>
             )}
           </div>
         </div>
       )}
+
+      {/* 5. Comprehensive Tendency Trendline Explanation Modal */}
+      <TrendlineExplanationModal
+        isOpen={showTrendlineModal}
+        onClose={() => setShowTrendlineModal(false)}
+        stats={stats}
+        benchmarkDisplayName={benchmarkDisplayName}
+        selectedSetCode={selectedSetCode}
+        selectedSetName={currentSetName}
+        points={allPoints}
+        onSelectCard={onSelectCard}
+      />
     </div>
   );
 };

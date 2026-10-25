@@ -76,40 +76,40 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 bg-slate-950/70 dark:bg-[#090a0d]/90 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full h-full sm:w-[96vw] sm:max-w-5xl bg-white dark:bg-[#121316] border-0 sm:border border-slate-200 dark:border-slate-800/80 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c]">
-          <div className="flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 rounded-2xl bg-violet-100 dark:bg-violet-600/30 border border-violet-300 dark:border-violet-400/40 text-violet-700 dark:text-cyan-300 shadow-xs shrink-0">
-              <Wand2 className="w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="flex items-center justify-between px-3.5 sm:px-6 pt-safe pb-2.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-violet-100 dark:bg-violet-600/30 border border-violet-300 dark:border-violet-400/40 text-violet-700 dark:text-cyan-300 shadow-xs shrink-0">
+              <Wand2 className="w-4 h-4 sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white font-heading tracking-wide truncate">
+              <h2 className="text-sm sm:text-xl font-bold text-slate-900 dark:text-white font-heading tracking-wide truncate">
                 Select MTG Limited Set
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-300 truncate">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-300 truncate">
                 Choose a booster set to drill combat cards & test 17Lands evaluations
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Controls, Filters & Search */}
-        <div className="p-3 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-[#17181c] space-y-3 sm:space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+        <div className="px-3.5 py-2 sm:px-6 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-[#17181c] space-y-2 sm:space-y-4 shrink-0">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-3">
             {/* Search Input */}
             <div className="relative md:col-span-8">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search set name or code (e.g. Secrets of Strixhaven, SOS, Bloomburrow, OTJ)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 transition-all font-medium"
+                className="w-full pl-9 pr-3.5 py-2 sm:py-2.5 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 transition-all font-medium"
                 autoFocus
               />
             </div>
@@ -122,11 +122,11 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                 value={customCodeInput}
                 onChange={(e) => setCustomCodeInput(e.target.value.toUpperCase())}
                 maxLength={8}
-                className="w-full uppercase font-mono text-xs px-3 py-2.5 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-violet-700 dark:text-cyan-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-bold"
+                className="w-full uppercase font-mono text-xs px-3 py-2 sm:py-2.5 bg-white dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 rounded-xl text-violet-700 dark:text-cyan-300 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 font-bold"
               />
               <button
                 type="submit"
-                className="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer whitespace-nowrap"
               >
                 Load Code
               </button>
@@ -135,74 +135,91 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
         </div>
 
         {/* Subtle Non-shifting Loading Progress Bar */}
-        <div className="h-0.5 w-full bg-transparent overflow-hidden">
+        <div className="h-0.5 w-full bg-transparent overflow-hidden shrink-0">
           {isLoadingCards && (
             <div className="h-full bg-gradient-to-r from-violet-500 via-cyan-400 to-violet-500 animate-pulse w-full" />
           )}
         </div>
 
-        {/* Set List Grid (Expansive 2-Column Full Width) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 pb-safe">
+        {/* Set List Grid (Flush Full Width aligned with Header & Search) */}
+        <div className="flex-1 overflow-y-auto px-3.5 py-2.5 sm:px-6 sm:py-5 pb-safe">
           {filteredSets.length === 0 ? (
             <div className="py-16 text-center text-slate-500 space-y-2">
               <p className="text-sm font-semibold">No sets found matching "{searchQuery}"</p>
               <p className="text-xs text-slate-400">Try switching your filter to "All Sets" or enter the 3-letter code above!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3.5">
               {filteredSets.map((set) => {
                 const isSelected = set.code.toUpperCase() === currentSetCode.toUpperCase();
                 return (
                   <button
                     key={set.code}
                     onClick={() => onSelectSet(set)}
-                    className={`flex items-center justify-between p-4 rounded-2xl border text-left transition-all cursor-pointer group ${
+                    className={`flex items-center justify-between p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all cursor-pointer group ${
                       isSelected
                         ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-500 shadow-sm ring-1 ring-violet-400'
-                        : 'bg-white dark:bg-[#17181c]/80 hover:bg-slate-50 dark:hover:bg-[#0f163f] border-slate-200 dark:border-slate-800 shadow-xs'
+                        : 'bg-white dark:bg-[#17181c]/80 hover:bg-slate-50 dark:hover:bg-[#1f2026] border-slate-200 dark:border-slate-800 shadow-xs'
                     }`}
                   >
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 mr-1.5 sm:mr-3">
                       {/* Set Symbol / Icon */}
-                      <div className="shrink-0 w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1.5 shadow-xs">
+                      <div className="shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-slate-100 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1 sm:p-1.5 shadow-xs">
                         <SetSymbol setCode={set.code} iconSvgUri={set.icon_svg_uri} size="md" />
                       </div>
 
                       {/* Set Details (Full Un-truncated Name) */}
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-black text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1">
+                      <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <span className="font-mono text-[11px] sm:text-xs font-black text-violet-700 dark:text-cyan-300 bg-slate-100 dark:bg-[#17181c] px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1 shrink-0">
                             <SetSymbol setCode={set.code} iconSvgUri={set.icon_svg_uri} size="xs" />
                             <span>{set.code}</span>
                           </span>
-                          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors">
+                          <h3 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white leading-snug group-hover:text-violet-600 dark:group-hover:text-cyan-200 transition-colors">
                             {set.name}
                           </h3>
                           {getSetDraftStatus(set.code) === 'active' && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600/50 shadow-xs">
+                            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600/50 shadow-xs shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                               Active Draft
                             </span>
                           )}
                           {getSetDraftStatus(set.code) === 'flashback' && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-600/50 shadow-xs">
+                            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-600/50 shadow-xs shrink-0">
                               ⚡ Flashback Draft
                             </span>
                           )}
                           {getSetDraftStatus(set.code) === 'upcoming' && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-600/50 shadow-xs">
+                            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-600/50 shadow-xs shrink-0">
                               Upcoming
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                          <span className="flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300">
-                            <Calendar className="w-3.5 h-3.5 text-violet-500" />
+                        <div className="flex items-center gap-1.5 sm:gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                          <span className="flex items-center gap-1 font-mono text-slate-600 dark:text-slate-300 shrink-0">
+                            <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-violet-500" />
                             {formatSetReleaseDate(set.released_at)}
                           </span>
                           <span>•</span>
-                          <span className="font-mono">{set.card_count} cards</span>
+                          {(() => {
+                            const isUpcoming = getSetDraftStatus(set.code) === 'upcoming';
+                            const totalSetCount = set.total_cards || set.card_count;
+                            const isPreview = isUpcoming || (set.preview_count !== undefined && set.preview_count < totalSetCount);
+                            const previewCount = set.preview_count !== undefined ? set.preview_count : (isUpcoming ? 0 : totalSetCount);
+
+                            if (isPreview) {
+                              return (
+                                <span
+                                  className="font-mono text-amber-600 dark:text-amber-400 font-semibold"
+                                  title={`${previewCount} cards available for preview out of ${totalSetCount} cards in set`}
+                                >
+                                  {previewCount} / {totalSetCount} cards
+                                </span>
+                              );
+                            }
+                            return <span className="font-mono">{totalSetCount} cards</span>;
+                          })()}
                           {set.has_17lands_data && (
                             <>
                               <span>•</span>
@@ -211,10 +228,10 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline cursor-pointer bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-500/40 text-[11px] transition-all"
+                                className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline cursor-pointer bg-emerald-50 dark:bg-emerald-950/50 px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg border border-emerald-200 dark:border-emerald-500/40 text-[10px] sm:text-[11px] transition-all shrink-0"
                                 title={`Open ${set.code} 17Lands Premier Draft Analytics in a new tab`}
                               >
-                                <BarChart2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                <BarChart2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600 dark:text-emerald-400" />
                                 <span>17Lands Analytics ↗</span>
                               </a>
                             </>
@@ -225,15 +242,15 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
 
                     {/* Selected Checkmark & Loading Spinner */}
                     {isSelected && (
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         {isLoadingCards && (
                           <div
-                            className="w-4 h-4 border-2 border-violet-600 dark:border-cyan-400 border-t-transparent rounded-full animate-spin"
+                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-violet-600 dark:border-cyan-400 border-t-transparent rounded-full animate-spin"
                             title="Loading set cards..."
                           />
                         )}
-                        <div className="p-1.5 rounded-full bg-violet-600 text-white shadow-xs">
-                          <Check className="w-4 h-4 stroke-[3]" />
+                        <div className="p-1 sm:p-1.5 rounded-full bg-violet-600 text-white shadow-xs">
+                          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                         </div>
                       </div>
                     )}
@@ -245,17 +262,17 @@ export const SetSelectorModal: React.FC<SetSelectorModalProps> = ({
         </div>
 
         {/* Modal Footer (Fixed height status bar, prevents content jump) */}
-        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0">
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c] flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0">
           <div>
             {isLoadingCards ? (
-              <span className="flex items-center gap-2 text-violet-600 dark:text-cyan-400 font-medium">
+              <span className="flex items-center gap-2 text-violet-600 dark:text-cyan-400 font-medium text-[11px] sm:text-xs">
                 <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
                 {downloadProgress && downloadProgress.total > 0
                   ? `Syncing cards (${downloadProgress.loaded} / ${downloadProgress.total})...`
                   : 'Syncing Scryfall card visuals & rules...'}
               </span>
             ) : (
-              <span>{filteredSets.length} sets available</span>
+              <span className="text-[11px] sm:text-xs">{filteredSets.length} sets available</span>
             )}
           </div>
           <button

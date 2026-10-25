@@ -72,7 +72,17 @@ export function getCardImageCandidateUrls(card: Partial<Card>, customSrc?: strin
     urls.push(`https://api.scryfall.com/cards/${card.id}?format=image&version=normal`);
   }
 
-  // 4. Official Gatherer Image (ONLY for released sets; Gatherer has no spoiled cards)
+  // 4. Direct Scryfall named image endpoint (handles cards with name + set, e.g. proposals or comps)
+  if (card.name) {
+    const rawName = card.name.trim();
+    const cleanFrontName = rawName.replace(/^A-/, '').split(' // ')[0].trim();
+    if (card.set) {
+      urls.push(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cleanFrontName)}&set=${card.set.toLowerCase().trim()}&format=image&version=normal`);
+    }
+    urls.push(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cleanFrontName)}&format=image&version=normal`);
+  }
+
+  // 5. Official Gatherer Image (ONLY for released sets; Gatherer has no spoiled cards)
   const isUnreleased = isUnreleasedSet(card.set);
   if (!isUnreleased && card.name) {
     const rawName = card.name.trim();

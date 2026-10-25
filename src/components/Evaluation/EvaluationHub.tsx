@@ -20,12 +20,13 @@ import { getLsvRatingForCard, getProRatingForCard } from '../../services/lsvRati
 import { CardObfuscator } from '../CardObfuscator';
 import { QuickRateModal } from './QuickRateModal';
 import { SimilarCardsModal } from './SimilarCardsModal';
+import { GradingScaleModal } from './GradingScaleModal';
 import { ClearSetRatingsModal } from '../UI/ClearSetRatingsModal';
 import { ArchetypeForecastView } from './ArchetypeForecastView';
 import { MethodologyGuideView } from './MethodologyGuideView';
 import { deduplicateCards } from '../../services/scryfall';
 import { CalibrationScatterPlot, BenchmarkTarget } from './CalibrationScatterPlot';
-import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink, Link2, ArrowUp, ArrowDown, ArrowUpDown, Clock } from 'lucide-react';
+import { Trophy, Award, Filter, Search, Check, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, ChevronRight, BarChart2, ShieldCheck, FileText, Eye, EyeOff, Scale, BookOpen, Activity, Calculator, ChevronDown, ChevronUp, X, Trash2, Target, PlayingCardsFan, Share2, Layers, ExternalLink, Link2, ArrowUp, ArrowDown, ArrowUpDown, Clock, HelpCircle } from 'lucide-react';
 import { ExportGradesModal } from './ExportGradesModal';
 import { ManaCostRenderer, ManaSymbol } from '../UI/ManaSymbol';
 import { parseAppUrlParams, updateAppUrlParams, findCardByUrlIdentifier } from '../../services/urlParams';
@@ -203,6 +204,8 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   const [comparisonVerdictFilter, setComparisonVerdictFilter] = useState<string>('ALL');
   const [selectedCardForModal, setSelectedCardForModal] = useState<Card | null>(null);
   const [similarCardsModalCard, setSimilarCardsModalCard] = useState<Card | null>(null);
+  const [isGradingScaleModalOpen, setIsGradingScaleModalOpen] = useState<boolean>(false);
+  const [selectedScaleTier, setSelectedScaleTier] = useState<GradeTier | 'N/A' | null>(null);
   const [cardListSortBy, setCardListSortBy] = useState<'number' | 'name' | 'color' | 'rarity' | 'grade-desc' | 'grade-asc' | 'lsv-desc' | 'llu-desc' | 'ds-desc' | 'winrate'>('number');
   const [comparisonSortColumn, setComparisonSortColumn] = useState<ComparisonSortColumn>('number');
   const [comparisonSortDirection, setComparisonSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -1250,8 +1253,19 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
 
               {/* Grade Tier Filter Pills */}
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-wrap">
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline">
-                  Grade{selectedGrades.length > 1 ? ` (${selectedGrades.length})` : ''}:
+                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline-flex items-center gap-1">
+                  <span>Grade{selectedGrades.length > 1 ? ` (${selectedGrades.length})` : ''}:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedScaleTier(null);
+                      setIsGradingScaleModalOpen(true);
+                    }}
+                    className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 transition-colors cursor-pointer"
+                    title="View Limited Grading Scale & Tier Definitions"
+                  >
+                    <HelpCircle className="w-3 h-3" />
+                  </button>
                 </span>
                 {['ALL', ...GRADE_TIERS, 'N/A'].map((tier) => {
                   const isSelected = tier === 'ALL' ? isAllGrades : selectedGrades.includes(tier);
@@ -1338,8 +1352,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   onClick={() => handleSelectCardForModal(card)}
                   className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
                 >
-                  {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
-                  <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
+                  <div className="space-y-3.5 flex-1 flex flex-col">
+                    {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
+                    <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {(() => {
                         const actualTier: GradeTier | null = landData
@@ -1382,7 +1397,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                                       : isBlindGrading
                                       ? `${meta.shortName} Rating (hidden in grading mode)`
                                       : rating
-                                      ? `${meta.shortName} Rating: ${rating.score.toFixed(1)} / 5.0 (${rating.grade}) - ${rating.verdict || 'Playable'}`
+                                      ? `${meta.shortName} Rating: ${rating.grade} - ${rating.verdict || 'Playable'}`
                                       : `${meta.shortName} Review pending (set not yet rated)`
                                   }
                                 >
@@ -1548,7 +1563,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                                 key={c}
                                 className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 font-mono"
                               >
-                                <span>{meta.shortName}: <strong>{rating ? `${rating.score.toFixed(1)} / 5.0` : 'Pending'}</strong></span>
+                                <span>{meta.shortName}: <strong>{rating ? rating.grade : 'Pending'}</strong></span>
                                 <span className="italic truncate font-sans">{rating?.verdict || 'Review pending'}</span>
                               </div>
                             );
@@ -1565,6 +1580,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       )}
                     </div>
                   </div>
+                </div>
 
                   {/* Quick Grade Selector Bar with Inline Precedent Comps Action */}
                   <div
@@ -1573,9 +1589,21 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5"
                   >
                     <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold">
-                      <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-bold">
+                      <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
                         <span>Rate Card</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedScaleTier(userEval?.userGrade || null);
+                            setIsGradingScaleModalOpen(true);
+                          }}
+                          className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer ml-0.5"
+                          title="What does each letter grade mean? (Grading Scale Reminder)"
+                        >
+                          <HelpCircle className="w-3 h-3" />
+                        </button>
                       </span>
 
                       <button
@@ -1598,7 +1626,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       return (
                         <div
                           className={`grid gap-1 sm:gap-1 ${isCardLand ? 'grid-cols-6 sm:grid-cols-12' : 'grid-cols-6 sm:grid-cols-11'}`}
-                          title="Grade Point Values: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
+                          title="Grading Tiers: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
                         >
                           {GRADE_TIERS.map((tier) => {
                             const isSelected = userEval?.userGrade === tier;
@@ -1666,6 +1694,16 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           setCode={currentSetCode}
           setName={currentSetName}
           onSelectCard={handleSelectCardForModal}
+          showMe={showMe}
+          showLsv={showLsv}
+          showLlu={showLlu}
+          showDs={showDs}
+          show17L={show17L}
+          onToggleMe={handleToggleMe}
+          onToggleLsv={handleToggleLsv}
+          onToggleLlu={handleToggleLlu}
+          onToggleDs={handleToggleDs}
+          onToggle17L={handleToggle17L}
         />
       )}
 
@@ -2284,14 +2322,11 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                   <div
                     key={point.tier}
                     className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
-                    title={`Tier ${point.tier} (${point.score.toFixed(1)} pts): You assigned ${point.userCount} cards (${point.userPercent}%) vs 17Lands ${point.actualCount} cards (${point.actualPercent}%)`}
+                    title={`Tier ${point.tier}: You assigned ${point.userCount} cards (${point.userPercent}%) vs 17Lands ${point.actualCount} cards (${point.actualPercent}%)`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-[120px]">
+                    <div className="flex items-center gap-2.5 min-w-[60px]">
                       <span className={`px-2 py-0.5 rounded font-mono font-black text-xs border ${getTierBadgeColor(point.tier)}`}>
                         {point.tier}
-                      </span>
-                      <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                        ({point.score.toFixed(1)} pts)
                       </span>
                     </div>
 
@@ -2634,10 +2669,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                               ) : (
                                 <span
                                   className="font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-800/80 flex items-center gap-1 w-fit"
-                                  title={`LSV: ${lsvRating.score.toFixed(1)} / 5.0 (${lsvRating.grade}) - ${lsvRating.verdict || 'Playable'}`}
+                                  title={`LSV: ${lsvRating.grade} - ${lsvRating.verdict || 'Playable'}`}
                                 >
                                   <span>{lsvRating.grade}</span>
-                                  <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80 font-normal">({lsvRating.score.toFixed(1)})</span>
                                 </span>
                               )}
                             </td>
@@ -2660,10 +2694,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                               ) : (
                                 <span
                                   className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-950/60 px-2 py-0.5 rounded border border-pink-300 dark:border-pink-800/80 flex items-center gap-1 w-fit"
-                                  title={`LLU: ${lluRating.score.toFixed(1)} / 5.0 (${lluRating.grade}) - ${lluRating.verdict || 'Playable'}`}
+                                  title={`LLU: ${lluRating.grade} - ${lluRating.verdict || 'Playable'}`}
                                 >
                                   <span>{lluRating.grade}</span>
-                                  <span className="text-[10px] text-pink-600/80 dark:text-pink-400/80 font-normal">({lluRating.score.toFixed(1)})</span>
                                 </span>
                               )}
                             </td>
@@ -2686,10 +2719,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                               ) : (
                                 <span
                                   className="font-bold text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950/60 px-2 py-0.5 rounded border border-sky-300 dark:border-sky-800/80 flex items-center gap-1 w-fit"
-                                  title={`DS: ${dsRating.score.toFixed(1)} / 5.0 (${dsRating.grade}) - ${dsRating.verdict || 'Playable'}`}
+                                  title={`DS: ${dsRating.grade} - ${dsRating.verdict || 'Playable'}`}
                                 >
                                   <span>{dsRating.grade}</span>
-                                  <span className="text-[10px] text-sky-600/80 dark:text-sky-400/80 font-normal">({dsRating.score.toFixed(1)})</span>
                                 </span>
                               )}
                             </td>
@@ -2969,6 +3001,13 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           initialTab={exportModalTab}
         />
       )}
+
+      {/* Grading Scale Modal */}
+      <GradingScaleModal
+        isOpen={isGradingScaleModalOpen}
+        onClose={() => setIsGradingScaleModalOpen(false)}
+        highlightTier={selectedScaleTier}
+      />
 
     </div>
   );

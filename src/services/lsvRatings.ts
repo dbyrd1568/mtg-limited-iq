@@ -3,6 +3,7 @@ import { Card, GradeTier, ProCreatorSource, PRO_CREATORS } from '../types/mtg';
 import { scoreToGradeTier } from './seventeenLands';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { FRA_DRAFTSIM_DATA } from './fraDraftsimData';
 
 export interface LsvCardRating {
   score: number; // 0.0 to 5.0
@@ -105,22 +106,7 @@ const BUNDLED_STATIC_PRO_RATINGS: Record<string, Record<string, number>> = {
 
 // Bundled baseline static Draftsim ratings (0-10 scale converted to 0.0-5.0)
 const BUNDLED_STATIC_DS_RATINGS: Record<string, Record<string, number>> = {
-  FRA: {
-    'Graft Surgeon': 1.5,
-    'Konstrari Improviser // Soul Tether': 3.5,
-    'Woodwork Prodigy // Soul Tether': 3.5,
-    'Puppet Crafting': 3.0,
-    'Hungering Puppetbeast': 4.0,
-    'Tenured Tethermage': 3.5,
-    'Puppet Infestation': 4.0,
-    'Heartwood Harvester': 3.5,
-    "Gideon's Memorial": 3.5,
-    'Precise Redaction': 3.5,
-    "Sphinx's Approach": 3.5,
-    'Ghalta the Immovable': 4.5,
-    'Plan for All Outcomes': 3.0,
-    'Aerid Konstrari': 4.5,
-  },
+  FRA: FRA_DRAFTSIM_DATA,
   BLB: {
     'Heartfire Hero': 3.5,
     'Fell': 4.0,
@@ -227,48 +213,42 @@ export function lsvScoreToGradeTier(score: number): GradeTier {
  * 2. Checks local IndexedDB cache
  * 3. Fetches from Supabase pro_card_ratings table and updates IndexedDB
  */
-export async function loadProRatingsForSet(setCode: string): Promise<Record<string, LsvCardRating>> {
+export async function loadProRatingsForSet(
+  setCode: string,
+  options?: { forceRefresh?: boolean }
+): Promise<Record<string, LsvCardRating>> {
   if (!setCode) return {};
   const upper = setCode.toUpperCase().trim();
 
-  if (FETCHED_PRO_RATINGS_SETS[upper]) {
-    return LIVE_PRO_RATINGS[upper] || {};
-  }
-
-  if (PENDING_PRO_RATING_FETCHES[upper]) {
-    return PENDING_PRO_RATING_FETCHES[upper]!;
+  if (options?.forceRefresh) {
+    delete FETCHED_PRO_RATINGS_SETS[upper];
+    delete PENDING_PRO_RATING_FETCHES[upper];
+  } else {
+    if (FETCHED_PRO_RATINGS_SETS[upper]) {
+      return LIVE_PRO_RATINGS[upper] || {};
+    }
+    if (PENDING_PRO_RATING_FETCHES[upper]) {
+      return PENDING_PRO_RATING_FETCHES[upper]!;
+    }
   }
 
   const fetchPromise = (async () => {
-    const idbKeyV2 = `pro_ratings_v2_${upper}`;
-    const idbKeyV1 = `pro_ratings_v1_${upper}`;
+    const idbKeyV4 = `pro_ratings_v4_${upper}`;
 
     // 1. Try local IndexedDB cache first for instant offline readiness
-    if (typeof indexedDB !== 'undefined') {
+    if (!options?.forceRefresh && typeof indexedDB !== 'undefined') {
       try {
-        const cachedV2 = await get<CachedSetRatings>(idbKeyV2);
-        if (cachedV2 && cachedV2.defaultMap && Object.keys(cachedV2.defaultMap).length > 0) {
-          LIVE_PRO_RATINGS[upper] = { ...(LIVE_PRO_RATINGS[upper] || {}), ...cachedV2.defaultMap };
+        const cachedV4 = await get<CachedSetRatings>(idbKeyV4);
+        if (cachedV4 && cachedV4.defaultMap && Object.keys(cachedV4.defaultMap).length > 0) {
+          LIVE_PRO_RATINGS[upper] = { ...(LIVE_PRO_RATINGS[upper] || {}), ...cachedV4.defaultMap };
           if (!LIVE_PRO_RATINGS_BY_CREATOR[upper]) {
             LIVE_PRO_RATINGS_BY_CREATOR[upper] = {};
           }
-          for (const [src, map] of Object.entries(cachedV2.byCreator || {})) {
+          for (const [src, map] of Object.entries(cachedV4.byCreator || {})) {
             if (src === 'LOL') continue;
             LIVE_PRO_RATINGS_BY_CREATOR[upper]![src] = {
               ...(LIVE_PRO_RATINGS_BY_CREATOR[upper]![src] || {}),
               ...map,
-            };
-          }
-        } else {
-          const cachedV1 = await get<Record<string, LsvCardRating>>(idbKeyV1);
-          if (cachedV1 && Object.keys(cachedV1).length > 0) {
-            LIVE_PRO_RATINGS[upper] = { ...(LIVE_PRO_RATINGS[upper] || {}), ...cachedV1 };
-            if (!LIVE_PRO_RATINGS_BY_CREATOR[upper]) {
-              LIVE_PRO_RATINGS_BY_CREATOR[upper] = {};
-            }
-            LIVE_PRO_RATINGS_BY_CREATOR[upper]!['LSV'] = {
-              ...(LIVE_PRO_RATINGS_BY_CREATOR[upper]!['LSV'] || {}),
-              ...cachedV1,
             };
           }
         }
@@ -283,7 +263,9 @@ export async function loadProRatingsForSet(setCode: string): Promise<Record<stri
         const { data, error } = await supabase
           .from('pro_card_ratings')
           .select('card_name, score, grade, verdict, notes, source')
-          .eq('set_code', upper);
+          .eq('set_code', upper)
+          .neq('source', 'LOL')
+          .limit(3000);
 
         if (!error && data && data.length > 0) {
           const defaultMap: Record<string, LsvCardRating> = { ...(LIVE_PRO_RATINGS[upper] || {}) };
@@ -325,8 +307,12 @@ export async function loadProRatingsForSet(setCode: string): Promise<Record<stri
 
           if (typeof indexedDB !== 'undefined') {
             try {
-              await set(idbKeyV2, { defaultMap, byCreator: LIVE_PRO_RATINGS_BY_CREATOR[upper] });
+              await set(idbKeyV4, { defaultMap, byCreator: LIVE_PRO_RATINGS_BY_CREATOR[upper] });
             } catch (e) {}
+          }
+
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('pro-ratings-updated', { detail: { setCode: upper } }));
           }
 
           return defaultMap;
@@ -337,6 +323,9 @@ export async function loadProRatingsForSet(setCode: string): Promise<Record<stri
     }
 
     FETCHED_PRO_RATINGS_SETS[upper] = true;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pro-ratings-updated', { detail: { setCode: upper } }));
+    }
     return LIVE_PRO_RATINGS[upper] || {};
   })();
 
@@ -347,6 +336,16 @@ export async function loadProRatingsForSet(setCode: string): Promise<Record<stri
   } finally {
     delete PENDING_PRO_RATING_FETCHES[upper];
   }
+}
+
+/**
+ * Returns currently loaded creator ratings map for a set, indexed by creator source ('LSV', 'LLU', 'DS').
+ */
+export function getLoadedProRatingsByCreator(
+  setCode: string
+): Record<string, Record<string, LsvCardRating>> | undefined {
+  if (!setCode) return undefined;
+  return LIVE_PRO_RATINGS_BY_CREATOR[setCode.toUpperCase().trim()];
 }
 
 /**

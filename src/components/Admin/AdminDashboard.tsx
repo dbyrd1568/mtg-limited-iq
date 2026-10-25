@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield,
   BarChart3,
+  Award,
   Users,
   Sparkles,
   Layers,
@@ -53,10 +54,13 @@ import { AdminGradingAnalyticsView } from './AdminGradingAnalyticsView';
 import { AdminAccessControlView } from './AdminAccessControlView';
 import { AdminPrecedentApprovalsView } from './AdminPrecedentApprovalsView';
 import { AdminDataSyncModal } from './AdminDataSyncModal';
-import { fetchPrecedentProposals } from '../../services/precedentApprovalService';
+import {
+  fetchPrecedentProposals,
+  subscribeToPrecedentProposals,
+} from '../../services/precedentApprovalService';
 import { updateAppUrlParams } from '../../services/urlParams';
 
-export const VALID_ADMIN_SUBTABS: AdminSubTab[] = [
+const VALID_ADMIN_SUBTABS: AdminSubTab[] = [
   'overview',
   'users',
   'features',
@@ -65,7 +69,7 @@ export const VALID_ADMIN_SUBTABS: AdminSubTab[] = [
   'precedents',
 ];
 
-export function sanitizeAdminSubTab(subtab?: string | null): AdminSubTab {
+function sanitizeAdminSubTab(subtab?: string | null): AdminSubTab {
   if (subtab && VALID_ADMIN_SUBTABS.includes(subtab as AdminSubTab)) {
     return subtab as AdminSubTab;
   }
@@ -101,7 +105,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [timeRange, setTimeRange] = useState<AdminTimeRange>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
-  const [syncModalType, setSyncModalType] = useState<'preview_cards' | 'seventeen_lands' | null>(null);
+  const [syncModalType, setSyncModalType] = useState<'preview_cards' | 'seventeen_lands' | 'pro_ratings' | null>(null);
 
   // Admin Data State
   const [kpis, setKpis] = useState<AdminOverviewKPIs>({
@@ -183,6 +187,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   useEffect(() => {
     loadAllData();
   }, [loadAllData]);
+
+  // Real-time synchronization for precedent proposals count
+  useEffect(() => {
+    const updateCount = async () => {
+      try {
+        const pending = await fetchPrecedentProposals({ status: 'pending' });
+        setPendingProposalsCount(pending.length);
+      } catch (err) {
+        // ignore
+      }
+    };
+    const unsub = subscribeToPrecedentProposals(updateCount);
+    return unsub;
+  }, []);
 
   // Export handlers
   const handleExportJSON = async () => {
@@ -275,6 +293,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           >
             <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Update 17Lands Data</span>
+          </button>
+
+          {/* Button 3: Update Pro Creator Ratings */}
+          <button
+            onClick={() => setSyncModalType('pro_ratings')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-bold shadow-xs transition-all cursor-pointer"
+            title="Update pro creator ratings and set reviews across LSV, Limited Level Ups, and Draftsim"
+          >
+            <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Update Creator Ratings</span>
           </button>
 
           {/* Time Range Selector */}
@@ -527,7 +555,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {activeSubTab === 'precedents' && (
-          <AdminPrecedentApprovalsView currentUser={currentUser} />
+          <AdminPrecedentApprovalsView
+            currentUser={currentUser}
+            onPendingCountChange={(count) => setPendingProposalsCount(count)}
+          />
         )}
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, QuestionCategory, QuizOption, QuizQuestion, QuizResult, QuizSettings, SetInfo, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, UserProfileStats, UserAccount } from './types/mtg';
 import { fetchCardsForSet, fetchAllSets, POPULAR_LIMITED_SETS, deduplicateCards } from './services/scryfall';
-import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, get17LandsCardRating, canQuery17Lands } from './services/seventeenLands';
+import { fetch17LandsSetData, is17LandsEligibleForSet, getPreloaded17LandsData, get17LandsCardRating, canQuery17Lands, getSetDraftStatus } from './services/seventeenLands';
 import { loadProRatingsForSet } from './services/lsvRatings';
 import { loadSetArchetypes } from './services/wotcArchetypes';
 import { loadUserStats, loadUserEvaluations, saveUserEvaluation, deleteUserEvaluation, clearUserEvaluationsForSet, loadUserArchetypeEvaluations, saveUserArchetypeEvaluation, deleteUserArchetypeEvaluation, clearUserArchetypeEvaluationsForSet, loadUserColorEvaluations, saveUserColorEvaluation, deleteUserColorEvaluation, clearUserColorEvaluationsForSet, recordQuizCompletion, defaultStats, normalizeUserProfileStats, getLastSelectedSetCode, saveLastSelectedSetCode, getActiveUser, setActiveUser, clearActiveUser, getBlindGradingForSet, setBlindGradingForSet, hasSeenWelcomeTour } from './services/storage';
@@ -391,7 +391,7 @@ const AppContent: React.FC = () => {
 
     const landsPromise = fetch17LandsSetData(set.code, { forceRefresh: options?.forceRefresh });
 
-    const ratingsPromise = loadProRatingsForSet(set.code);
+    const ratingsPromise = loadProRatingsForSet(set.code, { forceRefresh: options?.forceRefresh });
     const archetypesPromise = loadSetArchetypes(set.code);
 
     try {
@@ -409,17 +409,27 @@ const AppContent: React.FC = () => {
         return dedupedFetched;
       });
 
-      // Keep currentSet and allSets card_count aligned with the deduplicated card catalog count
+      // Keep currentSet and allSets card_count and preview_count aligned with the deduplicated card catalog count
       if (dedupedFetched && dedupedFetched.length > 0) {
+        const isSetUpcoming = getSetDraftStatus(set.code) === 'upcoming';
         setCurrentSet((prev) => {
           if (!prev || prev.code.toUpperCase() !== set.code.toUpperCase()) return prev;
-          if (prev.card_count === dedupedFetched.length) return prev;
-          return { ...prev, card_count: dedupedFetched.length };
+          const total = prev.total_cards || prev.card_count;
+          if (isSetUpcoming) {
+            return { ...prev, total_cards: total, preview_count: dedupedFetched.length };
+          }
+          if (prev.card_count === dedupedFetched.length && prev.total_cards === total) return prev;
+          return { ...prev, total_cards: total, card_count: dedupedFetched.length };
         });
         setAllSets((prev) => {
-          const match = prev.find((s) => s.code.toUpperCase() === set.code.toUpperCase());
-          if (!match || match.card_count === dedupedFetched.length) return prev;
-          return prev.map((s) => s.code.toUpperCase() === set.code.toUpperCase() ? { ...s, card_count: dedupedFetched.length } : s);
+          return prev.map((s) => {
+            if (s.code.toUpperCase() !== set.code.toUpperCase()) return s;
+            const total = s.total_cards || s.card_count;
+            if (isSetUpcoming) {
+              return { ...s, total_cards: total, preview_count: dedupedFetched.length };
+            }
+            return { ...s, total_cards: total, card_count: dedupedFetched.length };
+          });
         });
       }
 

@@ -3,6 +3,7 @@ import {
   X,
   Sparkles,
   BarChart3,
+  Award,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
@@ -18,14 +19,16 @@ import {
   SyncProgressUpdate,
   getPreviewSetsList,
   get17LandsSyncableSets,
+  getProRatingsSyncableSets,
   syncPreviewSetsAndCards,
   sync17LandsTelemetry,
+  syncProCreatorRatings,
 } from '../../services/adminDataSync';
 
 interface AdminDataSyncModalProps {
   isOpen: boolean;
   onClose: () => void;
-  syncType: 'preview_cards' | 'seventeen_lands';
+  syncType: 'preview_cards' | 'seventeen_lands' | 'pro_ratings';
   onSyncComplete?: (summary: SyncSummary) => void;
 }
 
@@ -64,7 +67,12 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
     setIsLoadingSets(true);
     setSelectedSetCode('ALL');
 
-    const loader = syncType === 'preview_cards' ? getPreviewSetsList : get17LandsSyncableSets;
+    const loader =
+      syncType === 'preview_cards'
+        ? getPreviewSetsList
+        : syncType === 'seventeen_lands'
+        ? get17LandsSyncableSets
+        : getProRatingsSyncableSets;
     loader()
       .then((sets) => {
         if (isMounted) {
@@ -94,7 +102,13 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
   const handleStartSync = async () => {
     setSyncState('running');
     setProgress(5);
-    setLogs([`[${new Date().toLocaleTimeString()}] Starting ${syncType === 'preview_cards' ? 'Preview Card Sync' : '17Lands Telemetry Sync'} for ${selectedSetCode}...`]);
+    const syncLabel =
+      syncType === 'preview_cards'
+        ? 'Preview Card Sync'
+        : syncType === 'seventeen_lands'
+        ? '17Lands Telemetry Sync'
+        : 'Pro Creator Ratings Sync';
+    setLogs([`[${new Date().toLocaleTimeString()}] Starting ${syncLabel} for ${selectedSetCode}...`]);
 
     const handleProgress = (update: SyncProgressUpdate) => {
       setProgress(update.progress);
@@ -114,8 +128,13 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
           targetSetCode: selectedSetCode,
           onProgress: handleProgress,
         });
-      } else {
+      } else if (syncType === 'seventeen_lands') {
         result = await sync17LandsTelemetry({
+          targetSetCode: selectedSetCode,
+          onProgress: handleProgress,
+        });
+      } else {
+        result = await syncProCreatorRatings({
           targetSetCode: selectedSetCode,
           onProgress: handleProgress,
         });
@@ -135,6 +154,8 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
   };
 
   const isPreview = syncType === 'preview_cards';
+  const is17L = syncType === 'seventeen_lands';
+  const isPro = syncType === 'pro_ratings';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
@@ -146,19 +167,44 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
               className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md ${
                 isPreview
                   ? 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/20'
-                  : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20'
+                  : is17L
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20'
+                  : 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/20'
               }`}
             >
-              {isPreview ? <Sparkles className="w-5 h-5" /> : <BarChart3 className="w-5 h-5" />}
+              {isPreview ? <Sparkles className="w-5 h-5" /> : is17L ? <BarChart3 className="w-5 h-5" /> : <Award className="w-5 h-5" />}
             </div>
-            <div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    isPreview
+                      ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-300'
+                      : is17L
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                  }`}
+                >
+                  {isPreview
+                    ? 'Card Catalog & Spoilers • Scryfall API'
+                    : is17L
+                    ? 'Draft Telemetry & Win Rates • 17Lands Telemetry'
+                    : 'Pro Creator Reviews • LSV • LLU • Draftsim'}
+                </span>
+              </div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white font-heading">
-                {isPreview ? 'Update Preview Sets & Cards' : 'Update 17Lands Telemetry'}
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isPreview
-                  ? 'Fetch spoiled cards from Scryfall API, invalidate card caches, and refresh set counts'
-                  : 'Ingest Premier Draft win rates, ALSA, and sample sizes from 17Lands into local & Supabase cache'}
+                  ? 'Update Preview Sets & Cards'
+                  : is17L
+                  ? 'Update 17Lands Data'
+                  : 'Update Creator Ratings'}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
+                {isPreview
+                  ? 'Query Scryfall for newly spoiled cards in upcoming preview sets (such as Star Trek TRK). Invalidate local caches and refresh set counts.'
+                  : is17L
+                  ? 'Ingest Premier Draft win rates, ALSA, and sample sizes for active draft sets (HOB, MBC, FRA) into local IndexedDB and central Supabase cache.'
+                  : 'Synchronize set reviews and card grades across Luis Scott-Vargas (LSV), Limited Level Ups (LLU), and Draftsim (DS). Refreshes local and Supabase databases.'}
               </p>
             </div>
           </div>
@@ -190,20 +236,30 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
                     <option value="ALL">
                       {isPreview
                         ? '★ All Preview & Upcoming Sets (Star Trek TRK, etc.)'
-                        : '★ All Active Arena Draft Sets (HOB, MBC, FRA)'}
+                        : is17L
+                        ? '★ All Active Arena Draft Sets (HOB, MBC, FRA)'
+                        : '★ All Active & Benchmark Sets (FRA, HOB, MBC, SOS, BLB...)'}
                     </option>
-                    {availableSets.map((s) => (
-                      <option key={s.code} value={s.code}>
-                        {s.name} ({s.code.toUpperCase()}) {s.card_count ? `— ${s.card_count} cards` : ''}
-                      </option>
-                    ))}
+                    {availableSets.map((s) => {
+                      const total = s.total_cards || s.card_count;
+                      const countLabel = s.preview_count !== undefined && s.preview_count < total
+                        ? `${s.preview_count} / ${total} cards`
+                        : s.card_count ? `${s.card_count} cards` : '';
+                      return (
+                        <option key={s.code} value={s.code}>
+                          {s.name} ({s.code.toUpperCase()}) {countLabel ? `— ${countLabel}` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                   <ChevronDown className="absolute right-3.5 top-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   {isPreview
                     ? 'Scryfall spoiler search respects polite 80ms rate limits and updates canonical card variants.'
-                    : 'Pulls fresh Premier Draft card data via edge proxy and synchronizes with IndexedDB and Supabase.'}
+                    : is17L
+                    ? 'Pulls fresh Premier Draft card data via edge proxy and synchronizes with IndexedDB and Supabase.'
+                    : 'Synchronizes reviews from Supabase and tierlist feeds across Draftsim, Limited Level Ups, and LSV.'}
                 </p>
               </div>
 
@@ -222,13 +278,15 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200/60 dark:border-slate-800 flex items-start gap-2.5">
-                  <Layers className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <Layers className={`w-4 h-4 ${isPro ? 'text-amber-500' : 'text-emerald-500'} shrink-0 mt-0.5`} />
                   <div>
                     <span className="font-bold text-slate-900 dark:text-white block">
-                      Supabase Cloud Sync
+                      {isPro ? 'All 3 Pro Creators' : 'Supabase Cloud Sync'}
                     </span>
                     <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      Upserts set schedules and telemetry into central tables when authenticated.
+                      {isPro
+                        ? 'Synchronize set reviews and card grades across Luis Scott-Vargas (LSV), Limited Level Ups (LLU), and Draftsim (DS).'
+                        : 'Upserts set schedules and telemetry into central tables when authenticated.'}
                     </span>
                   </div>
                 </div>
@@ -395,11 +453,19 @@ export const AdminDataSyncModal: React.FC<AdminDataSyncModalProps> = ({
                   className={`px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md flex items-center gap-2 cursor-pointer transition-all ${
                     isPreview
                       ? 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-violet-500/20'
-                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-500/20'
+                      : is17L
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-500/20'
+                      : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-500/20'
                   }`}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Start Sync</span>
+                  <span>
+                    {isPreview
+                      ? 'Update Preview Cards'
+                      : is17L
+                      ? 'Update 17Lands Data'
+                      : 'Update Creator Ratings'}
+                  </span>
                 </button>
               </>
             ) : syncState === 'completed' ? (

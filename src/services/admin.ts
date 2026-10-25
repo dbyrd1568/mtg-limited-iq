@@ -1109,9 +1109,18 @@ export function computeUserSetGradingDetails(
   });
 
   const known = POPULAR_LIMITED_SETS.map((set) => {
-    const found = setCounts[set.code.toUpperCase()];
+    const codeUpper = set.code.toUpperCase();
+    const found = setCounts[codeUpper];
     const cardsGraded = found ? found.count : 0;
-    const percentComplete = set.card_count > 0 ? Math.min(100, Math.round((cardsGraded / set.card_count) * 100)) : 0;
+
+    let baseCount = set.card_count;
+    if (codeUpper === 'FRA') {
+      baseCount = 285;
+    } else if (!baseCount || baseCount < 100) {
+      baseCount = 280;
+    }
+    const totalCards = Math.max(cardsGraded, baseCount);
+    const percentComplete = totalCards > 0 ? Math.min(100, Math.round((cardsGraded / totalCards) * 100)) : 0;
     const avgScore =
       found && found.scores.length > 0
         ? Math.round((found.scores.reduce((a, b) => a + b, 0) / found.scores.length) * 10) / 10
@@ -1121,7 +1130,7 @@ export function computeUserSetGradingDetails(
       setCode: set.code,
       setName: set.name,
       cardsGraded,
-      totalCards: set.card_count,
+      totalCards,
       percentComplete,
       lastGradedAt: found?.lastAt,
       averageUserScore: avgScore,
@@ -1148,7 +1157,18 @@ export function computeUserSetGradingDetails(
     }
   }
 
-  return [...known, ...extraSets];
+  const allSets = [...known, ...extraSets];
+
+  // Prioritize sets the user has actually evaluated at the top!
+  return allSets.sort((a, b) => {
+    if (a.cardsGraded > 0 && b.cardsGraded === 0) return -1;
+    if (a.cardsGraded === 0 && b.cardsGraded > 0) return 1;
+    if (a.cardsGraded > 0 && b.cardsGraded > 0) {
+      if (b.cardsGraded !== a.cardsGraded) return b.cardsGraded - a.cardsGraded;
+      return (b.lastGradedAt || '').localeCompare(a.lastGradedAt || '');
+    }
+    return 0;
+  });
 }
 
 function calculateEvaluationMetrics(

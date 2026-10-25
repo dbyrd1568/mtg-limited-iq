@@ -1168,9 +1168,6 @@ export const AdminUserEvaluationInspectorModal: React.FC<AdminUserEvaluationInsp
                                   <td className="py-2.5 px-3 text-center">
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-xs bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-cyan-300 border border-violet-200 dark:border-violet-800">
                                       {ev.userGrade}
-                                      {typeof ev.userScore === 'number' && !isNA && (
-                                        <span className="opacity-70 text-[10px]">({ev.userScore.toFixed(1)})</span>
-                                      )}
                                     </span>
                                   </td>
 
@@ -1300,19 +1297,16 @@ export const AdminUserEvaluationInspectorModal: React.FC<AdminUserEvaluationInsp
                                 {/* 1. User Grade Badge */}
                                 <div
                                   className="px-1.5 py-0.5 rounded-md bg-violet-950/95 text-white border border-violet-400 shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap"
-                                  title={`User Grade: ${ev.userGrade || '—'}${typeof ev.userScore === 'number' && !isNA ? ` (${ev.userScore.toFixed(1)})` : ''}`}
+                                  title={`User Grade: ${ev.userGrade || '—'}`}
                                 >
                                   <span className="text-[8px] uppercase tracking-wider font-extrabold text-violet-300">User</span>
                                   <span className="text-[11px] font-black">{ev.userGrade || '—'}</span>
-                                  {typeof ev.userScore === 'number' && !isNA && (
-                                    <span className="opacity-80 text-[10px] font-normal">({ev.userScore.toFixed(1)})</span>
-                                  )}
                                 </div>
 
                                 {/* 2. LSV Badge */}
                                 <div
                                   className="px-1.5 py-0.5 rounded-md bg-amber-950/95 text-white border border-amber-400 shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap"
-                                  title={lsvRating ? `LSV Rating: ${lsvRating.score.toFixed(1)} / 5.0 (${lsvRating.grade}) - ${lsvRating.verdict || 'Playable'}` : 'LSV review pending for this card'}
+                                  title={lsvRating ? `LSV Rating: ${lsvRating.grade} - ${lsvRating.verdict || 'Playable'}` : 'LSV review pending for this card'}
                                 >
                                   <span className="text-[8px] uppercase tracking-wider font-extrabold text-amber-300">LSV</span>
                                   <span className="text-[11px] font-black text-amber-200">{lsvRating ? lsvRating.grade : '—'}</span>

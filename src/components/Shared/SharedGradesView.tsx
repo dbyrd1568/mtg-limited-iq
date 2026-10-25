@@ -532,10 +532,7 @@ export const SharedGradesView: React.FC<SharedGradesViewProps> = ({ shareId, onE
                   <div
                     className={`w-12 h-10 rounded-lg border flex flex-col items-center justify-center font-black ${badgeColor} shadow-sm`}
                   >
-                    <span className="text-base leading-none tracking-tight">{grade.userGrade}</span>
-                    <span className="text-[9px] font-mono font-medium opacity-80 mt-0.5">
-                      {grade.userScore.toFixed(1)}
-                    </span>
+                    <span className="text-lg leading-none tracking-tight">{grade.userGrade}</span>
                   </div>
                 </div>
               </div>

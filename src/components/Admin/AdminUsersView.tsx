@@ -24,6 +24,8 @@ import {
   Sparkles,
   Eye,
   FileText,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { AdminUserSummary } from '../../types/admin';
 import { UserAccount } from '../../types/mtg';
@@ -129,10 +131,12 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
   const [isLoadingLiveEvals, setIsLoadingLiveEvals] = useState(false);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [inspectorSetCode, setInspectorSetCode] = useState<string | undefined>(undefined);
+  const [showUngradedSets, setShowUngradedSets] = useState(false);
 
   useEffect(() => {
     if (!selectedUser) {
       setLiveEvaluations(null);
+      setShowUngradedSets(false);
       return;
     }
 
@@ -664,58 +668,113 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                   </span>
                 </div>
 
-                <div className="space-y-2.5">
-                  {displayUser.setsGraded.map((set) => (
-                    <div
-                      key={set.setCode}
-                      className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 space-y-2"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-violet-600 dark:text-cyan-300">
-                            {set.setCode}
-                          </span>
-                          <span className="font-medium text-slate-700 dark:text-slate-300">
-                            {set.setName}
-                          </span>
+                {(() => {
+                  const activeSets = displayUser.setsGraded.filter((s) => s.cardsGraded > 0);
+                  const ungradedSets = displayUser.setsGraded.filter((s) => s.cardsGraded === 0);
+
+                  return (
+                    <div className="space-y-2.5">
+                      {activeSets.length === 0 && (
+                        <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                          No sets evaluated yet.
                         </div>
-                        <div className="flex items-center gap-2 font-mono font-semibold">
-                          <span className="text-slate-900 dark:text-white">
-                            {set.cardsGraded} / {set.totalCards} cards
-                          </span>
-                          <span className="text-xs text-violet-600 dark:text-cyan-300">
-                            ({set.percentComplete}%)
-                          </span>
-                          {set.cardsGraded > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setInspectorSetCode(set.setCode);
-                                setIsInspectorOpen(true);
-                              }}
-                              className="ml-1 p-1 rounded-md bg-violet-100 hover:bg-violet-200 dark:bg-violet-950 dark:hover:bg-violet-900 text-violet-700 dark:text-cyan-300 cursor-pointer"
-                              title={`Inspect ${displayUser.name}'s grades for ${set.setCode}`}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
+                      )}
+
+                      {activeSets.map((set) => (
+                        <div
+                          key={set.setCode}
+                          className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/80 space-y-2"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-violet-600 dark:text-cyan-300">
+                                {set.setCode}
+                              </span>
+                              <span className="font-medium text-slate-700 dark:text-slate-300">
+                                {set.setName}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 font-mono font-semibold">
+                              <span className="text-slate-900 dark:text-white">
+                                {set.cardsGraded} / {set.totalCards} cards
+                              </span>
+                              <span className="text-xs text-violet-600 dark:text-cyan-300">
+                                ({set.percentComplete}%)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInspectorSetCode(set.setCode);
+                                  setIsInspectorOpen(true);
+                                }}
+                                className="ml-1 p-1 rounded-md bg-violet-100 hover:bg-violet-200 dark:bg-violet-950 dark:hover:bg-violet-900 text-violet-700 dark:text-cyan-300 cursor-pointer"
+                                title={`Inspect ${displayUser.name}'s grades for ${set.setCode}`}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                set.percentComplete === 100
+                                  ? 'bg-emerald-500'
+                                  : 'bg-violet-600 dark:bg-cyan-400'
+                              }`}
+                              style={{ width: `${set.percentComplete}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {ungradedSets.length > 0 && (
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowUngradedSets(!showUngradedSets)}
+                            className="w-full py-2 px-3 rounded-xl text-xs font-mono font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                          >
+                            <span>
+                              {showUngradedSets ? 'Hide' : 'Show'} Ungraded Sets ({ungradedSets.length})
+                            </span>
+                            {showUngradedSets ? (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {showUngradedSets && (
+                            <div className="mt-2.5 space-y-2 opacity-75">
+                              {ungradedSets.map((set) => (
+                                <div
+                                  key={set.setCode}
+                                  className="p-2.5 rounded-xl bg-slate-50/60 dark:bg-slate-950/20 border border-slate-200/60 dark:border-slate-800/60 space-y-1.5"
+                                >
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-slate-500 dark:text-slate-400">
+                                        {set.setCode}
+                                      </span>
+                                      <span className="font-medium text-slate-600 dark:text-slate-400">
+                                        {set.setName}
+                                      </span>
+                                    </div>
+                                    <span className="text-[11px] font-mono text-slate-400">
+                                      0 / {set.totalCards} cards (0%)
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
-                      </div>
-
-                      {/* Progress Bar */}
-                      <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            set.percentComplete === 100
-                              ? 'bg-emerald-500'
-                              : 'bg-violet-600 dark:bg-cyan-400'
-                          }`}
-                          style={{ width: `${set.percentComplete}%` }}
-                        />
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
             </div>
 

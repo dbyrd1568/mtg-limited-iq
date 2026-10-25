@@ -11,8 +11,9 @@ import { CardObfuscator } from '../CardObfuscator';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
 import { CardImage } from '../UI/CardImage';
-import { X, Scale, Check, PlayingCardsFan, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, ArrowRight, Sparkles, Search, Shield } from 'lucide-react';
+import { X, Scale, Check, PlayingCardsFan, Loader2, ExternalLink, GitCompare, ChevronLeft, ChevronRight, RotateCcw, ArrowLeftRight, ArrowRight, Sparkles, Search, Shield, HelpCircle } from 'lucide-react';
 import { useContextualTour } from '../../context/ContextualTourContext';
+import { GradingScaleModal } from './GradingScaleModal';
 
 export interface CardPerformanceMetrics {
   winRate?: number;
@@ -105,6 +106,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
   const [isReplacingSlot, setIsReplacingSlot] = useState<boolean>(false);
   const [swapSearchSlotIndex, setSwapSearchSlotIndex] = useState<number | null>(null);
   const [learningNotice, setLearningNotice] = useState<string | null>(null);
+  const [isGradingScaleModalOpen, setIsGradingScaleModalOpen] = useState<boolean>(false);
 
   const { registerTrigger } = useContextualTour();
 
@@ -548,7 +550,9 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (swapSearchSlotIndex !== null) {
+        if (isGradingScaleModalOpen) {
+          setIsGradingScaleModalOpen(false);
+        } else if (swapSearchSlotIndex !== null) {
           setSwapSearchSlotIndex(null);
         } else if (inspectCardMatch) {
           setInspectCardMatch(null);
@@ -558,9 +562,9 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
         return;
       }
 
-      // Do not navigate cards if typing in an input/textarea
+      // Do not navigate cards if typing in an input/textarea or if scale modal is open
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
-      if (activeTag === 'input' || activeTag === 'textarea' || swapSearchSlotIndex !== null) return;
+      if (activeTag === 'input' || activeTag === 'textarea' || swapSearchSlotIndex !== null || isGradingScaleModalOpen) return;
 
       // When inspecting a comp card head-to-head, navigate between comp precedents
       if (inspectCardMatch) {
@@ -588,6 +592,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     isOpen,
+    isGradingScaleModalOpen,
     inspectCardMatch,
     swapSearchSlotIndex,
     onClose,
@@ -774,9 +779,22 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                   {/* Rating Section consistently at bottom of card */}
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs uppercase font-mono font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                        Your Rating
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs uppercase font-mono font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+                          Your Rating
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsGradingScaleModalOpen(true);
+                          }}
+                          className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title="What does each letter grade mean? (Grading Scale Reminder)"
+                        >
+                          <HelpCircle className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                       {currentGrade && (
                         <span className="text-xs font-bold font-mono text-violet-600 dark:text-cyan-400">
                           Grade: {currentGrade}
@@ -1367,9 +1385,22 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     {/* Grading Panel: Consistently at the bottom of the gradable card */}
                     <div className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-2 shadow-2xs font-mono">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          Your Rating
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Your Rating
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsGradingScaleModalOpen(true);
+                            }}
+                            className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="What does each letter grade mean? (Grading Scale Reminder)"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         {currentGrade && (
                           <span className="text-[11px] font-bold font-mono text-violet-600 dark:text-cyan-400">
                             Grade: {currentGrade}
@@ -1821,6 +1852,13 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
           isAdmin={effectiveIsAdmin}
         />
       )}
+
+      {/* Grading Scale Modal */}
+      <GradingScaleModal
+        isOpen={isGradingScaleModalOpen}
+        onClose={() => setIsGradingScaleModalOpen(false)}
+        highlightTier={currentGrade}
+      />
     </div>
   );
 };

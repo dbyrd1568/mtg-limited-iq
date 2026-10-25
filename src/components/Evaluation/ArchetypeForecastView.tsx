@@ -1,13 +1,16 @@
-import React, { useState, useMemo } from 'react';
-import { Card, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, GradeTier, ArchetypeMetagameRole } from '../../types/mtg';
-import { generateSetSynthesisReport, SetSynthesisReport, ArchetypeStrength, ColorStrength } from '../../services/archetypeEvaluator';
-import { GRADE_TIERS, GRADE_SCORES, get17LandsCardRating, winRateToGradeTier } from '../../services/seventeenLands';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Card, SeventeenLandsSetData, UserCardEvaluation, UserArchetypeEvaluation, UserColorEvaluation, GradeTier, ArchetypeMetagameRole, PRO_CREATORS, ProCreatorSource } from '../../types/mtg';
+import { generateSetSynthesisReport, SetSynthesisReport, ArchetypeStrength, ColorStrength, aggregateScoreToGradeTier } from '../../services/archetypeEvaluator';
+import { GRADE_TIERS, GRADE_SCORES, get17LandsCardRating, winRateToGradeTier, scoreToGradeTier } from '../../services/seventeenLands';
+import { loadProRatingsForSet, getProRatingForCard } from '../../services/lsvRatings';
+import { loadSetArchetypes } from '../../services/wotcArchetypes';
 import { deleteUserArchetypeEvaluation, deleteUserColorEvaluation } from '../../services/storage';
-import { Trophy, Check, Crown, Flame, Shield, Layers, Swords, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Share2, Award, Zap, Activity, Info, BarChart2, CheckCircle2, TrendingUp, TrendingDown, Target, Scale, Eye, EyeOff, Clock, BookOpen, Star, Edit3, X, FileText, MessageSquare, AlertTriangle, RotateCcw, Lock } from 'lucide-react';
+import { Trophy, Check, Crown, Flame, Shield, Layers, Swords, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Share2, Award, Zap, Activity, Info, BarChart2, CheckCircle2, TrendingUp, TrendingDown, Target, Scale, Eye, EyeOff, Clock, BookOpen, Star, Edit3, X, FileText, MessageSquare, AlertTriangle, RotateCcw, Lock, HelpCircle } from 'lucide-react';
 import { CardObfuscator } from '../CardObfuscator';
 import { CardImage } from '../UI/CardImage';
 import { ManaSymbol, ManaCostRenderer } from '../UI/ManaSymbol';
 import { SetSymbol } from '../UI/SetSymbol';
+import { GradingScaleModal } from './GradingScaleModal';
 
 interface ArchetypeColorConfig {
   color1Hex: string;
@@ -67,6 +70,16 @@ interface ArchetypeForecastViewProps {
   zIndex?: string;
   userPerspectiveName?: string;
   readOnly?: boolean;
+  showMe?: boolean;
+  showLsv?: boolean;
+  showLlu?: boolean;
+  showDs?: boolean;
+  show17L?: boolean;
+  onToggleMe?: () => void;
+  onToggleLsv?: () => void;
+  onToggleLlu?: () => void;
+  onToggleDs?: () => void;
+  onToggle17L?: () => void;
 }
 
 export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
@@ -86,9 +99,62 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
   zIndex,
   userPerspectiveName,
   readOnly = false,
+  showMe,
+  showLsv,
+  showLlu,
+  showDs,
+  show17L,
+  onToggleMe,
+  onToggleLsv,
+  onToggleLlu,
+  onToggleDs,
+  onToggle17L,
 }) => {
   const [expandedArchetype, setExpandedArchetype] = useState<string | null>(null);
   const [showOtherArchetypes, setShowOtherArchetypes] = useState(true);
+
+  // Local benchmark visibility fallback when parent does not pass controlled toggles
+  const [localShowMe, setLocalShowMe] = useState(true);
+  const [localShowLsv, setLocalShowLsv] = useState(true);
+  const [localShowLlu, setLocalShowLlu] = useState(true);
+  const [localShowDs, setLocalShowDs] = useState(true);
+  const [localShow17L, setLocalShow17L] = useState(true);
+
+  const effectiveShowMe = showMe !== undefined ? showMe : localShowMe;
+  const effectiveShowLsv = showLsv !== undefined ? showLsv : localShowLsv;
+  const effectiveShowLlu = showLlu !== undefined ? showLlu : localShowLlu;
+  const effectiveShowDs = showDs !== undefined ? showDs : localShowDs;
+  const effectiveShow17L = show17L !== undefined ? show17L : localShow17L;
+
+  const handleToggleMeBtn = onToggleMe || (() => setLocalShowMe((p) => !p));
+  const handleToggleLsvBtn = onToggleLsv || (() => setLocalShowLsv((p) => !p));
+  const handleToggleLluBtn = onToggleLlu || (() => setLocalShowLlu((p) => !p));
+  const handleToggleDsBtn = onToggleDs || (() => setLocalShowDs((p) => !p));
+  const handleToggle17LBtn = onToggle17L || (() => setLocalShow17L((p) => !p));
+
+  const [proRatingsTick, setProRatingsTick] = useState(0);
+
+  useEffect(() => {
+    if (!setCode) return;
+    let isMounted = true;
+    loadProRatingsForSet(setCode).then(() => {
+      if (isMounted) setProRatingsTick((t) => t + 1);
+    });
+    loadSetArchetypes(setCode).then(() => {
+      if (isMounted) setProRatingsTick((t) => t + 1);
+    });
+    const onProUpdated = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (!detail?.setCode || detail.setCode.toUpperCase() === setCode.toUpperCase()) {
+        if (isMounted) setProRatingsTick((t) => t + 1);
+      }
+    };
+    window.addEventListener('pro-ratings-updated', onProUpdated);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('pro-ratings-updated', onProUpdated);
+    };
+  }, [setCode]);
 
   // Strategy Dossier & Notes Modal State
   const [activeDossierArchetype, setActiveDossierArchetype] = useState<ArchetypeStrength | null>(null);
@@ -103,6 +169,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
   // Top Cards by Rarity State
   const [rarityTiedIndex, setRarityTiedIndex] = useState<Record<string, number>>({});
   const [expandedRarityRunnerUps, setExpandedRarityRunnerUps] = useState<Record<string, boolean>>({});
+  const [isGradingScaleModalOpen, setIsGradingScaleModalOpen] = useState(false);
 
   const raritySections = useMemo(() => {
     const RARITY_CONFIGS: Array<{
@@ -238,6 +305,36 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         }
       }
 
+      // Best Creator card for this rarity (LSV, LLU, DS)
+      const creatorTopCards: Partial<Record<ProCreatorSource, { card: Card; grade: GradeTier }>> = {};
+      if (!isBlindGrading) {
+        (['LSV', 'LLU', 'DS'] as ProCreatorSource[]).forEach((cr) => {
+          let bestScore = -1;
+          let bestGrade: GradeTier = 'N/A';
+          let bestWR = -1;
+          let bestCard: Card | undefined = undefined;
+          const seenCrNames = new Set<string>();
+          rarityCards.forEach((c) => {
+            if (seenCrNames.has(c.name)) return;
+            seenCrNames.add(c.name);
+            const r = getProRatingForCard(c, cr, setCode);
+            if (r && r.grade && r.grade !== 'N/A') {
+              const gScore = GRADE_SCORES[r.grade] ?? r.score ?? 0;
+              const wr = get17LandsCardRating(c, seventeenLandsData)?.win_rate ?? 0;
+              if (gScore > bestScore || (Math.abs(gScore - bestScore) < 0.001 && wr > bestWR)) {
+                bestScore = gScore;
+                bestGrade = r.grade;
+                bestWR = wr;
+                bestCard = c;
+              }
+            }
+          });
+          if (bestCard && bestGrade !== 'N/A') {
+            creatorTopCards[cr] = { card: bestCard, grade: bestGrade };
+          }
+        });
+      }
+
       let evaluatedCount = 0;
       let naCount = 0;
       rarityCards.forEach((c) => {
@@ -261,18 +358,162 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         topScore,
         tiedTopCards,
         seventeenLandsTopCard,
+        creatorTopCards,
       };
     });
-  }, [cards, userEvaluations, seventeenLandsData, isBlindGrading, setCode]);
+  }, [cards, userEvaluations, seventeenLandsData, isBlindGrading, setCode, proRatingsTick]);
 
-  const report: SetSynthesisReport = generateSetSynthesisReport(
-    cards,
-    userEvaluations,
-    setCode,
-    setName,
-    seventeenLandsData,
-    userArchetypeEvaluations,
-    userColorEvaluations
+  const report: SetSynthesisReport = useMemo(
+    () =>
+      generateSetSynthesisReport(
+        cards,
+        userEvaluations,
+        setCode,
+        setName,
+        seventeenLandsData,
+        userArchetypeEvaluations,
+        userColorEvaluations
+      ),
+    [cards, userEvaluations, setCode, setName, seventeenLandsData, userArchetypeEvaluations, userColorEvaluations, proRatingsTick]
+  );
+
+  // Synthesize Color & Archetype Power Rankings for Pro Creators (LSV, LLU, DS)
+  const creatorReports = useMemo(() => {
+    const creators: ProCreatorSource[] = ['LSV', 'LLU', 'DS'];
+    const result: Array<{
+      creator: ProCreatorSource;
+      meta: typeof PRO_CREATORS['LSV'];
+      ratedCount: number;
+      bombCount: number;
+      rankedColors: Array<{
+        color: ColorStrength;
+        rank: number;
+        calibratedGrade: GradeTier;
+      }>;
+      colorByCode: Record<string, { color: ColorStrength; rank: number; calibratedGrade: GradeTier }>;
+      rankedArchetypes: Array<{
+        arch: ArchetypeStrength;
+        rank: number;
+        calibratedGrade: GradeTier;
+      }>;
+      archByCode: Record<string, { arch: ArchetypeStrength; rank: number; calibratedGrade: GradeTier }>;
+    }> = [];
+
+    creators.forEach((creator) => {
+      const evals: Record<string, UserCardEvaluation> = {};
+      let ratedCount = 0;
+      cards.forEach((c) => {
+        const r = getProRatingForCard(c, creator, setCode);
+        if (r && r.grade && r.grade !== 'N/A') {
+          const gScore = GRADE_SCORES[r.grade] ?? r.score ?? 2.5;
+          const key = `${c.set?.toLowerCase() || ''}_${c.name?.toLowerCase() || ''}`;
+          evals[key] = {
+            cardId: c.id,
+            cardName: c.name,
+            setCode: c.set,
+            userGrade: r.grade,
+            userScore: gScore,
+            pickPriority: gScore >= 4.0 ? '1st Pick Bomb' : gScore >= 3.3 ? 'Early Pick' : gScore >= 2.3 ? 'Mid Pick' : 'Late Filler',
+            updatedAt: '',
+          };
+          ratedCount++;
+        }
+      });
+
+      if (ratedCount < 15) return;
+
+      const synth = generateSetSynthesisReport(cards, evals, setCode, setName, seventeenLandsData);
+      const mono = synth.colorRankings.filter((c) => c.color !== 'C' && c.ratedCards > 0);
+      if (mono.length === 0) return;
+
+      // Calibrate color grades around 3.22 (B) with 0.20 std spread so all creators produce comparable A- to C+ pool grades
+      const colorMean = mono.reduce((s, c) => s + c.averageScore, 0) / mono.length;
+      const colorStd = Math.sqrt(mono.reduce((s, c) => s + (c.averageScore - colorMean) ** 2, 0) / mono.length);
+
+      let currentColorRank = 1;
+      const rankedColors = mono.map((c, idx) => {
+        if (idx > 0 && Math.abs(c.averageScore - mono[idx - 1].averageScore) >= 0.01) {
+          currentColorRank = idx + 1;
+        }
+        const z = colorStd > 0.005 ? (c.averageScore - colorMean) / colorStd : 0;
+        const calibratedScore = 3.22 + z * 0.20;
+        const calibratedGrade = aggregateScoreToGradeTier(calibratedScore);
+        return {
+          color: c,
+          rank: currentColorRank,
+          calibratedGrade,
+        };
+      });
+
+      const colorByCode: Record<string, { color: ColorStrength; rank: number; calibratedGrade: GradeTier }> = {};
+      rankedColors.forEach((rc) => {
+        colorByCode[rc.color.color] = rc;
+      });
+
+      // Calibrate archetype grades around 3.22 (B) with 0.22 std spread
+      const archPool = synth.developedArchetypes.length > 0 ? synth.developedArchetypes : synth.archetypeRankings;
+      const ratedArchs = archPool.filter((a) => a.powerScore > 0);
+      const archMean = ratedArchs.length > 0 ? ratedArchs.reduce((s, a) => s + a.powerScore, 0) / ratedArchs.length : 3.22;
+      const archStd = ratedArchs.length > 0
+        ? Math.sqrt(ratedArchs.reduce((s, a) => s + (a.powerScore - archMean) ** 2, 0) / ratedArchs.length)
+        : 0;
+
+      let currentArchRank = 1;
+      const rankedArchetypes = ratedArchs.map((a, idx) => {
+        if (idx > 0 && Math.abs(a.powerScore - ratedArchs[idx - 1].powerScore) >= 0.01) {
+          currentArchRank = idx + 1;
+        }
+        const z = archStd > 0.005 ? (a.powerScore - archMean) / archStd : 0;
+        const calibratedScore = 3.22 + z * 0.22;
+        const calibratedGrade = aggregateScoreToGradeTier(calibratedScore);
+        return {
+          arch: a,
+          rank: currentArchRank,
+          calibratedGrade,
+        };
+      });
+
+      const archByCode: Record<string, { arch: ArchetypeStrength; rank: number; calibratedGrade: GradeTier }> = {};
+      rankedArchetypes.forEach((ra) => {
+        archByCode[ra.arch.code] = ra;
+      });
+
+      // Also populate any remaining non-developed archetypes if needed
+      synth.archetypeRankings.forEach((a) => {
+        if (!archByCode[a.code] && a.powerScore > 0) {
+          const z = archStd > 0.005 ? (a.powerScore - archMean) / archStd : 0;
+          const calibratedScore = 3.22 + z * 0.22;
+          archByCode[a.code] = {
+            arch: a,
+            rank: rankedArchetypes.length + 1,
+            calibratedGrade: aggregateScoreToGradeTier(calibratedScore),
+          };
+        }
+      });
+
+      const bombCount = synth.colorRankings.reduce((sum, c) => sum + c.bombs.length, 0);
+
+      result.push({
+        creator,
+        meta: PRO_CREATORS[creator],
+        ratedCount,
+        bombCount,
+        rankedColors,
+        colorByCode,
+        rankedArchetypes,
+        archByCode,
+      });
+    });
+
+    return result;
+  }, [cards, setCode, setName, seventeenLandsData, proRatingsTick]);
+
+  const visibleCreatorReports = useMemo(
+    () =>
+      creatorReports.filter((cr) =>
+        cr.creator === 'LSV' ? effectiveShowLsv : cr.creator === 'LLU' ? effectiveShowLlu : effectiveShowDs
+      ),
+    [creatorReports, effectiveShowLsv, effectiveShowLlu, effectiveShowDs]
   );
 
   const monoColors = report.colorRankings.filter((c) => c.color !== 'C');
@@ -433,19 +674,26 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* 1. Top Set Progress & Source Banner */}
       <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-violet-500/35 shadow-md space-y-4 transition-colors">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/80 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-500/50 flex items-center gap-1.5">
                 <Target className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-300" />
-                👤 YOUR PERSONAL EVALUATION FORECAST
+                👤 DRAFT META FORECAST & CREATOR RANKINGS
               </span>
+
+              {!isBlindGrading && creatorReports.length > 0 && (
+                <span className="text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-500/15 border border-amber-400/40 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5 text-amber-500" />
+                  Creators Ranked: {creatorReports.map((c) => c.meta.shortName).join(' • ')}
+                </span>
+              )}
 
               {report.has17LandsData ? (
                 isBlindGrading ? (
                   <span className="text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
                     <EyeOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    Grading Mode Active (17Lands Hidden)
+                    Grading Mode Active (Benchmarks Hidden)
                   </span>
                 ) : (
                   <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-0.5 rounded-md flex items-center gap-1">
@@ -490,13 +738,87 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 ? `${userPerspectiveName}'s Draft Meta Forecast: ${report.setName}`
                 : report.isFullyGraded
                 ? `Your Complete Draft Meta Forecast: ${report.setName}`
-                : `Your Personal Draft Meta Forecast & Archetype Synthesis`}
+                : `Draft Meta Forecast: Colors & Archetype Power Rankings`}
             </h2>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-              <strong className="text-violet-700 dark:text-cyan-300 font-semibold">Note:</strong> This meta analysis is synthesized from <strong className="text-slate-900 dark:text-white">{userPerspectiveName ? `${userPerspectiveName}'s personal card grades and ratings` : 'your personal card grades and ratings'}</strong> {!isBlindGrading && report.has17LandsData ? 'compared with 17Lands draft win rates' : 'into monocolor depth and archetype power rankings'}.
+              <strong className="text-violet-700 dark:text-cyan-300 font-semibold">Note:</strong> Synthesizes <strong className="text-slate-900 dark:text-white">{userPerspectiveName ? `${userPerspectiveName}'s personal card grades` : 'your personal card grades'}</strong>, <strong className="text-amber-600 dark:text-amber-300">Pro Creator evaluations (LSV, Limited Level-Ups, Draftsim)</strong>, and <strong className="text-emerald-600 dark:text-emerald-400">17Lands win rates</strong> into monocolor depth and archetype power rankings.
             </p>
           </div>
+
+          {/* Benchmark Source Toggles (Me, LSV, LLU, DS, 17Lands) */}
+          {!isBlindGrading && (
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 self-start lg:self-center shrink-0 flex-wrap">
+              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5">
+                Benchmarks:
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleMeBtn}
+                className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  effectiveShowMe
+                    ? 'bg-violet-600 text-white shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Toggle Personal Forecast (Me)"
+              >
+                {effectiveShowMe && <Check className="w-3 h-3 text-white" />}
+                <span>Me</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleLsvBtn}
+                className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  effectiveShowLsv
+                    ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-400/50 shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Toggle LSV (Luis Scott-Vargas / Limited Resources) Color & Archetype Rankings"
+              >
+                {effectiveShowLsv && <Check className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
+                <span>LSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleLluBtn}
+                className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  effectiveShowLlu
+                    ? 'bg-pink-500/15 text-pink-800 dark:text-pink-300 border border-pink-400/50 shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Toggle Limited Level-Ups (Alex Nikolic) Color & Archetype Rankings"
+              >
+                {effectiveShowLlu && <Check className="w-3 h-3 text-pink-600 dark:text-pink-400" />}
+                <span>LLU</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleDsBtn}
+                className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  effectiveShowDs
+                    ? 'bg-sky-500/15 text-sky-800 dark:text-sky-300 border border-sky-400/50 shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Toggle Draftsim Color & Archetype Rankings"
+              >
+                {effectiveShowDs && <Check className="w-3 h-3 text-sky-600 dark:text-sky-400" />}
+                <span>DS</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleToggle17LBtn}
+                className={`h-7 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  effectiveShow17L
+                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-400/50 shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Toggle 17Lands Color & Archetype Win Rates"
+              >
+                {effectiveShow17L && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+                <span>17Lands</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -593,7 +915,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           <div className="flex items-center justify-between">
             <span
               className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1"
-              title={report.bestColor ? `Average Color Score Formula:\nTotal Rating Points (${(report.bestColor.averageScore * report.bestColor.ratedCards).toFixed(1)}) ÷ ${report.bestColor.ratedCards} rated cards = ${report.bestColor.averageScore.toFixed(2)} / 5.0 (Score to Grade: A+=5.0, A=4.7, B=3.7, C=2.7, D=1.5, F=0.5)` : undefined}
+              title={report.bestColor ? `Average Color Grade: Calculated across ${report.bestColor.ratedCards} rated cards in ${report.bestColor.name}` : undefined}
             >
               <Crown className="w-3.5 h-3.5 text-amber-500" />
               <span>Your Top Color</span>
@@ -617,24 +939,47 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Score: {report.bestColor && report.bestColor.ratedCards > 0 ? `${report.bestColor.averageScore.toFixed(2)} / 5.0` : '—'}
+            {report.bestColor && report.bestColor.ratedCards > 0 ? `${report.bestColor.ratedCards} cards evaluated` : '—'}
           </p>
 
-          {/* 17Lands Comparison Row */}
+          {/* Creator & 17Lands Comparison Rows */}
           {!isBlindGrading && (
-            <div
-              className="pt-2 border-t border-slate-200 dark:border-slate-800/80 text-[11px] font-mono flex items-center justify-between"
-              title={report.has17LandsData && report.seventeenLandsBestColor?.seventeenLandsAvgWinRate !== undefined ? "17Lands Premier Draft Game In Hand Win Rate (GIH WR) for this color" : "17Lands data pending release for this set"}
-            >
-              <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands #1 Color:</span>
-              {report.has17LandsData && report.seventeenLandsBestColor?.seventeenLandsAvgWinRate !== undefined ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                  {report.seventeenLandsBestColor.name} ({((report.seventeenLandsBestColor.seventeenLandsAvgWinRate) * 100).toFixed(1)}%)
-                </span>
-              ) : (
-                <span className="text-slate-400 dark:text-slate-500 font-bold">
-                  TBD
-                </span>
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px] font-mono">
+              {visibleCreatorReports.map((cr) => {
+                const topCol = cr.rankedColors[0];
+                if (!topCol) return null;
+                return (
+                  <div key={cr.creator} className="flex items-center justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 text-[10px]">{cr.meta.shortName} #1 Color:</span>
+                    <span className={`font-bold ${
+                      cr.creator === 'LSV'
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : cr.creator === 'LLU'
+                        ? 'text-pink-600 dark:text-pink-400'
+                        : 'text-sky-600 dark:text-sky-400'
+                    }`}>
+                      {topCol.color.name} ({topCol.calibratedGrade})
+                    </span>
+                  </div>
+                );
+              })}
+
+              {effectiveShow17L && (
+                <div
+                  className="flex items-center justify-between"
+                  title={report.has17LandsData && report.seventeenLandsBestColor?.seventeenLandsAvgWinRate !== undefined ? "17Lands Premier Draft Game In Hand Win Rate (GIH WR) for this color" : "17Lands data pending release for this set"}
+                >
+                  <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands #1 Color:</span>
+                  {report.has17LandsData && report.seventeenLandsBestColor?.seventeenLandsAvgWinRate !== undefined ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                      {report.seventeenLandsBestColor.name} ({((report.seventeenLandsBestColor.seventeenLandsAvgWinRate) * 100).toFixed(1)}%)
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500 font-bold">
+                      TBD
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -647,7 +992,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           <div className="flex items-center justify-between">
             <span
               className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1"
-              title={report.bestArchetype ? `Archetype Power Score Formula:\n30% Gold Signpost Avg (${report.bestArchetype.signpostAvgScore.toFixed(2)}) + 35% ${report.bestArchetype.color1Name} Depth (${report.bestArchetype.color1AvgScore.toFixed(2)}) + 35% ${report.bestArchetype.color2Name} Depth (${report.bestArchetype.color2AvgScore.toFixed(2)}) = ${report.bestArchetype.powerScore.toFixed(2)} / 5.0` : undefined}
+              title={report.bestArchetype ? `Archetype Power: 30% Gold Signpost Depth + 35% ${report.bestArchetype.color1Name} Depth + 35% ${report.bestArchetype.color2Name} Depth` : undefined}
             >
               <Flame className="w-3.5 h-3.5 text-orange-500" />
               <span>Your #1 Archetype</span>
@@ -682,21 +1027,44 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               : 'Awaiting evaluations'}
           </p>
 
-          {/* 17Lands Comparison Row */}
+          {/* Creator & 17Lands Comparison Rows */}
           {!isBlindGrading && (
-            <div
-              className="pt-2 border-t border-slate-200 dark:border-slate-800/80 text-[11px] font-mono flex items-center justify-between"
-              title={report.has17LandsData && report.seventeenLandsBestArchetype?.seventeenLandsWinRate !== undefined ? "17Lands win rate for this 2-color archetype in Premier Draft" : "17Lands data pending release for this set"}
-            >
-              <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands #1 Pair:</span>
-              {report.has17LandsData && report.seventeenLandsBestArchetype?.seventeenLandsWinRate !== undefined ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[140px]">
-                  {report.seventeenLandsBestArchetype.name} ({((report.seventeenLandsBestArchetype.seventeenLandsWinRate) * 100).toFixed(1)}%)
-                </span>
-              ) : (
-                <span className="text-slate-400 dark:text-slate-500 font-bold">
-                  TBD
-                </span>
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px] font-mono">
+              {visibleCreatorReports.map((cr) => {
+                const topArch = cr.rankedArchetypes[0];
+                if (!topArch) return null;
+                return (
+                  <div key={cr.creator} className="flex items-center justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 text-[10px]">{cr.meta.shortName} #1 Pair:</span>
+                    <span className={`font-bold truncate max-w-[150px] ${
+                      cr.creator === 'LSV'
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : cr.creator === 'LLU'
+                        ? 'text-pink-600 dark:text-pink-400'
+                        : 'text-sky-600 dark:text-sky-400'
+                    }`} title={`${topArch.arch.name} (${topArch.arch.code}) — Grade ${topArch.calibratedGrade}`}>
+                      {topArch.arch.code} {topArch.arch.guildName || topArch.arch.name} ({topArch.calibratedGrade})
+                    </span>
+                  </div>
+                );
+              })}
+
+              {effectiveShow17L && (
+                <div
+                  className="flex items-center justify-between"
+                  title={report.has17LandsData && report.seventeenLandsBestArchetype?.seventeenLandsWinRate !== undefined ? "17Lands win rate for this 2-color archetype in Premier Draft" : "17Lands data pending release for this set"}
+                >
+                  <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands #1 Pair:</span>
+                  {report.has17LandsData && report.seventeenLandsBestArchetype?.seventeenLandsWinRate !== undefined ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[140px]">
+                      {report.seventeenLandsBestArchetype.name} ({((report.seventeenLandsBestArchetype.seventeenLandsWinRate) * 100).toFixed(1)}%)
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500 font-bold">
+                      TBD
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -709,7 +1077,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           <div className="flex items-center justify-between">
             <span
               className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1"
-              title="Number of cards in this set that you evaluated with a Grade of A- (score 4.3) or higher"
+              title="Number of cards in this set that you evaluated with a Grade of A- or higher"
             >
               <Award className="w-3.5 h-3.5 text-violet-600 dark:text-cyan-400" />
               <span>Your Graded Bombs</span>
@@ -726,17 +1094,36 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Cards you rated A- or higher (Score ≥ 3.7)
+            Cards you rated A- or higher
           </p>
 
-          {/* 17Lands Comparison Row */}
+          {/* Creator & 17Lands Comparison Rows */}
           {!isBlindGrading && (
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 text-[11px] font-mono flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands Benchmark:</span>
-              {report.has17LandsData ? (
-                <span className="text-violet-700 dark:text-cyan-300 font-bold">17Lands GIH WR</span>
-              ) : (
-                <span className="text-slate-400 dark:text-slate-500 font-bold">TBD</span>
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+              {visibleCreatorReports.map((cr) => (
+                <div key={cr.creator} className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 text-[10px]">{cr.meta.shortName} Bombs (A-↑):</span>
+                  <span className={`font-bold ${
+                    cr.creator === 'LSV'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : cr.creator === 'LLU'
+                      ? 'text-pink-600 dark:text-pink-400'
+                      : 'text-sky-600 dark:text-sky-400'
+                  }`}>
+                    {cr.bombCount} Bombs
+                  </span>
+                </div>
+              ))}
+
+              {effectiveShow17L && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands Benchmark:</span>
+                  {report.has17LandsData ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">17Lands GIH WR</span>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500 font-bold">TBD</span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -749,7 +1136,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           <div className="flex items-center justify-between">
             <span
               className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1"
-              title={report.worstColor ? `Average Color Score Formula:\nTotal Rating Points (${(report.worstColor.averageScore * report.worstColor.ratedCards).toFixed(1)}) ÷ ${report.worstColor.ratedCards} rated cards = ${report.worstColor.averageScore.toFixed(2)} / 5.0` : undefined}
+              title={report.worstColor ? `Average Color Grade: Calculated across ${report.worstColor.ratedCards} rated cards in ${report.worstColor.name}` : undefined}
             >
               <Shield className="w-3.5 h-3.5 text-rose-500" />
               <span>Your Weakest Color</span>
@@ -771,24 +1158,47 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Score: {report.worstColor && report.worstColor.ratedCards > 0 ? `${report.worstColor.averageScore.toFixed(2)} / 5.0` : '—'}
+            {report.worstColor && report.worstColor.ratedCards > 0 ? `${report.worstColor.ratedCards} cards evaluated` : '—'}
           </p>
 
-          {/* 17Lands Comparison Row */}
+          {/* Creator & 17Lands Comparison Rows */}
           {!isBlindGrading && (
-            <div
-              className="pt-2 border-t border-slate-200 dark:border-slate-800/80 text-[11px] font-mono flex items-center justify-between"
-              title={report.has17LandsData && report.seventeenLandsWorstColor?.seventeenLandsAvgWinRate !== undefined ? "17Lands lowest average win rate color in Premier Draft" : "17Lands data pending release for this set"}
-            >
-              <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands Lowest:</span>
-              {report.has17LandsData && report.seventeenLandsWorstColor?.seventeenLandsAvgWinRate !== undefined ? (
-                <span className="text-rose-600 dark:text-rose-400 font-bold">
-                  {report.seventeenLandsWorstColor.name} ({((report.seventeenLandsWorstColor.seventeenLandsAvgWinRate) * 100).toFixed(1)}%)
-                </span>
-              ) : (
-                <span className="text-slate-400 dark:text-slate-500 font-bold">
-                  TBD
-                </span>
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px] font-mono">
+              {visibleCreatorReports.map((cr) => {
+                const worstCol = cr.rankedColors[cr.rankedColors.length - 1];
+                if (!worstCol) return null;
+                return (
+                  <div key={cr.creator} className="flex items-center justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 text-[10px]">{cr.meta.shortName} Lowest:</span>
+                    <span className={`font-bold ${
+                      cr.creator === 'LSV'
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : cr.creator === 'LLU'
+                        ? 'text-pink-600 dark:text-pink-400'
+                        : 'text-sky-600 dark:text-sky-400'
+                    }`}>
+                      {worstCol.color.name} ({worstCol.calibratedGrade})
+                    </span>
+                  </div>
+                );
+              })}
+
+              {effectiveShow17L && (
+                <div
+                  className="flex items-center justify-between"
+                  title={report.has17LandsData && report.seventeenLandsWorstColor?.seventeenLandsAvgWinRate !== undefined ? "17Lands lowest average win rate color in Premier Draft" : "17Lands data pending release for this set"}
+                >
+                  <span className="text-slate-500 dark:text-slate-400 text-[10px]">17Lands Lowest:</span>
+                  {report.has17LandsData && report.seventeenLandsWorstColor?.seventeenLandsAvgWinRate !== undefined ? (
+                    <span className="text-rose-600 dark:text-rose-400 font-bold">
+                      {report.seventeenLandsWorstColor.name} ({((report.seventeenLandsWorstColor.seventeenLandsAvgWinRate) * 100).toFixed(1)}%)
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500 font-bold">
+                      TBD
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -847,13 +1257,10 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 {/* Card Content or Empty State */}
                 {hasEvaluations && topItem ? (
                   <div className="space-y-2.5 flex-1 flex flex-col justify-between">
-                    {/* Grade & Score Header Bar above Card */}
-                    <div className="flex items-center justify-between px-0.5 pt-0.5">
+                    {/* Grade Header Bar above Card */}
+                    <div className="flex items-center px-0.5 pt-0.5">
                       <span className="px-2.5 py-1 rounded-lg text-xs font-black font-mono bg-violet-600 text-white border border-violet-400 shadow-xs tracking-wide">
                         Grade {topItem.eval.userGrade}
-                      </span>
-                      <span className="text-xs font-bold font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-400/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                        {topItem.eval.userScore.toFixed(2)} / 5.0
                       </span>
                     </div>
 
@@ -939,34 +1346,65 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                         </div>
                       )}
 
-                      {/* 17Lands Benchmark Comparison */}
+                      {/* Creator & 17Lands Benchmark Comparison */}
                       {!isBlindGrading && (
                         <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px] font-mono">
-                          <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400">17L Win Rate:</span>
-                            {topItem.landRating?.win_rate !== undefined ? (
-                              <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                {(topItem.landRating.win_rate * 100).toFixed(1)}% ({winRateToGradeTier(topItem.landRating.win_rate)})
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 dark:text-slate-500">TBD</span>
-                            )}
-                          </div>
-
-                          {sec.seventeenLandsTopCard && (
-                            <div
-                              className="flex items-center justify-between text-slate-600 dark:text-slate-300"
-                              title={`17Lands empirical #1 ${sec.label} by GIH win rate`}
-                            >
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400">17L #1 {sec.shortLabel}:</span>
-                              <button
-                                type="button"
-                                onClick={() => onSelectCard?.(sec.seventeenLandsTopCard!.card)}
-                                className="font-bold text-violet-600 dark:text-cyan-300 hover:underline truncate max-w-[130px] text-right cursor-pointer"
+                          {visibleCreatorReports.map((cr) => {
+                            const topCr = sec.creatorTopCards?.[cr.creator];
+                            if (!topCr) return null;
+                            return (
+                              <div
+                                key={cr.creator}
+                                className="flex items-center justify-between text-slate-600 dark:text-slate-300"
+                                title={`${cr.meta.name} #1 ${sec.label}`}
                               >
-                                {sec.seventeenLandsTopCard.card.name} ({(sec.seventeenLandsTopCard.winRate * 100).toFixed(1)}%)
-                              </button>
-                            </div>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400">{cr.meta.shortName} #1 {sec.shortLabel}:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectCard?.(topCr.card)}
+                                  className={`font-bold hover:underline truncate max-w-[130px] text-right cursor-pointer ${
+                                    cr.creator === 'LSV'
+                                      ? 'text-amber-600 dark:text-amber-400'
+                                      : cr.creator === 'LLU'
+                                      ? 'text-pink-600 dark:text-pink-400'
+                                      : 'text-sky-600 dark:text-sky-400'
+                                  }`}
+                                >
+                                  {topCr.card.name} ({topCr.grade})
+                                </button>
+                              </div>
+                            );
+                          })}
+
+                          {effectiveShow17L && (
+                            <>
+                              <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400">17L Win Rate:</span>
+                                {topItem.landRating?.win_rate !== undefined ? (
+                                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                    {(topItem.landRating.win_rate * 100).toFixed(1)}% ({winRateToGradeTier(topItem.landRating.win_rate)})
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 dark:text-slate-500">TBD</span>
+                                )}
+                              </div>
+
+                              {sec.seventeenLandsTopCard && (
+                                <div
+                                  className="flex items-center justify-between text-slate-600 dark:text-slate-300"
+                                  title={`17Lands empirical #1 ${sec.label} by GIH win rate`}
+                                >
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400">17L #1 {sec.shortLabel}:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => onSelectCard?.(sec.seventeenLandsTopCard!.card)}
+                                    className="font-bold text-violet-600 dark:text-cyan-300 hover:underline truncate max-w-[130px] text-right cursor-pointer"
+                                  >
+                                    {sec.seventeenLandsTopCard.card.name} ({(sec.seventeenLandsTopCard.winRate * 100).toFixed(1)}%)
+                                  </button>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
@@ -1025,19 +1463,68 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                     </div>
                   </div>
                 ) : (
-                  /* Empty State */
-                  <div className="p-6 rounded-2xl bg-slate-50/50 dark:bg-[#17181c]/50 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2 flex flex-col items-center justify-center min-h-[260px]">
-                    <div className={`p-2 rounded-xl ${sec.themeColor.chip} shrink-0 flex items-center justify-center`}>
-                      <SetSymbol setCode={setCode} rarity={sec.key} size="lg" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 font-heading">
-                        No {sec.label}s Rated
+                  /* Empty State (with Creator & 17Lands #1 Picks shown below) */
+                  <div className="space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="p-5 rounded-2xl bg-slate-50/50 dark:bg-[#17181c]/50 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2 flex flex-col items-center justify-center flex-1 min-h-[160px]">
+                      <div className={`p-2 rounded-xl ${sec.themeColor.chip} shrink-0 flex items-center justify-center`}>
+                        <SetSymbol setCode={setCode} rarity={sec.key} size="lg" />
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] leading-relaxed">
-                        Grade {sec.label.toLowerCase()} cards in the Grade tab to crown your #1 pick.
-                      </p>
+                      <div className="space-y-1">
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200 font-heading">
+                          No {sec.label}s Rated by You
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] leading-relaxed">
+                          Grade {sec.label.toLowerCase()} cards in the Grade tab to crown your #1 pick.
+                        </p>
+                      </div>
                     </div>
+
+                    {!isBlindGrading && (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-1 text-[11px] font-mono">
+                        {visibleCreatorReports.map((cr) => {
+                          const topCr = sec.creatorTopCards?.[cr.creator];
+                          if (!topCr) return null;
+                          return (
+                            <div
+                              key={cr.creator}
+                              className="flex items-center justify-between text-slate-600 dark:text-slate-300"
+                              title={`${cr.meta.name} #1 ${sec.label}`}
+                            >
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400">{cr.meta.shortName} #1 {sec.shortLabel}:</span>
+                              <button
+                                type="button"
+                                onClick={() => onSelectCard?.(topCr.card)}
+                                className={`font-bold hover:underline truncate max-w-[130px] text-right cursor-pointer ${
+                                  cr.creator === 'LSV'
+                                    ? 'text-amber-600 dark:text-amber-400'
+                                    : cr.creator === 'LLU'
+                                    ? 'text-pink-600 dark:text-pink-400'
+                                    : 'text-sky-600 dark:text-sky-400'
+                                }`}
+                              >
+                                {topCr.card.name} ({topCr.grade})
+                              </button>
+                            </div>
+                          );
+                        })}
+
+                        {effectiveShow17L && sec.seventeenLandsTopCard && (
+                          <div
+                            className="flex items-center justify-between text-slate-600 dark:text-slate-300"
+                            title={`17Lands empirical #1 ${sec.label} by GIH win rate`}
+                          >
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">17L #1 {sec.shortLabel}:</span>
+                            <button
+                              type="button"
+                              onClick={() => onSelectCard?.(sec.seventeenLandsTopCard!.card)}
+                              className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline truncate max-w-[130px] text-right cursor-pointer"
+                            >
+                              {sec.seventeenLandsTopCard.card.name} ({(sec.seventeenLandsTopCard.winRate * 100).toFixed(1)}%)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1046,15 +1533,15 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
         </div>
       </div>
 
-      {/* 5. Monocolor Power Hierarchy (Your Predictions vs 17Lands Data) */}
+      {/* 5. Monocolor Power Hierarchy (Your Predictions + Pro Creators + 17Lands Data) */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading flex items-center gap-2">
             <Layers className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
             <span>Monocolor Power Rankings & Depth</span>
           </h3>
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            {report.has17LandsData && !isBlindGrading ? 'Your predicted rank vs 17Lands actual Arena rank' : 'Ranked by your average card evaluations'}
+            {!isBlindGrading ? 'Your read vs Pro Creators (LSV, LLU, DS) & 17Lands Arena win rates' : 'Ranked by your average card evaluations'}
           </span>
         </div>
 
@@ -1071,7 +1558,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                 <span>Colorless ({colorless.ratedCards} of {colorless.totalCards} rated):</span>
                 {colorless.ratedCards > 0 ? (
                   <span className="font-bold text-slate-700 dark:text-slate-200">
-                    Grade {colorless.letterGrade} ({colorless.averageScore.toFixed(2)})
+                    Grade {colorless.letterGrade}
                   </span>
                 ) : (
                   <span className="font-medium text-slate-400 dark:text-slate-500 italic">
@@ -1083,61 +1570,130 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
           </div>
 
           {/* Primary Row: User Read */}
-          <div className="space-y-1.5">
-            <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <span>Your Evaluation Read</span>
-              <span className="text-violet-600 dark:text-cyan-400 font-bold">• Best to Worst</span>
-            </div>
+          {effectiveShowMe && (
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <span>Your Evaluation Read</span>
+                <span className="text-violet-600 dark:text-cyan-400 font-bold">• Best to Worst</span>
+              </div>
 
-            <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-3.5 overflow-x-auto pb-2 pt-1">
-              {monoColors.map((col, idx) => {
-                const isLast = idx === monoColors.length - 1;
-                const nextCol = monoColors[idx + 1];
-                const isTied = Boolean(
-                  nextCol && (
-                    (col.ratedCards === 0 && nextCol.ratedCards === 0) ||
-                    (col.ratedCards > 0 && nextCol.ratedCards > 0 && Math.abs(col.averageScore - nextCol.averageScore) < 0.01)
-                  )
-                );
-                return (
-                  <React.Fragment key={col.color}>
-                    {/* Color Column */}
-                    <div className="flex flex-col items-center gap-1.5 min-w-[64px] sm:min-w-[84px] p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors">
-                      {/* Mana Pip Art */}
-                      <div className="relative group">
-                        <ManaSymbol symbol={col.symbol} size="xl" className="w-10 h-10 sm:w-11 sm:h-11 drop-shadow-md hover:scale-110 transition-transform" />
+              <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-3.5 overflow-x-auto pb-2 pt-1">
+                {monoColors.map((col, idx) => {
+                  const isLast = idx === monoColors.length - 1;
+                  const nextCol = monoColors[idx + 1];
+                  const isTied = Boolean(
+                    nextCol && (
+                      (col.ratedCards === 0 && nextCol.ratedCards === 0) ||
+                      (col.ratedCards > 0 && nextCol.ratedCards > 0 && Math.abs(col.averageScore - nextCol.averageScore) < 0.01)
+                    )
+                  );
+                  return (
+                    <React.Fragment key={col.color}>
+                      {/* Color Column */}
+                      <div className="flex flex-col items-center gap-1.5 min-w-[64px] sm:min-w-[84px] p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-violet-400 dark:hover:border-cyan-400/50 transition-colors">
+                        {/* Mana Pip Art */}
+                        <div className="relative group">
+                          <ManaSymbol symbol={col.symbol} size="xl" className="w-10 h-10 sm:w-11 sm:h-11 drop-shadow-md hover:scale-110 transition-transform" />
+                        </div>
+
+                        {/* Color Name */}
+                        <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 text-center">
+                          {col.name}
+                        </span>
+
+                        {/* Grade Badge */}
+                        <span className={`text-xs sm:text-sm font-mono font-black px-2 py-0.5 rounded-lg border shadow-xs ${col.ratedCards > 0 ? col.badgeClass : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'}`}>
+                          {col.ratedCards > 0 ? col.letterGrade : '—'}
+                        </span>
+
+                        {/* Rank */}
+                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                          {col.ratedCards > 0 ? `Rank #${idx + 1}` : 'Unrated'}
+                        </span>
                       </div>
 
-                      {/* Color Name */}
-                      <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 text-center">
-                        {col.name}
-                      </span>
-
-                      {/* Grade Badge */}
-                      <span className={`text-xs sm:text-sm font-mono font-black px-2 py-0.5 rounded-lg border shadow-xs ${col.ratedCards > 0 ? col.badgeClass : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'}`}>
-                        {col.ratedCards > 0 ? col.letterGrade : '—'}
-                      </span>
-
-                      {/* Score & Rank */}
-                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                        {col.ratedCards > 0 ? `#${idx + 1} • ${col.averageScore.toFixed(2)}` : 'Unrated'}
-                      </span>
-                    </div>
-
-                    {/* Separator Chevron / > or = */}
-                    {!isLast && (
-                      <div className="text-lg sm:text-2xl font-black text-slate-400 dark:text-slate-600 px-0.5 select-none shrink-0 self-center">
-                        {isTied ? '=' : '>'}
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+                      {/* Separator Chevron / > or = */}
+                      {!isLast && (
+                        <div className="text-lg sm:text-2xl font-black text-slate-400 dark:text-slate-600 px-0.5 select-none shrink-0 self-center">
+                          {isTied ? '=' : '>'}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Creator Color Ranking Rows (LSV, LLU, DS) */}
+          {!isBlindGrading && visibleCreatorReports.map((cr) => {
+            const isLsv = cr.creator === 'LSV';
+            const isLlu = cr.creator === 'LLU';
+            const cardBg = isLsv
+              ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30'
+              : isLlu
+              ? 'bg-pink-50/50 dark:bg-pink-950/20 border-pink-200 dark:border-pink-500/30'
+              : 'bg-sky-50/50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-500/30';
+            const badgeTone = isLsv
+              ? 'text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40'
+              : isLlu
+              ? 'text-pink-800 dark:text-pink-300 bg-pink-100 dark:bg-pink-500/20 border-pink-300 dark:border-pink-500/40'
+              : 'text-sky-800 dark:text-sky-300 bg-sky-100 dark:bg-sky-500/20 border-sky-300 dark:border-sky-500/40';
+            const accentText = isLsv
+              ? 'text-amber-600 dark:text-amber-400'
+              : isLlu
+              ? 'text-pink-600 dark:text-pink-400'
+              : 'text-sky-600 dark:text-sky-400';
+
+            return (
+              <div key={cr.creator} className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
+                <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
+                  <span className={`font-black ${accentText}`}>{cr.meta.shortName}</span>
+                  <span>({cr.meta.name} — {cr.meta.sourceLabel})</span>
+                  <span className={`${accentText} font-bold`}>• Color Power Hierarchy ({cr.ratedCount} cards rated)</span>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-3.5 overflow-x-auto pb-1 pt-1">
+                  {cr.rankedColors.map((rc, idx) => {
+                    const isLast = idx === cr.rankedColors.length - 1;
+                    const nextRc = cr.rankedColors[idx + 1];
+                    const isTied = Boolean(nextRc && nextRc.rank === rc.rank);
+
+                    return (
+                      <React.Fragment key={rc.color.color}>
+                        <div className={`flex flex-col items-center gap-1 min-w-[64px] sm:min-w-[84px] p-2.5 rounded-xl border shadow-xs ${cardBg}`}>
+                          <div className="relative">
+                            <ManaSymbol symbol={rc.color.symbol} size="lg" className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow-sm" />
+                          </div>
+
+                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            {rc.color.name}
+                          </span>
+
+                          <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${badgeTone}`}>
+                            {rc.calibratedGrade}
+                          </span>
+
+                          <span className={`text-[10px] font-mono font-semibold ${accentText}`}>
+                            Rank #{rc.rank}
+                          </span>
+                        </div>
+
+                        {!isLast && (
+                          <div className={`text-base sm:text-xl font-black px-0.5 select-none shrink-0 self-center ${accentText} opacity-60`}>
+                            {isTied ? '=' : '>'}
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
 
           {/* Secondary Row: 17Lands Arena Win Rates (if available) */}
-          {!isBlindGrading && (
+          {!isBlindGrading && effectiveShow17L && (
             report.has17LandsData && sorted17Colors.length > 0 ? (
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
                 <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -1213,14 +1769,13 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               <div
                 key={col.color}
                 className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 space-y-3 shadow-xs hover:shadow-md transition-all overflow-hidden relative min-w-0 w-full"
-                title={`Average Grade Score Calculation:
-Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ ${col.ratedCards} rated cards in ${col.name} = ${col.averageScore.toFixed(2)} / 5.0`}
+                title={`Average Grade Calculation: Evaluated across ${col.ratedCards} cards in ${col.name}`}
               >
                 {/* Monocolor Basic Land Top Pinstripe */}
                 <div className="h-1.5 w-[calc(100%+2rem)] -mx-4 -mt-4 mb-3.5 shrink-0" style={{ backgroundColor: mTheme.colorHex }} />
 
                 {/* Header with Pip & Ranking */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <div className="flex items-center gap-1.5">
                       <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-[#17181c] border border-slate-300 dark:border-slate-800 text-xs font-bold font-mono text-violet-700 dark:text-cyan-300 flex items-center justify-center">
@@ -1252,13 +1807,48 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                       </span>
                     </div>
                     <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                      {col.ratedCards > 0 ? `Score: ${col.averageScore.toFixed(2)}` : 'No cards rated'}
+                      {col.ratedCards > 0 ? `${col.ratedCards} cards evaluated` : 'No cards rated'}
                     </div>
                   </div>
                 </div>
 
+                {/* Pro Creator Color Grades & Ranks Strip */}
+                {!isBlindGrading && col.color !== 'C' && visibleCreatorReports.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    {visibleCreatorReports.map((cr) => {
+                      const cData = cr.colorByCode[col.color];
+                      if (!cData) return null;
+                      return (
+                        <div
+                          key={cr.creator}
+                          className={`px-2 py-0.5 rounded-md text-white shadow-2xs flex items-center gap-1 font-mono text-[11px] shrink-0 whitespace-nowrap ${
+                            cr.creator === 'LSV'
+                              ? 'bg-amber-950/95 border border-amber-400/80'
+                              : cr.creator === 'LLU'
+                              ? 'bg-pink-950/95 border border-pink-400/80'
+                              : 'bg-sky-950/95 border border-sky-400/80'
+                          }`}
+                          title={`${cr.meta.name} (${cr.meta.sourceLabel}): ${col.name} Grade ${cData.calibratedGrade} (Rank #${cData.rank} of 5)`}
+                        >
+                          <span className={`text-[8px] uppercase tracking-wider font-extrabold ${
+                            cr.creator === 'LSV'
+                              ? 'text-amber-300'
+                              : cr.creator === 'LLU'
+                              ? 'text-pink-300'
+                              : 'text-sky-300'
+                          }`}>
+                            {cr.meta.shortName}
+                          </span>
+                          <span className="font-black">{cData.calibratedGrade}</span>
+                          <span className="text-[9px] opacity-80 font-bold">#{cData.rank}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* 17Lands Comparison Strip */}
-                {!isBlindGrading && col.color !== 'C' && (
+                {!isBlindGrading && effectiveShow17L && col.color !== 'C' && (
                   report.has17LandsData && col.seventeenLandsAvgWinRate !== undefined ? (
                     <div
                       className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono"
@@ -1362,6 +1952,14 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                       <span className="text-[10px] font-mono uppercase font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
                         {readOnly ? <Lock className="w-3 h-3 text-amber-500 shrink-0" /> : <Star className="w-3 h-3 text-amber-500 shrink-0" />}
                         <span>{readOnly ? 'Direct Grade (Read-Only)' : 'Direct Grade'}</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsGradingScaleModalOpen(true)}
+                          className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 transition-colors cursor-pointer"
+                          title="What does each letter grade mean? (Grading Scale Reminder)"
+                        >
+                          <HelpCircle className="w-3 h-3" />
+                        </button>
                       </span>
                       {col.userEvaluation?.userGrade && (
                         <span className="text-[10px] font-mono font-bold text-violet-700 dark:text-cyan-300">
@@ -1456,7 +2054,7 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   <p className="text-xs text-violet-600 dark:text-cyan-400 font-semibold break-words">{arch.headline || arch.theme}</p>
                 </div>
 
-                {/* Distinctive Grade Badges: 2 Chips (Me & 17Lands), just like card grades */}
+                {/* Distinctive Grade Badges: Me, LSV, LLU, DS, & 17Lands */}
                 <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
                   {arch.userEvaluation?.roleInMetagame && (
                     <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-800 dark:bg-cyan-950/80 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700/50">
@@ -1465,46 +2063,81 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   )}
 
                   {/* 1. Me Chip */}
-                  <div
-                    className="px-1.5 py-0.5 rounded-md bg-violet-950/95 text-white border border-violet-400 shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap"
-                    title={
-                      arch.isOverridden
-                        ? `Your manual override grade: ${arch.letterGrade} (Forecast: ${arch.autoGrade})`
-                        : arch.letterGrade !== 'N/A'
-                        ? `Your forecast grade: ${arch.letterGrade} (Power ${arch.powerScore.toFixed(2)}). Click below to override.`
-                        : `Auto-calculated grade: ${arch.autoGrade}. Rate cards in ${arch.name} to generate a forecast.`
-                    }
-                  >
-                    <span className="text-[8px] uppercase tracking-wider font-extrabold text-violet-300">Me</span>
-                    <span className="text-[11px] font-black">{arch.letterGrade !== 'N/A' ? arch.letterGrade : '—'}</span>
-                  </div>
+                  {effectiveShowMe && (
+                    <div
+                      className="px-1.5 py-0.5 rounded-md bg-violet-950/95 text-white border border-violet-400 shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap"
+                      title={
+                        arch.isOverridden
+                          ? `Your manual override grade: ${arch.letterGrade} (Forecast: ${arch.autoGrade})`
+                          : arch.letterGrade !== 'N/A'
+                          ? `Your forecast grade: ${arch.letterGrade}. Click below to override.`
+                          : `Auto-calculated grade: ${arch.autoGrade}. Rate cards in ${arch.name} to generate a forecast.`
+                      }
+                    >
+                      <span className="text-[8px] uppercase tracking-wider font-extrabold text-violet-300">Me</span>
+                      <span className="text-[11px] font-black">{arch.letterGrade !== 'N/A' ? arch.letterGrade : '—'}</span>
+                    </div>
+                  )}
 
-                  {/* 2. 17Lands Chip */}
-                  <div
-                    className={`px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap ${
-                      report.has17LandsData && arch.seventeenLandsGrade && !isBlindGrading
-                        ? 'bg-emerald-950/95 text-white border border-emerald-400'
-                        : 'bg-slate-900/90 text-slate-400 border border-slate-700/80'
-                    }`}
-                    title={
-                      !report.has17LandsData
-                        ? '17Lands data pending'
-                        : isBlindGrading
-                        ? '17Lands grade hidden in Blind Grading mode'
-                        : arch.seventeenLandsGrade
-                        ? `17Lands: ${arch.seventeenLandsGrade}${arch.seventeenLandsWinRate !== undefined ? ` (${(arch.seventeenLandsWinRate * 100).toFixed(1)}% WR)` : ''}`
-                        : '17Lands data pending'
-                    }
-                  >
-                    <span className={`text-[8px] uppercase tracking-wider font-extrabold ${report.has17LandsData && arch.seventeenLandsGrade && !isBlindGrading ? 'text-emerald-300' : 'text-slate-500'}`}>
-                      17L
-                    </span>
-                    <span className={`text-[11px] font-black ${report.has17LandsData && arch.seventeenLandsGrade && !isBlindGrading ? 'text-emerald-200' : 'text-amber-500/80'}`}>
-                      {!report.has17LandsData || isBlindGrading
-                        ? '—'
-                        : `${arch.seventeenLandsGrade}${arch.seventeenLandsWinRate !== undefined ? ` (${(arch.seventeenLandsWinRate * 100).toFixed(1)}%)` : ''}`}
-                    </span>
-                  </div>
+                  {/* 2. Pro Creator Chips (LSV, LLU, DS) */}
+                  {!isBlindGrading && visibleCreatorReports.map((cr) => {
+                    const aData = cr.archByCode[arch.code];
+                    if (!aData) return null;
+                    return (
+                      <div
+                        key={cr.creator}
+                        className={`px-1.5 py-0.5 rounded-md text-white shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap ${
+                          cr.creator === 'LSV'
+                            ? 'bg-amber-950/95 border border-amber-400/80'
+                            : cr.creator === 'LLU'
+                            ? 'bg-pink-950/95 border border-pink-400/80'
+                            : 'bg-sky-950/95 border border-sky-400/80'
+                        }`}
+                        title={`${cr.meta.name} (${cr.meta.sourceLabel}): ${arch.name} (${arch.code}) Grade ${aData.calibratedGrade} (Rank #${aData.rank})`}
+                      >
+                        <span className={`text-[8px] uppercase tracking-wider font-extrabold ${
+                          cr.creator === 'LSV'
+                            ? 'text-amber-300'
+                            : cr.creator === 'LLU'
+                            ? 'text-pink-300'
+                            : 'text-sky-300'
+                        }`}>
+                          {cr.meta.shortName}
+                        </span>
+                        <span className="text-[11px] font-black">{aData.calibratedGrade}</span>
+                        <span className="text-[9px] opacity-80 font-bold">#{aData.rank}</span>
+                      </div>
+                    );
+                  })}
+
+                  {/* 3. 17Lands Chip */}
+                  {effectiveShow17L && (
+                    <div
+                      className={`px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-1 font-mono shrink-0 whitespace-nowrap ${
+                        report.has17LandsData && arch.seventeenLandsGrade && !isBlindGrading
+                          ? 'bg-emerald-950/95 text-white border border-emerald-400'
+                          : 'bg-slate-900/90 text-slate-400 border border-slate-700/80'
+                      }`}
+                      title={
+                        !report.has17LandsData
+                          ? '17Lands data pending'
+                          : isBlindGrading
+                          ? '17Lands grade hidden in Blind Grading mode'
+                          : arch.seventeenLandsGrade
+                          ? `17Lands: ${arch.seventeenLandsGrade}${arch.seventeenLandsWinRate !== undefined ? ` (${(arch.seventeenLandsWinRate * 100).toFixed(1)}% WR)` : ''}${arch.seventeenLandsRank ? ` • Rank #${arch.seventeenLandsRank}` : ''}`
+                          : '17Lands data pending'
+                      }
+                    >
+                      <span className={`text-[8px] uppercase tracking-wider font-extrabold ${report.has17LandsData && arch.seventeenLandsGrade && !isBlindGrading ? 'text-emerald-300' : 'text-slate-500'}`}>
+                        17L
+                      </span>
+                      <span className={`text-[11px] font-black ${report.has17LandsData && arch.seventeenLandsGrade && !isBlindGrading ? 'text-emerald-200' : 'text-amber-500/80'}`}>
+                        {!report.has17LandsData || isBlindGrading
+                          ? '—'
+                          : `${arch.seventeenLandsGrade}${arch.seventeenLandsRank ? ` #${arch.seventeenLandsRank}` : ''}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1586,28 +2219,28 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
 
               {/* Signpost & Colors Formula Subtext with Tooltips */}
               <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-slate-50/90 dark:bg-[#17181c]/80 border border-slate-200 dark:border-slate-800/60 text-center text-[10px] font-mono">
-                <div className="flex flex-col items-center gap-0.5" title={`Signpost Formula (30% weight in Power Score): Average grade of the ${arch.signposts.length} gold signpost uncommons/rares in this archetype = ${arch.signpostAvgScore.toFixed(2)} / 5.0`}>
+                <div className="flex flex-col items-center gap-0.5" title={`Signpost Formula (30% weight in Power Score): Average grade of the ${arch.signposts.length} gold signpost uncommons/rares in this archetype (${arch.signpostAvgScore > 0 ? scoreToGradeTier(arch.signpostAvgScore) : '—'})`}>
                   <span className="text-slate-500">
                     Signpost Avg (30%)
                   </span>
                   <span className="font-bold text-amber-600 dark:text-amber-300">
-                    {arch.signpostAvgScore > 0 ? arch.signpostAvgScore.toFixed(2) : '—'}
+                    {arch.signpostAvgScore > 0 ? scoreToGradeTier(arch.signpostAvgScore) : '—'}
                   </span>
                 </div>
-                <div className="flex flex-col items-center gap-0.5" title={`${arch.color1Name} Depth Formula (35% weight in Power Score): Average rating across all ${arch.color1Name} monocolor cards = ${arch.color1AvgScore.toFixed(2)} / 5.0`}>
+                <div className="flex flex-col items-center gap-0.5" title={`${arch.color1Name} Depth Formula (35% weight in Power Score): Average rating across all ${arch.color1Name} monocolor cards (${arch.color1AvgScore > 0 ? scoreToGradeTier(arch.color1AvgScore) : '—'})`}>
                   <span className="text-slate-500">
                     {arch.color1Name} (35%)
                   </span>
                   <span className="font-bold text-violet-700 dark:text-cyan-300">
-                    {arch.color1AvgScore > 0 ? arch.color1AvgScore.toFixed(2) : '—'}
+                    {arch.color1AvgScore > 0 ? scoreToGradeTier(arch.color1AvgScore) : '—'}
                   </span>
                 </div>
-                <div className="flex flex-col items-center gap-0.5" title={`${arch.color2Name} Depth Formula (35% weight in Power Score): Average rating across all ${arch.color2Name} monocolor cards = ${arch.color2AvgScore.toFixed(2)} / 5.0`}>
+                <div className="flex flex-col items-center gap-0.5" title={`${arch.color2Name} Depth Formula (35% weight in Power Score): Average rating across all ${arch.color2Name} monocolor cards (${arch.color2AvgScore > 0 ? scoreToGradeTier(arch.color2AvgScore) : '—'})`}>
                   <span className="text-slate-500">
                     {arch.color2Name} (35%)
                   </span>
                   <span className="font-bold text-violet-700 dark:text-cyan-300">
-                    {arch.color2AvgScore > 0 ? arch.color2AvgScore.toFixed(2) : '—'}
+                    {arch.color2AvgScore > 0 ? scoreToGradeTier(arch.color2AvgScore) : '—'}
                   </span>
                 </div>
               </div>
@@ -1682,6 +2315,14 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                       <strong className={`font-bold ml-1 ${arch.letterGrade === 'N/A' ? 'text-slate-400 dark:text-slate-500' : 'text-violet-700 dark:text-cyan-300'}`}>
                         {arch.letterGrade}
                       </strong>
+                      <button
+                        type="button"
+                        onClick={() => setIsGradingScaleModalOpen(true)}
+                        className="p-0.5 rounded text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 transition-colors cursor-pointer"
+                        title="What does each letter grade mean? (Grading Scale Reminder)"
+                      >
+                        <HelpCircle className="w-3 h-3" />
+                      </button>
                     </span>
                     {arch.isOverridden && (
                       <span className="text-[9px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-300 dark:border-amber-500/40 shrink-0">
@@ -1755,6 +2396,12 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
           );
         };
 
+        const sorted17Archetypes = report.has17LandsData
+          ? [...report.developedArchetypes]
+              .filter((a) => a.seventeenLandsWinRate !== undefined)
+              .sort((a, b) => (b.seventeenLandsWinRate || 0) - (a.seventeenLandsWinRate || 0))
+          : [];
+
         return (
           <div className="space-y-6">
             {/* Primary Section: Designed Set Archetypes */}
@@ -1765,12 +2412,156 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
                   <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
                     {report.otherArchetypes.length > 0
                       ? `Designed Set Archetypes (${report.developedArchetypes.length} Color Pairs)`
-                      : `10 Draft Archetypes Forecast`}
+                      : `10 Draft Archetypes Power Rankings & Forecast`}
                   </h3>
                 </div>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {report.has17LandsData && !isBlindGrading ? 'Shaded by color identity • 17Lands win rates shown' : 'Synthesized from signpost gold + 2-color mono depth'}
+                  {!isBlindGrading ? 'Your read vs Pro Creators (LSV, LLU, DS) & 17Lands win rates' : 'Synthesized from signpost gold + 2-color mono depth'}
                 </span>
+              </div>
+
+              {/* Archetype Power Rankings Banner (User Read + Pro Creators + 17Lands) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-violet-500/35 shadow-sm space-y-4">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-violet-700 dark:text-cyan-300 bg-violet-100 dark:bg-violet-950/80 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-700/50">
+                    Archetype Power Rankings
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                    30% Gold Signposts + 35% Color 1 + 35% Color 2
+                  </span>
+                </div>
+
+                {/* 1. User Read Archetypes Row */}
+                {effectiveShowMe && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <span>Your Evaluation Read</span>
+                      <span className="text-violet-600 dark:text-cyan-400 font-bold">• Best to Worst</span>
+                    </div>
+
+                    {ratedArchetypeCount > 0 ? (
+                      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 pt-0.5">
+                        {report.developedArchetypes.map((arch, idx) => (
+                          <div
+                            key={arch.code}
+                            className="flex flex-col items-center gap-1 min-w-[74px] sm:min-w-[82px] p-2 rounded-xl bg-slate-50/80 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800/80 shadow-xs shrink-0"
+                            title={`${arch.name} (${arch.code}) — Grade ${arch.letterGrade} (Rank #${idx + 1})`}
+                          >
+                            <div className="flex items-center gap-0.5">
+                              {arch.colors.map((c) => (
+                                <ManaSymbol key={c} symbol={c} size="sm" />
+                              ))}
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate max-w-[74px]">
+                              {arch.guildName || arch.code}
+                            </span>
+                            <span className="text-xs font-mono font-black px-1.5 py-0.2 rounded bg-violet-600 text-white border border-violet-400">
+                              {arch.letterGrade}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                              #{idx + 1}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#17181c]/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-mono">
+                        Grade at least {report.evaluationsThreshold} cards (or assign direct archetype grades below) to populate your personal archetype rankings.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 2. Pro Creator Archetype Ranking Rows (LSV, LLU, DS) */}
+                {!isBlindGrading && visibleCreatorReports.map((cr) => {
+                  const isLsv = cr.creator === 'LSV';
+                  const isLlu = cr.creator === 'LLU';
+                  const cardBg = isLsv
+                    ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30'
+                    : isLlu
+                    ? 'bg-pink-50/50 dark:bg-pink-950/20 border-pink-200 dark:border-pink-500/30'
+                    : 'bg-sky-50/50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-500/30';
+                  const badgeTone = isLsv
+                    ? 'text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40'
+                    : isLlu
+                    ? 'text-pink-800 dark:text-pink-300 bg-pink-100 dark:bg-pink-500/20 border-pink-300 dark:border-pink-500/40'
+                    : 'text-sky-800 dark:text-sky-300 bg-sky-100 dark:bg-sky-500/20 border-sky-300 dark:border-sky-500/40';
+                  const accentText = isLsv
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : isLlu
+                    ? 'text-pink-600 dark:text-pink-400'
+                    : 'text-sky-600 dark:text-sky-400';
+
+                  return (
+                    <div key={cr.creator} className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
+                      <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
+                        <span className={`font-black ${accentText}`}>{cr.meta.shortName}</span>
+                        <span>({cr.meta.name} — {cr.meta.sourceLabel})</span>
+                        <span className={`${accentText} font-bold`}>• Archetype Power Hierarchy</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 pt-0.5">
+                        {cr.rankedArchetypes.map((ra) => (
+                          <div
+                            key={ra.arch.code}
+                            className={`flex flex-col items-center gap-1 min-w-[74px] sm:min-w-[82px] p-2 rounded-xl border shadow-xs shrink-0 ${cardBg}`}
+                            title={`${cr.meta.name}: #${ra.rank} ${ra.arch.name} (${ra.arch.code}) — Grade ${ra.calibratedGrade}`}
+                          >
+                            <div className="flex items-center gap-0.5">
+                              {ra.arch.colors.map((c) => (
+                                <ManaSymbol key={c} symbol={c} size="sm" />
+                              ))}
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate max-w-[74px]">
+                              {ra.arch.guildName || ra.arch.code}
+                            </span>
+                            <span className={`text-xs font-mono font-bold px-1.5 py-0.2 rounded border ${badgeTone}`}>
+                              {ra.calibratedGrade}
+                            </span>
+                            <span className={`text-[10px] font-mono font-semibold ${accentText}`}>
+                              #{ra.rank}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* 3. 17Lands Archetype Win Rates Row */}
+                {!isBlindGrading && effectiveShow17L && sorted17Archetypes.length > 0 && (
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-1.5">
+                    <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <span>17Lands Win Rates</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">• 17Lands GIH Win Rate Hierarchy</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 pt-0.5">
+                      {sorted17Archetypes.map((arch, idx) => (
+                        <div
+                          key={arch.code}
+                          className="flex flex-col items-center gap-1 min-w-[74px] sm:min-w-[82px] p-2 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/30 shadow-xs shrink-0"
+                          title={`17Lands: #${arch.seventeenLandsRank || idx + 1} ${arch.name} (${arch.code}) — ${((arch.seventeenLandsWinRate || 0) * 100).toFixed(1)}% WR`}
+                        >
+                          <div className="flex items-center gap-0.5">
+                            {arch.colors.map((c) => (
+                              <ManaSymbol key={c} symbol={c} size="sm" />
+                            ))}
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate max-w-[74px]">
+                            {arch.guildName || arch.code}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 px-1.5 py-0.2 rounded border border-emerald-300 dark:border-emerald-500/40">
+                            {arch.seventeenLandsGrade || 'TBD'}
+                          </span>
+                          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                            {arch.seventeenLandsWinRate !== undefined ? `${(arch.seventeenLandsWinRate * 100).toFixed(1)}%` : `#${idx + 1}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {report.developedArchetypes.length === 0 ? (
@@ -2323,6 +3114,12 @@ Total evaluation points (${(col.averageScore * col.ratedCards).toFixed(1)}) ÷ $
           </div>
         </div>
       )}
+
+      {/* Grading Scale Modal */}
+      <GradingScaleModal
+        isOpen={isGradingScaleModalOpen}
+        onClose={() => setIsGradingScaleModalOpen(false)}
+      />
     </div>
   );
 };

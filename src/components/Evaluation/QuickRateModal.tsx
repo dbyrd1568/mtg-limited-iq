@@ -3,10 +3,11 @@ import { Card, GradeTier, SeventeenLandsSetData, UserCardEvaluation } from '../.
 import { GRADE_TIERS, GRADE_SCORES, getColorSortIndex, getRaritySortIndex, winRateToGradeTier, get17LandsCardRating } from '../../services/seventeenLands';
 import { getLsvRatingForCard } from '../../services/lsvRatings';
 import { CardObfuscator } from '../CardObfuscator';
-import { X, ChevronLeft, ChevronRight, Zap, FileText, Check, Eye, EyeOff, Scale, ArrowUpDown, PlayingCardsFan, ArrowRight, CheckCircle2, ExternalLink, BarChart2, Filter, Lock } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Zap, FileText, Check, Eye, EyeOff, Scale, ArrowUpDown, PlayingCardsFan, ArrowRight, CheckCircle2, ExternalLink, BarChart2, Filter, Lock, HelpCircle } from 'lucide-react';
 import { ManaCostRenderer } from '../UI/ManaSymbol';
 import { GradeComparisonCard } from '../UI/GradeComparisonCard';
 import { SimilarCardsModal } from './SimilarCardsModal';
+import { GradingScaleModal } from './GradingScaleModal';
 import confetti from 'canvas-confetti';
 
 export type GradingSortOrder = 'number' | 'color' | 'rarity_asc' | 'rarity_desc' | 'unrated_first' | 'alpha';
@@ -101,6 +102,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
 
   const [noteText, setNoteText] = useState<string>('');
   const [isSimilarModalOpen, setIsSimilarModalOpen] = useState<boolean>(false);
+  const [isGradingScaleModalOpen, setIsGradingScaleModalOpen] = useState<boolean>(false);
 
   // Sorted cards list according to chosen grading sequence
   const orderedCards = useMemo(() => {
@@ -746,21 +748,40 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
           return (
             <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-3.5 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#17181c] space-y-2 pb-safe">
 
-              <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center flex items-center justify-center gap-1.5" title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5">
+              <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center flex items-center justify-center gap-1.5" title="Grading Tiers: A+, A, A-, B+, B, B-, C+, C, C-, D, F">
                 {readOnly ? (
                   <>
                     <Lock className="w-3.5 h-3.5 text-amber-500" />
                     <span>User's Assigned Grade{currentEval?.userGrade ? `: ${currentEval.userGrade}` : ': None (Unrated)'} (Read-Only)</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsGradingScaleModalOpen(true)}
+                      className="p-1 rounded-md text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer inline-flex items-center gap-1 ml-1"
+                      title="What does each letter grade mean? (Grading Scale Reminder)"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5" />
+                    </button>
                   </>
                 ) : (
-                  <span>Assign Limited Grade</span>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span>Assign Limited Grade</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsGradingScaleModalOpen(true)}
+                      className="p-1 rounded-md text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer inline-flex items-center gap-1"
+                      title="What does each letter grade mean? (Grading Scale Reminder)"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-mono normal-case text-slate-400 hover:text-violet-600 dark:hover:text-cyan-300">scale guide</span>
+                    </button>
+                  </div>
                 )}
               </div>
               <div
                 className={`grid gap-1 max-w-4xl mx-auto ${
                   isCurrentLand ? 'grid-cols-6 sm:grid-cols-12' : 'grid-cols-6 sm:grid-cols-11'
                 }`}
-                title="Grade Tier Score Mapping: A+=5.0, A=4.7, A-=4.3, B+=4.0, B=3.7, B-=3.3, C+=3.0, C=2.7, C-=2.3, D=1.5, F=0.5"
+                title="Grading Tiers: A+, A, A-, B+, B, B-, C+, C, C-, D, F"
               >
                 {GRADE_TIERS.map((tier) => {
                   const isSelected = currentEval?.userGrade === tier;
@@ -970,6 +991,13 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
           }
         />
       )}
+
+      {/* Grading Scale Modal */}
+      <GradingScaleModal
+        isOpen={isGradingScaleModalOpen}
+        onClose={() => setIsGradingScaleModalOpen(false)}
+        highlightTier={currentEval?.userGrade}
+      />
     </div>
   );
 };

@@ -69,13 +69,98 @@ export function getStoredLocalProposals(): PrecedentProposal[] {
   }
 }
 
+const PROPOSALS_CHANGED_EVENT = 'mtg_precedent_proposals_changed';
+const PROPOSALS_BROADCAST_CHANNEL = 'mtg_precedent_proposals_bc';
+
 /**
- * Saves local precedent proposals to browser storage.
+ * Dispatches notification to local window and cross-tab BroadcastChannel
+ * whenever precedent proposals are created, approved, or rejected.
+ */
+export function notifyPrecedentProposalsChanged(payload?: any): void {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(PROPOSALS_CHANGED_EVENT, { detail: payload }));
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel(PROPOSALS_BROADCAST_CHANNEL);
+        bc.postMessage(payload || { timestamp: Date.now() });
+        bc.close();
+      }
+    }
+  } catch (err) {
+    // Graceful ignore in non-browser env
+  }
+}
+
+/**
+ * Subscribes to real-time precedent proposal events (Local CustomEvent, BroadcastChannel, StorageEvent, Supabase Realtime).
+ */
+export function subscribeToPrecedentProposals(listener: () => void): () => void {
+  const unsubscribers: Array<() => void> = [];
+
+  if (typeof window !== 'undefined') {
+    const handleEvent = () => listener();
+    window.addEventListener(PROPOSALS_CHANGED_EVENT, handleEvent);
+    unsubscribers.push(() => window.removeEventListener(PROPOSALS_CHANGED_EVENT, handleEvent));
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === PROPOSALS_STORAGE_KEY || e.key === CANONICAL_STORAGE_KEY) {
+        listener();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    unsubscribers.push(() => window.removeEventListener('storage', handleStorage));
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const bc = new BroadcastChannel(PROPOSALS_BROADCAST_CHANNEL);
+        bc.onmessage = () => listener();
+        unsubscribers.push(() => bc.close());
+      } catch (e) {
+        // BroadcastChannel may fail in some environments
+      }
+    }
+  }
+
+  if (isSupabaseConfigured()) {
+    try {
+      const channel = supabase
+        .channel('realtime_precedent_proposals')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'precedent_proposals' },
+          () => {
+            listener();
+          }
+        )
+        .subscribe();
+
+      unsubscribers.push(() => {
+        supabase.removeChannel(channel);
+      });
+    } catch (err) {
+      console.warn('Failed to subscribe to Supabase realtime proposals:', err);
+    }
+  }
+
+  return () => {
+    unsubscribers.forEach((fn) => {
+      try {
+        fn();
+      } catch (e) {
+        // ignore
+      }
+    });
+  };
+}
+
+/**
+ * Saves local precedent proposals to browser storage and notifies listeners.
  */
 export function saveStoredLocalProposals(proposals: PrecedentProposal[]): void {
   try {
     if (typeof localStorage === 'undefined') return;
     localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(proposals));
+    notifyPrecedentProposalsChanged({ count: proposals.length });
   } catch (err) {
     console.error('Failed to save local precedent proposals:', err);
   }

@@ -68,6 +68,8 @@ export interface SetInfo {
   code: string;
   name: string;
   card_count: number;
+  total_cards?: number;                 // Total planned booster set size / baseline (e.g. 280, 285)
+  preview_count?: number;               // Live count of cards previewed/spoiled so far on Scryfall
   released_at?: string;                 // Tabletop Prerelease / Street Date (YYYY-MM-DD)
   arena_released_at?: string;           // MTG Arena Digital Launch Date (YYYY-MM-DD)
   lsv_available_at?: string;            // Target date when pro / LSV set reviews are checked (YYYY-MM-DD)

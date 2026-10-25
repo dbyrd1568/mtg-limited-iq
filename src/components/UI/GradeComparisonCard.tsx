@@ -220,14 +220,9 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
                   N/A
                 </span>
               ) : userGrade ? (
-                <>
-                  <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-violet-600 text-white shadow-2xs">
-                    {userGrade}
-                  </span>
-                  <span className="text-[10px] font-mono font-semibold text-violet-700 dark:text-violet-300">
-                    ({userEval?.userScore?.toFixed(1)})
-                  </span>
-                </>
+                <span className="text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded bg-violet-600 text-white shadow-2xs">
+                  {userGrade}
+                </span>
               ) : (
                 <span className="text-sm font-semibold text-violet-500/70 font-mono leading-tight">—</span>
               )}
@@ -261,14 +256,9 @@ export const GradeComparisonCard: React.FC<GradeComparisonCardProps> = ({
 
                 <div className="flex items-baseline gap-1 mt-0.5">
                   {rating && (!isBlindGrading || userGrade) ? (
-                    <>
-                      <span className={`text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded ${meta.dotColor} text-white shadow-2xs`}>
-                        {rating.grade}
-                      </span>
-                      <span className={`text-[10px] font-mono font-semibold ${meta.badgeText}`}>
-                        ({rating.score.toFixed(1)})
-                      </span>
-                    </>
+                    <span className={`text-sm sm:text-base font-black font-mono px-1.5 py-0.2 rounded ${meta.dotColor} text-white shadow-2xs`}>
+                      {rating.grade}
+                    </span>
                   ) : (
                     <span className={`text-[10px] font-mono leading-tight opacity-70 ${meta.badgeText}`}>
                       {isBlindGrading && !userGrade ? '—' : isBlindGrading ? 'Hidden' : 'Pending'}

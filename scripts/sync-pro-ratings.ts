@@ -470,6 +470,7 @@ export function lsvScoreToRating(score: number): { grade: string; score: number;
 }
 
 export const LSV_TCGPLAYER_SETS = [
+  { match: /Aetherdrift/i, setCode: 'DFT' },
   { match: /Bloomburrow/i, setCode: 'BLB' },
   { match: /Duskmourn/i, setCode: 'DSK' },
   { match: /Foundations/i, setCode: 'FDN' },
@@ -512,7 +513,7 @@ export const LSV_COMMUNITY_SHEETS = [
 
 function parseLsvArticleBody(body: string): { cardName: string; score: number; notes?: string }[] {
   const cards: { cardName: string; score: number; notes?: string }[] = [];
-  const parts = body.split(/<card-spotlight\s+card-id=\"|<card-showcase\s+ids=\"|<h3[^>]*>/i);
+  const parts = body.split(/<card-spotlight\s+card-id=\"|<card-showcase\s+ids=\"|<h3[^>]*>(?!\s*(?:<[^>]+>)*\s*Limited)/i);
   for (let i = 1; i < parts.length; i++) {
     const part = parts[i];
     let cardName = '';
@@ -520,15 +521,15 @@ function parseLsvArticleBody(body: string): { cardName: string; score: number; n
     const t = part.indexOf('<');
     if (q !== -1 && (t === -1 || q < t)) cardName = part.slice(0, q).trim();
     else if (t !== -1) cardName = part.slice(0, t).trim();
-    if (!cardName || cardName.length > 50) continue;
+    if (!cardName || cardName.length > 50 || /^\d+$/.test(cardName)) continue;
     if (['Pack Rat', 'Writhing Chrysalis', 'Ocelot Pride'].includes(cardName)) continue;
     if (['White', 'Blue', 'Black', 'Red', 'Green', 'Colorless', 'Artifacts', 'Lands', 'Multicolor'].includes(cardName)) continue;
 
-    const sm = part.slice(0, 500).match(/Limited:[\s\S]*?(\d+(?:\.\d+)?)/i);
+    const sm = part.slice(0, 600).match(/Limited:[\s\S]*?(\d+(?:\.\d+)?)/i);
     if (sm) {
       const score = parseFloat(sm[1]);
       if (score >= 0 && score <= 5.0) {
-        const commentMatch = part.slice(0, 1000).match(/Limited:[\s\S]*?<\/p>\s*<p>([\s\S]*?)<\/p>/i);
+        const commentMatch = part.slice(0, 1200).match(/Limited:[\s\S]*?<\/(?:p|h3)>(?:\s*<p[^>]*>\s*(?:&nbsp;)?\s*<\/p>)?\s*<p>([\s\S]*?)<\/p>/i);
         const notes = commentMatch ? commentMatch[1].replace(/<[^>]+>/g, '').trim() : undefined;
         cards.push({ cardName, score, notes: notes ? notes.slice(0, 250) : undefined });
       }
@@ -679,6 +680,98 @@ async function syncLsvRatings(targetSet?: string | null, isAll = false, fullArch
   }
 }
 
+const DRAFTSIM_SUPPORTED_SETS = [
+  'SOS', 'TMT', 'ECL', 'TLA', 'SPM', 'EOE', 'FIN', 'TDM', 'DFT',
+  'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR',
+  'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX'
+];
+
+/**
+ * Ingests card tier list ratings from Draftsim (DS)
+ */
+async function syncDraftsimRatings(targetSet: string | null, isAll: boolean) {
+  try {
+    console.log('\n🎲 Processing [DS] (Draftsim Set Reviews & Tier Lists)...');
+
+    // Ingest Reality Fracture (FRA)
+    if (!targetSet || targetSet === 'FRA' || isAll) {
+      console.log('  Ingesting Reality Fracture (FRA) Draftsim reviews...');
+      try {
+        const { FRA_DRAFTSIM_DATA } = await import('../src/services/fraDraftsimData.ts');
+        if (FRA_DRAFTSIM_DATA) {
+          const ratings: ParsedProRating[] = Object.entries(FRA_DRAFTSIM_DATA).map(([cardName, score]) => {
+            const { grade, verdict } = lsvScoreToRating(score);
+            return {
+              setCode: 'FRA',
+              cardName,
+              source: 'DS',
+              score,
+              grade,
+              verdict,
+              notes: 'Draftsim Limited Set Review'
+            };
+          });
+
+          console.log(`  ⭐ Prepared ${ratings.length} unique card ratings for FRA (DS).`);
+          const count = await upsertProRatings(ratings);
+          console.log(`  ✅ Successfully saved ${count} ratings for FRA (DS)!`);
+        }
+      } catch (err: any) {
+        console.warn('  ⚠️ Could not load FRA Draftsim dataset:', err.message);
+      }
+    }
+
+    // Ingest from Draftsim's official generated set rating files
+    const setsToFetch = DRAFTSIM_SUPPORTED_SETS.filter(s => {
+      if (targetSet) return s === targetSet;
+      if (isAll) return true;
+      return DEFAULT_ACTIVE_SETS.includes(s);
+    });
+
+    for (const setCode of setsToFetch) {
+      console.log(`\n📋 Processing [DS] for Set [${setCode}] from Draftsim pick order data...`);
+      const cardMap = new Map<string, ParsedProRating>();
+      const pools = ['common', 'uncommon', 'rare', 'mythic', 'dual'];
+
+      for (const pool of pools) {
+        const url = `https://draftsim.com/generated/${setCode}/${setCode}_${pool}.js`;
+        try {
+          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) continue;
+          const text = await res.text();
+          const matches = text.matchAll(/name:\"([^\"]+)\"[^\}]*?myrating:\"([0-9.]+)\"/g);
+          for (const m of matches) {
+            const rawName = m[1].replace(/_/g, ' ').trim();
+            const rawScore = parseFloat(m[2]);
+            if (!rawName || isNaN(rawScore)) continue;
+            const { grade, score, verdict } = lsvScoreToRating(rawScore);
+            cardMap.set(rawName, {
+              setCode,
+              cardName: rawName,
+              source: 'DS',
+              score,
+              grade,
+              verdict,
+              notes: 'Draftsim Pick Order Tier List'
+            });
+          }
+        } catch {
+          // ignore missing pool file
+        }
+      }
+
+      const uniqueRatings = Array.from(cardMap.values());
+      console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${setCode} (DS).`);
+      if (uniqueRatings.length > 0) {
+        const count = await upsertProRatings(uniqueRatings);
+        console.log(`  ✅ Successfully saved ${count} ratings for ${setCode} (DS)!`);
+      }
+    }
+  } catch (err: any) {
+    console.error('  ⚠️ Draftsim Sync encountered unexpected issue:', err.message);
+  }
+}
+
 /**
  * Main ingestion flow
  */
@@ -790,6 +883,11 @@ async function main() {
   // If LSV requested or running all
   if (!customSource || customSource === 'LSV') {
     await syncLsvRatings(targetSet, isAll, fullArchive);
+  }
+
+  // If DS requested or running all
+  if (!customSource || customSource === 'DS') {
+    await syncDraftsimRatings(targetSet, isAll);
   }
 
   console.log('\n🎉 Pro Creator Ratings Sync completed successfully!');
