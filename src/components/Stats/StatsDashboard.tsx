@@ -35,7 +35,7 @@ const CATEGORY_DETAILS: Record<QuestionCategory, CategoryDetails> = {
     icon: <AlertTriangle className="w-4 h-4 text-orange-400" />,
     tag: '17Lands Insights',
     description: 'Identifies discrepancies between draft pick popularity (ALSA) and actual Game-In-Hand Win Rates (GIH WR).',
-    whyItMatters: 'Draft Traps waste premium early picks on flashy cards that lose games. Sleeper gems reward you with high win rates on late wheels.',
+    whyItMatters: 'Draft Traps waste premium early picks on flashy cards that lose games. Sleepers reward you with high win rates on late wheels.',
     proTip: 'Look for cards with ALSA > 6.0 and GIH WR > 56.5% to pick up high-value format sleepers.',
   },
   quadrant_role: {

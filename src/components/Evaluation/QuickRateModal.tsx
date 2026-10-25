@@ -484,12 +484,12 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                 onChange={(e) => setSortOrder(e.target.value as GradingSortOrder)}
                 className="bg-transparent text-slate-800 dark:text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer"
               >
-                <option value="number">🔢 Number</option>
-                <option value="color">🎨 Color</option>
-                <option value="rarity_asc">💎 Commons First</option>
-                <option value="rarity_desc">👑 Mythics First</option>
-                <option value="unrated_first">⏳ Ungraded First</option>
-                <option value="alpha">🔤 Alphabetical</option>
+                <option value="number">Number</option>
+                <option value="color">Color</option>
+                <option value="rarity_asc">Commons First</option>
+                <option value="rarity_desc">Mythics First</option>
+                <option value="unrated_first">Ungraded First</option>
+                <option value="alpha">Alphabetical</option>
               </select>
             </div>
 

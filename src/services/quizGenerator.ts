@@ -142,12 +142,12 @@ function generateTrapOrSleeperQuestion(
   const options: QuizOption[] = [
     {
       id: 'trap',
-      label: '⚠️ Draft Trap (Overrated by players: picked early, but underperforms in win rate)',
+      label: 'Draft Trap (Overrated by players: picked early, but underperforms in win rate)',
       isCorrect: isTrap,
     },
     {
       id: 'sleeper',
-      label: '💎 Sleeper Gem (Undervalued: wheels late in packs, but boasts a high win rate)',
+      label: 'Sleeper (Undervalued: wheels late in packs, but boasts a high win rate)',
       isCorrect: !isTrap,
     },
   ];
@@ -157,8 +157,8 @@ function generateTrapOrSleeperQuestion(
     category: 'trap_or_sleeper',
     type: 'multiple_choice',
     title: '17Lands Trap vs. Sleeper Detection',
-    prompt: `17Lands Data: "${target.name}" is drafted on average at Pick ${alsaFormatted} (ALSA), with a ${wrPercent}% Games-In-Hand Win Rate. Is this card a Draft Trap or a Sleeper Gem?`,
-    tacticalContext: `Identifying draft traps prevents wasting early picks on flashy cards that lose games, while finding sleeper gems rewards you on late pack wheels.`,
+    prompt: `17Lands Data: "${target.name}" is drafted on average at Pick ${alsaFormatted} (ALSA), with a ${wrPercent}% Games-In-Hand Win Rate. Is this card a Draft Trap or a Sleeper?`,
+    tacticalContext: `Identifying draft traps prevents wasting early picks on flashy cards that lose games, while identifying sleepers rewards you on late pack wheels.`,
     card: target,
     obfuscation: {
       target: 'none',
@@ -166,7 +166,7 @@ function generateTrapOrSleeperQuestion(
     },
     options,
     correctAnswer: isTrap ? 'trap' : 'sleeper',
-    explanation: `"${target.name}" is a ${isTrap ? 'DRAFT TRAP' : 'SLEEPER GEM'}. It is taken at Pick ${alsaFormatted} with a ${wrPercent}% GIH Win Rate on 17Lands.`,
+    explanation: `"${target.name}" is a ${isTrap ? 'DRAFT TRAP' : 'SLEEPER'}. It is taken at Pick ${alsaFormatted} with a ${wrPercent}% GIH Win Rate on 17Lands.`,
   };
 }
 

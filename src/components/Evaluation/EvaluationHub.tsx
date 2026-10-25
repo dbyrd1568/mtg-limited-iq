@@ -1874,9 +1874,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 >
                   <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{calibrationSummary.exactMatches}</span>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold mt-0.5">
-                    🎯 Exact Matches (0 Steps)
+                    Exact Matches (0 Steps)
                   </p>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">100% Bullseye</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">Exact Match</span>
                 </div>
 
                 <div
@@ -1958,7 +1958,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       </p>
                       <div className="space-y-1 font-mono text-[11px]">
                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                          <span>|Δ| = 0 (Bullseye Exact Match):</span>
+                          <span>|Δ| = 0 (Exact Match):</span>
                           <strong>100% Credit</strong>
                         </div>
                         <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
@@ -2283,19 +2283,19 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pt-0.5">
-                        <span>🎯 {stat.exactCount} Bullseye</span>
-                        <span>✓ {stat.oneStepCount} 1-Step</span>
-                        <span>⚠️ {stat.missCount} Misses</span>
+                        <span>{stat.exactCount} Exact</span>
+                        <span>{stat.oneStepCount} 1-Step</span>
+                        <span>{stat.missCount} Misses</span>
                       </div>
                     </div>
 
                     <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
                       {stat.bias === 'overrated' ? (
-                        <span className="text-amber-600 dark:text-amber-400">⚠️ Skews High (+{stat.avgDelta})</span>
+                        <span className="text-amber-600 dark:text-amber-400">Skews High (+{stat.avgDelta})</span>
                       ) : stat.bias === 'underrated' ? (
-                        <span className="text-sky-600 dark:text-sky-400">🧊 Skews Low ({stat.avgDelta})</span>
+                        <span className="text-sky-600 dark:text-sky-400">Skews Low ({stat.avgDelta})</span>
                       ) : stat.bias === 'accurate' ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">✓ Well Calibrated</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">Well Calibrated</span>
                       ) : (
                         <span className="text-slate-400 dark:text-slate-600">Unrated</span>
                       )}

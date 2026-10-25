@@ -41,7 +41,7 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
   }, [isHighScorer]);
 
   const getScoreGrade = (percentage: number) => {
-    if (percentage >= 95) return { grade: 'A+', text: 'Mythic Draft Archmage!', color: 'text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-400/50 bg-amber-100 dark:bg-amber-500/15 shadow-[0_0_25px_rgba(251,191,36,0.35)]' };
+    if (percentage >= 95) return { grade: 'A+', text: 'Outstanding Performance!', color: 'text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-400/50 bg-amber-100 dark:bg-amber-500/15 shadow-[0_0_25px_rgba(251,191,36,0.35)]' };
     if (percentage >= 85) return { grade: 'A', text: 'Limited Expert!', color: 'text-cyan-900 dark:text-cyan-300 border-cyan-300 dark:border-cyan-400/50 bg-cyan-100 dark:bg-cyan-500/15 shadow-[0_0_25px_rgba(6,182,212,0.35)]' };
     if (percentage >= 70) return { grade: 'B', text: 'Solid Set Recall!', color: 'text-violet-900 dark:text-violet-300 border-violet-300 dark:border-violet-400/50 bg-violet-100 dark:bg-violet-500/15' };
     if (percentage >= 50) return { grade: 'C', text: 'Good Progress, Keep Drilling!', color: 'text-indigo-900 dark:text-indigo-300 border-indigo-300 dark:border-indigo-400/50 bg-indigo-100 dark:bg-indigo-500/15' };

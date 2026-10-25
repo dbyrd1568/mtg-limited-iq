@@ -1867,7 +1867,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                       <div>
                         {col.rankDelta === 0 ? (
                           <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 text-[10px] font-bold">
-                            🎯 Spot On
+                            Exact Match
                           </span>
                         ) : (col.rankDelta || 0) > 0 ? (
                           <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 text-[10px] font-bold flex items-center gap-0.5">
@@ -2643,7 +2643,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                           ? 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 border-fuchsia-300 dark:border-fuchsia-700'
                           : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
                       }`}>
-                        ⚡ {activeDossierArchetype.pace}
+                        {activeDossierArchetype.pace}
                       </span>
                     )}
                     <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-cyan-300 border border-violet-200 dark:border-violet-700/50">

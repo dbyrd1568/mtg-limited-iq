@@ -47,7 +47,7 @@ export const MethodologyGuideView: React.FC<MethodologyGuideViewProps> = ({
   let creditVerdict = {
     credit: '100% Credit (Correct)',
     badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40',
-    description: absDelta === 0 ? 'Bullseye exact tier match!' : 'Within single-step tolerance (±1 sub-tier). Counted as correct evaluation.',
+    description: absDelta === 0 ? 'Exact tier match (0Δ).' : 'Within single-step tolerance (±1 sub-tier). Counted as correct evaluation.',
   };
   if (absDelta === 2) {
     creditVerdict = {

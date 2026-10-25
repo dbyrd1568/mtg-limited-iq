@@ -1805,7 +1805,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                         : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-400 hover:border-emerald-400'
                     }`}
                   >
-                    <span className="text-[10px] opacity-75">🎯 Exact (0Δ)</span>
+                    <span className="text-[10px] opacity-75">Exact (0Δ)</span>
                     <span className="font-bold text-xs">{stats.exact}</span>
                   </button>
 
@@ -1818,7 +1818,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                         : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-rose-700 dark:text-rose-400 hover:border-rose-400'
                     }`}
                   >
-                    <span className="text-[10px] opacity-75">⚠️ Traps (+Δ)</span>
+                    <span className="text-[10px] opacity-75">Traps (+Δ)</span>
                     <span className="font-bold text-xs">{stats.trapsCount}</span>
                   </button>
 
@@ -1831,7 +1831,7 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
                         : 'bg-slate-50 dark:bg-[#17181c] border-slate-200 dark:border-slate-800 text-sky-700 dark:text-sky-400 hover:border-sky-400'
                     }`}
                   >
-                    <span className="text-[10px] opacity-75">🧊 Sleepers (-Δ)</span>
+                    <span className="text-[10px] opacity-75">Sleepers (-Δ)</span>
                     <span className="font-bold text-xs">{stats.sleepersCount}</span>
                   </button>
                 </div>

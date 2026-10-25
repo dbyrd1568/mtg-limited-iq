@@ -700,15 +700,15 @@ export function generateSetSynthesisReport(
 
 export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): string {
   const lines: string[] = [];
-  lines.push(`# 🏆 Draft Meta Forecast: ${report.setName} (${report.setCode})`);
+  lines.push(`# Draft Forecast: ${report.setName} (${report.setCode})`);
   lines.push(`*Generated from ${report.ratedCards}/${report.totalCards} graded cards (${report.completionPercent}% Complete)*`);
   lines.push(`*Note: This synthesis is based on your personal card ratings${report.has17LandsData ? ' compared with 17Lands draft win rates' : ' (pre-release prediction mode)'}*.\n`);
 
   if (report.has17LandsData && report.metaCalibrationScore !== undefined) {
-    lines.push(`### 📊 Prediction Accuracy vs 17Lands: **${report.metaCalibrationScore}%** (${report.metaCalibrationTier})\n`);
+    lines.push(`### Prediction Accuracy vs 17Lands: **${report.metaCalibrationScore}%** (${report.metaCalibrationTier})\n`);
   }
 
-  lines.push(`## 🎨 Monocolor Power Hierarchy (Draft Chain)`);
+  lines.push(`## Monocolor Power Hierarchy (Draft Chain)`);
   const monoColors = report.colorRankings.filter((c) => c.color !== 'C');
   let chainPips = '';
   let chainGrades = '';
@@ -736,7 +736,7 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
   const developedCount = report.developedArchetypes.length;
   const isAsymmetricSet = developedCount > 0 && developedCount < 10;
 
-  lines.push(`\n## 🎯 ${isAsymmetricSet ? `Designed Set Archetypes (${developedCount} Pairs)` : '2-Color Archetypes'}`);
+  lines.push(`\n## ${isAsymmetricSet ? `Designed Set Archetypes (${developedCount} Pairs)` : '2-Color Archetypes'}`);
   if (!report.isThresholdMet) {
     lines.push(`> ⚠️ *Only ${report.ratedCards}/${report.evaluationsThreshold} minimum card evaluations completed. Archetypes without sufficient evaluations are marked N/A.*\n`);
   }

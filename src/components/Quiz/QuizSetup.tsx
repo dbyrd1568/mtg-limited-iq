@@ -33,7 +33,7 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
   {
     id: 'trap_or_sleeper',
     name: '17Lands Trap vs. Sleeper Detection',
-    description: 'Spot overrated traps (low WR, high pick cost) vs late-pack sleeper gems.',
+    description: 'Spot overrated traps (low WR, high pick cost) vs late-pack sleepers.',
     icon: <AlertTriangle className="w-4 h-4 text-orange-400" />,
   },
   {
