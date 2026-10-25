@@ -126,7 +126,7 @@ export interface SetSynthesisReport {
   seventeenLandsWorstColor?: ColorStrength | null;
   seventeenLandsBestArchetype?: ArchetypeStrength | null;
   metaCalibrationScore?: number; // 0 - 100% alignment rating
-  metaCalibrationTier?: string; // 'Spot-on Meta Oracle 🎯', 'Strong Consensus Read 💎', 'Contrarian Theorycrafter 🔮'
+  metaCalibrationTier?: string; // 'High Accuracy (85%+)', 'Strong Match (70–84%)', etc.
 }
 
 import {
@@ -658,10 +658,10 @@ export function generateSetSynthesisReport(
       const rawScore = Math.max(0, Math.min(100, Math.round(100 - (totalPenalty / 40) * 100)));
       metaCalibrationScore = rawScore;
 
-      if (rawScore >= 85) metaCalibrationTier = 'Spot-on Meta Oracle 🎯';
-      else if (rawScore >= 70) metaCalibrationTier = 'Strong Meta Consensus Read 💎';
-      else if (rawScore >= 55) metaCalibrationTier = 'Solid Theorycraft Calibration ⚖️';
-      else metaCalibrationTier = 'Contrarian / Rogue Perspective 🔮';
+      if (rawScore >= 85) metaCalibrationTier = 'High Accuracy (85%+)';
+      else if (rawScore >= 70) metaCalibrationTier = 'Strong Match (70–84%)';
+      else if (rawScore >= 55) metaCalibrationTier = 'Moderate Match (55–69%)';
+      else metaCalibrationTier = 'Low Match (<55%)';
     }
   }
 
@@ -705,7 +705,7 @@ export function generateSetMetaSummaryMarkdown(report: SetSynthesisReport): stri
   lines.push(`*Note: This synthesis is based on your personal card ratings${report.has17LandsData ? ' compared with 17Lands draft win rates' : ' (pre-release prediction mode)'}*.\n`);
 
   if (report.has17LandsData && report.metaCalibrationScore !== undefined) {
-    lines.push(`### 📊 Prediction Calibration Score: **${report.metaCalibrationScore}%** (${report.metaCalibrationTier})\n`);
+    lines.push(`### 📊 Prediction Accuracy vs 17Lands: **${report.metaCalibrationScore}%** (${report.metaCalibrationTier})\n`);
   }
 
   lines.push(`## 🎨 Monocolor Power Hierarchy (Draft Chain)`);

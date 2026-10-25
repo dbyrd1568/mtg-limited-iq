@@ -844,14 +844,14 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             <div className="flex items-center gap-2.5">
               <EyeOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span className="text-slate-700 dark:text-slate-300">
-                <strong className="text-slate-900 dark:text-white">Grading Mode Active:</strong> 17Lands win rates, rank comparisons, and meta calibration alignment scores are hidden for unbiased draft practice.
+                <strong className="text-slate-900 dark:text-white">Grading Mode Active:</strong> 17Lands win rates, rank comparisons, and prediction accuracy scores are hidden for unbiased draft practice.
               </span>
             </div>
           </div>
         ) : report.metaCalibrationScore !== undefined ? (
           <div
             className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-gradient-to-r dark:from-[#0d163a] dark:via-[#0b122e] dark:to-[#0d163a] border border-slate-200 dark:border-cyan-500/40 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            title={`Meta Calibration Formula:
+            title={`Accuracy Formula:
 100% - Total rank discrepancy penalty between your predicted archetype ranks and 17Lands win rate ranks = ${report.metaCalibrationScore}%`}
           >
             <div className="flex items-center gap-3">
@@ -861,17 +861,17 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-mono uppercase font-bold text-violet-700 dark:text-cyan-300 tracking-wider">
-                    Forecast vs 17Lands Calibration
+                    Archetype Prediction vs 17Lands
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-violet-600 text-white border border-violet-400">
                     {report.metaCalibrationTier}
                   </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-heading">
-                  {report.metaCalibrationScore}% Meta Calibration Alignment
+                  {report.metaCalibrationScore}% Prediction Accuracy
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  Measures how closely your draft predictions match real Arena draft win rates.
+                  Measures how closely your archetype ratings match real Arena draft win rates.
                 </p>
               </div>
             </div>
@@ -888,7 +888,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
             <div className="flex items-center gap-2.5">
               <Scale className="w-4 h-4 text-violet-600 dark:text-cyan-400 shrink-0" />
               <span className="text-slate-600 dark:text-slate-300">
-                <strong className="text-slate-900 dark:text-white">17Lands Calibration Standing By:</strong> Grade at least <strong className="text-violet-700 dark:text-cyan-300 font-mono">15 cards</strong> to calculate your Meta Calibration Score (Currently <strong className="text-amber-600 dark:text-amber-300 font-mono">{report.ratedCards}/15</strong> graded).
+                <strong className="text-slate-900 dark:text-white">Accuracy Score Standing By:</strong> Grade at least <strong className="text-violet-700 dark:text-cyan-300 font-mono">15 cards</strong> to calculate your prediction accuracy vs 17Lands (Currently <strong className="text-amber-600 dark:text-amber-300 font-mono">{report.ratedCards}/15</strong> graded).
               </span>
             </div>
           </div>
@@ -2173,8 +2173,8 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                     className="p-2.5 rounded-xl bg-slate-50/90 dark:bg-[#17181c]/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap text-xs font-mono"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400" title={`Delta Calibration Read: Your prediction is ${arch.gradeDelta === 0 ? 'an exact match with 17Lands' : (arch.gradeDelta || 0) > 0 ? `higher than 17Lands by ${arch.gradeDelta} tier(s)` : `lower than 17Lands by ${Math.abs(arch.gradeDelta || 0)} tier(s)`}`}>
-                        Calibration Read:
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400" title={`Grade Match: Your prediction is ${arch.gradeDelta === 0 ? 'an exact match with 17Lands' : (arch.gradeDelta || 0) > 0 ? `higher than 17Lands by ${arch.gradeDelta} tier(s)` : `lower than 17Lands by ${Math.abs(arch.gradeDelta || 0)} tier(s)`}`}>
+                        Grade Match:
                       </span>
                       <span className="text-slate-700 dark:text-slate-300 text-xs font-bold">
                         You ({arch.letterGrade}) vs 17Lands (Grade {arch.seventeenLandsGrade})
@@ -2205,7 +2205,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
                     className="p-2 rounded-xl bg-slate-50/70 dark:bg-[#17181c]/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2 flex-wrap text-xs font-mono text-slate-500 dark:text-slate-400"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">17Lands Calibration:</span>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">17Lands Match:</span>
                       <span className="text-slate-600 dark:text-slate-300 font-bold text-xs">
                         TBD
                       </span>
