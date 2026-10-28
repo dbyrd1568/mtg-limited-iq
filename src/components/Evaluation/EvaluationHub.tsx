@@ -916,10 +916,10 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   };
 
   return (
-    <div className="max-w-[1440px] mx-auto pb-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
+    <div className="max-w-[1440px] mx-auto pb-4 px-2.5 sm:px-6 space-y-3.5 sm:space-y-4 animate-in fade-in duration-200">
       {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, frozen/sticky on scroll) */}
-      <div className="sticky top-14 sm:top-16 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+      <div className="sticky top-14 sm:top-16 z-30 -mx-2.5 sm:-mx-6 px-2.5 sm:px-6 py-2 sm:py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         {/* Left: Sub-tabs */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
           <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">
@@ -1042,7 +1042,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
       {activeSubTab === 'grade' && (
         <div className="space-y-3.5">
           {/* Streamlined 2-Row Filter Toolbar */}
-          <div className="p-3 bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
+          <div className="p-2.5 sm:p-3 bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xs space-y-2">
             {/* Row 1: Search, Sort, Status, and Benchmarks */}
             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-2.5">
               {/* Card Search Bar */}
@@ -1340,7 +1340,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
           </div>
 
           {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {filteredCards.map((card, cardIndex) => {
               const evalKey = `${card.set.toLowerCase()}_${card.name.toLowerCase()}`;
               const userEval = userEvaluations[evalKey];
@@ -1350,9 +1350,9 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 <div
                   key={card.id}
                   onClick={() => handleSelectCardForModal(card)}
-                  className="p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
+                  className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/60 dark:hover:border-violet-500/60 transition-all flex flex-col justify-between gap-3 sm:gap-3.5 shadow-xs hover:shadow-md cursor-pointer group"
                 >
-                  <div className="space-y-3.5 flex-1 flex flex-col">
+                  <div className="space-y-3 sm:space-y-3.5 flex-1 flex flex-col">
                     {/* Top Bar above card: Grade badge(s) in a dedicated full-width header */}
                     <div className="w-full flex items-center justify-between gap-2 pb-2.5 mb-0.5 border-b border-slate-100 dark:border-slate-800/80 min-h-[26px]">
                     <div className="flex items-center gap-1.5 flex-wrap">

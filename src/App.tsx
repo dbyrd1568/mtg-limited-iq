@@ -827,10 +827,10 @@ const AppContent: React.FC = () => {
                     onExitQuiz={() => setQuizState('setup')}
                   />
                 ) : (
-                  <div className="max-w-[1440px] mx-auto pb-4 px-3 sm:px-6 space-y-4 animate-in fade-in duration-200">
+                  <div className="max-w-[1440px] mx-auto pb-4 px-2.5 sm:px-6 space-y-3.5 sm:space-y-4 animate-in fade-in duration-200">
                     {/* UNIFIED TOP-DOCKED CONTROL BAR (Matching Grading Hub layout) */}
-                    <div className="sticky top-14 sm:top-16 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
+                    <div className="sticky top-14 sm:top-16 z-30 -mx-2.5 sm:-mx-6 px-2.5 sm:px-6 py-2 sm:py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
                         {/* Left: Sub-tabs pill container */}
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
                           <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200/90 dark:border-slate-800/80 shadow-xs shrink-0">

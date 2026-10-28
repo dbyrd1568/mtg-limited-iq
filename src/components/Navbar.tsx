@@ -92,19 +92,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#090a0d]/95 backdrop-blur-md shadow-xs transition-colors duration-200">
-      <div className="max-w-[1440px] mx-auto px-3 sm:px-6">
-        <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#090a0d]/95 backdrop-blur-md shadow-xs transition-colors duration-200">
+      <div className="max-w-[1440px] mx-auto px-2.5 sm:px-6">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-1.5 sm:gap-2">
           {/* Brand Logo & Name: Official WOTC MTG Planeswalker Spark + MTG Limited IQ */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-violet-600 via-indigo-600 to-amber-500 dark:from-violet-500 dark:via-indigo-500 dark:to-cyan-400 flex items-center justify-center text-white shadow-md shadow-violet-500/20 shrink-0 p-1.5 border border-white/20">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-violet-600 via-indigo-600 to-amber-500 dark:from-violet-500 dark:via-indigo-500 dark:to-cyan-400 flex items-center justify-center text-white shadow-md shadow-violet-500/20 shrink-0 p-1 sm:p-1.5 border border-white/20">
               <PlaneswalkerSymbol className="w-full h-full text-white drop-shadow-xs" />
             </div>
-            <div className="flex items-center gap-1.5 whitespace-nowrap">
-              <span className="font-heading font-black text-sm sm:text-base tracking-wider text-slate-900 dark:text-white">
+            <div className="flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
+              <span className="font-heading font-black text-xs sm:text-base tracking-wider text-slate-900 dark:text-white">
                 MTG LIMITED
               </span>
-              <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300 border border-violet-200 dark:border-violet-700/50">
+              <span className="text-[9px] sm:text-[10px] uppercase font-mono font-bold tracking-wider px-1 sm:px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300 border border-violet-200 dark:border-violet-700/50">
                 IQ
               </span>
             </div>
@@ -150,11 +150,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right Side: Theme Toggle, Set Switcher, Share Link & User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Dark / Light Mode Toggle Button (Icon Only) */}
             <button
               onClick={handleToggleTheme}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shrink-0 shadow-xs flex items-center justify-center"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer shrink-0 shadow-xs flex items-center justify-center"
               title={`Switch to ${currentTheme === 'dark' ? 'Light' : 'Dark'} Mode`}
               aria-label="Toggle Theme"
             >
@@ -215,7 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-set-selector"
               onClick={onOpenSetSelector}
-              className={`flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shadow-xs group cursor-pointer shrink-0 whitespace-nowrap border ${
+              className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl transition-all shadow-xs group cursor-pointer shrink-0 whitespace-nowrap border ${
                 currentSet
                   ? 'bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800'
                   : 'bg-violet-600 hover:bg-violet-500 text-white border-violet-400 animate-pulse shadow-md shadow-violet-500/30'
@@ -245,7 +245,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {currentUser ? (
               <button
                 onClick={onOpenAuthModal}
-                className="flex items-center gap-2 pl-1.5 pr-3 py-1 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer group shrink-0 whitespace-nowrap"
+                className="flex items-center gap-1.5 sm:gap-2 p-1 sm:pl-1.5 sm:pr-3 sm:py-1 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all shadow-xs cursor-pointer group shrink-0 whitespace-nowrap"
                 title={`Account: ${currentUser.name} • Cloud Sync: ${syncStatus} • v${__APP_VERSION__}`}
               >
                 <div className="relative shrink-0">
@@ -283,14 +283,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   />
                 </div>
 
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white max-w-[80px] sm:max-w-[120px] truncate">
+                <span className="hidden sm:inline text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white max-w-[80px] sm:max-w-[120px] truncate">
                   {currentUser.name}
                 </span>
               </button>
             ) : (
               <button
                 onClick={onOpenAuthModal}
-                className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
               >
                 <span>Sign In</span>
               </button>
