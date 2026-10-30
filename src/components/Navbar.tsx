@@ -93,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#090a0d]/95 backdrop-blur-md shadow-xs transition-colors duration-200">
-      <div className="max-w-[1440px] mx-auto px-2.5 sm:px-6 w-full">
+      <div className="max-w-[1440px] mx-auto px-2.5 sm:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16 gap-1.5 sm:gap-2">
           {/* Brand Logo & Name: Official WOTC MTG Planeswalker Spark + MTG Limited IQ */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">

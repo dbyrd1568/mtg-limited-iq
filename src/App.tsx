@@ -750,7 +750,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-[#090a0d] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 w-full max-w-full overflow-x-clip">
+    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-[#090a0d] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
       {/* Top Navigation Bar */}
       <Navbar
         activeTab={activeTab}
@@ -774,7 +774,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-24 md:pb-16 w-full max-w-full overflow-x-hidden">
+      <main className="flex-1 pb-24 md:pb-16">
         {activeTab === 'admin' ? (
           isAdmin ? (
             <AdminDashboard
@@ -829,7 +829,7 @@ const AppContent: React.FC = () => {
                 ) : (
                   <div className="max-w-[1440px] mx-auto pb-4 px-2.5 sm:px-6 space-y-3.5 sm:space-y-4 animate-in fade-in duration-200">
                     {/* UNIFIED TOP-DOCKED CONTROL BAR (Matching Grading Hub layout) */}
-                    <div className="sticky top-14 sm:top-16 z-30 py-2 sm:py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors w-full max-w-full">
+                    <div className="sticky top-14 sm:top-16 z-30 -mx-2.5 sm:-mx-6 px-2.5 sm:px-6 py-2 sm:py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
                         {/* Left: Sub-tabs pill container */}
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">

@@ -57,7 +57,7 @@ export const CardSearchBar: React.FC<CardSearchBarProps> = ({
     <div className={`space-y-1.5 ${className}`}>
       <div className="flex items-center gap-2">
         {/* Main Search Input */}
-        <div className="relative flex-1 min-w-0 group">
+        <div className="relative flex-1 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-violet-600 dark:group-focus-within:text-cyan-400 transition-colors" />
 
           <input

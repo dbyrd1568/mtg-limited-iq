@@ -918,7 +918,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
   return (
     <div className="max-w-[1440px] mx-auto pb-4 px-2.5 sm:px-6 space-y-3.5 sm:space-y-4 animate-in fade-in duration-200">
       {/* UNIFIED TOP-DOCKED CONTROL BAR (Compact, responsive, frozen/sticky on scroll) */}
-      <div className="sticky top-14 sm:top-16 z-30 py-2 sm:py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors w-full max-w-full">
+      <div className="sticky top-14 sm:top-16 z-30 -mx-2.5 sm:-mx-6 px-2.5 sm:px-6 py-2 sm:py-2.5 bg-slate-100/95 dark:bg-[#090a0d]/95 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 shadow-xs">
         {/* Left: Sub-tabs */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
@@ -1059,16 +1059,16 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               </div>
 
               {/* Right Controls: Sort, Status, and Benchmarks */}
-              <div className="flex items-center flex-wrap gap-2 sm:gap-2.5 w-full lg:w-auto">
+              <div className="flex items-center flex-wrap gap-2.5 shrink-0">
                 {/* Sort By */}
-                <div className="flex items-center gap-1.5 max-w-full">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
                     Sort:
                   </span>
                   <select
                     value={cardListSortBy}
                     onChange={(e) => setCardListSortBy(e.target.value as any)}
-                    className="h-9 px-2.5 max-w-[210px] sm:max-w-none bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono truncate"
+                    className="h-9 px-2.5 bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 dark:focus:border-cyan-400 cursor-pointer font-mono"
                   >
                     <option value="number">Card # (#001 → #300)</option>
                     <option value="name">Card Name (A → Z)</option>
@@ -1084,7 +1084,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
 
                 {/* Evaluation Status Filter */}
-                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar max-w-full">
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
                   {[
                     { id: 'ALL', label: 'All' },
                     { id: 'UNRATED', label: 'Ungraded' },
@@ -1093,7 +1093,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                     <button
                       key={st.id}
                       onClick={() => setFilterRatedStatus(st.id as any)}
-                      className={`h-7 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                      className={`h-7 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center ${
                         filterRatedStatus === st.id
                           ? 'bg-violet-600 text-white shadow-xs font-bold'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1105,7 +1105,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                 </div>
 
                 {/* Benchmark Data Toggles (Me, LSV, LLU, DS, 17Lands) */}
-                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar max-w-full">
+                <div className="h-9 flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline">
                     Benchmarks:
                   </span>
@@ -1219,7 +1219,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
               })()}
 
               {/* Rarity Filter Pills */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar max-w-full">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#17181c] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                 {['ALL', 'common', 'uncommon', 'rare', 'mythic'].map((rar) => {
                   const isSelected = (rar === 'ALL' && (selectedRarities.includes('ALL') || selectedRarities.length === 0)) ||
                     (rar !== 'ALL' && selectedRarities.includes(rar));
@@ -1239,7 +1239,7 @@ export const EvaluationHub: React.FC<EvaluationHubProps> = ({
                           handleSelectedRarities([...current, rar]);
                         }
                       }}
-                      className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-violet-600 text-white shadow-xs font-bold'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
