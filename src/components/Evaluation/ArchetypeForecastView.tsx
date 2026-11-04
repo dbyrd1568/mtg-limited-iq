@@ -1266,7 +1266,7 @@ export const ArchetypeForecastView: React.FC<ArchetypeForecastViewProps> = ({
 
                     {/* Shrunk Card Visual (Unobscured card title & art) */}
                     <div
-                      className="relative aspect-[2.5/3.5] w-[88%] mx-auto rounded-xl overflow-hidden shadow-md bg-slate-100 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center group cursor-pointer hover:shadow-lg transition-all"
+                      className="relative aspect-[2.5/3.5] w-full sm:w-[88%] mx-auto rounded-xl overflow-hidden shadow-md bg-slate-100 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800 flex items-center justify-center group cursor-pointer hover:shadow-lg transition-all"
                       onClick={() => onSelectCard?.(topItem.card)}
                       title={`Click to inspect ${topItem.card.name}`}
                     >

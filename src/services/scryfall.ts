@@ -529,6 +529,7 @@ export function normalizeScryfallCard(rawCard: any): Card {
     card_faces,
     layout: rawCard.layout,
     scryfall_uri: rawCard.scryfall_uri,
+    released_at: rawCard.released_at,
     booster: typeof rawCard.booster === 'boolean' ? rawCard.booster : undefined,
     promo: typeof rawCard.promo === 'boolean' ? rawCard.promo : undefined,
     finishes: Array.isArray(rawCard.finishes) ? rawCard.finishes : undefined,

@@ -161,7 +161,7 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
 
             <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
               {/* Card Thumbnail */}
-              <div className="w-[110px] sm:w-[130px] h-[154px] sm:h-[182px] rounded-2xl overflow-hidden shadow-md border border-slate-300 dark:border-slate-700 shrink-0 bg-[#17181c]">
+              <div className="w-full aspect-[63/88] sm:w-[130px] sm:h-[182px] sm:aspect-auto rounded-2xl overflow-hidden shadow-md border border-slate-300 dark:border-slate-700 shrink-0 bg-[#17181c]">
                 <CardImage
                   card={activeCandidate}
                   src={repImageUri}
@@ -297,9 +297,9 @@ export const PrecedentSlotPickerModal: React.FC<PrecedentSlotPickerModalProps> =
 
                     {/* Card Content */}
                     {comp ? (
-                      <div className="p-4 flex-1 flex flex-col justify-between gap-3">
+                      <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between gap-3">
                         {/* Card Image Thumbnail */}
-                        <div className="w-full h-[220px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-sm relative shrink-0 group">
+                        <div className="w-full aspect-[63/88] sm:h-[220px] sm:aspect-auto rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-sm relative shrink-0 group">
                           <CardImage
                             card={comp}
                             src={compImageUri}

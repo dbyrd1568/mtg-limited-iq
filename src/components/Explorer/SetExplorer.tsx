@@ -1564,9 +1564,9 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
             )}
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-center">
               {/* Left Column: Large Visual Card Artwork */}
-              <div className="md:col-span-5 flex flex-col items-center justify-center shrink-0">
+              <div className="md:col-span-5 flex flex-col items-center justify-center shrink-0 w-full">
                 <CardObfuscator
                   card={selectedCardForModal}
                   obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
@@ -1575,7 +1575,7 @@ export const SetExplorer: React.FC<SetExplorerProps> = ({
                 />
 
                 {/* Under Card Pic: Set abbr / rarity / cost & Tactical Tags */}
-                <div className="w-[305px] max-w-full mt-2.5 space-y-2">
+                <div className="w-full sm:w-[305px] max-w-full mt-2.5 space-y-2">
                   <div className="flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
                     <span className="font-semibold text-slate-700 dark:text-slate-300">
                       #{selectedCardForModal.collector_number} {selectedCardForModal.set.toUpperCase()} • <span className="capitalize font-normal text-slate-500 dark:text-slate-400">{selectedCardForModal.rarity}</span>

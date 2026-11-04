@@ -766,8 +766,8 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
-                    <div className="flex flex-col items-center">
+                  <div className="p-2.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="flex flex-col items-center w-full">
                       <CardObfuscator
                       card={targetCard}
                       obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
@@ -1011,7 +1011,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                         <div
                           key={`${comp.set}_${comp.id}`}
                           onClick={() => setInspectCardMatch(match)}
-                          className="group p-4 sm:p-6 rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/90 shadow-sm hover:border-violet-400 dark:hover:border-cyan-400 transition-all cursor-pointer hover:shadow-md"
+                          className="group p-3 sm:p-6 rounded-3xl bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800/90 shadow-sm hover:border-violet-400 dark:hover:border-cyan-400 transition-all cursor-pointer hover:shadow-md"
                         >
                           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
                             {/* Left Column: Full Card Visual + 17Lands & Use Grade directly in the space below card */}
@@ -1022,7 +1022,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
                                   e.stopPropagation();
                                   setInspectCardMatch(match);
                                 }}
-                                className="relative w-full h-[293px] sm:h-[321px] rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-md hover:ring-2 hover:ring-violet-400 dark:hover:ring-cyan-400 group-hover:ring-2 group-hover:ring-violet-400 dark:group-hover:ring-cyan-400 transition-all cursor-pointer block text-left"
+                                className="relative w-full aspect-[63/88] sm:h-[321px] rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-md hover:ring-2 hover:ring-violet-400 dark:hover:ring-cyan-400 group-hover:ring-2 group-hover:ring-violet-400 dark:group-hover:ring-cyan-400 transition-all cursor-pointer block text-left"
                                 title={`Click to view full card details for ${comp.name}`}
                               >
                                 <CardImage
@@ -1286,11 +1286,11 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
       {inspectCardMatch && targetCard && (
         <div 
           onClick={() => setInspectCardMatch(null)}
-          className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-0 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-[96vw] max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+            className="w-full h-full sm:w-[96vw] sm:h-auto max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] bg-white dark:bg-[#121316] border-0 sm:border border-slate-200 dark:border-slate-800 rounded-none sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-full sm:max-h-[92vh]"
           >
             {/* Header */}
             <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#17181c]">
@@ -1355,7 +1355,7 @@ export const SimilarCardsModal: React.FC<SimilarCardsModalProps> = ({
             </div>
 
             {/* Body: 2-Column Side-by-Side Comparison */}
-            <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 items-start">
+            <div className="p-3 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 items-start">
               
               {/* Left Column: Reference Target Card */}
               <div className="space-y-4 pb-6 lg:pb-0 lg:pr-6 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800">

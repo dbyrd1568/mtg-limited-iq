@@ -193,11 +193,11 @@ interface CardObfuscatorProps {
 }
 
 const SIZE_CONFIGS = {
-  sm: { maxW: 185, maxH: 258 },
-  md: { maxW: 245, maxH: 342 },
-  lg: { maxW: 305, maxH: 426 },
-  xl: { maxW: 345, maxH: 482 },
-  '2xl': { maxW: 410, maxH: 572 },
+  sm: { maxW: 185, maxH: 258, responsiveClass: 'w-full sm:max-w-[185px] sm:max-h-[258px]' },
+  md: { maxW: 245, maxH: 342, responsiveClass: 'w-full sm:max-w-[245px] sm:max-h-[342px]' },
+  lg: { maxW: 305, maxH: 426, responsiveClass: 'w-full sm:max-w-[305px] sm:max-h-[426px]' },
+  xl: { maxW: 345, maxH: 482, responsiveClass: 'w-full sm:max-w-[345px] sm:max-h-[482px]' },
+  '2xl': { maxW: 410, maxH: 572, responsiveClass: 'w-full sm:max-w-[410px] sm:max-h-[572px]' },
 };
 
 export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
@@ -373,16 +373,13 @@ export const CardObfuscator: React.FC<CardObfuscatorProps> = ({
   const sizeConfig = SIZE_CONFIGS[size] || SIZE_CONFIGS.md;
 
   return (
-    <div className={`relative flex flex-col items-center justify-center select-none max-w-full max-h-full min-h-0 ${className}`}>
+    <div className={`relative flex flex-col items-center justify-center select-none w-full max-w-full max-h-full min-h-0 ${className}`}>
       {/* Card Outer Container */}
       <div
         style={{
-          width: `min(${sizeConfig.maxW}px, 100%)`,
           aspectRatio: '63 / 88',
-          maxHeight: `min(${sizeConfig.maxH}px, 100%)`,
-          maxWidth: '100%',
         }}
-        className={`relative rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-[#090a0d] card-foil-sheen shrink ${getRarityGlow(card.rarity)}`}
+        className={`relative rounded-[16px] overflow-hidden border-2 transition-all duration-300 bg-[#090a0d] card-foil-sheen shrink max-w-full max-h-full ${sizeConfig.responsiveClass} ${getRarityGlow(card.rarity)}`}
       >
         {/* Art Only Mask Mode */}
         {isArtOnly && !obfuscation.isRevealed ? (

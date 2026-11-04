@@ -261,7 +261,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
         <div className={`${isHeadToHead ? 'lg:col-span-6' : 'lg:col-span-5'} flex flex-col items-center justify-center space-y-3 min-w-0`}>
           {isHeadToHead && currentQuestion.comparisonCard ? (
             /* 17Lands Duel Arena (2 Cards Side-by-Side without overlap) */
-            <div className="w-full bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-xs space-y-3">
+            <div className="w-full bg-white dark:bg-[#121316] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-2 sm:p-4 shadow-xs space-y-2.5 sm:space-y-3">
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-mono font-bold text-violet-700 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Swords className="w-3.5 h-3.5 text-amber-500" />
@@ -274,7 +274,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 {/* Option A Card */}
                 <div
                   onClick={() => !isAnswerSubmitted && handleSelectOption(currentQuestion.card.id)}
-                  className={`flex flex-col items-center cursor-pointer transition-all p-1.5 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-[170px] sm:max-w-[210px] ${
+                  className={`flex flex-col items-center cursor-pointer transition-all p-1 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-none sm:max-w-[210px] ${
                     selectedOptionId === currentQuestion.card.id
                       ? 'bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500 dark:ring-cyan-400'
                       : 'hover:bg-slate-100 dark:hover:bg-[#1c1d22]'
@@ -321,7 +321,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 </div>
 
                 {/* VS Badge */}
-                <div className="shrink-0 flex flex-col items-center justify-center px-0.5">
+                <div className="shrink-0 hidden sm:flex flex-col items-center justify-center px-0.5">
                   <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-100 dark:bg-[#1c1d22] border border-slate-300 dark:border-cyan-400/50 text-slate-800 dark:text-cyan-200 font-bold text-[10px] sm:text-xs flex items-center justify-center font-mono shadow-xs">
                     VS
                   </div>
@@ -330,7 +330,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
                 {/* Option B Card */}
                 <div
                   onClick={() => !isAnswerSubmitted && handleSelectOption(currentQuestion.comparisonCard!.id)}
-                  className={`flex flex-col items-center cursor-pointer transition-all p-1.5 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-[170px] sm:max-w-[210px] ${
+                  className={`flex flex-col items-center cursor-pointer transition-all p-1 sm:p-2 rounded-2xl relative group select-none flex-1 min-w-0 max-w-none sm:max-w-[210px] ${
                     selectedOptionId === currentQuestion.comparisonCard.id
                       ? 'bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500 dark:ring-cyan-400'
                       : 'hover:bg-slate-100 dark:hover:bg-[#1c1d22]'
@@ -379,9 +379,9 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
             </div>
           ) : (
             /* Single Card Arena */
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center w-full">
               <div
-                className="relative group cursor-zoom-in"
+                className="relative group cursor-zoom-in w-full flex justify-center"
                 onClick={() => setZoomedCard({ card: currentQuestion.card })}
                 title="Click to view card larger"
               >
@@ -551,11 +551,11 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
       {/* Card Inspection / Zoom Lightbox Modal */}
       {zoomedCard && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-6 animate-in fade-in duration-200"
           onClick={() => setZoomedCard(null)}
         >
           <div
-            className="relative max-w-md sm:max-w-lg w-full max-h-[94vh] overflow-y-auto bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 flex flex-col items-center select-none"
+            className="relative max-w-md sm:max-w-lg w-full max-h-[94vh] overflow-y-auto bg-white dark:bg-[#17181c] border border-slate-200 dark:border-slate-800 rounded-3xl p-2.5 sm:p-6 shadow-2xl space-y-3 sm:space-y-4 flex flex-col items-center select-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header: Card Title, Set/Rarity & Close Button */}
@@ -600,7 +600,7 @@ export const QuizActive: React.FC<QuizActiveProps> = ({
             </div>
 
             {/* Enlarge Card Image Arena (Respects active question masking) */}
-            <div className="flex flex-col items-center justify-center my-1">
+            <div className="flex flex-col items-center justify-center my-1 w-full">
               <CardObfuscator
                 card={zoomedCard.card}
                 obfuscation={

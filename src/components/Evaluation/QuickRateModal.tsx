@@ -641,7 +641,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
         {/* Fixed Content Layout (Grid split: Left Card Art, Right Grading Controls) */}
         <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 lg:gap-6 p-3 sm:p-5 overflow-y-auto md:overflow-hidden">
           {/* Left: Card Visual (Smartly sized to fill available room without overflowing) */}
-          <div className="w-full md:w-[310px] lg:w-[325px] xl:w-[335px] shrink-0 flex flex-col items-center justify-between min-h-0 h-full">
+          <div className="w-full md:w-[310px] lg:w-[325px] xl:w-[335px] shrink-0 flex flex-col items-center justify-between min-h-0 md:h-full">
             <div className="w-full flex items-center justify-between gap-2 px-1 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1.5 shrink-0">
               <span className="font-semibold text-slate-700 dark:text-slate-300">
                 #{currentCard.collector_number} • <span className="capitalize font-normal text-slate-500 dark:text-slate-400">{currentCard.rarity}</span>
@@ -655,7 +655,7 @@ export const QuickRateModal: React.FC<QuickRateModalProps> = ({
                 obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
                 size="lg"
                 showSublabel={false}
-                className="w-full h-full"
+                className="w-full md:h-full"
               />
             </div>
 

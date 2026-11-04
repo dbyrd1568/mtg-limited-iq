@@ -6,10 +6,56 @@ import { getStoredCanonicalPrecedents, getTargetCardKey } from './precedentAppro
 
 const SCRYFALL_API_BASE = 'https://api.scryfall.com';
 
-// Benchmark modern premier booster draft sets with rich 17Lands sample sizes (released sets only)
+// Benchmark modern premier booster draft sets with rich 17Lands sample sizes
+// Strictly restricted to Throne of Eldraine (ELD, Autumn 2019) and newer sets on 17Lands
 export const COMPARABLE_PREMIER_SETS = [
-  'FIN', 'ECL', 'TDM', 'EOE', 'TLA', 'TMT', 'SOS', 'MSH', 'DFT', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR', 'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX', 'KHM', 'ZNR', 'IKO', 'THB', 'ELD', 'M21', 'M20', 'WAR'
+  'FRA', 'HOB', 'FIN', 'ECL', 'TDM', 'EOE', 'TLA', 'TMT', 'SOS', 'MSH', 'DFT', 'PIO', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'RVR', 'LCI', 'WOE', 'LTR', 'MOM', 'SIR', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX', 'KHM', 'KLR', 'ZNR', 'AKR', 'M21', 'IKO', 'THB', 'ELD'
 ];
+
+// Throne of Eldraine (ELD) Arena release date — the start of the modern 17Lands era
+export const ELD_RELEASE_CUTOFF_DATE = '2019-09-26';
+
+// Arena-released 17Lands remaster sets where Scryfall flags digital=true
+export const POST_ELD_ARENA_REMASTER_SETS = new Set(['PIO', 'SIR', 'KLR', 'AKR']);
+
+// Known post-ELD sets (17Lands premier sets, bonus sheets, and post-2019 booster releases)
+export const POST_ELD_ALLOWED_SETS = new Set([
+  ...COMPARABLE_PREMIER_SETS,
+  'OTP', 'BIG', 'SPG', 'WOT', 'MUL', 'BRR', 'STA', 'DBL', 'HBG',
+  '2XM', '2X2', 'DMR', 'CMM', 'CLB', 'CMR', 'INR', 'J25', 'J22', 'JMP', 'CLU', 'MAT'
+]);
+
+// Sets released before Throne of Eldraine (ELD, Autumn 2019) or non-17Lands reprint lists — strictly excluded from precedent comparisons
+export const PRE_ELD_EXCLUDED_SETS = new Set([
+  'M20', 'WAR', 'RNA', 'GRN', 'M19', 'DOM', 'RIX', 'XLN', 'HOU', 'AKH', 'AER', 'KLD',
+  'EMN', 'SOI', 'OGW', 'BFZ', 'ORI', 'DTK', 'FRF', 'KTK', 'M15', 'JOU', 'BNG', 'THS',
+  'M14', 'DGM', 'GTC', 'RTR', 'M13', 'AVR', 'DKA', 'ISD', 'M12', 'NPH', 'MBS', 'SOM',
+  'M11', 'ROE', 'WWK', 'ZEN', 'M10', 'ARB', 'CON', 'ALA', 'EVE', 'SHM', 'MOR', 'LRW',
+  '10E', 'FUT', 'PLC', 'TSP', 'CSP', 'DIS', 'GPT', 'RAV', '9ED', 'SOK', 'BOK', 'CHK',
+  '5DN', 'DST', 'MRD', '8ED', 'SCG', 'LGN', 'ONS', 'JUD', 'TOR', 'ODY', '7ED', 'APC',
+  'PLS', 'INV', 'PCY', 'NEM', 'MMQ', '6ED', 'UDS', 'ULG', 'USG', 'EXO', 'STH', 'TMP',
+  'WTH', '5ED', 'VIS', 'MIR', 'ALL', 'HML', 'ICE', '4ED', 'FEM', 'DRK', 'LEG', '3ED',
+  'ATQ', 'ARN', '2ED', 'LEB', 'LEA', 'MMA', 'MM2', 'MM3', 'EMA', 'IMA', 'A25', 'UMA', 'MH1', 'BBD', 'CN2', 'CNS',
+  'PLST', 'MB1', 'MB2', 'CMB1', 'CMB2', 'SLD', 'SLC', 'SLP', 'PMEI', 'PRM'
+]);
+
+/**
+ * Returns true if a card originates from a set released from Throne of Eldraine (ELD, Sept 2019) onward.
+ */
+export function isPostEldCard(card: Card | null | undefined): boolean {
+  if (!card) return false;
+  const setCode = (card.set || '').trim().toUpperCase();
+  if (!setCode) return false;
+  if (PRE_ELD_EXCLUDED_SETS.has(setCode)) return false;
+  if (card.released_at && card.released_at < ELD_RELEASE_CUTOFF_DATE) return false;
+  if (POST_ELD_ALLOWED_SETS.has(setCode)) return true;
+  const root = getRootSetCode(setCode);
+  if (PRE_ELD_EXCLUDED_SETS.has(root)) return false;
+  if (POST_ELD_ALLOWED_SETS.has(root)) return true;
+  // If released_at is present and >= ELD_RELEASE_CUTOFF_DATE, allow
+  if (card.released_at && card.released_at >= ELD_RELEASE_CUTOFF_DATE) return true;
+  return false;
+}
 
 /**
  * Canonical MTG companion, commander, bonus sheet, and supplemental set relationships.
@@ -36,6 +82,10 @@ export const CANONICAL_COMPANION_SETS: Record<string, string[]> = {
   // Edge of Eternities
   EOE: ['EOC', 'TEOE', 'PEOE', 'AEOE', 'Y25EOE'],
   EOC: ['EOE', 'TEOE', 'PEOE', 'AEOE', 'Y25EOE'],
+
+  // Star Trek
+  TRK: ['TRC', 'TTRK', 'PTRK', 'ATRK'],
+  TRC: ['TRK', 'TTRK', 'PTRK', 'ATRK'],
 
   // Final Fantasy
   FIN: ['FIC', 'TFIN', 'PFIN', 'AFIN'],
@@ -292,7 +342,7 @@ const similarityCache = new Map<string, CardSimilarityResult>();
  */
 export function getCachedSimilarCards(targetCard: Card | null | undefined): CardSimilarityResult | null {
   if (!targetCard || !targetCard.name || !targetCard.set) return null;
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v71`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v80`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -360,8 +410,8 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Auspicious Arrival', 'MKM', '{1}{W}', 2, 'Instant', 'Target creature gets +2/+2 until end of turn. Investigate.', ['W'], undefined, undefined, 'common'),
   createBenchmarkCard('Hop to It', 'BLB', '{2}{W}', 3, 'Sorcery', 'Create three 1/1 white Rabbit creature tokens.', ['W'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Rally for the Throne', 'ELD', '{2}{W}', 3, 'Instant', 'Create two 1/1 white Human creature tokens. Adamant — If at least three white mana was spent to cast this spell, you gain 1 life for each creature you control.', ['W'], undefined, undefined, 'common'),
-  createBenchmarkCard('Raise the Alarm', 'M20', '{1}{W}', 2, 'Instant', 'Create two 1/1 white Soldier creature tokens.', ['W'], undefined, undefined, 'common'),
-  createBenchmarkCard('Call the Cavalry', 'DOM', '{3}{W}', 4, 'Sorcery', 'Create two 2/2 white Knight creature tokens with vigilance.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Raise the Alarm', 'CMR', '{1}{W}', 2, 'Instant', 'Create two 1/1 white Soldier creature tokens.', ['W'], undefined, undefined, 'common'),
+  createBenchmarkCard('Resolute Reinforcements', 'DMU', '{1}{W}', 2, 'Creature — Human Soldier', 'Flash (You may cast this spell any time you could cast an instant.)\nWhen this creature enters, create a 1/1 white Soldier creature token.', ['W'], '1', '1', 'uncommon', ['Flash']),
   createBenchmarkCard('Join the Dance', 'MID', '{G}{W}', 2, 'Sorcery', 'Create two 1/1 white Human creature tokens. Flashback {3}{G}{W}', ['G', 'W'], undefined, undefined, 'common'),
   createBenchmarkCard('Griffin Aerie', 'M21', '{1}{W}', 2, 'Enchantment', 'At the beginning of your end step, if you gained 3 or more life this turn, create a 2/2 white Griffin creature token with flying.', ['W'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Depopulate', 'SNC', '{2}{W}{W}', 4, 'Sorcery', 'Each player who controls a multicolored creature draws a card. Destroy all creatures.', ['W'], undefined, undefined, 'rare'),
@@ -372,10 +422,10 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Inspiring Overseer', 'SNC', '{2}{W}', 3, 'Creature — Angel Cleric', 'Flying\nWhen Inspiring Overseer enters the battlefield, you gain 1 life and draw a card.', ['W'], '2', '1', 'common', ['Flying']),
   createBenchmarkCard('Cathar Commando', 'MID', '{1}{W}', 2, 'Creature — Human Soldier', 'Flash\n{1}, Sacrifice Cathar Commando: Destroy target artifact or enchantment.', ['W'], '3', '1', 'common', ['Flash']),
   createBenchmarkCard('Star Pupil', 'STX', '{W}', 1, 'Creature — Human Wizard', 'Star Pupil enters the battlefield with a +1/+1 counter on it. When Star Pupil dies, put its counters on target creature you control.', ['W'], '0', '0', 'common'),
-  createBenchmarkCard('Mikaeus, the Lunarch', 'ISD', '{X}{W}', 1, 'Legendary Creature — Human Cleric', 'Mikaeus, the Lunarch enters the battlefield with X +1/+1 counters on it.\n{T}: Put a +1/+1 counter on Mikaeus.\n{T}, Remove a +1/+1 counter from Mikaeus: Put a +1/+1 counter on each other creature you control.', ['W'], '0', '0', 'mythic'),
+  createBenchmarkCard('Mikaeus, the Lunarch', '2X2', '{X}{W}', 1, 'Legendary Creature — Human Cleric', 'Mikaeus, the Lunarch enters the battlefield with X +1/+1 counters on it.\n{T}: Put a +1/+1 counter on Mikaeus.\n{T}, Remove a +1/+1 counter from Mikaeus: Put a +1/+1 counter on each other creature you control.', ['W'], '0', '0', 'mythic'),
   createBenchmarkCard('Luminarch Aspirant', 'ZNR', '{1}{W}', 2, 'Creature — Human Cleric', 'At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.', ['W'], '1', '1', 'rare'),
   createBenchmarkCard('Siege Veteran', 'BRO', '{2}{W}', 3, 'Creature — Human Soldier', 'At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.\nWhenever another nontoken Soldier you control dies, create a 1/1 colorless Soldier artifact creature token.', ['W'], '2', '2', 'rare'),
-  createBenchmarkCard('Shalai, Voice of Plenty', 'DOM', '{3}{W}', 4, 'Legendary Creature — Angel', 'Flying\nYou, planeswalkers you control, and other creatures you control have hexproof.\n{4}{G}{G}: Put a +1/+1 counter on each creature you control.', ['W'], '3', '4', 'rare', ['Flying']),
+  createBenchmarkCard('Swift Response', 'M21', '{1}{W}', 2, 'Instant', 'Destroy target tapped creature.', ['W'], undefined, undefined, 'common'),
 
   // Blue
   createBenchmarkCard('Consider', 'MID', '{U}', 1, 'Instant', 'Surveil 1. Draw a card.', ['U']),
@@ -390,20 +440,16 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Daring Waverider', 'BLB', '{4}{U}{U}', 6, 'Creature — Otter Wizard', 'When Daring Waverider enters the battlefield, you may cast target instant or sorcery card from your graveyard without paying its mana cost.', ['U'], '4', '4', 'uncommon'),
   createBenchmarkCard('Desynchronize', 'BRO', '{4}{U}', 5, 'Instant', "Target nonland permanent's owner puts it on their choice of the top or bottom of their library. Scry 2.", ['U'], undefined, undefined, 'common', ['Scry']),
   createBenchmarkCard('Dire Downdraft', 'BLB', '{3}{U}', 4, 'Instant', "This spell costs {1} less to cast if it targets an attacking or tapped creature.\nTarget creature's owner puts it on their choice of the top or bottom of their library.", ['U'], undefined, undefined, 'common'),
-  createBenchmarkCard('Run Aground', 'XLN', '{3}{U}', 4, 'Instant', "Put target artifact or creature on top of its owner's library.", ['U'], undefined, undefined, 'common'),
   createBenchmarkCard('Cruel Witness', 'VOW', '{2}{U}{U}', 4, 'Creature — Bird Horror', "Flying\nWhenever you cast a noncreature spell, surveil 1.", ['U'], '3', '3', 'common', ['Flying', 'Surveil']),
   createBenchmarkCard('Out of Sight', 'MH3', '{3}{U}', 4, 'Instant', "Put target nonland permanent into its owner's library third from the top.", ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Flashfreeze', 'FDN', '{1}{U}', 2, 'Instant', 'Counter target red or green spell.', ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Change the Equation', 'MOM', '{1}{U}', 2, 'Instant', "Choose one —\n• Counter target spell with mana value 2 or less.\n• Counter target red or green spell with mana value 6 or less.", ['U'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Gainsay', 'THS', '{1}{U}', 2, 'Instant', 'Counter target blue spell.', ['U'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Jace\'s Defeat', 'HOU', '{1}{U}', 2, 'Instant', 'Counter target blue spell. If it was a Jace planeswalker spell, scry 2.', ['U'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Neutralizing Blast', 'FRF', '{1}{U}', 2, 'Instant', 'Counter target multicolored spell.', ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Mystical Dispute', 'ELD', '{2}{U}', 3, 'Instant', "This spell costs {2} less to cast if it targets a blue spell.\nCounter target spell unless its controller pays {3}.", ['U'], undefined, undefined, 'uncommon'),
 
   // Black
   createBenchmarkCard('Eaten Alive', 'MID', '{B}', 1, 'Sorcery', 'As an additional cost to cast this spell, sacrifice a creature or pay {2}{B}. Exile target creature or planeswalker.', ['B']),
   createBenchmarkCard('Disfigure', 'BRO', '{B}', 1, 'Instant', 'Target creature gets -2/-2 until end of turn.', ['B']),
-  createBenchmarkCard('Burglar Rat', 'GRN', '{1}{B}', 2, 'Creature — Rat', 'When Burglar Rat enters the battlefield, each opponent discards a card.', ['B'], '1', '1', 'common'),
+  createBenchmarkCard('Burglar Rat', 'FDN', '{1}{B}', 2, 'Creature — Rat', 'When Burglar Rat enters the battlefield, each opponent discards a card.', ['B'], '1', '1', 'common'),
   createBenchmarkCard('Fell', 'BLB', '{1}{B}', 2, 'Sorcery', 'Destroy target creature.', ['B'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Bonebind Orator', 'BLB', '{1}{B}', 2, 'Creature — Bat Cleric', 'Lifelink. {2}{B}, Exile Bonebind Orator from your graveyard: Return target creature card with mana value 2 or less from your graveyard to your hand.', ['B'], '2', '2', 'common', ['Lifelink']),
   createBenchmarkCard('Deep-Cavern Bat', 'LCI', '{1}{B}', 2, 'Creature — Bat', "Flying, lifelink. When Deep-Cavern Bat enters the battlefield, look at target opponent's hand and exile a nonland card until Deep-Cavern Bat leaves the battlefield.", ['B'], '1', '1', 'uncommon', ['Flying', 'Lifelink']),
@@ -415,7 +461,6 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Huskburster Swarm', 'BLB', '{7}{B}', 8, 'Creature — Insect', 'This spell costs {1} less to cast for each creature card in your graveyard. Menace.', ['B'], '6', '6', 'uncommon', ['Menace']),
   createBenchmarkCard('Agonizing Remorse', 'THB', '{1}{B}', 2, 'Sorcery', 'Target opponent reveals their hand. You choose a nonland card from it or a card from their graveyard. Exile that card. You lose 1 life.', ['B'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Pilfer', 'FDN', '{1}{B}', 2, 'Sorcery', 'Target opponent reveals their hand. You choose a nonland card from it. That player discards that card.', ['B'], undefined, undefined, 'common'),
-  createBenchmarkCard('Drill Bit', 'RNA', '{2}{B}', 3, 'Sorcery', 'Spectacle {B}\nTarget player reveals their hand. You choose a nonland card from it. That player discards that card.', ['B'], undefined, undefined, 'uncommon', ['Spectacle']),
   createBenchmarkCard('Hopeless Nightmare', 'WOE', '{B}', 1, 'Enchantment', 'When this enchantment enters, each opponent discards a card and loses 2 life.\nWhen this enchantment is put into a graveyard from the battlefield, scry 2.\n{2}{B}: Sacrifice this enchantment.', ['B'], undefined, undefined, 'common', ['Scry']),
   createBenchmarkCard('Duress', 'FDN', '{B}', 1, 'Sorcery', 'Target opponent reveals their hand. You choose a noncreature, nonland card from it. That player discards that card.', ['B'], undefined, undefined, 'common'),
 
@@ -443,13 +488,10 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Writhing Chrysalis', 'MH3', '{2}{R}{G}', 4, 'Creature — Eldrazi Drone', 'Reach. When you cast this spell, create two 0/1 colorless Eldrazi Spawn creature tokens. Whenever you sacrifice another Eldrazi, put a +1/+1 counter on Writhing Chrysalis.', ['R', 'G'], '2', '3', 'common', ['Reach']),
   createBenchmarkCard('Goldvein Hydra', 'OTJ', '{X}{G}', 1, 'Creature — Plant Hydra', 'Vigilance, trample, haste\nGoldvein Hydra enters the battlefield with X +1/+1 counters on it.\nWhen Goldvein Hydra dies, create X tapped Treasure tokens, where X is its power.', ['G'], '0', '0', 'mythic', ['Vigilance', 'Trample', 'Haste']),
   createBenchmarkCard('Wildwood Scourge', 'M21', '{X}{G}', 1, 'Creature — Hydra', 'Wildwood Scourge enters the battlefield with X +1/+1 counters on it.\nWhenever one or more +1/+1 counters are put on another non-Hydra creature you control, put a +1/+1 counter on Wildwood Scourge.', ['G'], '0', '0', 'rare'),
-  createBenchmarkCard('Voracious Hydra', 'M20', '{X}{G}{G}', 2, 'Creature — Hydra', 'Trample\nVoracious Hydra enters the battlefield with X +1/+1 counters on it.\nWhen Voracious Hydra enters the battlefield, choose one —\n• Double the number of +1/+1 counters on Voracious Hydra.\n• Voracious Hydra fights target creature you don\'t control.', ['G'], '0', '1', 'rare', ['Trample']),
 
   // Colorless & Artifacts
-  createBenchmarkCard('Skyreach Manta', 'MMA', '{5}', 5, 'Artifact Creature — Spire Owl', 'Flying\nSunburst (This enters the battlefield with a +1/+1 counter on it for each color of mana spent to cast it.)', [], '0', '0', 'common', ['Flying', 'Sunburst']),
-  createBenchmarkCard('Etched Oracle', 'MMA', '{4}', 4, 'Artifact Creature — Wizard', 'Sunburst\n{1}, Remove four +1/+1 counters from Etched Oracle: Target player draws three cards.', [], '0', '0', 'uncommon', ['Sunburst']),
   createBenchmarkCard('Stonecoil Serpent', 'ELD', '{X}', 0, 'Artifact Creature — Snake', 'Reach, trample, protection from multicolored\nStonecoil Serpent enters the battlefield with X +1/+1 counters on it.', [], '0', '0', 'rare', ['Reach', 'Trample']),
-  createBenchmarkCard('Endless One', 'BFZ', '{X}', 0, 'Creature — Eldrazi', 'Endless One enters the battlefield with X +1/+1 counters on it.', [], '0', '0', 'rare'),
+  createBenchmarkCard('Endless One', 'CMM', '{X}', 0, 'Creature — Eldrazi', 'Endless One enters the battlefield with X +1/+1 counters on it.', [], '0', '0', 'rare'),
   createBenchmarkCard('Candy Trail', 'WOE', '{1}', 1, 'Artifact — Food Clue', 'When Candy Trail enters the battlefield, scry 2. {2}, {T}, Sacrifice Candy Trail: You gain 3 life and draw a card.', []),
   createBenchmarkCard('Witching Well', 'ELD', '{U}', 1, 'Artifact', 'When Witching Well enters the battlefield, scry 2. {3}{U}, Sacrifice Witching Well: Draw two cards.', ['U']),
   createBenchmarkCard('Clockwork Percussionist', 'DSK', '{1}', 1, 'Artifact Creature — Monkey', 'Haste. When Clockwork Percussionist dies, exile the top card of your library. You may play it until the end of your next turn.', [], '1', '1', 'common', ['Haste']),
@@ -483,23 +525,18 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Belligerent Yearling', 'LCI', '{1}{R}', 2, 'Creature — Dinosaur', 'Trample. Whenever another Dinosaur you control enters the battlefield, you may have Belligerent Yearling\'s base power become equal to that creature\'s power until end of turn.', ['R'], '3', '2', 'uncommon', ['Trample']),
   createBenchmarkCard('Elfsworn Giant', 'FDN', '{3}{G}{G}', 5, 'Creature — Giant Warrior', 'Reach. Landfall — Whenever a land you control enters the battlefield, create a 1/1 green Elf creature token.', ['G'], '5', '3', 'uncommon', ['Reach']),
   createBenchmarkCard('Wildvine Pummeler', 'ECL', '{6}{G}', 7, 'Creature — Elemental Giant', 'Vivid — This spell costs {1} less to cast for each color among permanents you control.\nReach, trample', ['G'], '6', '5', 'common', ['Reach', 'Trample', 'Vivid']),
-  createBenchmarkCard('Woodland Wanderer', 'BFZ', '{3}{G}', 4, 'Creature — Elemental', 'Vigilance, trample\nConverge — This creature enters the battlefield with a +1/+1 counter on it for each color of mana spent to cast it.', ['G'], '2', '2', 'rare', ['Vigilance', 'Trample', 'Converge']),
-  createBenchmarkCard('Tajuru Stalwart', 'BFZ', '{2}{G}', 3, 'Creature — Elf Scout Ally', 'Converge — Tajuru Stalwart enters the battlefield with a +1/+1 counter on it for each color of mana spent to cast it.', ['G'], '0', '0', 'common', ['Converge']),
   createBenchmarkCard('Nishoba Brawler', 'DMU', '{1}{G}', 2, 'Creature — Cat Warrior', 'Trample\nDomain — Nishoba Brawler\'s power is equal to the number of basic land types among lands you control.', ['G'], '*', '3', 'common', ['Trample', 'Domain']),
   createBenchmarkCard('Steelclaw Lance', 'ELD', '{B}{R}', 2, 'Artifact — Equipment', 'Equipped creature gets +2/+2. Equip Knight {1}. Equip {3}.', ['B', 'R'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Cultivate', 'M11', '{2}{G}', 3, 'Sorcery', 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', ['G'], undefined, undefined, 'common'),
+  createBenchmarkCard('Cultivate', 'M21', '{2}{G}', 3, 'Sorcery', 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', ['G'], undefined, undefined, 'common'),
   // Toughness Combat Damage & "Butt-Strike" Benchmarks
   createBenchmarkCard('Bedrock Tortoise', 'LCI', '{3}{G}', 4, 'Creature — Turtle', 'During your turn, creatures you control have hexproof.\nEach creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power.', ['G'], '0', '6', 'rare'),
   createBenchmarkCard('Doran, Besieged by Time', 'ECL', '{1}{W}{B}{G}', 4, 'Legendary Creature — Treefolk Druid', 'Each creature spell you cast with toughness greater than its power costs {1} less to cast.\nWhenever a creature you control attacks or blocks, it gets +X/+X until end of turn, where X is the difference between its power and toughness.', ['W', 'B', 'G'], '0', '5', 'rare'),
   createBenchmarkCard('Ancient Lumberknot', 'VOW', '{2}{B}{G}', 4, 'Creature — Treefolk', 'Each creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power.', ['B', 'G'], '1', '4', 'uncommon'),
   createBenchmarkCard('Doran, the Siege Tower', '2X2', '{W}{B}{G}', 3, 'Legendary Creature — Treefolk Shaman', 'Each creature assigns combat damage equal to its toughness rather than its power.', ['W', 'B', 'G'], '0', '5', 'rare'),
-  createBenchmarkCard('High Alert', 'RNA', '{1}{W}{U}', 3, 'Enchantment', 'Each creature you control assigns combat damage equal to its toughness rather than its power.\nCreatures you control can attack as though they didn\'t have defender.\n{2}{W}{U}: Untap target creature.', ['W', 'U'], undefined, undefined, 'uncommon'),
   // Token Anthems, Discard / Channel Removal, and White Utility Benchmarks
-  createBenchmarkCard('Intangible Virtue', 'EMA', '{1}{W}', 2, 'Enchantment', 'Creature tokens you control get +1/+1 and have vigilance.', ['W'], undefined, undefined, 'uncommon'),
+  createBenchmarkCard('Intangible Virtue', 'WOT', '{1}{W}', 2, 'Enchantment', 'Creature tokens you control get +1/+1 and have vigilance.', ['W'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Touch the Spirit Realm', 'NEO', '{2}{W}', 3, 'Enchantment', 'When Touch the Spirit Realm enters the battlefield, exile up to one other target artifact or creature until Touch the Spirit Realm leaves the battlefield.\nChannel — {1}{W}, Discard Touch the Spirit Realm: Exile target artifact or creature. Return it to the battlefield under its owner\'s control at the beginning of the next end step.', ['W'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Flowering of the White Tree', 'LTR', '{W}{W}', 2, 'Legendary Enchantment', 'Legendary creatures you control get +2/+1 and have ward {1}.\nNonlegendary creatures you control get +1/+1.', ['W'], undefined, undefined, 'rare'),
-  createBenchmarkCard('Gideon\'s Reproach', 'BFZ', '{1}{W}', 2, 'Instant', 'Gideon\'s Reproach deals 4 damage to target attacking or blocking creature.', ['W'], undefined, undefined, 'common'),
-  createBenchmarkCard('Phantom General', 'RTR', '{3}{W}', 4, 'Creature — Spirit Soldier', 'Creature tokens you control get +1/+1.', ['W'], '2', '3', 'uncommon'),
 
   // Lands & Fetchlands
   createBenchmarkCard('Terramorphic Expanse', 'ONE', '', 0, 'Land', '{T}, Sacrifice Terramorphic Expanse: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', [], undefined, undefined, 'common'),
@@ -516,13 +553,12 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Finneas, Ace Archer', 'BLB', '{G}{W}', 2, 'Creature — Rabbit Archer', 'Vigilance, reach. Whenever Finneas attacks, other Rabbits and creatures with counters you control get +1/+1 until end of turn. If you control four or more Rabbits, draw a card.', ['G', 'W'], '2', '2', 'rare', ['Vigilance', 'Reach']),
   createBenchmarkCard('Gev, Scaled Scorch', 'BLB', '{B}{R}', 2, 'Creature — Lizard Mercenary', 'Ward — Pay 2 life. Other Lizards you control enter the battlefield with an additional +1/+1 counter on them if an opponent lost life this turn.', ['B', 'R'], '3', '2', 'rare', ['Ward']),
   createBenchmarkCard('Kastral, the Windcrested', 'BLB', '{3}{W}{U}', 5, 'Creature — Bird Soldier', 'Flying. Whenever a Bird you control deals combat damage to a player, choose one — Draw a card; or put a +1/+1 counter on each Bird you control; or return target Bird card from your graveyard to the battlefield.', ['W', 'U'], '4', '5', 'rare', ['Flying']),
-  createBenchmarkCard('Blightning', 'A25', '{1}{B}{R}', 3, 'Sorcery', "Blightning deals 3 damage to target player or planeswalker. That player or that planeswalker's controller discards two cards.", ['B', 'R'], undefined, undefined, 'uncommon'),
 
   // Lands & Bombs
   createBenchmarkCard('Oteclan Landmark', 'LCI', '{1}', 1, 'Artifact', 'When Oteclan Landmark enters the battlefield, scry 2. Craft with land {2}{W}.', ['W']),
   createBenchmarkCard('Railway Brawler', 'OTJ', '{3}{G}{G}', 5, 'Creature — Rhino Warrior', 'Plot {2}{G}{G}. Reach, trample. Whenever another creature enters the battlefield under your control, double its power and toughness until end of turn.', ['G'], '5', '5', 'mythic', ['Reach', 'Trample']),
   createBenchmarkCard('Professor Onyx', 'STX', '{4}{B}{B}', 6, 'Planeswalker — Liliana', 'Magecraft — Whenever you cast or copy an instant or sorcery spell, each opponent loses 2 life and you gain 2 life.', ['B'], undefined, undefined, 'mythic'),
-  createBenchmarkCard('Enlightened Tutor', 'EMA', '{W}', 1, 'Instant', 'Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top.', ['W'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Enlightened Tutor', 'DMR', '{W}', 1, 'Instant', 'Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top.', ['W'], undefined, undefined, 'rare'),
   createBenchmarkCard('Search for Glory', 'KHM', '{2}{W}', 3, 'Snow Sorcery', 'Search your library for a snow permanent card, a legendary card, or a Saga card, reveal it, put it into your hand, then shuffle. You gain 1 life for each {S} spent to cast this spell.', ['W'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Idyllic Tutor', 'THB', '{2}{W}', 3, 'Sorcery', 'Search your library for an enchantment card, reveal it, put it into your hand, then shuffle.', ['W'], undefined, undefined, 'rare'),
   createBenchmarkCard('Solve the Equation', 'STX', '{2}{U}', 3, 'Sorcery', 'Search your library for an instant or sorcery card, reveal it, put it into your hand, then shuffle.', ['U'], undefined, undefined, 'uncommon'),
@@ -539,7 +575,6 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Starting Column', 'DFT', '{3}', 3, 'Artifact', '{T}: Add one mana of any color. {5}, {T}, Sacrifice Starting Column: Draw two cards.', []),
   createBenchmarkCard('Argothian Opportunist', 'BRO', '{2}{G}', 3, 'Creature — Human Artificer', 'When Argothian Opportunist enters the battlefield, create a tapped Powerstone token.', ['G'], '3', '2', 'common'),
   createBenchmarkCard('Zoetic Glyph', 'LCI', '{2}{U}', 3, 'Enchantment — Aura', 'Enchant artifact. Enchanted artifact is a Golem creature with base power and toughness 5/4 in addition to its other types. When Zoetic Glyph is put into a graveyard from the battlefield, discover 3.', ['U'], undefined, undefined, 'uncommon'),
-  createBenchmarkCard('Ensoul Artifact', 'M15', '{1}{U}', 2, 'Enchantment — Aura', 'Enchant artifact. Enchanted artifact is a creature with base power and toughness 5/5 in addition to its other types.', ['U'], undefined, undefined, 'uncommon'),
   createBenchmarkCard('Scrapwork Cohort', 'BRO', '{4}', 4, 'Artifact Creature — Soldier', 'When Scrapwork Cohort enters the battlefield, create a 1/1 colorless Soldier artifact creature token. Unearth {2}{W}', ['W'], '3', '1', 'common'),
   createBenchmarkCard('Svella, Ice Shaper', 'KHM', '{1}{R}{G}', 3, 'Legendary Creature — Troll Shaman', '{3}, {T}: Create an Icy Manalith token. {6}{R}{G}, {T}: Look at the top four cards of your library. You may cast a spell from among them without paying its mana cost. Put the rest on the bottom of your library in a random order.', ['R', 'G'], '2', '4', 'uncommon'),
   createBenchmarkCard('Tinker\'s Tote', 'LCI', '{2}{W}', 3, 'Artifact', 'When Tinker\'s Tote enters the battlefield, create two 1/1 colorless Gnome artifact creature tokens and you gain 2 life. {3}{W}, {T}, Sacrifice Tinker\'s Tote: Put a +1/+1 counter on each creature you control.', ['W'], undefined, undefined, 'common'),
@@ -552,6 +587,31 @@ export const HISTORICAL_BENCHMARK_CARDS: Card[] = [
   createBenchmarkCard('Gloomfang Mauler', 'MOM', '{5}{B}{B}', 7, 'Creature — Nightmare', 'Swampcycling {2}\nBackup 2\nMenace', ['B'], '5', '5', 'common', ['Backup', 'Landcycling', 'Menace', 'Swampcycling', 'Cycling']),
   createBenchmarkCard('Baleful Beholder', 'AFR', '{4}{B}{B}', 6, 'Creature — Beholder', 'When this creature enters, choose one —\n• Antimagic Cone — Each opponent sacrifices an enchantment of their choice.\n• Fear Ray — Creatures you control gain menace until end of turn.', ['B'], '6', '5', 'common'),
   createBenchmarkCard('Ogre Chitterlord', 'WOE', '{4}{R}{R}', 6, 'Creature — Ogre Warrior', 'Menace\nWhenever this creature enters or attacks, create two 1/1 black Rat creature tokens with "This token can\'t block." Then if you control five or more Rats, each Rat you control gets +2/+0 until end of turn.', ['R'], '6', '5', 'rare', ['Menace']),
+  // Station & Spacecraft Benchmarks (Edge of Eternities)
+  createBenchmarkCard('Wurmwall Sweeper', 'EOE', '{2}', 2, 'Artifact — Spacecraft', 'When this Spacecraft enters, surveil 2.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 4+.)\n4+ | Flying', [], '2', '2', 'common', ['Surveil', 'Station']),
+  createBenchmarkCard('Lumen-Class Frigate', 'EOE', '{1}{W}', 2, 'Artifact — Spacecraft', 'Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink', ['W'], '3', '5', 'rare', ['Station']),
+  createBenchmarkCard('Wedgelight Rammer', 'EOE', '{3}{W}', 4, 'Artifact — Spacecraft', 'When this Spacecraft enters, create a 2/2 colorless Robot artifact creature token.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 9+.)\n9+ | Flying, first strike', ['W'], '3', '4', 'uncommon', ['Station']),
+  createBenchmarkCard('Rescue Skiff', 'EOE', '{5}{W}', 6, 'Artifact — Spacecraft', 'When this Spacecraft enters, return target creature or enchantment card from your graveyard to the battlefield.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 10+.)\n10+ | Flying', ['W'], '5', '6', 'uncommon', ['Station']),
+  createBenchmarkCard('Uthros Scanship', 'EOE', '{3}{U}', 4, 'Artifact — Spacecraft', 'When this Spacecraft enters, draw two cards, then discard a card.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 8+.)\n8+ | Flying', ['U'], '4', '4', 'uncommon', ['Station']),
+  createBenchmarkCard('Specimen Freighter', 'EOE', '{5}{U}', 6, 'Artifact — Spacecraft', 'When this Spacecraft enters, return up to two target non-Spacecraft creatures to their owners\' hands.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 9+.)\n9+ | Flying\nWhenever this Spacecraft attacks, defending player mills four cards.', ['U'], '4', '7', 'uncommon', ['Station', 'Mill']),
+  createBenchmarkCard('Fell Gravship', 'EOE', '{2}{B}', 3, 'Artifact — Spacecraft', 'When this Spacecraft enters, mill three cards, then return a creature or Spacecraft card from your graveyard to your hand.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 8+.)\n8+ | Flying, lifelink', ['B'], '3', '2', 'uncommon', ['Station', 'Mill']),
+  createBenchmarkCard('Susurian Dirgecraft', 'EOE', '{4}{B}', 5, 'Artifact — Spacecraft', 'When this Spacecraft enters, each opponent sacrifices a nontoken creature of their choice.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 7+.)\n7+ | Flying', ['B'], '4', '3', 'uncommon', ['Station']),
+  createBenchmarkCard('Warmaker Gunship', 'EOE', '{2}{R}', 3, 'Artifact — Spacecraft', 'When this Spacecraft enters, it deals damage equal to the number of artifacts you control to target creature an opponent controls.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 6+.)\n6+ | Flying', ['R'], '4', '3', 'rare', ['Station']),
+  createBenchmarkCard('Debris Field Crusher', 'EOE', '{4}{R}', 5, 'Artifact — Spacecraft', 'When this Spacecraft enters, it deals 3 damage to any target.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 8+.)\n8+ | Flying\n{1}{R}: This Spacecraft gets +2/+0 until end of turn.', ['R'], '1', '5', 'uncommon', ['Station']),
+  createBenchmarkCard('Galvanizing Sawship', 'EOE', '{5}{R}', 6, 'Artifact — Spacecraft', 'Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 3+.)\n3+ | Flying, haste', ['R'], '6', '5', 'uncommon', ['Station']),
+  createBenchmarkCard('Larval Scoutlander', 'EOE', '{2}{G}', 3, 'Artifact — Spacecraft', 'When this Spacecraft enters, you may sacrifice a land or Lander. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 7+.)\n7+ | Flying', ['G'], '3', '3', 'uncommon', ['Station']),
+  createBenchmarkCard('Sledge-Class Seedship', 'EOE', '{2}{G}', 3, 'Artifact — Spacecraft', 'Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 7+.)\n7+ | Flying\nWhenever this Spacecraft attacks, you may put a creature card from your hand onto the battlefield.', ['G'], '4', '5', 'rare', ['Station']),
+  createBenchmarkCard('Atmospheric Greenhouse', 'EOE', '{4}{G}', 5, 'Artifact — Spacecraft', 'When this Spacecraft enters, put a +1/+1 counter on each creature you control.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 8+.)\n8+ | Flying, trample', ['G'], '5', '4', 'uncommon', ['Station']),
+  createBenchmarkCard('Pinnacle Kill-Ship', 'EOE', '{7}', 7, 'Artifact — Spacecraft', 'When this Spacecraft enters, it deals 10 damage to up to one target creature.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It\'s an artifact creature at 7+.)\n7+ | Flying', [], '7', '7', 'common', ['Station']),
+  // Draw Replacement & Card-Draw Doubler Benchmarks (Post-ELD 17Lands & Draft Era)
+  createBenchmarkCard('Thought Reflection', '2XM', '{4}{U}{U}{U}', 7, 'Enchantment', 'If you would draw a card, draw two cards instead.', ['U'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Vnwxt, Verbose Host', 'DFT', '{1}{U}', 2, 'Legendary Creature — Homunculus', 'Start your engines! (If you have no speed, it starts at 1. It increases once on each of your turns when an opponent loses life. Max speed is 4.)\nYou have no maximum hand size.\nMax speed — If you would draw a card, draw two cards instead.', ['U'], '0', '4', 'rare', ['Max speed', 'Start your engines!']),
+  createBenchmarkCard('Teferi\'s Ageless Insight', 'M21', '{2}{U}{U}', 4, 'Legendary Enchantment', 'If you would draw a card except the first one you draw in each of your draw steps, draw two cards instead.', ['U'], undefined, undefined, 'rare'),
+  createBenchmarkCard('Blood Scrivener', 'PIO', '{1}{B}', 2, 'Creature — Zombie Wizard', 'If you would draw a card while you have no cards in hand, instead you draw two cards and you lose 1 life.', ['B'], '2', '1', 'rare'),
+  createBenchmarkCard('Eruth, Tormented Prophet', 'VOW', '{1}{U}{R}', 3, 'Legendary Creature — Human Wizard', 'If you would draw a card, exile the top two cards of your library instead. You may play those cards this turn.', ['U', 'R'], '2', '4', 'rare'),
+  createBenchmarkCard('Phial of Galadriel', 'LTR', '{3}', 3, 'Legendary Artifact', 'If you would draw a card while you have no cards in hand, draw two cards instead.\nIf you would gain life while you have 5 or less life, you gain twice that much life instead.\n{T}: Add one mana of any color.', [], undefined, undefined, 'rare'),
+  createBenchmarkCard('Living Conundrum', 'MKM', '{4}{U}', 5, 'Creature — Elemental', 'Hexproof\nIf you would draw a card while your library has no cards in it, skip that draw instead.\nAs long as there are no cards in your library, this creature has base power and toughness 10/10 and has flying and vigilance.', ['U'], '2', '5', 'uncommon', ['Hexproof']),
+  createBenchmarkCard('Archmage Emeritus', 'STX', '{2}{U}{U}', 4, 'Creature — Human Wizard', 'Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card.', ['U'], '2', '2', 'rare', ['Magecraft']),
 ];
 
 export const HISTORICAL_BENCHMARK_NAMES = new Set(
@@ -656,6 +716,84 @@ export function extractCardFeatures(card: Card) {
   const isEnchantment = frontTypeLine.includes('enchantment');
   const isArtifact = frontTypeLine.includes('artifact');
   const isHydra = frontTypeLine.includes('hydra');
+  const isSpacecraft = /\bspacecraft\b/i.test(frontTypeLine);
+  const isVehicle = /\bvehicle\b/i.test(frontTypeLine);
+  const isPlanet = /\bplanet\b/i.test(frontTypeLine);
+  const isMount = /\bmount\b/i.test(frontTypeLine);
+  const hasStation = (card.keywords || []).some(k => /^station$/i.test(k.trim())) ||
+                     /(?:^|\n)station\b/i.test(rawOracle) ||
+                     /(?:^|\n)\d+\+\s*\|/i.test(rawOracle);
+  const caresAboutStation = /\bstations?\s+permanents\b|\bspacecraft\b/i.test(oracle);
+  const hasCrew = (card.keywords || []).some(k => /^crew\b/i.test(k.trim())) ||
+                  /(?:^|\n)crew\s+\d+/i.test(rawOracle);
+  const hasSaddle = (card.keywords || []).some(k => /^saddle\b/i.test(k.trim())) ||
+                    /(?:^|\n)saddle\s+\d+/i.test(rawOracle);
+  const isAnimatedCombatArtifact = (isSpacecraft || isVehicle) && card.power !== undefined && card.toughness !== undefined;
+  const hasCombatBody = isCreature || isAnimatedCombatArtifact;
+
+  // Parse Station threshold (e.g. "It's an artifact creature at 8+." or "8+ | Flying")
+  let stationThreshold: number | undefined;
+  const stationCreatureMatch = rawOracle.match(/artifact creature at (\d+)\+/i);
+  if (stationCreatureMatch) {
+    stationThreshold = parseInt(stationCreatureMatch[1], 10);
+  } else if (hasStation) {
+    const tierMatches = [...rawOracle.matchAll(/(?:^|\n)(\d+)\+\s*\|/g)];
+    if (tierMatches.length > 0) {
+      stationThreshold = Math.max(...tierMatches.map(m => parseInt(m[1], 10)));
+    }
+  }
+
+  let crewCost: number | undefined;
+  const crewMatch = rawOracle.match(/(?:^|\n)crew\s+(\d+)/i);
+  if (crewMatch) {
+    crewCost = parseInt(crewMatch[1], 10);
+  }
+
+  // Extract all non-evergreen specific set mechanics (e.g. Station, Crew, Saddle, Warp, Void, Exhaust, Offspring, Forage, etc.)
+  const EVERGREEN_KEYWORDS_SET = new Set([
+    'flying', 'reach', 'deathtouch', 'lifelink', 'first strike', 'double strike',
+    'trample', 'vigilance', 'haste', 'menace', 'flash', 'defender', 'ward',
+    'hexproof', 'indestructible', 'enchant', 'equip', 'scry', 'surveil', 'mill',
+    'fight', 'treasure', 'food', 'clue', 'blood', 'powerstone'
+  ]);
+  const specificMechanics: string[] = [];
+  const addSpecificMechanic = (m: string) => {
+    const norm = m.trim().toLowerCase().replace(/\s+\d+$/, '').replace(/\s*\{[^}]+\}.*$/, '');
+    if (norm && norm.length >= 3 && !EVERGREEN_KEYWORDS_SET.has(norm) && !specificMechanics.includes(norm)) {
+      specificMechanics.push(norm);
+    }
+  };
+  (card.keywords || []).forEach(kw => addSpecificMechanic(kw));
+  if (hasStation) addSpecificMechanic('station');
+  if (hasCrew) addSpecificMechanic('crew');
+  if (hasSaddle) addSpecificMechanic('saddle');
+  if (/(?:^|\n)warp\s*\{/i.test(rawOracle)) addSpecificMechanic('warp');
+  if (/(?:^|\n)void\s*—/i.test(rawOracle)) addSpecificMechanic('void');
+  if (/(?:^|\n)exhaust\s*—/i.test(rawOracle)) addSpecificMechanic('exhaust');
+  if (/start your engines!/i.test(rawOracle)) addSpecificMechanic('start your engines!');
+  if (/(?:^|\n)offspring\s*\{/i.test(rawOracle)) addSpecificMechanic('offspring');
+  if (/\bforage\b/i.test(rawOracle)) addSpecificMechanic('forage');
+  if (/(?:^|\n)valiant\s*—/i.test(rawOracle)) addSpecificMechanic('valiant');
+  if (/\bexpend\s+\d+/i.test(rawOracle)) addSpecificMechanic('expend');
+  if (/(?:^|\n)gift a\s+/i.test(rawOracle)) addSpecificMechanic('gift');
+  if (/(?:^|\n)plot\s*\{/i.test(rawOracle)) addSpecificMechanic('plot');
+  if (/(?:^|\n)spree\b/i.test(rawOracle)) addSpecificMechanic('spree');
+  if (/(?:^|\n)disguise\s*\{/i.test(rawOracle)) addSpecificMechanic('disguise');
+  if (/collect evidence/i.test(rawOracle)) addSpecificMechanic('collect evidence');
+  if (/(?:^|\n)craft with\b/i.test(rawOracle)) addSpecificMechanic('craft');
+  if (/\bdiscover\s+\d+/i.test(rawOracle)) addSpecificMechanic('discover');
+  if (/(?:^|\n)bargain\b/i.test(rawOracle)) addSpecificMechanic('bargain');
+  if (/(?:^|\n)celebration\s*—/i.test(rawOracle)) addSpecificMechanic('celebration');
+  if (/(?:^|\n)backup\s+\d+/i.test(rawOracle)) addSpecificMechanic('backup');
+  if (/\bincubate\s+\d+/i.test(rawOracle)) addSpecificMechanic('incubate');
+  if (/(?:^|\n)prototype\b/i.test(rawOracle)) addSpecificMechanic('prototype');
+  if (/(?:^|\n)unearth\b/i.test(rawOracle)) addSpecificMechanic('unearth');
+  if (/(?:^|\n)blitz\b/i.test(rawOracle)) addSpecificMechanic('blitz');
+  if (/(?:^|\n)casualty\s+\d+/i.test(rawOracle)) addSpecificMechanic('casualty');
+  if (/(?:^|\n)ninjutsu\b/i.test(rawOracle)) addSpecificMechanic('ninjutsu');
+  if (/(?:^|\n)reconfigure\b/i.test(rawOracle)) addSpecificMechanic('reconfigure');
+  if (/(?:^|\n)channel\s*—/i.test(rawOracle)) addSpecificMechanic('channel');
+
   const hasXCost = /\{X\}/i.test(card.mana_cost || '') ||
                    /\{X\}/i.test(card.card_faces?.[0]?.mana_cost || '') ||
                    /\{X\}/i.test(card.card_faces?.[1]?.mana_cost || '');
@@ -957,9 +1095,34 @@ export function extractCardFeatures(card: Card) {
   const isEtbLooter = (/when .* enters/i.test(rawOracle) || /when .* enters/i.test(oracle)) && (isConnive || isRecruit || /draw a card, then discard/i.test(rawOracle));
   const isAttackLooter = (/whenever .* attacks/i.test(rawOracle) || /whenever .* attacks/i.test(oracle)) && (isConnive || isRecruit || /draw a card, then discard/i.test(rawOracle));
 
-  if (/draw (two|three|\d+) cards/i.test(oracle) && !/draw a card/i.test(oracle)) {
+  // Draw Replacement ("If you would draw a card, ... instead") & Card-Draw Doublers
+  const isLibraryEmptyWinCondition = /while your library has no cards in it|you win the game instead|skip that draw instead/i.test(oracle);
+  const isDrawReplacement = !isLibraryEmptyWinCondition && /if you would draw a card\b[\s\S]*?\binstead\b/i.test(oracle);
+  const isDrawDoubler = !isLibraryEmptyWinCondition && /if you would draw a card[^.]*?(?:draw two cards|instead you draw two cards)/i.test(oracle);
+  const isPureSpellslingerDrawEngine = (
+    /whenever you cast (?:or copy )?an instant or sorcery spell[^.]*?draw a card/i.test(oracle) &&
+    !/when (?:~|this creature) enters/i.test(oracle)
+  );
+
+  if (isDrawReplacement) {
+    actionSubtypes.add('draw_replacement');
     actionSubtypes.add('raw_draw');
-  } else if (/draw a card/i.test(oracle)) {
+    detectedCategories.add('draw');
+    detectedCategories.add('synergy');
+    if (isDrawDoubler) {
+      actionSubtypes.add('draw_doubler');
+      if (/while you have no cards in hand/i.test(oracle)) {
+        actionSubtypes.add('hellbent_draw_doubler');
+      }
+    }
+  } else if (isPureSpellslingerDrawEngine) {
+    actionSubtypes.add('repeatable_draw_engine');
+    actionSubtypes.add('raw_draw');
+    detectedCategories.add('draw');
+    detectedCategories.add('synergy');
+  } else if (/draw (two|three|\d+) cards/i.test(oracle) && !/draw a card/i.test(oracle)) {
+    actionSubtypes.add('raw_draw');
+  } else if (/draw a card/i.test(oracle) && !/if you would draw a card/i.test(oracle)) {
     if (!isModalSpell) {
       actionSubtypes.add('cantrip');
     } else {
@@ -1068,9 +1231,9 @@ export function extractCardFeatures(card: Card) {
     if (/gains (flying|first strike|lifelink|deathtouch|trample)/i.test(oracle)) actionSubtypes.add('keyword_trick');
   }
 
-  // 6. Creature Role Subtypes
-  if (isCreature) {
-    const isManaDork = (/{t}: add/i.test(oracle) || /{t}, (pay \d+ life, )?add/i.test(oracle));
+  // 6. Creature & Animated Combat Body Role Subtypes (including Spacecraft / Vehicles with P/T)
+  if (hasCombatBody) {
+    const isManaDork = isCreature && (/{t}: add/i.test(oracle) || /{t}, (pay \d+ life, )?add/i.test(oracle));
     if (isManaDork) {
       actionSubtypes.add('mana_dork');
       detectedCategories.add('synergy');
@@ -1679,7 +1842,7 @@ export function extractCardFeatures(card: Card) {
     valueRiders.add('token');
   }
   if (/gain \d+ life|lifelink/i.test(oracle)) valueRiders.add('life_gain');
-  if (/draw a card/i.test(oracle) && !/its controller draws a card/i.test(oracle)) {
+  if (/draw a card/i.test(oracle) && !/its controller draws a card/i.test(oracle) && !/if you would draw a card/i.test(oracle)) {
     if (!isModalSpell) {
       valueRiders.add('cantrip');
     }
@@ -1753,6 +1916,42 @@ export function extractCardFeatures(card: Card) {
     detectedCategories.add('removal');
   }
 
+  // Station, Spacecraft, Planet, Vehicle (Crew), Mount (Saddle) & Specific Named Mechanics
+  if (hasStation) {
+    actionSubtypes.add('station_mechanic');
+    detectedCategories.add('synergy');
+    if (isSpacecraft || isArtifact) {
+      actionSubtypes.add('station_spacecraft');
+    }
+    if (isPlanet || isLand) {
+      actionSubtypes.add('station_planet');
+    }
+  }
+  if (isSpacecraft) {
+    actionSubtypes.add('spacecraft_subtype');
+  }
+  if (isPlanet) {
+    actionSubtypes.add('planet_subtype');
+  }
+  if (isVehicle || hasCrew) {
+    actionSubtypes.add('vehicle_crew');
+    detectedCategories.add('synergy');
+  }
+  if (isMount || hasSaddle) {
+    actionSubtypes.add('mount_saddle');
+    detectedCategories.add('synergy');
+  }
+  if (isAnimatedCombatArtifact) {
+    actionSubtypes.add('animated_combat_artifact');
+  }
+  if (caresAboutStation && !hasStation) {
+    actionSubtypes.add('station_synergy_payoff');
+    detectedCategories.add('synergy');
+  }
+  specificMechanics.forEach(m => {
+    actionSubtypes.add(`mechanic_${m.replace(/[^a-z0-9]+/g, '_')}`);
+  });
+
   // Effective CMC: Scalable X spells typically cast for X=2, 3, or 4 in Limited
   // Vivid spells typically cast with 2-3 colors among permanents (-2.5 cost reduction)
   // Toughness cost reduction spells (e.g. Ghalta) typically cast with 4-5 toughness on board (-4.5 cost reduction)
@@ -1803,6 +2002,19 @@ export function extractCardFeatures(card: Card) {
     isArtifact,
     isEquipment,
     isLivingWeapon,
+    isSpacecraft,
+    isVehicle,
+    isPlanet,
+    isMount,
+    hasStation,
+    caresAboutStation,
+    hasCrew,
+    hasSaddle,
+    isAnimatedCombatArtifact,
+    hasCombatBody,
+    stationThreshold,
+    crewCost,
+    specificMechanics,
     equipPowerBuff,
     equipToughnessBuff,
     equipCost,
@@ -1920,12 +2132,55 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
     return tFeatures.isEquipment && cFeatures.isEquipment;
   }
 
+  // 4.5. Animated Combat Artifacts (Spacecraft with Station / Vehicles with Crew)
+  // Can compare with other Spacecraft, Vehicles, Artifacts, or Mounts / Artifact Creatures
+  if (tFeatures.isSpacecraft || tFeatures.isVehicle || cFeatures.isSpacecraft || cFeatures.isVehicle) {
+    if ((tFeatures.isSpacecraft || tFeatures.isVehicle) && (cFeatures.isSpacecraft || cFeatures.isVehicle)) {
+      return true;
+    }
+    if ((tFeatures.isSpacecraft || tFeatures.isVehicle) && (cFeatures.isArtifact || cFeatures.isMount || (cFeatures.isCreature && cFeatures.isArtifact))) {
+      return true;
+    }
+    if ((cFeatures.isSpacecraft || cFeatures.isVehicle) && (tFeatures.isArtifact || tFeatures.isMount || (tFeatures.isCreature && tFeatures.isArtifact))) {
+      return true;
+    }
+    return false;
+  }
+
   // 5. Creatures
   if (tFeatures.isCreature || cFeatures.isCreature) {
     // A creature can compare to another creature, or to a spell that produces creature tokens (excluding removal/sweepers)
-    return (tFeatures.isCreature && cFeatures.isCreature) ||
-           (tFeatures.isCreature && cFeatures.createsCreatureTokens && !cFeatures.isRemoval && !cIsSweeper) ||
-           (cFeatures.isCreature && tFeatures.createsCreatureTokens && !tFeatures.isRemoval && !tIsSweeper);
+    if ((tFeatures.isCreature && cFeatures.isCreature) ||
+        (tFeatures.isCreature && cFeatures.createsCreatureTokens && !cFeatures.isRemoval && !cIsSweeper) ||
+        (cFeatures.isCreature && tFeatures.createsCreatureTokens && !tFeatures.isRemoval && !tIsSweeper)) {
+      return true;
+    }
+    // Cross-permanent rules bridge: A Creature and a Non-Aura Enchantment / Non-Equipment Artifact
+    // are compatible if they share an exact/template substantive Oracle clause, high rare-word rules signature,
+    // or both are static draw-replacement / anthem engines
+    // (e.g. Mr. Spock, Science Officer [Creature] <-> Thought Reflection / Teferi's Ageless Insight [Enchantment])
+    const oneIsCreature = tFeatures.isCreature !== cFeatures.isCreature;
+    const otherIsStaticPermanent = tFeatures.isCreature
+      ? ((cFeatures.isEnchantment || cFeatures.isArtifact) && !cFeatures.isAura && !cFeatures.isEquipment)
+      : ((tFeatures.isEnchantment || tFeatures.isArtifact) && !tFeatures.isAura && !tFeatures.isEquipment);
+    if (oneIsCreature && otherIsStaticPermanent) {
+      if (tFeatures.actionSubtypes.has('draw_replacement') && cFeatures.actionSubtypes.has('draw_replacement')) {
+        return true;
+      }
+      if ((tFeatures.actionSubtypes.has('token_anthem') && cFeatures.actionSubtypes.has('token_anthem')) ||
+          (tFeatures.actionSubtypes.has('team_anthem') && cFeatures.actionSubtypes.has('team_anthem'))) {
+        return true;
+      }
+      const exactMatch = findExactOracleClauseMatch(target, candidate, tFeatures, cFeatures);
+      if (exactMatch && (exactMatch.matchType === 'exact' || exactMatch.matchType === 'template' || exactMatch.matchType === 'subject_relaxed')) {
+        return true;
+      }
+      const rareOverlap = computeRareTokenOverlap(tFeatures.cleanOracle, target.name, cFeatures.cleanOracle, candidate.name);
+      if (rareOverlap.weightedJaccard >= 0.48 && rareOverlap.sharedRareTokens.length >= 2) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // 6. Non-permanent spells (Instants & Sorceries)
@@ -2009,18 +2264,105 @@ export function areCardTypesCompatible(target: Card, candidate: Card): boolean {
     return true;
   }
 
+  // Generalized Permanent <-> Spell Core Effect Bridge:
+  // Any non-creature permanent (Artifact / Enchantment) with an ETB / Sacrifice / Channel / Discard clause
+  // is compatible with an Instant / Sorcery if they share an exact or template substantive Oracle clause
+  if ((tSpell && (cFeatures.isArtifact || cFeatures.isEnchantment)) ||
+      (cSpell && (tFeatures.isArtifact || tFeatures.isEnchantment))) {
+    const exactMatch = findExactOracleClauseMatch(target, candidate, tFeatures, cFeatures);
+    if (exactMatch && (exactMatch.matchType === 'exact' || exactMatch.matchType === 'template' || exactMatch.matchType === 'channel_discard')) {
+      return true;
+    }
+  }
+
   return false;
+}
+
+/**
+ * Universal Clause & Skeleton Extractor (Layer 1):
+ * Automatically extracts searchable contiguous Oracle phrases and 2-part grammar skeletons
+ * from ANY card's Oracle text without requiring pre-registered regexes in EFFECT_PATTERNS.
+ */
+export function extractUniversalSearchClauses(oracleText: string, cardName: string): {
+  exactPhrases: string[];
+  skeletonPairs: [string, string][];
+} {
+  const exactPhrases: string[] = [];
+  const skeletonPairs: [string, string][] = [];
+  if (!oracleText) return { exactPhrases, skeletonPairs };
+
+  // Strip reminder text
+  let cleaned = oracleText.replace(/\([^)]*\)/g, '');
+  if (cardName) {
+    const escaped = cardName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '~');
+    const firstName = cardName.trim().split(/[\s,]+/)[0];
+    if (firstName && firstName.length >= 4) {
+      const escFirst = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      cleaned = cleaned.replace(new RegExp(`\\b${escFirst}\\b`, 'gi'), '~');
+    }
+  }
+  cleaned = cleaned.replace(/\bthis (creature|spell|artifact|permanent|enchantment|planeswalker|spacecraft|vehicle|planet|mount|land|aura|equipment|case|class|room|saga)\b/gi, '~');
+
+  const lines = cleaned.split(/\n+/);
+  for (const rawLine of lines) {
+    let line = rawLine.trim();
+    if (!line) continue;
+    // Strip Station threshold prefix ("8+ | ") and ability word prefix ("Max speed — ")
+    line = line.replace(/^\s*\d+\+\s*\|\s*/i, '');
+    line = line.replace(/^[A-Za-z][A-Za-z0-9\s',-]{0,28}\s*(?:—|--)\s*/, '');
+
+    const sentences = line.split(/\.\s+/);
+    for (const rawSent of sentences) {
+      const sent = rawSent.replace(/\.$/, '').trim();
+      if (!sent || sent.length < 15) continue;
+
+      // 1. If the sentence has no '~' or mana symbols '{...}', and is 4 to 10 words, it can be queried verbatim!
+      const words = sent.split(/\s+/);
+      if (!sent.includes('~') && !sent.includes('{') && words.length >= 4 && words.length <= 10) {
+        const cleanPhrase = sent.replace(/["']/g, '').trim();
+        if (cleanPhrase.length >= 16 && !exactPhrases.includes(cleanPhrase)) {
+          exactPhrases.push(cleanPhrase);
+        }
+      }
+
+      // 2. Split on comma (e.g. "If [condition], [effect]" or "Whenever [trigger], [effect]")
+      const commaParts = sent.split(/,\s*/);
+      if (commaParts.length === 2) {
+        const partA = commaParts[0].replace(/~/g, '').replace(/\{[^}]+\}/g, '').replace(/\s+/g, ' ').trim();
+        const partB = commaParts[1].replace(/~/g, '').replace(/\{[^}]+\}/g, '').replace(/\s+/g, ' ').trim();
+        const wordsA = partA.split(/\s+/).filter(Boolean);
+        const wordsB = partB.split(/\s+/).filter(Boolean);
+
+        if (wordsA.length >= 3 && wordsA.length <= 7 && wordsB.length >= 3 && wordsB.length <= 7) {
+          skeletonPairs.push([partA, partB]);
+        }
+        // Also wildcard numbers in partB to create a parameterized skeleton pair (e.g. ["If you would draw a card", "instead"])
+        const rareTailB = wordsB.find(w => /^(instead|twice|double|additional|unless|equal|greatest|top|bottom|graveyard|exile|sacrifice|search)$/i.test(w));
+        if (wordsA.length >= 4 && wordsA.length <= 7 && rareTailB) {
+          skeletonPairs.push([partA, rareTailB]);
+        }
+      }
+    }
+  }
+
+  return {
+    exactPhrases: exactPhrases.slice(0, 2),
+    skeletonPairs: skeletonPairs.slice(0, 3),
+  };
 }
 
 /**
  * Construct Scryfall search queries with prioritized fallback tiers.
  * Prioritizes EXACT color matches (e.g. c=w for mono-white) before broadening.
+ * Strictly restricted to sets from Throne of Eldraine (ELD, Sept 2019) onward.
  */
 export function buildScryfallQueries(card: Card, features: ReturnType<typeof extractCardFeatures>): string[] {
   const companionSets = card.set ? getCompanionSetCodes(card.set) : [];
   const excludeSetTerms = companionSets.map(s => `-s:${s.toLowerCase()}`).join(' ');
   const setFilter = `(${COMPARABLE_PREMIER_SETS.filter(s => !isSameOrCompanionSet(card.set, s)).map(s => `s:${s.toLowerCase()}`).join(' or ')})`;
-  const baseFilter = `-is:reprint -t:basic -t:token -is:extra -is:alchemy ${setFilter}`;
+  const baseFilter = `date>=${ELD_RELEASE_CUTOFF_DATE} -t:basic -t:token -is:extra -is:alchemy ${setFilter}`;
+  const postEldBroadFilter = `date>=${ELD_RELEASE_CUTOFF_DATE} (is:booster or s:pio or s:sir or s:klr or s:akr) -is:funny -is:alchemy -t:basic -t:token -is:extra -s:mbc`;
 
   // Exclude the current set, companion sets, and exact same card name
   const excludeSelf = excludeSetTerms ? `${excludeSetTerms} -!"${card.name}"` : `-!"${card.name}"`;
@@ -2069,6 +2411,53 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
 
   const queries: string[] = [];
 
+  // LAYER 1 UNIVERSAL SELF-DRIVING CLAUSE & SKELETON QUERIES:
+  // Automatically query Scryfall for every card's exact substantive rules clauses and grammar skeletons
+  // across the post-ELD 17Lands era without requiring pre-registered regexes.
+  if (!features.hasStation && !features.isSpacecraft && !features.isPlanet) {
+    const universalClauses = extractUniversalSearchClauses(card.oracle_text || '', card.name);
+    for (const exactPhrase of universalClauses.exactPhrases) {
+      queries.push(`${baseFilter} ${excludeSelf} o:"${exactPhrase}"`);
+      queries.push(`${postEldBroadFilter} ${excludeSelf} o:"${exactPhrase}"`);
+    }
+    for (const [partA, partB] of universalClauses.skeletonPairs) {
+      queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"${partA}" o:"${partB}")`);
+      queries.push(`${baseFilter} ${excludeSelf} (o:"${partA}" o:"${partB}")`);
+    }
+  }
+
+  // TOP PRIORITY: Station, Spacecraft, Planet, Vehicle (Crew), Mount (Saddle) & Specific Named Set Mechanics
+  if (features.hasStation || features.isSpacecraft || features.isPlanet) {
+    if (features.isLand || features.isPlanet) {
+      queries.push(`${baseFilter} ${excludeSelf} t:land (kw:station or o:"station" or t:planet)`);
+      queries.push(`${baseFilter} ${excludeSelf} (kw:station or o:"station" or t:planet)`);
+    } else {
+      queries.push(`${baseFilter} ${excludeSelf} (kw:station or o:"station" or t:spacecraft) ${exactColorQuery} -t:land`);
+      queries.push(`${baseFilter} ${excludeSelf} (kw:station or o:"station" or t:spacecraft) cmc>=${minCmc} cmc<=${maxCmc} -t:land`);
+      queries.push(`${baseFilter} ${excludeSelf} (kw:station or o:"station" or t:spacecraft) -t:land`);
+      // Secondary functional bridge: Vehicles with Crew in matching color and curve
+      queries.push(`${baseFilter} ${excludeSelf} t:vehicle ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc}`);
+      queries.push(`${baseFilter} ${excludeSelf} t:vehicle ${exactColorQuery}`);
+    }
+  } else if (features.isVehicle || features.hasCrew) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:vehicle or kw:crew) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc}`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:vehicle or kw:crew) ${exactColorQuery}`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:spacecraft or kw:station) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc} -t:land`);
+    queries.push(`${baseFilter} ${excludeSelf} t:vehicle cmc>=${minCmc} cmc<=${maxCmc}`);
+  } else if (features.isMount || features.hasSaddle) {
+    queries.push(`${baseFilter} ${excludeSelf} (t:mount or kw:saddle) ${exactColorQuery} cmc>=${minCmc} cmc<=${maxCmc}`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:mount or kw:saddle) ${exactColorQuery}`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:mount or kw:saddle) cmc>=${minCmc} cmc<=${maxCmc}`);
+  }
+
+  // Specific Non-Evergreen Set Mechanics Priority Queries (e.g. Warp, Void, Exhaust, Offspring, Forage, Valiant, Craft, Bargain, Backup, Prototype, etc.)
+  for (const mech of features.specificMechanics) {
+    if (['station', 'crew', 'saddle'].includes(mech)) continue;
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} (kw:"${mech}" or o:"${mech}") cmc>=${minCmc} cmc<=${maxCmc}`);
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} ${exactColorQuery} (kw:"${mech}" or o:"${mech}")`);
+    queries.push(`${baseFilter} ${excludeSelf} ${typeFilter} (kw:"${mech}" or o:"${mech}") cmc>=${minCmc} cmc<=${maxCmc}`);
+  }
+
   // Toughness Combat Damage ("Butt-Strike") & Toughness-Matters Queries
   if (features.actionSubtypes.has('toughness_combat_damage') || features.actionSubtypes.has('toughness_matters_archetype')) {
     queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"assigns combat damage equal to" or o:"toughness greater than its power")`);
@@ -2104,6 +2493,15 @@ export function buildScryfallQueries(card: Card, features: ReturnType<typeof ext
   if (features.actionSubtypes.has('noncreature_surveil_engine') || (features.actionSubtypes.has('noncreature_spell_trigger') && features.actionSubtypes.has('empower_jace'))) {
     queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"whenever you cast a noncreature spell" or o:"whenever you cast your first noncreature spell")`);
     queries.push(`${baseFilter} ${excludeSelf} ${exactColorQuery} (o:"noncreature spell" (o:surveil or o:scry or o:draw))`);
+  }
+
+  // Draw Replacement ("If you would draw a card, ... instead") & Card-Draw Doubler Queries
+  if (features.actionSubtypes.has('draw_replacement') || features.actionSubtypes.has('draw_doubler')) {
+    queries.push(`${postEldBroadFilter} ${excludeSelf} o:"If you would draw a card, draw two cards instead"`);
+    queries.push(`${postEldBroadFilter} ${excludeSelf} (o:"If you would draw a card" o:"draw two cards")`);
+    queries.push(`${baseFilter} ${excludeSelf} (t:creature or t:enchantment or t:artifact) ${exactColorQuery} (o:"If you would draw a card" o:"instead")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature (o:"If you would draw a card" o:"instead")`);
+    queries.push(`${baseFilter} ${excludeSelf} t:creature ${exactColorQuery} cmc=${features.cmc} (o:"whenever you cast" o:"draw a card")`);
   }
 
   // Color-Hoser Counterspell & Restricted Counter Queries
@@ -2589,6 +2987,83 @@ function tokenizeOracleText(text: string, cardName: string): Set<string> {
 }
 
 /**
+ * High-IDF rare/structural MTG rules vocabulary (Layer 3).
+ * Words in this set define mechanical identity and receive 4x weight in semantic & structural scoring.
+ */
+export const RARE_STRUCTURAL_ORACLE_TOKENS = new Set([
+  'instead', 'twice', 'double', 'triple', 'additional', 'except', 'skip', 'prevent',
+  'search', 'shuffle', 'reveal', 'reveals', 'unless', 'equal', 'greatest', 'difference',
+  'assigns', 'rather', 'top', 'bottom', 'third', 'owner', 'owners', 'exchange',
+  'distribute', 'remove', 'transfer', 'copy', 'copies', 'without', 'paying', 'spend',
+  'spent', 'colors', 'unblocked', 'excess', 'proliferate', 'surveil', 'amass',
+  'investigate', 'connive', 'discover', 'manifest', 'incubate', 'forage', 'offspring',
+  'valiant', 'exhaust', 'station', 'spacecraft', 'planet', 'warp', 'void', 'saddle',
+  'crew', 'vehicle', 'mount', 'craft', 'bargain', 'celebration', 'plot', 'spree',
+  'gift', 'impending', 'eerie', 'survival', 'delirium', 'threshold', 'magecraft',
+  'landfall', 'constellation', 'ferocious', 'formidable', 'raid', 'morbid', 'revolt',
+  'spectacle', 'ninjutsu', 'channel', 'flashback', 'unearth', 'disturb', 'decayed',
+  'training', 'cleave', 'casualty', 'blitz', 'shield', 'backup', 'toxic', 'corrupted',
+  'prototype', 'enlist', 'domain', 'kicker', 'vivid', 'converge', 'sunburst', 'adamant',
+  'boast', 'foretell', 'learn', 'daybound', 'nightbound', 'coven', 'exploit',
+  'bloodthirst', 'convoke', 'delve', 'improvise', 'affinity', 'cascade', 'evoke',
+  'changeling', 'prowess', 'cycling', 'landcycling', 'swampcycling', 'plainscycling',
+  'islandcycling', 'mountaincycling', 'forestcycling'
+]);
+
+/**
+ * Computes IDF-weighted Jaccard overlap and shared rare structural tokens between two cards' Oracle texts.
+ */
+export function computeRareTokenOverlap(
+  tOracle: string,
+  tName: string,
+  cOracle: string,
+  cName: string
+): { weightedJaccard: number; sharedRareTokens: string[] } {
+  const tTokens = tokenizeOracleText(tOracle, tName);
+  const cTokens = tokenizeOracleText(cOracle, cName);
+  if (tTokens.size === 0 || cTokens.size === 0) {
+    return { weightedJaccard: 0, sharedRareTokens: [] };
+  }
+
+  const sharedRareTokens: string[] = [];
+  let intersectionWeight = 0;
+  let unionWeight = 0;
+  const allTokens = new Set([...tTokens, ...cTokens]);
+
+  for (const tok of allTokens) {
+    if (tok === '~') continue;
+    const isRare = RARE_STRUCTURAL_ORACLE_TOKENS.has(tok);
+    const weight = isRare ? 4.0 : 1.0;
+    unionWeight += weight;
+    if (tTokens.has(tok) && cTokens.has(tok)) {
+      intersectionWeight += weight;
+      if (isRare) {
+        sharedRareTokens.push(tok);
+      }
+    }
+  }
+
+  return {
+    weightedJaccard: unionWeight > 0 ? intersectionWeight / unionWeight : 0,
+    sharedRareTokens,
+  };
+}
+
+/**
+ * Normalizes a substantive Oracle clause into a parameterized grammar skeleton
+ * by replacing numbers, stat modifiers, mana symbols, and color names with typed placeholders.
+ */
+export function normalizeGrammarSkeleton(clause: string): string {
+  return clause
+    .replace(/[+-][0-9x]+\/[+-][0-9x]+/gi, '[pt]')
+    .replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+|x)\b/gi, '[n]')
+    .replace(/\b(white|blue|black|red|green)\b/gi, '[color]')
+    .replace(/\{[^}]+\}/g, '[m]')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Normalizes oracle text for checking exact functional reprints.
  * Removes reminder text (in parentheses), replaces card's own name with '~',
  * normalizes whitespace, and lowercases.
@@ -2682,6 +3157,10 @@ export function isExactFunctionalReprint(target: Card, candidate: Card): boolean
 export function normalizeOracleClause(clause: string, cardName: string): string {
   if (!clause) return '';
   let cleaned = clause.replace(/\([^)]*\)/g, '');
+  // Strip Station threshold prefix (e.g. "8+ | " or "12+ | ")
+  cleaned = cleaned.replace(/^\s*\d+\+\s*\|\s*/i, '');
+  // Strip leading ability word prefix before em-dash (e.g. "Max speed — ", "Magecraft — ", "Landfall — ", "Threshold — ")
+  cleaned = cleaned.replace(/^[A-Za-z][A-Za-z0-9\s',-]{0,28}\s*(?:—|--)\s*/, '');
   if (cardName) {
     const escaped = cardName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     cleaned = cleaned.replace(new RegExp(escaped, 'gi'), '~');
@@ -2692,7 +3171,7 @@ export function normalizeOracleClause(clause: string, cardName: string): string 
       cleaned = cleaned.replace(new RegExp(`\\b${escFirst}\\b`, 'gi'), '~');
     }
   }
-  cleaned = cleaned.replace(/\bthis (creature|spell|artifact|permanent|enchantment|planeswalker)\b/gi, '~');
+  cleaned = cleaned.replace(/\bthis (creature|spell|artifact|permanent|enchantment|planeswalker|spacecraft|vehicle|planet|mount|land|aura|equipment|case|class|room|saga)\b/gi, '~');
   cleaned = cleaned.replace(/\benters the battlefield\b/gi, 'enters');
   cleaned = cleaned.replace(/didn['’]t/gi, 'didnt');
   cleaned = cleaned.replace(/doesn['’]t/gi, 'doesnt');
@@ -2936,6 +3415,18 @@ export function findExactOracleClauseMatch(
   tFeatures: ReturnType<typeof extractCardFeatures>,
   cFeatures: ReturnType<typeof extractCardFeatures>
 ): OracleClauseMatchResult | null {
+  // Guardrail: Transformative permanent animation mechanics (Station / Spacecraft / Vehicle)
+  // A card with Station or Crew must never bypass mechanic comparison via a generic secondary ETB/mana clause
+  // against a card that lacks Station/Crew (and vice versa).
+  const tIsStationOrVehicle = tFeatures.hasStation || tFeatures.isSpacecraft || tFeatures.isVehicle || tFeatures.hasCrew;
+  const cIsStationOrVehicle = cFeatures.hasStation || cFeatures.isSpacecraft || cFeatures.isVehicle || cFeatures.hasCrew;
+  if (tIsStationOrVehicle !== cIsStationOrVehicle) {
+    return null;
+  }
+  if (tFeatures.hasStation !== cFeatures.hasStation) {
+    return null;
+  }
+
   const tClauses = extractSubstantiveOracleClauses(target.oracle_text || '', target.name);
   const cClauses = extractSubstantiveOracleClauses(candidate.oracle_text || '', candidate.name);
 
@@ -2952,9 +3443,11 @@ export function findExactOracleClauseMatch(
     }
   }
 
-  // 2. Parameterized Template Match (Anchor 94%, deduct for buff delta)
+  // 2. Parameterized Template & Grammar Skeleton Match (Anchor 94%, deduct for buff delta)
   for (const tc of tClauses) {
     const tTpl = normalizeClauseTemplate(tc);
+    const tSkel = normalizeGrammarSkeleton(tc);
+    const tWords = tc.split(' ');
     for (const cc of cClauses) {
       const cTpl = normalizeClauseTemplate(cc);
       if (tTpl.template === cTpl.template && (tTpl.pBuff !== undefined || cTpl.pBuff !== undefined)) {
@@ -2966,6 +3459,18 @@ export function findExactOracleClauseMatch(
           statBuffDelta,
           description: 'Matching rules text template',
         };
+      }
+      // Universal Grammar Skeleton Match for 6+ word substantive rules clauses
+      const cSkel = normalizeGrammarSkeleton(cc);
+      if (tWords.length >= 6 && tSkel === cSkel) {
+        const hasRareAnchor = tWords.some(w => RARE_STRUCTURAL_ORACLE_TOKENS.has(w)) || tWords.length >= 8;
+        if (hasRareAnchor) {
+          return {
+            matchType: 'template',
+            matchingClause: tc,
+            description: 'Matching rules text grammar template',
+          };
+        }
       }
     }
   }
@@ -3161,22 +3666,25 @@ export function computeExactOracleMatchScore(
 
   // 1. Deduct for Mana Cost / Effective CMC Difference
   const cmcDiff = Math.abs(tFeatures.effectiveCmc - cFeatures.effectiveCmc);
+  const isFullTextVerbatimMatch = matchObj.matchType === 'exact' &&
+    extractSubstantiveOracleClauses(target.oracle_text || '', target.name).length === 1 &&
+    extractSubstantiveOracleClauses(candidate.oracle_text || '', candidate.name).length === 1;
   if (cmcDiff === 0) {
     reasons.push(`Identical effective mana cost (${tFeatures.effectiveCmc} CMC)`);
   } else if (cmcDiff <= 0.6) {
     score -= 2;
     reasons.push(`Matching effective mana curve (effective ${tFeatures.effectiveCmc} vs ${cFeatures.effectiveCmc} CMC)`);
   } else if (cmcDiff <= 1.15) {
-    score -= 3;
+    score -= isFullTextVerbatimMatch ? 1 : 3;
     reasons.push(`Close mana curve (±1 CMC)`);
   } else if (cmcDiff <= 2.2) {
-    score -= 7;
+    score -= isFullTextVerbatimMatch ? 2 : 6;
   } else {
-    score -= Math.min(15, Math.round(cmcDiff * 4));
+    score -= isFullTextVerbatimMatch ? 2 : Math.min(12, Math.round(cmcDiff * 3));
   }
 
-  // 2. Deduct for Power / Toughness Difference (for creatures)
-  if (tFeatures.isCreature && cFeatures.isCreature) {
+  // 2. Deduct for Power / Toughness Difference (for creatures and animated combat bodies like Spacecraft/Vehicles)
+  if (tFeatures.hasCombatBody && cFeatures.hasCombatBody) {
     const tEffP = tFeatures.effectivePower ?? 0;
     const tEffT = tFeatures.effectiveToughness ?? 0;
     const cEffP = cFeatures.effectivePower ?? 0;
@@ -3186,15 +3694,17 @@ export function computeExactOracleMatchScore(
     if (tEffP === cEffP && tEffT === cEffT) {
       reasons.push(`Identical effective combat stats (${tEffP}/${tEffT})`);
     } else if (totalStatDiff <= 2) {
-      score -= 3;
+      score -= 2;
       reasons.push(`Matching combat body scale (effective ${tEffP}/${tEffT} vs ${cEffP}/${cEffT})`);
     } else if (totalStatDiff <= 4) {
-      score -= 5;
+      score -= 4;
     } else {
-      score -= Math.min(10, Math.round(totalStatDiff * 1.5));
+      score -= Math.min(8, Math.round(totalStatDiff * 1.5));
     }
-  } else if (tFeatures.isCreature !== cFeatures.isCreature) {
-    score -= 10;
+  } else if (tFeatures.hasCombatBody !== cFeatures.hasCombatBody) {
+    // Cross-permanent exact clause match (e.g. Creature vs Enchantment sharing exact static rules text like Mr. Spock vs Thought Reflection)
+    score -= isFullTextVerbatimMatch ? 0 : 3;
+    reasons.push(`Cross-permanent rules equivalent (${tFeatures.primaryType} vs ${cFeatures.primaryType})`);
   }
 
   // 3. Deduct for Combat Keywords Discrepancies
@@ -3308,10 +3818,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   }
 
   // 0.4 Exact Oracle Text / Core Rules Clause Priority Match (Rule 2)
+  // Always evaluate both the Directive 2 Exact Clause Anchor and the Multi-Pillar Score, and take the higher of the two!
   const exactClauseMatch = findExactOracleClauseMatch(target, candidate, tFeatures, cFeatures);
-  if (exactClauseMatch && !isTypeIncompatible) {
-    return computeExactOracleMatchScore(target, candidate, tFeatures, cFeatures, exactClauseMatch);
-  }
+  const exactOracleResult = (exactClauseMatch && !isTypeIncompatible)
+    ? computeExactOracleMatchScore(target, candidate, tFeatures, cFeatures, exactClauseMatch)
+    : null;
 
   let colorScore = 0;
   let cmcScore = 0;
@@ -3469,6 +3980,41 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   const bothShareLandcycling = (
     tFeatures.actionSubtypes.has('landcycling_creature') && cFeatures.actionSubtypes.has('landcycling_creature')
   );
+  const bothShareStation = (
+    tFeatures.hasStation && cFeatures.hasStation
+  );
+  const bothShareSpacecraft = (
+    tFeatures.isSpacecraft && cFeatures.isSpacecraft
+  );
+  const bothSharePlanet = (
+    tFeatures.isPlanet && cFeatures.isPlanet
+  );
+  const bothShareStationSynergy = (
+    (tFeatures.caresAboutStation || tFeatures.hasStation) && (cFeatures.caresAboutStation || cFeatures.hasStation)
+  );
+  const bothShareVehicle = (
+    (tFeatures.isVehicle || tFeatures.hasCrew) && (cFeatures.isVehicle || cFeatures.hasCrew)
+  );
+  const isSpacecraftVehicleBridge = (
+    ((tFeatures.isSpacecraft || tFeatures.hasStation) && (cFeatures.isVehicle || cFeatures.hasCrew)) ||
+    ((cFeatures.isSpacecraft || cFeatures.hasStation) && (tFeatures.isVehicle || tFeatures.hasCrew))
+  );
+  const bothShareMountSaddle = (
+    (tFeatures.isMount || tFeatures.hasSaddle) && (cFeatures.isMount || cFeatures.hasSaddle)
+  );
+  const bothShareDrawDoubler = (
+    tFeatures.actionSubtypes.has('draw_doubler') && cFeatures.actionSubtypes.has('draw_doubler')
+  );
+  const bothShareDrawReplacement = (
+    tFeatures.actionSubtypes.has('draw_replacement') && cFeatures.actionSubtypes.has('draw_replacement')
+  );
+  const isDrawReplacementEngineBridge = (
+    (tFeatures.actionSubtypes.has('draw_replacement') && cFeatures.actionSubtypes.has('repeatable_draw_engine')) ||
+    (cFeatures.actionSubtypes.has('draw_replacement') && tFeatures.actionSubtypes.has('repeatable_draw_engine'))
+  );
+  const sharedSpecificMechanics = tFeatures.specificMechanics.filter(m =>
+    cFeatures.specificMechanics.includes(m)
+  );
   const bothShareSignatureEngine = (
     (tFeatures.actionSubtypes.has('connive_recruit') && cFeatures.actionSubtypes.has('connive_recruit')) ||
     bothShareAttackGranter ||
@@ -3513,6 +4059,16 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     bothShareNoncreatureSurveilEngine ||
     bothShareHighPowerMenace ||
     bothShareLandcycling ||
+    bothShareStation ||
+    bothShareSpacecraft ||
+    bothSharePlanet ||
+    bothShareVehicle ||
+    isSpacecraftVehicleBridge ||
+    bothShareMountSaddle ||
+    bothShareDrawDoubler ||
+    bothShareDrawReplacement ||
+    isDrawReplacementEngineBridge ||
+    sharedSpecificMechanics.length > 0 ||
     (tFeatures.actionSubtypes.has('death_counter_transfer') && cFeatures.actionSubtypes.has('death_counter_transfer'))
   );
   const bothShareDeathCounterTransfer = (
@@ -3680,6 +4236,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     } else if (bothShareConvergeSunburst || bothShareMultiColorScaling) {
       colorScore = (tColors.size === 0) ? 20 : 18;
       baselineReasons.push((tColors.size === 0) ? 'Both colorless multicolor-scaling archetype payoffs' : 'Colorless multicolor-scaling archetype payoff');
+    } else if (bothShareStation || bothShareSpacecraft) {
+      colorScore = 18;
+      baselineReasons.push('Colorless Station Spacecraft precedent (playable in any color pair)');
+    } else if (bothShareVehicle || isSpacecraftVehicleBridge) {
+      colorScore = 16;
+      baselineReasons.push('Colorless Vehicle / Spacecraft precedent');
     } else {
       colorScore = (tFeatures.isEquipment || cFeatures.isEquipment) ? 16 : ((tColors.size > 0) ? 10 : 14);
       baselineReasons.push((tFeatures.isEquipment || cFeatures.isEquipment) ? 'Colorless equipment (playable in any deck)' : 'Colorless baseline comparison');
@@ -3691,6 +4253,12 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     } else if (bothShareConvergeSunburst || bothShareMultiColorScaling) {
       colorScore = 16;
       baselineReasons.push('Colorless parallel to colored multicolor-scaling archetype payoff (Converge, Sunburst, Vivid, Domain)');
+    } else if (bothShareStation || bothShareSpacecraft) {
+      colorScore = 18;
+      baselineReasons.push(`Colored Station Spacecraft precedent (${[...cColors].join('')})`);
+    } else if (bothShareVehicle || isSpacecraftVehicleBridge) {
+      colorScore = 16;
+      baselineReasons.push(`Colored Vehicle / Spacecraft precedent (${[...cColors].join('')})`);
     } else if (cColors.size === 1) {
       colorScore = (bothShareEtbScry2 || bothShareSignatureEngine || bothShareEtbTreasure || bothShareFlashReach || bothShareLandTutorTop || bothShareFlyingLifegain || bothShareEmpowerJace || isEmpowerCrossMechanicBridge)
         ? 16
@@ -3723,9 +4291,21 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       colorScore = 16;
       baselineReasons.push('Cross-color archetype finisher peer: Rakdos high-power Menace curve-topper (6/4, 6/5 beater)');
     } else {
-      colorScore = (bothShareExactConverge || bothShareExactSunburst) ? 18 : 14;
+      colorScore = (bothShareExactConverge || bothShareExactSunburst || bothShareStation || bothShareSpacecraft || bothSharePlanet || bothShareDrawDoubler || bothShareDrawReplacement) ? 18 : 14;
       let engineReason = 'Cross-color engine mechanic peer (Recruit & Connive)';
-      if (bothShareHighPowerMenace) engineReason = 'Cross-color archetype finisher peer: High-power Menace curve-topper (6/4, 6/5 beater)';
+      if (bothShareStation && bothShareSpacecraft) engineReason = 'Cross-color Station Spacecraft mechanic peer';
+      else if (bothShareStation && bothSharePlanet) engineReason = 'Cross-color Station Planet land peer';
+      else if (bothShareStation) engineReason = 'Cross-color Station mechanic peer';
+      else if (bothShareVehicle) engineReason = 'Cross-color Vehicle Crew mechanic peer';
+      else if (isSpacecraftVehicleBridge) engineReason = 'Cross-color animated artifact peer (Station Spacecraft <-> Crew Vehicle)';
+      else if (bothShareMountSaddle) engineReason = 'Cross-color Mount Saddle mechanic peer';
+      else if (bothShareDrawDoubler) engineReason = 'Cross-color card-draw doubler engine peer ("draw two cards instead")';
+      else if (bothShareDrawReplacement) engineReason = 'Cross-color draw-replacement engine peer ("If you would draw a card, ... instead")';
+      else if (sharedSpecificMechanics.length > 0) {
+        const mechLabel = sharedSpecificMechanics[0].charAt(0).toUpperCase() + sharedSpecificMechanics[0].slice(1);
+        engineReason = `Cross-color ${mechLabel} mechanic peer`;
+      }
+      else if (bothShareHighPowerMenace) engineReason = 'Cross-color archetype finisher peer: High-power Menace curve-topper (6/4, 6/5 beater)';
       else if (bothShareLandcycling) engineReason = 'Cross-color archetype peer: Late-game curve-topper with early Landcycling flexibility';
       else if (bothShareExactConverge) engineReason = 'Cross-color engine peer (Exact Converge colors-spent scaling)';
       else if (bothShareExactSunburst) engineReason = 'Cross-color engine peer (Exact Sunburst colors-spent scaling)';
@@ -3821,7 +4401,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       baselineReasons.push('Acceptable curve slot (±1-2 mana)');
     }
   } else if (effectiveDiff <= 2.2) {
-    cmcScore = 3;
+    cmcScore = (bothShareDrawDoubler && tFeatures.isCreature && cFeatures.isCreature) ? 14 : (bothShareDrawReplacement ? 8 : 3);
   } else {
     cmcScore = 0;
   }
@@ -3887,7 +4467,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       ? 'Matching permanent removal effect'
       : matchedCategoryLabel;
     lexicalReasons.push(catLabel);
-  } else if (tFeatures.isCreature && cFeatures.isCreature) {
+  } else if (tFeatures.hasCombatBody && cFeatures.hasCombatBody) {
     method1LexicalScore += 6;
   }
 
@@ -3941,17 +4521,21 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     }
   }
 
-  // Token / Jaccard Semantic Overlap (up to 7 pts)
+  // Token / IDF-Weighted Rare-Word Semantic Overlap (up to 11 pts)
   const targetTokens = tokenizeOracleText(tFeatures.cleanOracle, target.name);
   const candTokens = tokenizeOracleText(cFeatures.cleanOracle, candidate.name);
   if (targetTokens.size > 0 && candTokens.size > 0) {
+    const rareOverlap = computeRareTokenOverlap(tFeatures.cleanOracle, target.name, cFeatures.cleanOracle, candidate.name);
     let intersection = 0;
     targetTokens.forEach(t => { if (candTokens.has(t)) intersection++; });
     const union = new Set([...targetTokens, ...candTokens]).size;
     const jaccard = union > 0 ? intersection / union : 0;
-    const jaccardPoints = Math.round(jaccard * 7);
+    const effectiveOverlap = Math.max(jaccard, rareOverlap.weightedJaccard);
+    const jaccardPoints = Math.min(11, Math.round(effectiveOverlap * 11) + (rareOverlap.sharedRareTokens.length >= 2 ? 2 : 0));
     method1LexicalScore += jaccardPoints;
-    if (jaccard > 0.25) {
+    if (rareOverlap.sharedRareTokens.length >= 2 && rareOverlap.weightedJaccard >= 0.35) {
+      lexicalReasons.push(`Shared core rules terms (${rareOverlap.sharedRareTokens.slice(0, 3).join(', ')})`);
+    } else if (jaccard > 0.25) {
       lexicalReasons.push('High rules text overlap');
     }
   }
@@ -4123,6 +4707,48 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     lexicalReasons.push('Matching card selection effect (Surveil / Empower Jace)');
   }
 
+  if (bothShareStation && bothShareSpacecraft) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 16);
+    lexicalReasons.unshift('Both Station Spacecraft artifacts (tap creatures to add charge counters and animate)');
+    if (tFeatures.stationThreshold !== undefined && cFeatures.stationThreshold !== undefined) {
+      const threshDiff = Math.abs(tFeatures.stationThreshold - cFeatures.stationThreshold);
+      if (threshDiff <= 2) {
+        method1LexicalScore = Math.min(25, method1LexicalScore + 3);
+        lexicalReasons.push(`Comparable Station charge threshold (${tFeatures.stationThreshold}+ vs ${cFeatures.stationThreshold}+)`);
+      }
+    }
+  } else if (bothShareStation && bothSharePlanet) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 18);
+    lexicalReasons.unshift('Both Station Planet lands (tap creatures to accumulate charge counters)');
+  } else if (bothShareStation) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 14);
+    lexicalReasons.unshift('Both feature Station charge-counter mechanic');
+  } else if (bothShareVehicle) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 14);
+    lexicalReasons.unshift('Both Vehicle artifacts with Crew animation');
+  } else if (isSpacecraftVehicleBridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 10);
+    lexicalReasons.push('Both non-creature combat artifacts animated by tapping creatures (Station / Crew)');
+  } else if (bothShareMountSaddle) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 14);
+    lexicalReasons.unshift('Both Mount creatures with Saddle mechanic');
+  } else if (bothShareDrawDoubler) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 18);
+    lexicalReasons.unshift('Both card-draw doubler replacement engines ("If you would draw a card, draw two cards instead")');
+  } else if (bothShareDrawReplacement) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 16);
+    lexicalReasons.unshift('Both draw-replacement engines ("If you would draw a card, ... instead")');
+  } else if (isDrawReplacementEngineBridge) {
+    method1LexicalScore = Math.min(25, method1LexicalScore + 14);
+    lexicalReasons.unshift('Both repeatable card-draw engines');
+  }
+
+  if (sharedSpecificMechanics.length > 0 && !bothShareStation && !bothShareVehicle && !bothShareMountSaddle) {
+    const mechName = sharedSpecificMechanics[0].charAt(0).toUpperCase() + sharedSpecificMechanics[0].slice(1);
+    method1LexicalScore = Math.min(25, method1LexicalScore + 12);
+    lexicalReasons.unshift(`Shared signature mechanic: ${mechName}`);
+  }
+
   method1LexicalScore = Math.min(25, method1LexicalScore);
 
   // =========================================================================
@@ -4238,6 +4864,18 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     tuck_removal: { pts: 22, label: 'Both library-tuck removal / bounce effects' },
     noncreature_surveil_engine: { pts: 20, label: 'Both noncreature spell trigger -> repeatable surveil engines' },
     noncreature_spell_trigger: { pts: 16, label: 'Both noncreature spell trigger payoffs (spellslinger engine)' },
+    station_spacecraft: { pts: 24, label: 'Both Station Spacecraft (tap creatures to add charge counters and animate into artifact creatures)' },
+    station_planet: { pts: 24, label: 'Both Station Planet lands (tap creatures to add charge counters)' },
+    station_mechanic: { pts: 22, label: 'Both feature Station charge-counter mechanic' },
+    spacecraft_subtype: { pts: 20, label: 'Both Spacecraft artifacts' },
+    planet_subtype: { pts: 20, label: 'Both Planet lands' },
+    station_synergy_payoff: { pts: 18, label: 'Both synergize with Station / Spacecraft / Planet permanents' },
+    vehicle_crew: { pts: 22, label: 'Both Vehicle artifacts with Crew mechanic' },
+    mount_saddle: { pts: 20, label: 'Both Mount creatures with Saddle mechanic' },
+    animated_combat_artifact: { pts: 18, label: 'Both non-creature combat artifacts animated by tapping creatures (Station / Crew)' },
+    draw_doubler: { pts: 25, label: 'Both card-draw doubler replacement engines ("If you would draw a card, draw two cards instead")' },
+    draw_replacement: { pts: 22, label: 'Both draw-replacement engines ("If you would draw a card, ... instead")' },
+    repeatable_draw_engine: { pts: 20, label: 'Both repeatable spell-triggered card-draw engines' },
     etb_value: { pts: 12, label: 'Both ETB value creatures' },
   };
 
@@ -4703,9 +5341,100 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
       structuralReasons.unshift('Both late-game curve-toppers with Landcycling flexibility');
     }
   }
+  if (bothShareStation && bothShareSpacecraft) {
+    structuralActionPoints = Math.max(structuralActionPoints, 24);
+    if (!structuralReasons.includes('Both Station Spacecraft (tap creatures to add charge counters and animate into artifact creatures)')) {
+      structuralReasons.unshift('Both Station Spacecraft (tap creatures to add charge counters and animate into artifact creatures)');
+    }
+  } else if (bothShareStation && bothSharePlanet) {
+    structuralActionPoints = Math.max(structuralActionPoints, 24);
+    if (!structuralReasons.includes('Both Station Planet lands (tap creatures to add charge counters)')) {
+      structuralReasons.unshift('Both Station Planet lands (tap creatures to add charge counters)');
+    }
+  } else if (bothShareStation) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both feature Station charge-counter mechanic')) {
+      structuralReasons.unshift('Both feature Station charge-counter mechanic');
+    }
+  } else if (bothShareVehicle) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both Vehicle artifacts with Crew mechanic')) {
+      structuralReasons.unshift('Both Vehicle artifacts with Crew mechanic');
+    }
+  } else if (isSpacecraftVehicleBridge) {
+    structuralActionPoints = Math.max(structuralActionPoints, 18);
+    if (!structuralReasons.includes('Both non-creature combat artifacts animated by tapping creatures (Station / Crew)')) {
+      structuralReasons.unshift('Both non-creature combat artifacts animated by tapping creatures (Station / Crew)');
+    }
+  } else if (bothShareMountSaddle) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both Mount creatures with Saddle mechanic')) {
+      structuralReasons.unshift('Both Mount creatures with Saddle mechanic');
+    }
+  } else if (bothShareDrawDoubler) {
+    structuralActionPoints = Math.max(structuralActionPoints, 25);
+    if (!structuralReasons.includes('Both card-draw doubler replacement engines ("If you would draw a card, draw two cards instead")')) {
+      structuralReasons.unshift('Both card-draw doubler replacement engines ("If you would draw a card, draw two cards instead")');
+    }
+  } else if (bothShareDrawReplacement) {
+    structuralActionPoints = Math.max(structuralActionPoints, 22);
+    if (!structuralReasons.includes('Both draw-replacement engines ("If you would draw a card, ... instead")')) {
+      structuralReasons.unshift('Both draw-replacement engines ("If you would draw a card, ... instead")');
+    }
+  } else if (isDrawReplacementEngineBridge) {
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    if (!structuralReasons.includes('Both repeatable card-draw advantage engines')) {
+      structuralReasons.unshift('Both repeatable card-draw advantage engines');
+    }
+  }
+
+  if (sharedSpecificMechanics.length > 0 && !bothShareStation && !bothShareVehicle && !bothShareMountSaddle) {
+    const mechName = sharedSpecificMechanics[0].charAt(0).toUpperCase() + sharedSpecificMechanics[0].slice(1);
+    structuralActionPoints = Math.max(structuralActionPoints, 20);
+    const reasonStr = `Both feature ${mechName} mechanic`;
+    if (!structuralReasons.includes(reasonStr)) {
+      structuralReasons.unshift(reasonStr);
+    }
+  }
 
   // Action Subtype Mismatch Penalties
   let actionMismatchPenalty = 0;
+
+  // Station / Spacecraft / Vehicle Mismatch Penalties:
+  // A Station Spacecraft or Station Planet must strongly prefer other Station cards (or Crew Vehicles as secondary bridge)
+  // and must never be scored as equivalent to a static non-animated utility artifact, Clue, or mana rock!
+  if ((tFeatures.hasStation || tFeatures.isSpacecraft) && !cFeatures.hasStation && !cFeatures.isSpacecraft) {
+    if (cFeatures.isVehicle || cFeatures.hasCrew) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 5); // Close mechanical cousin (Crew Vehicle vs Station Spacecraft)
+    } else {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 22);
+    }
+  } else if (!tFeatures.hasStation && !tFeatures.isSpacecraft && (cFeatures.hasStation || cFeatures.isSpacecraft)) {
+    if (tFeatures.isVehicle || tFeatures.hasCrew) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 5);
+    } else {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 22);
+    }
+  }
+
+  if ((tFeatures.isVehicle || tFeatures.hasCrew) && !cFeatures.isVehicle && !cFeatures.hasCrew && !cFeatures.isSpacecraft && !cFeatures.hasStation) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
+  } else if (!tFeatures.isVehicle && !tFeatures.hasCrew && !tFeatures.isSpacecraft && !tFeatures.hasStation && (cFeatures.isVehicle || cFeatures.hasCrew)) {
+    actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
+  }
+
+  // Draw Replacement Engine ("If you would draw a card, ... instead") vs One-Shot Cantrip / Generic Creature Mismatch Penalty:
+  // A static card-draw replacement engine (Mr. Spock, Thought Reflection, Sages of the Anima, Blood Scrivener)
+  // must strongly prefer other draw-replacement or repeatable spell-draw engines (Archmage Emeritus) over 1-shot cantrips!
+  if (tFeatures.actionSubtypes.has('draw_replacement') && !cFeatures.actionSubtypes.has('draw_replacement')) {
+    if (!cFeatures.actionSubtypes.has('repeatable_draw_engine')) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
+    }
+  } else if (!tFeatures.actionSubtypes.has('draw_replacement') && cFeatures.actionSubtypes.has('draw_replacement')) {
+    if (!tFeatures.actionSubtypes.has('repeatable_draw_engine')) {
+      actionMismatchPenalty = Math.max(actionMismatchPenalty, 18);
+    }
+  }
 
   // Target is tutor, but candidate is NOT tutor (or vice-versa)
   if (tFeatures.actionSubtypes.has('library_tutor') && !cFeatures.actionSubtypes.has('library_tutor')) {
@@ -4950,7 +5679,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   // =========================================================================
   // PILLAR 5: Statline & Output Scale (up to 10 pts)
   // =========================================================================
-  if (tFeatures.isCreature && cFeatures.isCreature && 
+  if (tFeatures.hasCombatBody && cFeatures.hasCombatBody && 
       tFeatures.power !== undefined && tFeatures.toughness !== undefined &&
       cFeatures.power !== undefined && cFeatures.toughness !== undefined) {
     const pDiff = Math.abs(tFeatures.power - cFeatures.power);
@@ -5100,6 +5829,7 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
   let rarityAdjustment = 0;
   const sharesCounterDistributor = tFeatures.actionSubtypes.has('etb_counter_distributor') && cFeatures.actionSubtypes.has('etb_counter_distributor');
   const sharesExactMechanicArchetype = bothShareExactConverge || bothShareExactSunburst || bothShareLivingWeapon ||
+    bothShareStation || bothShareSpacecraft || bothSharePlanet || bothShareVehicle || sharedSpecificMechanics.length > 0 ||
     (tFeatures.actionSubtypes.has('discard_and_burn') && cFeatures.actionSubtypes.has('discard_and_burn'));
 
   if (tFeatures.rarity === 'common') {
@@ -5179,9 +5909,9 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     }
   }
 
-  if (bothShareExactConverge || bothShareExactSunburst || bothShareToughnessCombatDamage) {
+  if (bothShareExactConverge || bothShareExactSunburst || bothShareToughnessCombatDamage || bothShareStation || bothShareSpacecraft) {
     keywordMismatchPenalty = Math.min(3, keywordMismatchPenalty);
-  } else if (bothShareConvergeSunburst || bothShareMultiColorScaling || bothShareToughnessMatters) {
+  } else if (bothShareConvergeSunburst || bothShareMultiColorScaling || bothShareToughnessMatters || bothShareVehicle || isSpacecraftVehicleBridge) {
     keywordMismatchPenalty = Math.min(6, keywordMismatchPenalty);
   }
 
@@ -5276,8 +6006,11 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     // Graceful fallback
   }
 
-  // Non-reprint ceiling: 100% is strictly reserved for true reprints / functional reprints
-  const MAX_NON_REPRINT_SCORE = 95;
+  // Non-reprint ceiling:
+  // - 100% is strictly reserved for true reprints
+  // - 95% is reserved for exact functional reprints or exact Oracle text clause matches (Directive 2)
+  // - General multi-pillar matches without an exact Oracle clause match cap at 91% so exact text matches always take priority!
+  const MAX_NON_REPRINT_SCORE = exactClauseMatch ? 95 : 91;
   const MAX_TYPE_INCOMPATIBLE_SCORE = 28;
 
   let totalScore: number;
@@ -5288,6 +6021,13 @@ export function calculateCardSimilarity(target: Card, candidate: Card, userId?: 
     totalScore = Math.min(MAX_TYPE_INCOMPATIBLE_SCORE, Math.max(0, rawScore));
   } else {
     totalScore = Math.min(MAX_NON_REPRINT_SCORE, Math.max(0, rawScore));
+    if (exactOracleResult) {
+      if (exactOracleResult.score >= totalScore) {
+        return exactOracleResult;
+      }
+      totalScore = Math.max(totalScore, exactOracleResult.score);
+      structuralReasons.unshift(exactOracleResult.reasons[0] || 'Exact matching rules text');
+    }
   }
 
   // Deduplicate and prioritize most insightful structural, speed/tempo, and lexical reasons
@@ -5419,6 +6159,45 @@ export function getCuratedBenchmarkCandidates(
     const cIsLandcycling = cFeatures.actionSubtypes.has('landcycling_creature') || cFeatures.hasLandcycling;
     if (targetIsLandcycling && cIsLandcycling) {
       relevance += 90;
+    }
+
+    // Station / Spacecraft / Planet / Vehicle / Specific Set Mechanic Priority
+    if (tFeatures.hasStation || tFeatures.isSpacecraft || tFeatures.isPlanet) {
+      if (cFeatures.hasStation || cFeatures.isSpacecraft || cFeatures.isPlanet) {
+        relevance += 140;
+        if (tFeatures.isSpacecraft && cFeatures.isSpacecraft) relevance += 30;
+        if (tFeatures.isPlanet && cFeatures.isPlanet) relevance += 40;
+      } else if (cFeatures.isVehicle || cFeatures.hasCrew) {
+        relevance += 80;
+      } else if (cFeatures.isArtifact && !cFeatures.isCreature) {
+        // Demote static non-animated utility artifacts (Clues, Baubles, Mana rocks) when Target is a Station Spacecraft
+        relevance -= 60;
+      }
+    } else if (tFeatures.isVehicle || tFeatures.hasCrew) {
+      if (cFeatures.isVehicle || cFeatures.hasCrew) {
+        relevance += 120;
+      } else if (cFeatures.isSpacecraft || cFeatures.hasStation) {
+        relevance += 80;
+      } else if (cFeatures.isArtifact && !cFeatures.isCreature) {
+        relevance -= 50;
+      }
+    }
+
+    // Shared Specific Named Mechanics (Warp, Void, Exhaust, Offspring, Forage, Plot, Spree, Craft, etc.)
+    const sharedMechs = tFeatures.specificMechanics.filter(m => cFeatures.specificMechanics.includes(m));
+    if (sharedMechs.length > 0) {
+      relevance += 100;
+    }
+
+    // Draw Replacement & Card-Draw Doubler Priority (Mr. Spock vs Thought Reflection, Sages of the Anima, Blood Scrivener, Archmage Emeritus)
+    if (tFeatures.actionSubtypes.has('draw_replacement') || tFeatures.actionSubtypes.has('draw_doubler')) {
+      if (cFeatures.actionSubtypes.has('draw_doubler')) {
+        relevance += 150;
+      } else if (cFeatures.actionSubtypes.has('draw_replacement')) {
+        relevance += 125;
+      } else if (cFeatures.actionSubtypes.has('repeatable_draw_engine')) {
+        relevance += 95;
+      }
     }
 
     // Type Match
@@ -5624,7 +6403,7 @@ export function generateGuaranteedFallbackResult(
   fallbackPool: Card[] = []
 ): CardSimilarityResult {
   const candidates = getCuratedBenchmarkCandidates(targetCard, fallbackPool)
-    .filter(cand => !isSameOrCompanionSet(targetCard.set, cand.set));
+    .filter(cand => !isSameOrCompanionSet(targetCard.set, cand.set) && isPostEldCard(cand));
   const scored = candidates.map(cand => {
     const { score, reasons } = calculateCardSimilarity(targetCard, cand);
     // Hard rule: Zero score from same/companion set must never be boosted
@@ -5638,7 +6417,7 @@ export function generateGuaranteedFallbackResult(
 
   scored.sort((a, b) => b.score - a.score);
   const top4 = scored
-    .filter(s => s.score > 0 && !isSameOrCompanionSet(targetCard.set, s.card.set))
+    .filter(s => s.score > 0 && !isSameOrCompanionSet(targetCard.set, s.card.set) && isPostEldCard(s.card))
     .slice(0, 4);
 
   const matches: SimilarCardMatch[] = top4.map(({ card, score, reasons }) => {
@@ -5674,7 +6453,7 @@ export async function findSimilarCards(
   fallbackPool: Card[] = [],
   userId?: string
 ): Promise<CardSimilarityResult> {
-  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v71`;
+  const cacheKey = `${targetCard.set.toUpperCase()}_${targetCard.name.toUpperCase()}_v80`;
   if (similarityCache.has(cacheKey)) {
     const cached = similarityCache.get(cacheKey)!;
     if (cached && cached.matches && cached.matches.length >= 2) {
@@ -5690,6 +6469,7 @@ export async function findSimilarCards(
       if (!c || !c.name) return true;
       if (c.name.toLowerCase() === targetCard.name.toLowerCase()) return true;
       if (isSameOrCompanionSet(targetCard.set, c.set)) return true;
+      if (!isPostEldCard(c)) return true;
       return false;
     };
 
@@ -5713,10 +6493,11 @@ export async function findSimilarCards(
               .filter(
                 (rc: any) =>
                   !rc.name.startsWith('A-') &&
-                  !rc.digital &&
+                  (!rc.digital || POST_ELD_ARENA_REMASTER_SETS.has((rc.set || '').toUpperCase())) &&
                   !rc.promo_types?.includes('rebalanced') &&
                   rc.booster !== false &&
-                  rc.set?.toLowerCase() !== 'mbc'
+                  rc.set?.toLowerCase() !== 'mbc' &&
+                  (!rc.released_at || rc.released_at >= ELD_RELEASE_CUTOFF_DATE)
               )
               .map((rc: any) => normalizeScryfallCard(rc));
             // Filter duplicates and same-set cards
@@ -5756,7 +6537,7 @@ export async function findSimilarCards(
           .slice(0, 16)
           .map(s => `s:${s.toLowerCase()}`)
           .join(' or ');
-        const fallbackQuery = `(${setTerms}) ${typeTerm} ${mainColor} ${cmcTerm} is:booster${excludeSetTerms ? ` ${excludeSetTerms}` : ''}`;
+        const fallbackQuery = `date>=${ELD_RELEASE_CUTOFF_DATE} (${setTerms}) ${typeTerm} ${mainColor} ${cmcTerm} is:booster${excludeSetTerms ? ` ${excludeSetTerms}` : ''}`;
 
         const url = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
         const res = await fetch(url, {
@@ -5773,10 +6554,11 @@ export async function findSimilarCards(
               .filter(
                 (rc: any) =>
                   !rc.name.startsWith('A-') &&
-                  !rc.digital &&
+                  (!rc.digital || POST_ELD_ARENA_REMASTER_SETS.has((rc.set || '').toUpperCase())) &&
                   !rc.promo_types?.includes('rebalanced') &&
                   rc.booster !== false &&
-                  rc.set?.toLowerCase() !== 'mbc'
+                  rc.set?.toLowerCase() !== 'mbc' &&
+                  (!rc.released_at || rc.released_at >= ELD_RELEASE_CUTOFF_DATE)
               )
               .map((rc: any) => normalizeScryfallCard(rc));
             rawCards.forEach((c: Card) => {
@@ -5989,6 +6771,23 @@ export async function findSimilarCards(
                            /amass/i.test(b.card.oracle_text || '');
         if (aRoleMatch !== bRoleMatch) return (bRoleMatch ? 1 : 0) - (aRoleMatch ? 1 : 0);
       }
+      if (features.actionSubtypes.has('draw_doubler') || features.actionSubtypes.has('draw_replacement')) {
+        const aIsDoubler = /if you would draw a card[^.]*?(?:draw two cards|instead you draw two cards)/i.test(a.card.oracle_text || '') ? 1 : 0;
+        const bIsDoubler = /if you would draw a card[^.]*?(?:draw two cards|instead you draw two cards)/i.test(b.card.oracle_text || '') ? 1 : 0;
+        const aIsCreature = /creature/i.test(a.card.type_line || '') ? 1 : 0;
+        const bIsCreature = /creature/i.test(b.card.type_line || '') ? 1 : 0;
+        const aIsBench = (a.card.id.startsWith('bench_') || HISTORICAL_BENCHMARK_NAMES.has(a.card.name.trim().toLowerCase())) ? 1 : 0;
+        const bIsBench = (b.card.id.startsWith('bench_') || HISTORICAL_BENCHMARK_NAMES.has(b.card.name.trim().toLowerCase())) ? 1 : 0;
+        const aCmcDiffLocal = Math.abs(a.card.cmc - targetCard.cmc);
+        const bCmcDiffLocal = Math.abs(b.card.cmc - targetCard.cmc);
+        if (features.isCreature && aIsCreature !== bIsCreature) return bIsCreature - aIsCreature;
+        if (aIsBench !== bIsBench) return bIsBench - aIsBench;
+        if (aCmcDiffLocal !== bCmcDiffLocal) return aCmcDiffLocal - bCmcDiffLocal;
+        if (aIsDoubler !== bIsDoubler) return bIsDoubler - aIsDoubler;
+        const aIsHandGain = /into your hand|draw a card/i.test(a.card.oracle_text || '') ? 1 : 0;
+        const bIsHandGain = /into your hand|draw a card/i.test(b.card.oracle_text || '') ? 1 : 0;
+        if (aIsHandGain !== bIsHandGain) return bIsHandGain - aIsHandGain;
+      }
       const targetIsColorless = (!targetCard.colors || targetCard.colors.filter(c => c !== 'C').length === 0);
       const aIsColorless = (!a.card.colors || a.card.colors.filter(c => c !== 'C').length === 0) ? 1 : 0;
       const bIsColorless = (!b.card.colors || b.card.colors.filter(c => c !== 'C').length === 0) ? 1 : 0;
@@ -6104,10 +6903,16 @@ export async function findSimilarCards(
       const roleKey = primarySubtype;
 
       const isTargetTutor = features.actionSubtypes.has('library_tutor');
+      const isTargetDrawReplacement = features.actionSubtypes.has('draw_replacement') || features.actionSubtypes.has('draw_doubler');
+      const isTargetStationOrVehicle = features.hasStation || features.isSpacecraft || features.isVehicle || features.hasCrew;
       const isTargetConditionalRemoval = features.actionSubtypes.has('toughness_4_plus_removal') || features.actionSubtypes.has('power_toughness_removal') || features.actionSubtypes.has('modal_removal');
       const maxAllowed = (primarySubtype === 'flash_reach_ambush' || primarySubtype === 'combat_removal')
         ? 1
-        : ((isTargetTutor && (primarySubtype === 'library_tutor' || primarySubtype === 'tutor_to_top')) || primarySubtype === 'activated_team_pump' || (isTargetConditionalRemoval && (primarySubtype === 'toughness_4_plus_removal' || primarySubtype === 'modal_removal' || primarySubtype === 'power_toughness_removal'))
+        : ((isTargetTutor && (primarySubtype === 'library_tutor' || primarySubtype === 'tutor_to_top')) ||
+           primarySubtype === 'activated_team_pump' ||
+           isTargetDrawReplacement ||
+           isTargetStationOrVehicle ||
+           (isTargetConditionalRemoval && (primarySubtype === 'toughness_4_plus_removal' || primarySubtype === 'modal_removal' || primarySubtype === 'power_toughness_removal'))
           ? 4
           : (primarySubtype === 'removal_with_compensation' ? 3 : 2));
       const currentCount = roleCmcCounts[roleKey] || 0;

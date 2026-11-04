@@ -212,8 +212,8 @@ export const QuizSummary: React.FC<QuizSummaryProps> = ({
 
                 {/* Expanded Card Details & Explanation */}
                 {isExpanded && (
-                  <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c]/90 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                    <div className="md:col-span-4 flex justify-center">
+                  <div className="p-3 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#17181c]/90 grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-start">
+                    <div className="md:col-span-4 flex justify-center w-full">
                       <CardObfuscator
                         card={q.card}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}

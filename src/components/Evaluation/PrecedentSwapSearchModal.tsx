@@ -635,8 +635,8 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                   </div>
 
                   {/* Card Artwork */}
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="relative inline-flex flex-col items-center">
+                  <div className="flex flex-col items-center justify-center w-full">
+                    <div className="relative flex flex-col items-center w-full">
                       <CardObfuscator
                         card={targetCard}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
@@ -748,8 +748,8 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                   </div>
 
                   {/* Card Artwork */}
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="relative inline-flex flex-col items-center">
+                  <div className="flex flex-col items-center justify-center w-full">
+                    <div className="relative flex flex-col items-center w-full">
                       <CardObfuscator
                         card={currentSlotCard}
                         obfuscation={{ target: 'none', style: 'blur', isRevealed: true }}
@@ -1160,7 +1160,7 @@ export const PrecedentSwapSearchModal: React.FC<PrecedentSwapSearchModalProps> =
                           </div>
 
                           {/* Card Thumbnail Artwork (Enlarged & clean, no overlay badges) */}
-                          <div className="w-full aspect-[63/88] max-h-[350px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-xs relative shrink-0 flex items-center justify-center">
+                          <div className="w-full aspect-[63/88] sm:max-h-[350px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-[#17181c] shadow-xs relative shrink-0 flex items-center justify-center">
                             <CardImage
                               card={card}
                               src={imageUri}

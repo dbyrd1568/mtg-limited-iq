@@ -45,6 +45,7 @@ export interface Card {
   card_faces?: CardFace[];
   layout?: string;
   scryfall_uri?: string;
+  released_at?: string;
   booster?: boolean;
   promo?: boolean;
   finishes?: string[];

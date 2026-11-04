@@ -76,10 +76,10 @@ export function buildScryfallPrecedentQuery(input: string, targetSet?: string): 
     }
   }
 
-  // 4. Draft sets & booster prioritization (Never compare a set or companion sets to itself)
+  // 4. Draft sets & booster prioritization (Strictly post-2018 / ELD-onward 17Lands era; never compare a set or companion sets to itself)
   const companionSets = targetSet ? getCompanionSetCodes(targetSet) : [];
   const excludeSet = companionSets.length > 0 ? companionSets.map((s) => ` -s:${s.toLowerCase()}`).join('') : '';
-  const baseFilter = `(is:booster or is:premier) -is:funny -is:digital -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`;
+  const baseFilter = `date>=2019-09-26 (is:booster or is:premier or s:pio or s:sir or s:klr or s:akr) -is:funny -is:alchemy -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`;
   return `${syntaxFilters.join(' ')} ${baseFilter}`.trim();
 }
 
@@ -168,7 +168,7 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
         if (!res.ok) {
           const companionSets = currentTarget.set ? getCompanionSetCodes(currentTarget.set) : [];
           const excludeSet = companionSets.length > 0 ? companionSets.map((s) => ` -s:${s.toLowerCase()}`).join('') : '';
-          const fallbackQuery = `${trimmed} (is:booster or is:premier) -is:funny -is:digital -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`;
+          const fallbackQuery = `${trimmed} date>=2019-09-26 (is:booster or is:premier or s:pio or s:sir or s:klr or s:akr) -is:funny -is:alchemy -is:memorabilia -is:promo -is:commander -layout:art_series -t:token -s:mbc${excludeSet}`;
           const fallbackUrl = `${SCRYFALL_API_BASE}/cards/search?q=${encodeURIComponent(fallbackQuery)}&order=released&dir=desc`;
           res = await fetch(fallbackUrl, {
             signal: controller.signal,
@@ -191,7 +191,8 @@ export const PrecedentCardSearch: React.FC<PrecedentCardSearchProps> = ({
                   !rc.name.startsWith('A-') &&
                   !rc.promo_types?.includes('rebalanced') &&
                   rc.booster !== false &&
-                  rc.set?.toLowerCase() !== 'mbc'
+                  rc.set?.toLowerCase() !== 'mbc' &&
+                  (!rc.released_at || rc.released_at >= '2019-09-26')
               )
               .map(normalizeScryfallCard)
               // Exclude target card itself and NEVER compare a set or companion release to itself
