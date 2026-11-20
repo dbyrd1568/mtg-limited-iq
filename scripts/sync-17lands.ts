@@ -95,30 +95,106 @@ const PROD_WORKER_URL =
   process.env.PRODUCTION_URL ||
   'https://mtg-limited-iq.byrd.workers.dev';
 
-// Primary active Premier Draft formats & ongoing formats on MTG Arena
-const PRIMARY_ACTIVE_SETS = ['HOB', 'MBC'];
-
-// Historical sets catalog for periodic flashback auditing
-const HISTORICAL_AUDIT_SETS = [
-  'DFT', 'PIO', 'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'RVR',
-  'LCI', 'WOE', 'LTR', 'MOM', 'SIR', 'ONE', 'BRO', 'DMU', 'NEO', 'STX', 'KHM'
-];
-
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // Minimum new games required to trigger a flashback draft cache update (prevents redundant writes & rate limits)
 const MIN_FLASHBACK_GAME_DELTA = 1000;
 
 /**
- * Dynamically resolves active draft sets based on database schedule, current date, and env
+ * Fetches all Limited-draftable sets from Scryfall (2020+) once per run.
+ */
+async function fetchScryfallLimitedSets(): Promise<Array<{ code: string; name: string; released_at: string; daysSince: number }>> {
+  const results: Array<{ code: string; name: string; released_at: string; daysSince: number }> = [];
+  try {
+    const res = await fetch('https://api.scryfall.com/sets', {
+      signal: AbortSignal.timeout(12000),
+      headers: { 'User-Agent': 'MTGLimitedIQ-Sync/2.0' }
+    });
+    if (!res.ok) return results;
+    const json: any = await res.json();
+    const sets: any[] = Array.isArray(json?.data) ? json.data : [];
+    const now = Date.now();
+    const dayMs = 1000 * 60 * 60 * 24;
+    const validTypes = new Set(['expansion', 'core', 'masters', 'draft_innovation']);
+
+    for (const s of sets) {
+      if (!s?.code || !s?.released_at || !validTypes.has(s.set_type)) continue;
+      if ((s.card_count || 0) < 100) continue;
+      const relTime = new Date(`${s.released_at}T00:00:00Z`).getTime();
+      if (isNaN(relTime)) continue;
+      if (relTime < new Date('2020-01-01T00:00:00Z').getTime()) continue;
+      results.push({
+        code: String(s.code).toUpperCase().trim(),
+        name: String(s.name).trim(),
+        released_at: s.released_at,
+        daysSince: (now - relTime) / dayMs,
+      });
+    }
+  } catch (err: any) {
+    console.warn(`  ⚠️ Scryfall set discovery failed: ${err.message}`);
+  }
+  return results;
+}
+
+/**
+ * Queries Scryfall for all draftable Limited sets released within [-90 days, +3 days]
+ * so newly launched sets are automatically synced with 17Lands forever without manual edits.
+ */
+async function discoverScryfallActiveSets(supabase: ReturnType<typeof createClient>): Promise<string[]> {
+  const allSets = await fetchScryfallLimitedSets();
+  const discovered: string[] = [];
+  const dayMs = 1000 * 60 * 60 * 24;
+  const scheduleUpserts: any[] = [];
+
+  for (const s of allSets) {
+    if (s.daysSince >= -3 && s.daysSince <= 90) {
+      discovered.push(s.code);
+      const relTime = new Date(`${s.released_at}T00:00:00Z`).getTime();
+      const arenaDate = new Date(relTime - 3 * dayMs).toISOString().slice(0, 10);
+      const lsvDate = new Date(relTime - 7 * dayMs).toISOString().slice(0, 10);
+      scheduleUpserts.push({
+        set_code: s.code,
+        set_name: s.name,
+        released_at: s.released_at,
+        arena_released_at: arenaDate,
+        lsv_available_at: lsvDate,
+        seventeen_lands_available_at: arenaDate,
+        is_active_draft: true,
+        is_flashback: false,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (scheduleUpserts.length > 0 && SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      await supabase
+        .from('set_release_schedules')
+        .upsert(scheduleUpserts, { onConflict: 'set_code' });
+    } catch (e: any) {
+      console.warn(`  ⚠️ Could not auto-update set_release_schedules: ${e.message}`);
+    }
+  }
+  return discovered;
+}
+
+/**
+ * Dynamically resolves active draft sets based on Scryfall release window, live flashbacks, and env
  */
 async function resolveCurrentActiveSets(supabase: ReturnType<typeof createClient>): Promise<string[]> {
-  const activeSets = new Set<string>(PRIMARY_ACTIVE_SETS);
+  const activeSets = new Set<string>();
 
+  // 1. Auto-discover currently active sets directly from Scryfall release dates (self-updating forever)
+  const scryfallActive = await discoverScryfallActiveSets(supabase);
+  for (const code of scryfallActive) {
+    activeSets.add(code);
+  }
+
+  // 2. Include any dynamically flagged flashback sets in Supabase
   try {
     const { data: dbSets } = await supabase
       .from('set_release_schedules')
-      .select('set_code, is_active_draft, is_flashback')
-      .or('is_active_draft.eq.true,is_flashback.eq.true');
+      .select('set_code, is_flashback')
+      .eq('is_flashback', true);
 
     if (dbSets && dbSets.length > 0) {
       for (const row of dbSets) {
@@ -129,13 +205,7 @@ async function resolveCurrentActiveSets(supabase: ReturnType<typeof createClient
     }
   } catch {}
 
-  // Reality Fracture (FRA) releases 2026-10-02; automatically becomes active upon release
-  const fraReleaseTime = new Date('2026-10-02T00:00:00Z').getTime();
-  if (Date.now() >= fraReleaseTime) {
-    activeSets.add('FRA');
-  }
-
-  // Include any configured flashback sets from env
+  // 3. Include any configured flashback sets from env
   const envFlashbacks = (process.env.FLASHBACK_SETS || '')
     .split(/[\s,]+/)
     .map((s) => s.trim().toUpperCase())
@@ -149,27 +219,11 @@ async function resolveCurrentActiveSets(supabase: ReturnType<typeof createClient
 }
 
 /**
- * Dynamically resolves historical sets from database and base catalog
+ * Dynamically resolves historical sets (> 90 days old) directly from Scryfall
  */
-async function resolveHistoricalAuditSets(supabase: ReturnType<typeof createClient>): Promise<string[]> {
-  const historicalSets = new Set<string>(HISTORICAL_AUDIT_SETS);
-
-  try {
-    const { data: dbSets } = await supabase
-      .from('set_release_schedules')
-      .select('set_code, is_active_draft')
-      .eq('is_active_draft', false);
-
-    if (dbSets && dbSets.length > 0) {
-      for (const row of dbSets) {
-        if (row.set_code) {
-          historicalSets.add(row.set_code.toUpperCase().trim());
-        }
-      }
-    }
-  } catch {}
-
-  return Array.from(historicalSets);
+async function resolveHistoricalAuditSets(_supabase: ReturnType<typeof createClient>): Promise<string[]> {
+  const allSets = await fetchScryfallLimitedSets();
+  return allSets.filter((s) => s.daysSince > 90).map((s) => s.code);
 }
 
 async function fetchSetFrom17Lands(expansion: string): Promise<any[] | null> {
@@ -213,7 +267,7 @@ async function syncSet(
 ) {
   const upperCode = setCode.toUpperCase().trim();
   const expansion = get17LandsExpansionCode(upperCode);
-  const draftStatus = options.draftStatus || (PRIMARY_ACTIVE_SETS.includes(upperCode) ? 'active' : 'historical');
+  const draftStatus = options.draftStatus || 'active';
 
   console.log(`\n--------------------------------------------------`);
   console.log(`Set: ${upperCode} (expansion: ${expansion}, status: ${draftStatus})`);

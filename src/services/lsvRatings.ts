@@ -4,6 +4,7 @@ import { scoreToGradeTier } from './seventeenLands';
 import { POPULAR_LIMITED_SETS } from './scryfall';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { FRA_DRAFTSIM_DATA } from './fraDraftsimData';
+import { TRK_LLU_RATINGS, TRK_LSV_RATINGS, TRK_DS_RATINGS } from './trkProRatingsData';
 
 export interface LsvCardRating {
   score: number; // 0.0 to 5.0
@@ -189,6 +190,35 @@ for (const [set, dict] of Object.entries(BUNDLED_STATIC_DS_RATINGS)) {
   LIVE_PRO_RATINGS_BY_CREATOR[setUpper]!['DS'] = { ...setMap };
 }
 
+// Pre-seed memory cache with bundled Star Trek (TRK) creator ratings (LSV, LLU, DS)
+{
+  const seedCreatorMap = (
+    dict: Record<string, { score: number; grade: GradeTier; verdict: string }>,
+    source: ProCreatorSource
+  ): Record<string, LsvCardRating> => {
+    const out: Record<string, LsvCardRating> = {};
+    for (const [name, item] of Object.entries(dict)) {
+      out[name] = {
+        score: item.score,
+        grade: item.grade,
+        verdict: item.verdict,
+        source,
+        isEstimated: false,
+      };
+    }
+    return out;
+  };
+  const trkLsv = seedCreatorMap(TRK_LSV_RATINGS, 'LSV');
+  const trkLlu = seedCreatorMap(TRK_LLU_RATINGS, 'LLU');
+  const trkDs = seedCreatorMap(TRK_DS_RATINGS, 'DS');
+  LIVE_PRO_RATINGS['TRK'] = { ...trkLlu, ...trkLsv };
+  LIVE_PRO_RATINGS_BY_CREATOR['TRK'] = {
+    LSV: trkLsv,
+    LLU: trkLlu,
+    DS: trkDs,
+  };
+}
+
 const PENDING_PRO_RATING_FETCHES: Record<string, Promise<Record<string, LsvCardRating>> | undefined> = {};
 const FETCHED_PRO_RATINGS_SETS: Record<string, boolean> = {};
 
@@ -233,18 +263,18 @@ export async function loadProRatingsForSet(
   }
 
   const fetchPromise = (async () => {
-    const idbKeyV4 = `pro_ratings_v4_${upper}`;
+    const idbKeyV5 = `pro_ratings_v5_${upper}`;
 
     // 1. Try local IndexedDB cache first for instant offline readiness
     if (!options?.forceRefresh && typeof indexedDB !== 'undefined') {
       try {
-        const cachedV4 = await get<CachedSetRatings>(idbKeyV4);
-        if (cachedV4 && cachedV4.defaultMap && Object.keys(cachedV4.defaultMap).length > 0) {
-          LIVE_PRO_RATINGS[upper] = { ...(LIVE_PRO_RATINGS[upper] || {}), ...cachedV4.defaultMap };
+        const cachedV5 = await get<CachedSetRatings>(idbKeyV5);
+        if (cachedV5 && cachedV5.defaultMap && Object.keys(cachedV5.defaultMap).length > 0) {
+          LIVE_PRO_RATINGS[upper] = { ...(LIVE_PRO_RATINGS[upper] || {}), ...cachedV5.defaultMap };
           if (!LIVE_PRO_RATINGS_BY_CREATOR[upper]) {
             LIVE_PRO_RATINGS_BY_CREATOR[upper] = {};
           }
-          for (const [src, map] of Object.entries(cachedV4.byCreator || {})) {
+          for (const [src, map] of Object.entries(cachedV5.byCreator || {})) {
             if (src === 'LOL') continue;
             LIVE_PRO_RATINGS_BY_CREATOR[upper]![src] = {
               ...(LIVE_PRO_RATINGS_BY_CREATOR[upper]![src] || {}),
@@ -307,7 +337,7 @@ export async function loadProRatingsForSet(
 
           if (typeof indexedDB !== 'undefined') {
             try {
-              await set(idbKeyV4, { defaultMap, byCreator: LIVE_PRO_RATINGS_BY_CREATOR[upper] });
+              await set(idbKeyV5, { defaultMap, byCreator: LIVE_PRO_RATINGS_BY_CREATOR[upper] });
             } catch (e) {}
           }
 

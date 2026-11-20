@@ -60,8 +60,7 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 
 export type ProCreator = 'LSV' | 'LLU' | 'DS';
 
-// Primary active & ongoing sets on MTG Arena for rapid daily sync
-export const DEFAULT_ACTIVE_SETS = ['FRA', 'HOB', 'MBC', 'SOS'];
+// Active sets are dynamically discovered from Scryfall (-90d to +14d); no static active set list.
 
 export interface CreatorTierListConfig {
   setCode: string;
@@ -73,6 +72,12 @@ export interface CreatorTierListConfig {
 // Registry of known creator tier lists on 17Lands
 export const KNOWN_CREATOR_TIERLISTS: CreatorTierListConfig[] = [
   // --- Limited Level Ups (LLU / Alex Nikolic & Marc - sourced from limitedlevelups.com) ---
+  {
+    setCode: 'TRK',
+    source: 'LLU',
+    tierListIds: ['03a686ab050b42d5a62bce8902e7f0df', '5d052764d08f49238b8232f591b46507', 'd13af031a76e4a868cf2d8aad3386e0a'],
+    notes: 'LLU Star Trek Tier List (Live + Alex + Marc)'
+  },
   {
     setCode: 'FRA',
     source: 'LLU',
@@ -470,6 +475,7 @@ export function lsvScoreToRating(score: number): { grade: string; score: number;
 }
 
 export const LSV_TCGPLAYER_SETS = [
+  { match: /Star Trek/i, setCode: 'TRK' },
   { match: /Aetherdrift/i, setCode: 'DFT' },
   { match: /Bloomburrow/i, setCode: 'BLB' },
   { match: /Duskmourn/i, setCode: 'DSK' },
@@ -513,7 +519,7 @@ export const LSV_COMMUNITY_SHEETS = [
 
 function parseLsvArticleBody(body: string): { cardName: string; score: number; notes?: string }[] {
   const cards: { cardName: string; score: number; notes?: string }[] = [];
-  const parts = body.split(/<card-spotlight\s+card-id=\"|<card-showcase\s+ids=\"|<h3[^>]*>(?!\s*(?:<[^>]+>)*\s*Limited)/i);
+  const parts = body.split(/<card-spotlight\s+card-id=\"|<card-showcase\s+ids=\"|<h3[^>]*>(?!\s*(?:<[^>]+>)*\s*(?:Limited|Draft|Sealed|First|In\s|With\s|Elsewhere|Build|Rating)[^<]*\d)/i);
   for (let i = 1; i < parts.length; i++) {
     const part = parts[i];
     let cardName = '';
@@ -521,75 +527,269 @@ function parseLsvArticleBody(body: string): { cardName: string; score: number; n
     const t = part.indexOf('<');
     if (q !== -1 && (t === -1 || q < t)) cardName = part.slice(0, q).trim();
     else if (t !== -1) cardName = part.slice(0, t).trim();
-    if (!cardName || cardName.length > 50 || /^\d+$/.test(cardName)) continue;
+    if (!cardName || cardName.length > 60 || /^\d+$/.test(cardName)) continue;
     if (['Pack Rat', 'Writhing Chrysalis', 'Ocelot Pride'].includes(cardName)) continue;
     if (['White', 'Blue', 'Black', 'Red', 'Green', 'Colorless', 'Artifacts', 'Lands', 'Multicolor'].includes(cardName)) continue;
 
-    const sm = part.slice(0, 600).match(/Limited:[\s\S]*?(\d+(?:\.\d+)?)/i);
+    const headWindow = part.slice(0, 600);
+    let score: number | null = null;
+
+    // 1. Standard "Limited: X.X" format
+    const sm = headWindow.match(/Limited:[\s\S]*?(\d+(?:\.\d+)?)/i);
     if (sm) {
-      const score = parseFloat(sm[1]);
-      if (score >= 0 && score <= 5.0) {
-        const commentMatch = part.slice(0, 1200).match(/Limited:[\s\S]*?<\/(?:p|h3)>(?:\s*<p[^>]*>\s*(?:&nbsp;)?\s*<\/p>)?\s*<p>([\s\S]*?)<\/p>/i);
-        const notes = commentMatch ? commentMatch[1].replace(/<[^>]+>/g, '').trim() : undefined;
-        cards.push({ cardName, score, notes: notes ? notes.slice(0, 250) : undefined });
+      score = parseFloat(sm[1]);
+    } else {
+      // 2. Conditional / split ratings in <h3> (e.g. "Draft: 2.0", "In Red/Black: 3.5 / Elsewhere: 3.0", "First Copy: 0.1 / Second Copy: 1.25 / Third+ Copy: 2.0")
+      const h3Match = headWindow.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+      if (h3Match) {
+        const h3Text = h3Match[1].replace(/<[^>]+>/g, ' ');
+        const draftMatch = h3Text.match(/Draft:\s*(\d+(?:\.\d+)?)/i);
+        if (draftMatch) {
+          score = parseFloat(draftMatch[1]);
+        } else {
+          const allNums = [...h3Text.matchAll(/:\s*(\d+(?:\.\d+)?)/g)]
+            .map(m => parseFloat(m[1]))
+            .filter(n => !isNaN(n) && n >= 0 && n <= 5.0);
+          if (allNums.length > 0) {
+            const avg = allNums.reduce((a, b) => a + b, 0) / allNums.length;
+            score = Math.round(avg * 4) / 4; // round to nearest 0.25
+          }
+        }
       }
+    }
+
+    if (score !== null && score >= 0 && score <= 5.0) {
+      const commentMatch = part.slice(0, 1200).match(/<\/(?:p|h3)>(?:\s*<p[^>]*>\s*(?:&nbsp;)?\s*<\/p>)?\s*<p>([\s\S]*?)<\/p>/i);
+      const notes = commentMatch ? commentMatch[1].replace(/<[^>]+>/g, '').trim() : undefined;
+      cards.push({ cardName, score, notes: notes ? notes.slice(0, 250) : undefined });
     }
   }
   return cards;
 }
 
-async function syncLsvRatings(targetSet?: string | null, isAll = false, fullArchive = false): Promise<void> {
+export interface DiscoveredSetInfo {
+  setCode: string;
+  setName: string;
+}
+
+/**
+ * Dynamically discovers all Limited-draftable MTG sets from Scryfall within the
+ * active review window (-90 days post-release to +14 days pre-release).
+ * Ensures newly releasing sets are synced forever without manual set-code updates.
+ */
+export async function discoverActiveReviewSets(): Promise<DiscoveredSetInfo[]> {
+  const discovered: DiscoveredSetInfo[] = [];
+  try {
+    const res = await fetch('https://api.scryfall.com/sets', {
+      signal: AbortSignal.timeout(12000),
+      headers: { 'User-Agent': 'MTGLimitedIQ-ProSync/2.0' }
+    });
+    if (!res.ok) return discovered;
+    const json: any = await res.json();
+    const sets: any[] = Array.isArray(json?.data) ? json.data : [];
+    const now = Date.now();
+    const dayMs = 1000 * 60 * 60 * 24;
+    const validTypes = new Set(['expansion', 'core', 'masters', 'draft_innovation']);
+
+    for (const s of sets) {
+      if (!s?.code || !s?.name || !s?.released_at || !validTypes.has(s.set_type)) continue;
+      if ((s.card_count || 0) < 100) continue;
+      const relTime = new Date(`${s.released_at}T00:00:00Z`).getTime();
+      if (isNaN(relTime)) continue;
+      const daysSince = (now - relTime) / dayMs;
+      // Active review window: 14 days before tabletop release through 90 days after release
+      if (daysSince >= -14 && daysSince <= 90) {
+        discovered.push({
+          setCode: String(s.code).toUpperCase().trim(),
+          setName: String(s.name).trim(),
+        });
+      }
+    }
+  } catch (err: any) {
+    console.warn(`  ⚠️ Scryfall active set discovery failed: ${err.message}`);
+  }
+  return discovered;
+}
+
+/**
+ * Dynamically scrapes limitedlevelups.com's active app bundle to discover
+ * all published 17Lands tier list UIDs (Live + Alex + Marc) for current & future sets.
+ */
+export async function discoverLluTierListsFromSite(): Promise<CreatorTierListConfig[]> {
+  const configs: CreatorTierListConfig[] = [];
+  try {
+    const pageRes = await fetch('https://limitedlevelups.com/tier-list', {
+      signal: AbortSignal.timeout(10000),
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (!pageRes.ok) return configs;
+    const html = await pageRes.text();
+    const jsMatches = [...html.matchAll(/src=["']([^"']*\/assets\/index-[^"']+\.js)["']/gi)].map(m => m[1]);
+    if (jsMatches.length === 0) return configs;
+
+    const jsUrl = jsMatches[0].startsWith('http')
+      ? jsMatches[0]
+      : `https://limitedlevelups.com${jsMatches[0].startsWith('/') ? '' : '/'}${jsMatches[0]}`;
+    const jsRes = await fetch(jsUrl, { signal: AbortSignal.timeout(12000) });
+    if (!jsRes.ok) return configs;
+    const js = await jsRes.text();
+
+    // Extract live tier list map: {TRK:"03a686ab...",FRA:"643f4ffb...",...}
+    const liveMap = new Map<string, string>();
+    const liveBlockMatch = js.match(/\{([A-Z0-9]{2,5}:"[a-f0-9]{32}"(?:,[A-Z0-9]{2,5}:"[a-f0-9]{32}"){3,})\}/);
+    if (liveBlockMatch) {
+      for (const m of liveBlockMatch[1].matchAll(/([A-Z0-9]{2,5}):"([a-f0-9]{32})"/g)) {
+        liveMap.set(m[1].toUpperCase(), m[2]);
+      }
+    }
+
+    // Extract individual set-review tier list map: {TRK:[{name:"Alex",uid:"..."},{name:"Marc",uid:"..."}],...}
+    const reviewMap = new Map<string, string[]>();
+    const reviewBlockRegex = /([A-Z0-9]{2,5}):\[\{name:"[^"]+",uid:"([a-f0-9]{32})"\}(?:,\{name:"[^"]+",uid:"([a-f0-9]{32})"\})?\]/g;
+    for (const m of js.matchAll(reviewBlockRegex)) {
+      const code = m[1].toUpperCase();
+      const uids = [m[2], m[3]].filter(Boolean) as string[];
+      reviewMap.set(code, uids);
+    }
+
+    const allCodes = new Set<string>([...liveMap.keys(), ...reviewMap.keys()]);
+    for (const code of allCodes) {
+      const ids: string[] = [];
+      const liveId = liveMap.get(code);
+      if (liveId) ids.push(liveId);
+      for (const rid of reviewMap.get(code) || []) {
+        if (!ids.includes(rid)) ids.push(rid);
+      }
+      if (ids.length > 0) {
+        configs.push({
+          setCode: code,
+          source: 'LLU',
+          tierListIds: ids,
+          notes: `Auto-discovered LLU ${code} Tier List`
+        });
+      }
+    }
+    if (configs.length > 0) {
+      console.log(`  🔎 Auto-discovered ${configs.length} LLU set tier lists from limitedlevelups.com.`);
+    }
+  } catch (err: any) {
+    console.warn(`  ⚠️ LLU auto-discovery skipped: ${err.message}`);
+  }
+  return configs;
+}
+
+async function syncLsvRatings(
+  targetSet?: string | null,
+  isAll = false,
+  fullArchive = false,
+  activeSetsList: DiscoveredSetInfo[] = []
+): Promise<void> {
   console.log('\n🎙️ Starting LSV (ChannelFireball / TCGplayer & Community Reviews) Sync...');
 
   try {
-    // 1. Ingest TCGplayer Infinite articles
-    const setsToIngest = LSV_TCGPLAYER_SETS.filter(s => {
+    // 1. Build dynamic set matchers combining LSV_TCGPLAYER_SETS + auto-discovered Scryfall active sets
+    const dynamicMatchers = new Map<string, { match: RegExp; setCode: string; setName?: string }>();
+    for (const s of LSV_TCGPLAYER_SETS) {
+      dynamicMatchers.set(s.setCode, { ...s });
+    }
+    for (const ds of activeSetsList) {
+      if (!dynamicMatchers.has(ds.setCode)) {
+        // Escape regex chars and match core set title (strip "Magic: The Gathering | " prefix if present)
+        const cleanName = ds.setName.replace(/^Magic:\s*The Gathering\s*[-|:—]\s*/i, '').trim();
+        const escaped = cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        dynamicMatchers.set(ds.setCode, { match: new RegExp(escaped, 'i'), setCode: ds.setCode, setName: cleanName });
+      } else {
+        dynamicMatchers.get(ds.setCode)!.setName = ds.setName.replace(/^Magic:\s*The Gathering\s*[-|:—]\s*/i, '').trim();
+      }
+    }
+
+    const activeCodeSet = new Set(activeSetsList.map(s => s.setCode));
+    const setsToIngest = Array.from(dynamicMatchers.values()).filter(s => {
       if (targetSet) return s.setCode === targetSet;
       if (isAll) return true;
-      return DEFAULT_ACTIVE_SETS.includes(s.setCode);
+      return activeCodeSet.has(s.setCode);
     });
 
     if (setsToIngest.length === 0) {
-      console.log(`  ℹ️ No active set review articles pending for current active sets (${DEFAULT_ACTIVE_SETS.join(', ')}). Skipping.`);
+      console.log(`  ℹ️ No active set review articles pending for discovered active sets (${Array.from(activeCodeSet).join(', ')}). Skipping.`);
     } else {
       const articlesBySet = new Map<string, { title: string; uuid: string }[]>();
-      for (const s of setsToIngest) articlesBySet.set(s.setCode, []);
+      for (const s of setsToIngest) {
+        articlesBySet.set(s.setCode, []);
+      }
 
-      const authors = ['Luis Scott-Vargas', 'Martin Juza', 'Reid Duke'];
-      const maxOffset = fullArchive ? 850 : 96;
-
-      for (const author of authors) {
-        for (let offset = 0; offset < maxOffset; offset += 48) {
+      // 1a. Query TCGplayer's newest-first /content/author/<Author> endpoint (discovers brand-new 2026+ reviews immediately!)
+      const reviewAuthors = ['Luis Scott-Vargas', 'Reid Duke', 'Martin Jůza', 'Martin Juza'];
+      const authorPages = fullArchive ? 6 : 1;
+      for (const author of reviewAuthors) {
+        for (let page = 0; page < authorPages; page++) {
           try {
-            const res = await fetch(`https://infinite-api.tcgplayer.com/content/search?author=${encodeURIComponent(author)}&offset=${offset}`, {
+            const offset = page * 40;
+            const res = await fetch(`https://infinite-api.tcgplayer.com/content/author/${encodeURIComponent(author)}?rows=40&offset=${offset}`, {
               signal: AbortSignal.timeout(8000)
             });
             if (!res.ok) break;
             const data = await res.json();
-            if (!data.result || data.result.length === 0) break;
-            for (const a of data.result) {
-              if (!a.title || (!a.title.includes('Limited Set Review') && !a.title.includes('Limited MTG Set Review'))) continue;
+            const arts: any[] = data.result?.articles || [];
+            if (arts.length === 0) break;
+            for (const a of arts) {
+              if (!a.uuid || !a.title) continue;
+              if (!/Limited(?: MTG| Magic: The Gathering)? Set Review/i.test(a.title)) continue;
               for (const s of setsToIngest) {
                 if (s.match.test(a.title)) {
                   const list = articlesBySet.get(s.setCode);
-                  if (list && !list.some(x => x.uuid === a.uuid)) list.push(a);
+                  if (list && !list.some(x => x.uuid === a.uuid)) list.push({ title: a.title, uuid: a.uuid });
                   break;
                 }
               }
             }
           } catch (e: any) {
-            console.warn(`  ⚠️ TCGplayer search error for ${author} (offset ${offset}): ${e.message}`);
+            console.warn(`  ⚠️ TCGplayer author feed error for ${author}: ${e.message}`);
             break;
+          }
+        }
+      }
+
+      // 1b. Historical archive fallback via /content/search (only needed for --full-archive / --all)
+      if (fullArchive || isAll) {
+        for (const author of ['Luis Scott-Vargas', 'Martin Juza', 'Reid Duke']) {
+          for (let offset = 0; offset < 850; offset += 48) {
+            try {
+              const res = await fetch(`https://infinite-api.tcgplayer.com/content/search?author=${encodeURIComponent(author)}&offset=${offset}`, {
+                signal: AbortSignal.timeout(8000)
+              });
+              if (!res.ok) break;
+              const data = await res.json();
+              if (!data.result || data.result.length === 0) break;
+              for (const a of data.result) {
+                if (!a.uuid || !a.title || (!a.title.includes('Limited Set Review') && !a.title.includes('Limited MTG Set Review'))) continue;
+                for (const s of setsToIngest) {
+                  if (s.match.test(a.title)) {
+                    const list = articlesBySet.get(s.setCode);
+                    if (list && !list.some(x => x.uuid === a.uuid)) list.push({ title: a.title, uuid: a.uuid });
+                    break;
+                  }
+                }
+              }
+            } catch (e: any) {
+              console.warn(`  ⚠️ TCGplayer search error for ${author} (offset ${offset}): ${e.message}`);
+              break;
+            }
           }
         }
       }
 
       for (const [setCode, arts] of articlesBySet.entries()) {
         if (arts.length === 0) continue;
-        console.log(`\n📋 Processing [LSV] for Set [${setCode}] from ${arts.length} CFB review articles...`);
+        const queue = [...arts];
+        const visited = new Set<string>(queue.map(a => a.uuid));
         const cardMap = new Map<string, ParsedProRating>();
+        let processedCount = 0;
 
-        for (const art of arts) {
+        // Process queue and auto-discover linked sibling color articles (White/Blue/Black/Red/Green/Gold/Bonus)
+        while (queue.length > 0) {
+          const art = queue.shift()!;
+          processedCount++;
           try {
             const r = await fetch(`https://infinite-api.tcgplayer.com/content/article/${art.uuid}`, {
               signal: AbortSignal.timeout(8000)
@@ -597,6 +797,20 @@ async function syncLsvRatings(targetSet?: string | null, isAll = false, fullArch
             if (!r.ok) continue;
             const d = await r.json();
             const b = d.result?.article?.body || '';
+
+            // Crawl cross-links to other color reviews of the same set inside the article header/body
+            const matcher = dynamicMatchers.get(setCode);
+            if (matcher) {
+              for (const lm of b.matchAll(/article\/([^"']*Limited-(?:MTG-)?Set-Review[^"']*)\/([a-f0-9-]{36})/gi)) {
+                const slug = decodeURIComponent(lm[1]).replace(/-/g, ' ');
+                const linkedUuid = lm[2];
+                if (!visited.has(linkedUuid) && matcher.match.test(slug)) {
+                  visited.add(linkedUuid);
+                  queue.push({ title: slug, uuid: linkedUuid });
+                }
+              }
+            }
+
             const parsed = parseLsvArticleBody(b);
             for (const c of parsed) {
               const { grade, score, verdict } = lsvScoreToRating(c.score);
@@ -614,6 +828,7 @@ async function syncLsvRatings(targetSet?: string | null, isAll = false, fullArch
             console.warn(`  ⚠️ Failed to fetch LSV article ${art.uuid}: ${err.message}`);
           }
         }
+        console.log(`\n📋 Processed [LSV] for Set [${setCode}] from ${processedCount} CFB review articles...`);
 
         const uniqueRatings = Array.from(cardMap.values());
         console.log(`  ⭐ Prepared ${uniqueRatings.length} unique card ratings for ${setCode} (LSV).`);
@@ -681,7 +896,7 @@ async function syncLsvRatings(targetSet?: string | null, isAll = false, fullArch
 }
 
 const DRAFTSIM_SUPPORTED_SETS = [
-  'SOS', 'TMT', 'ECL', 'TLA', 'SPM', 'EOE', 'FIN', 'TDM', 'DFT',
+  'TRK', 'FRA', 'HOB', 'MSH', 'SOS', 'TMT', 'ECL', 'TLA', 'SPM', 'EOE', 'FIN', 'TDM', 'DFT',
   'FDN', 'DSK', 'BLB', 'MH3', 'OTJ', 'MKM', 'LCI', 'WOE', 'LTR',
   'MOM', 'ONE', 'BRO', 'DMU', 'SNC', 'NEO', 'VOW', 'MID', 'AFR', 'STX'
 ];
@@ -689,7 +904,11 @@ const DRAFTSIM_SUPPORTED_SETS = [
 /**
  * Ingests card tier list ratings from Draftsim (DS)
  */
-async function syncDraftsimRatings(targetSet: string | null, isAll: boolean) {
+async function syncDraftsimRatings(
+  targetSet: string | null,
+  isAll: boolean,
+  activeSetsList: DiscoveredSetInfo[] = []
+) {
   try {
     console.log('\n🎲 Processing [DS] (Draftsim Set Reviews & Tier Lists)...');
 
@@ -721,12 +940,16 @@ async function syncDraftsimRatings(targetSet: string | null, isAll: boolean) {
       }
     }
 
-    // Ingest from Draftsim's official generated set rating files
-    const setsToFetch = DRAFTSIM_SUPPORTED_SETS.filter(s => {
-      if (targetSet) return s === targetSet;
-      if (isAll) return true;
-      return DEFAULT_ACTIVE_SETS.includes(s);
-    });
+    // Build dynamic set list: any target set, or all active/discovered sets (zero hardcoded active set list)
+    const activeCodeSet = new Set(activeSetsList.map(s => s.setCode));
+    let setsToFetch: string[];
+    if (targetSet) {
+      setsToFetch = [targetSet];
+    } else if (isAll) {
+      setsToFetch = Array.from(new Set([...DRAFTSIM_SUPPORTED_SETS, ...activeCodeSet]));
+    } else {
+      setsToFetch = Array.from(activeCodeSet);
+    }
 
     for (const setCode of setsToFetch) {
       console.log(`\n📋 Processing [DS] for Set [${setCode}] from Draftsim pick order data...`);
@@ -757,6 +980,52 @@ async function syncDraftsimRatings(targetSet: string | null, isAll: boolean) {
           }
         } catch {
           // ignore missing pool file
+        }
+      }
+
+      // Fallback: Parse Draftsim's official Limited Set Review article (e.g. https://draftsim.com/mtg-trk-limited-set-review/)
+      // for newer sets where Draftsim migrated away from /generated/<SET>/<SET>_<pool>.js
+      if (cardMap.size === 0) {
+        const reviewUrl = `https://draftsim.com/mtg-${setCode.toLowerCase()}-limited-set-review/`;
+        try {
+          console.log(`  Checking Draftsim Limited Set Review article: ${reviewUrl}...`);
+          const res = await fetch(reviewUrl, { signal: AbortSignal.timeout(15000) });
+          if (res.ok) {
+            const html = await res.text();
+            const blocks = html.split(/<h3[^>]*>/i);
+            for (let i = 1; i < blocks.length; i++) {
+              const b = blocks[i];
+              const endH3 = b.indexOf('</h3>');
+              if (endH3 === -1) continue;
+              const rawName = b
+                .slice(0, endH3)
+                .replace(/<[^>]+>/g, '')
+                .replace(/&#8217;|&#x2019;/g, "'")
+                .replace(/&#8216;|&#x2018;/g, "'")
+                .replace(/&#8220;|&#8221;/g, '"')
+                .replace(/&#8211;/g, '–')
+                .replace(/&amp;/g, '&')
+                .trim();
+              if (!rawName || rawName.length > 70) continue;
+              const rm = b.slice(endH3, endH3 + 2500).match(/Rating:[\s\S]{0,40}?([0-9]+(?:\.[0-9]+)?)\s*\/\s*10/i);
+              if (!rm) continue;
+              const rating10 = parseFloat(rm[1]);
+              if (isNaN(rating10) || rating10 < 0 || rating10 > 10) continue;
+              const normalizedScore = rating10 / 2; // Convert 0-10 Draftsim scale to 0-5 scale
+              const { grade, score, verdict } = lsvScoreToRating(normalizedScore);
+              cardMap.set(rawName, {
+                setCode,
+                cardName: rawName,
+                source: 'DS',
+                score,
+                grade,
+                verdict,
+                notes: `Draftsim Limited Set Review (${rating10}/10)`
+              });
+            }
+          }
+        } catch (err: any) {
+          console.warn(`  ⚠️ Could not fetch Draftsim set review for ${setCode}: ${err.message}`);
         }
       }
 
@@ -799,16 +1068,21 @@ async function main() {
   }
 
   console.log('🎙️ Starting Pro Creator Ratings Ingestion...');
+
+  // Dynamically discover active/upcoming Limited sets from Scryfall (-90d to +14d)
+  const discoveredActiveSets = await discoverActiveReviewSets();
+  const dynamicActiveCodes = discoveredActiveSets.map(s => s.setCode);
+
   if (isAll) {
     console.log('Mode: Full Historical Catalog Audit');
   } else if (targetSet) {
     console.log(`Mode: Targeted Set [${targetSet}]`);
   } else {
-    console.log(`Mode: Daily Active Sets [${DEFAULT_ACTIVE_SETS.join(', ')}]`);
+    console.log(`Mode: Daily Active Sets [${dynamicActiveCodes.join(', ')}]`);
   }
 
-  // If specific creator tier lists (LLU or LOL) are requested or running all
-  if (!customSource || customSource === 'LLU' || customSource === 'LOL') {
+  // If specific creator tier lists (LLU) are requested or running all
+  if (!customSource || customSource === 'LLU') {
     const configsToRun: CreatorTierListConfig[] = [];
 
     if (customTierlistId && targetSet) {
@@ -819,12 +1093,27 @@ async function main() {
         notes: `Custom run for ${targetSet} from ${customSource || 'LLU'}`
       });
     } else {
+      // Merge auto-discovered LLU tier lists from limitedlevelups.com (taking priority) with static registry
+      const discoveredLlu = await discoverLluTierListsFromSite();
+      const mergedLluMap = new Map<string, CreatorTierListConfig>();
       for (const cfg of KNOWN_CREATOR_TIERLISTS) {
-        // If a specific set is given, only match that set
+        mergedLluMap.set(`${cfg.setCode}_${cfg.source}`, cfg);
+      }
+      for (const dCfg of discoveredLlu) {
+        const key = `${dCfg.setCode}_${dCfg.source}`;
+        const existing = mergedLluMap.get(key);
+        if (existing) {
+          // Prepend newly discovered IDs so live/updated IDs take priority
+          const combinedIds = Array.from(new Set([...dCfg.tierListIds, ...existing.tierListIds]));
+          mergedLluMap.set(key, { ...existing, tierListIds: combinedIds });
+        } else {
+          mergedLluMap.set(key, dCfg);
+        }
+      }
+
+      for (const cfg of mergedLluMap.values()) {
         if (targetSet && cfg.setCode !== targetSet) continue;
-        // If neither specific set nor --all is given, only run default active sets
-        if (!targetSet && !isAll && !DEFAULT_ACTIVE_SETS.includes(cfg.setCode)) continue;
-        // Filter by creator source if given
+        if (!targetSet && !isAll && !dynamicActiveCodes.includes(cfg.setCode)) continue;
         if (customSource && cfg.source !== customSource) continue;
         configsToRun.push(cfg);
       }
@@ -882,12 +1171,12 @@ async function main() {
 
   // If LSV requested or running all
   if (!customSource || customSource === 'LSV') {
-    await syncLsvRatings(targetSet, isAll, fullArchive);
+    await syncLsvRatings(targetSet, isAll, fullArchive, discoveredActiveSets);
   }
 
   // If DS requested or running all
   if (!customSource || customSource === 'DS') {
-    await syncDraftsimRatings(targetSet, isAll);
+    await syncDraftsimRatings(targetSet, isAll, discoveredActiveSets);
   }
 
   console.log('\n🎉 Pro Creator Ratings Sync completed successfully!');

@@ -404,45 +404,46 @@ export function get17LandsQueryStatus(
 }
 
 /**
- * Resolves the draft status for a given MTG Limited set:
- * - 'active': Currently running as primary draft format or ongoing format on Arena (e.g. HOB, MBC; and FRA once released).
- * - 'flashback': A historical set currently returning to Arena for a Flashback draft event.
- * - 'upcoming': An unreleased set whose release date is in the future (e.g. FRA prior to Oct 2, 2026; TRK).
- * - 'historical': A set whose initial Arena draft season has concluded and is off Arena from its first run.
+ * Resolves the draft status for a given MTG Limited set (100% dynamic, zero static overrides):
+ * - 'flashback': A historical set dynamically detected as running a Flashback draft event on Arena.
+ * - 'upcoming': An unreleased set whose Arena/tabletop release date is in the future.
+ * - 'active': Any set released within the last 75 days (current Premier Draft season).
+ * - 'historical': A set whose initial Arena draft season (> 75 days ago) has concluded.
  */
+const ACTIVE_DRAFT_SEASON_DAYS = 75;
+
 export function getSetDraftStatus(
-  setCodeOrSet: string | { code?: string; released_at?: string; is_active_draft?: boolean; is_flashback?: boolean }
+  setCodeOrSet: string | { code?: string; released_at?: string; arena_released_at?: string; is_active_draft?: boolean; is_flashback?: boolean }
 ): SetDraftStatus {
   if (!setCodeOrSet) return 'historical';
   const upper = typeof setCodeOrSet === 'string' ? setCodeOrSet.toUpperCase().trim() : (setCodeOrSet.code || '').toUpperCase().trim();
-  const setInfo = typeof setCodeOrSet === 'object' && setCodeOrSet.released_at
-    ? setCodeOrSet
-    : POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
+  const popInfo = POPULAR_LIMITED_SETS.find((s) => s.code.toUpperCase() === upper);
+  const setInfo = typeof setCodeOrSet === 'object' ? { ...popInfo, ...setCodeOrSet } : popInfo;
 
-  // Explicit overrides
+  // Dynamically detected flashback event (from live 17Lands game-count growth)
   if (setInfo?.is_flashback) return 'flashback';
-  if (setInfo?.is_active_draft) return 'active';
 
-  // Check release date
-  const releasedAt = setInfo?.released_at || (typeof setCodeOrSet === 'object' ? setCodeOrSet.released_at : undefined);
-  if (!releasedAt) return 'historical';
-  const isoStr = releasedAt.includes('T') ? releasedAt : `${releasedAt}T00:00:00Z`;
-  const releaseTime = new Date(isoStr).getTime();
-  if (isNaN(releaseTime)) return 'historical';
+  // Resolve effective release date (prefer Arena launch date when available)
+  const effectiveReleaseStr = setInfo?.arena_released_at || setInfo?.released_at;
+  if (effectiveReleaseStr) {
+    const isoStr = effectiveReleaseStr.includes('T') ? effectiveReleaseStr : `${effectiveReleaseStr}T00:00:00Z`;
+    const releaseTime = new Date(isoStr).getTime();
+    if (!isNaN(releaseTime)) {
+      const now = Date.now();
+      const daysSinceRelease = (now - releaseTime) / (1000 * 60 * 60 * 24);
 
-  const now = Date.now();
+      if (releaseTime > now) {
+        return 'upcoming';
+      }
 
-  // If release date is in the future, it is upcoming (not yet draftable on Arena)
-  if (releaseTime > now) {
-    return 'upcoming';
+      if (daysSinceRelease >= 0 && daysSinceRelease <= ACTIVE_DRAFT_SEASON_DAYS) {
+        return 'active';
+      }
+
+      return 'historical';
+    }
   }
 
-  // Active premier draft formats
-  if (upper === 'HOB' || upper === 'MBC' || upper === 'FRA') {
-    return 'active';
-  }
-
-  // Historical set (e.g. DFT, BLB, OTJ, etc.)
   return 'historical';
 }
 

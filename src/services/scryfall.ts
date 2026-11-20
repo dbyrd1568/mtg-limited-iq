@@ -41,28 +41,22 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
     name: 'Marvel: Darkhold Destiny',
     card_count: 280,
     total_cards: 280,
-    preview_count: 12,
     released_at: '2027-04-09',
     arena_released_at: '2027-04-06',
     lsv_available_at: '2027-04-02',
     seventeen_lands_available_at: '2027-04-20',
     set_type: 'expansion',
-    has_17lands_data: false,
-    is_active_draft: false,
   },
   {
     code: 'NAU',
     name: 'Nauctis: The Sunken Realm',
     card_count: 280,
     total_cards: 280,
-    preview_count: 0,
     released_at: '2027-02-05',
     arena_released_at: '2027-02-02',
     lsv_available_at: '2027-01-29',
     seventeen_lands_available_at: '2027-02-16',
     set_type: 'expansion',
-    has_17lands_data: false,
-    is_active_draft: false,
   },
   // 2026 Sets
   {
@@ -70,14 +64,11 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
     name: 'Star Trek',
     card_count: 280,
     total_cards: 280,
-    preview_count: 205,
     released_at: '2026-11-13',
     arena_released_at: '2026-11-10',
     lsv_available_at: '2026-11-06',
-    seventeen_lands_available_at: '2026-11-24',
+    seventeen_lands_available_at: '2026-11-10',
     set_type: 'expansion',
-    has_17lands_data: false,
-    is_active_draft: false,
   },
   {
     code: 'MBC',
@@ -88,8 +79,6 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
     lsv_available_at: '2026-07-28',
     seventeen_lands_available_at: '2026-08-15',
     set_type: 'draft_innovation',
-    has_17lands_data: true,
-    is_active_draft: true,
   },
   {
     code: 'FRA',
@@ -100,8 +89,6 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
     lsv_available_at: '2026-09-25',
     seventeen_lands_available_at: '2026-10-13',
     set_type: 'expansion',
-    has_17lands_data: true,
-    is_active_draft: true,
   },
   {
     code: 'HOB',
@@ -112,8 +99,6 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
     lsv_available_at: '2026-08-07',
     seventeen_lands_available_at: '2026-08-25',
     set_type: 'expansion',
-    has_17lands_data: true,
-    is_active_draft: true,
   },
   {
     code: 'MSH',
@@ -275,7 +260,19 @@ export const POPULAR_LIMITED_SETS: SetInfo[] = [
   // 2017 & Earlier / Remastered
   { code: 'XLN', name: 'Ixalan', card_count: 289, released_at: '2017-09-29', set_type: 'expansion', has_17lands_data: true },
   { code: 'KTK', name: 'Khans of Tarkir', card_count: 249, released_at: '2014-09-26', set_type: 'expansion', has_17lands_data: true },
-];
+].map((setInfo) => {
+  const effectiveRelease = setInfo.arena_released_at || setInfo.released_at;
+  if (!effectiveRelease) return setInfo;
+  const relTime = new Date(effectiveRelease.includes('T') ? effectiveRelease : `${effectiveRelease}T00:00:00Z`).getTime();
+  if (isNaN(relTime)) return setInfo;
+  const daysSince = (Date.now() - relTime) / (1000 * 60 * 60 * 24);
+  const isReleased = daysSince >= 0;
+  return {
+    ...setInfo,
+    has_17lands_data: isReleased,
+    is_active_draft: isReleased && daysSince <= 75,
+  };
+});
 
 export function isCombatTrick(card: Card): boolean {
   const typeLine = (card.type_line || '').toLowerCase();
@@ -661,10 +658,14 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
       })
       .map((s: any) => {
         const popMatch = POPULAR_LIMITED_SETS.find((p) => p.code.toUpperCase() === s.code.toUpperCase());
-        const has17L = popMatch ? Boolean(popMatch.has_17lands_data) : KNOWN_17LANDS_EXPANSIONS.has(s.code.toUpperCase());
+        const effectiveReleaseStr = popMatch?.arena_released_at || popMatch?.released_at || s.released_at;
+        const releaseTime = effectiveReleaseStr ? new Date(effectiveReleaseStr.includes('T') ? effectiveReleaseStr : `${effectiveReleaseStr}T00:00:00Z`).getTime() : 0;
+        const isReleased = releaseTime > 0 && releaseTime <= Date.now();
+        const daysSinceRelease = isReleased ? (Date.now() - releaseTime) / (1000 * 60 * 60 * 24) : -1;
+        const isUpcoming = releaseTime > Date.now();
+        const isActiveDraft = isReleased && daysSinceRelease <= 75;
+        const has17L = isReleased;
         const totalCards = popMatch?.total_cards || popMatch?.card_count || s.card_count;
-        const releaseTime = s.released_at ? new Date(s.released_at.includes('T') ? s.released_at : `${s.released_at}T00:00:00Z`).getTime() : 0;
-        const isUpcoming = (releaseTime > Date.now() && !popMatch?.is_active_draft && !popMatch?.is_flashback) || (popMatch && ['TRK', 'MDD', 'NAU'].includes(popMatch.code.toUpperCase()));
         let previewCount = popMatch?.preview_count;
         if (previewCount === undefined && isUpcoming) {
           previewCount = typeof s.card_count === 'number' && s.card_count < totalCards ? s.card_count : 0;
@@ -683,8 +684,8 @@ export async function fetchAllSets(options?: { forceRefresh?: boolean }): Promis
           icon_svg_uri: s.icon_svg_uri,
           set_type: s.set_type,
           has_17lands_data: has17L,
-          is_active_draft: popMatch?.is_active_draft,
-          is_flashback: popMatch?.is_flashback,
+          is_active_draft: isActiveDraft,
+          is_flashback: Boolean(popMatch?.is_flashback),
         };
       });
 

@@ -599,6 +599,21 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
       const { dx, dy } = getDeterministicJitter(card.id, card.name);
       const dotColor = getCardDotColor(card);
 
+      // Keep exact matches directly on (or virtually on) the y = x calibration line
+      // by spreading them along the diagonal axis with minimal perpendicular offset.
+      let plotX: number;
+      let plotY: number;
+      if (verdict === 'exact') {
+        const along = dx * 1.05; // spread along the diagonal so identical exact grades don't stack on one pixel
+        const perp = dy * 0.08;  // <= 0.018 tier units (~1px) off the line so dots sit right on the diagonal
+        const base = Math.max(0, Math.min(12, uIdx + along));
+        plotX = Math.max(0, Math.min(12, base + perp));
+        plotY = Math.max(0, Math.min(12, base - perp));
+      } else {
+        plotX = Math.max(0, Math.min(12, uIdx + dx));
+        plotY = Math.max(0, Math.min(12, aIdx + dy));
+      }
+
       points.push({
         card,
         cardName: card.name,
@@ -613,8 +628,8 @@ export const CalibrationScatterPlot: React.FC<CalibrationScatterPlotProps> = ({
         actualAlsa,
         stepDelta,
         verdict,
-        plotX: Math.max(0, Math.min(12, uIdx + dx)),
-        plotY: Math.max(0, Math.min(12, aIdx + dy)),
+        plotX,
+        plotY,
         dotColor,
       });
     });

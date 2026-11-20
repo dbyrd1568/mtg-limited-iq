@@ -58,7 +58,7 @@ jobs:
             echo "Running custom sync for: $CUSTOM_SETS"
             npx tsx scripts/sync-17lands.ts $CUSTOM_SETS
           else
-            echo "Running daily active sets sync (HOB, MBC, FRA)..."
+            echo "Running daily auto-discovered active sets sync..."
             npx tsx scripts/sync-17lands.ts
           fi
         env:
@@ -69,8 +69,7 @@ jobs:
           CLOUDFLARE_WORKER_URL: ${{ secrets.PRODUCTION_URL || 'https://mtg-limited-iq.byrd.workers.dev' }}
           FLASHBACK_SETS: ${{ vars.FLASHBACK_SETS || '' }}
 
-      - name: 🎙️ Ingest Pro Creator Ratings (LSV, LLU, LOL)
-        continue-on-error: true
+      - name: 🎙️ Ingest Pro Creator Ratings (LSV, LLU, DS)
         run: |
           MODE="${{ github.event.inputs.mode || 'active' }}"
           CUSTOM_SETS="${{ github.event.inputs.sets || '' }}"
@@ -85,7 +84,7 @@ jobs:
               npx tsx scripts/sync-pro-ratings.ts --set "$s"
             done
           else
-            echo "Running daily active sets creator ratings sync (HOB, FRA)..."
+            echo "Running daily auto-discovered active sets creator ratings sync..."
             npx tsx scripts/sync-pro-ratings.ts
           fi
         env:

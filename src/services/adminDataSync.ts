@@ -49,35 +49,25 @@ export interface SyncSummary {
 }
 
 /**
- * Returns sets currently considered in preview or upcoming (e.g. TRK Star Trek, MDD Marvel: Darkhold Destiny, NAU Nauctis, or sets with future release dates)
+ * Returns sets currently considered in preview or upcoming (strictly date-driven: release date in the future)
  */
 export async function getPreviewSetsList(options?: { forceRefresh?: boolean }): Promise<SetInfo[]> {
+  const isFutureSet = (s: { arena_released_at?: string; released_at?: string }) => {
+    const dateStr = s.arena_released_at || s.released_at;
+    if (!dateStr) return false;
+    const t = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`).getTime();
+    return !isNaN(t) && t > Date.now();
+  };
+
   try {
     const allSets = await fetchAllSets({ forceRefresh: options?.forceRefresh ?? true });
-    const now = Date.now();
 
-    // Identify upcoming/preview sets:
-    // 1. Known upcoming preview sets (MDD, NAU, TRK)
-    // 2. Draft status is upcoming
-    // 3. Release date in the future
-    const previewSets = allSets.filter((s) => {
-      const code = s.code.toUpperCase();
-      if (['MDD', 'NAU', 'TRK'].includes(code)) return true;
-      if (getSetDraftStatus(s) === 'upcoming') return true;
-      if (s.released_at) {
-        const releaseTime = new Date(s.released_at.includes('T') ? s.released_at : `${s.released_at}T00:00:00Z`).getTime();
-        if (!isNaN(releaseTime) && releaseTime > now) {
-          return true;
-        }
-      }
-      return false;
-    });
+    const previewSets = allSets.filter((s) => getSetDraftStatus(s) === 'upcoming' || isFutureSet(s));
 
     // Also ensure all upcoming POPULAR_LIMITED_SETS are present
     POPULAR_LIMITED_SETS.forEach((pop) => {
       const code = pop.code.toUpperCase();
-      const popTime = pop.released_at ? new Date(pop.released_at.includes('T') ? pop.released_at : `${pop.released_at}T00:00:00Z`).getTime() : 0;
-      if (popTime > now || ['MDD', 'NAU', 'TRK'].includes(code)) {
+      if (isFutureSet(pop)) {
         if (!previewSets.some((p) => p.code.toUpperCase() === code)) {
           previewSets.push(pop);
         }
@@ -87,15 +77,10 @@ export async function getPreviewSetsList(options?: { forceRefresh?: boolean }): 
     // Sort upcoming sets chronologically by release date (soonest first)
     previewSets.sort((a, b) => (a.released_at || '').localeCompare(b.released_at || ''));
 
-    if (previewSets.length > 0) {
-      return previewSets;
-    }
-
-    // Fallback: return TRK, NAU, MDD
-    return POPULAR_LIMITED_SETS.filter((s) => ['TRK', 'NAU', 'MDD'].includes(s.code.toUpperCase()));
+    return previewSets;
   } catch (err) {
     console.warn('[adminDataSync] Failed to fetch preview sets, using fallback:', err);
-    return POPULAR_LIMITED_SETS.filter((s) => ['TRK', 'NAU', 'MDD'].includes(s.code.toUpperCase()));
+    return POPULAR_LIMITED_SETS.filter((s) => isFutureSet(s));
   }
 }
 
